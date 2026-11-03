@@ -9,9 +9,6 @@ import Testing
 // views. Mutation listeners fire from the reconciler (a headless JS editor
 // has none either), so their tests wait for it and stay unported.
 
-private let editorPrefix =
-  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > "
-
 /// `init(onError, nodes, onWarn)`: upstream's test editor, whose default
 /// `onError` swallows errors (`vi.fn()`).
 func initEditor(
@@ -476,12 +473,24 @@ private func textContents() throws -> [String] {
   }
 
   @Test(
-    .upstream(editorPrefix + "transforms on siblings > on remove"),
-    .upstream(editorPrefix + "transforms on siblings > on replace"),
-    .upstream(editorPrefix + "transforms on siblings > on insertBefore"),
-    .upstream(editorPrefix + "transforms on siblings > on insertAfter"),
-    .upstream(editorPrefix + "transforms on siblings > on splitText"),
-    .upstream(editorPrefix + "transforms on siblings > on append"),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms on siblings > on remove"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms on siblings > on replace"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms on siblings > on insertBefore"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms on siblings > on insertAfter"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms on siblings > on splitText"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms on siblings > on append"
+    ),
     arguments: [
       ("remove", [2, 1, 2, 1, 1, 1]), ("replace", [2, 2, 2, 2, 1, 2]),
       ("insertBefore", [2, 2, 2, 2, 2, 1]), ("insertAfter", [2, 2, 2, 1, 2, 2]),

@@ -423,6 +423,13 @@ package func triggerListeners<L>(
   }
 }
 
+/// `root !== null && root.isConnected`: a root that does not report its
+/// connection counts as connected.
+func isRootConnected(_ root: AnyObject?) -> Bool {
+  guard let root else { return false }
+  return (root as? LexicalRootElement)?.isConnected ?? true
+}
+
 func hasSelectionChanged(_ editor: Editor, _ selection: BaseSelection?) -> Bool {
   let previous = editor._lastNotifiedSelection
   guard let selection else {
@@ -459,7 +466,7 @@ func notifyPendingSelectionChange(_ editor: Editor) throws -> Bool {
     // selection to notify about for a range selection.
     let skipNotification =
       (selection == nil || selection is RangeSelection)
-      && (editor._headless || editor._rootElement == nil)
+      && (editor._headless || !isRootConnected(editor._rootElement))
     if skipNotification || count == 100 {
       editor._lastNotifiedSelection = selection?.clone()
       return !skipNotification

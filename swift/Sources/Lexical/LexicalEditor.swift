@@ -163,6 +163,13 @@ public typealias UpdateListener = (UpdateListenerPayload) throws -> Void
 public typealias TextContentListener = (String) throws -> Void
 public typealias EditableListener = (Bool) throws -> Void
 public typealias DecoratorListener = ([NodeKey: Any]) throws -> Void
+/// A root element that reports whether it is attached, as a DOM element's
+/// `isConnected` does (for a view: whether it is in a window). A root that
+/// does not conform counts as connected.
+public protocol LexicalRootElement: AnyObject {
+  var isConnected: Bool { get }
+}
+
 /// `RootListener`: the new and previous root elements; it may return a
 /// clean-up for the next change.
 public typealias RootListener = (_ rootElement: AnyObject?, _ prevRootElement: AnyObject?) -> (

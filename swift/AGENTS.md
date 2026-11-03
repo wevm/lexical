@@ -22,7 +22,8 @@ port. Read [DESIGN.md](DESIGN.md) before changing architecture.
 
 Every upstream unit test of a package in `parity/packages.json` is either
 ported, with `@Test(.upstream("<id>"))` (ids are in
-`parity/upstream-tests.json`), or listed in `parity/skips.json` with a reason:
+`parity/upstream-tests.json`; write each id as one string literal, since the
+ledger reads only literals), or listed in `parity/skips.json` with a reason:
 `dom-only`, `react-only`, `out-of-scope-package`, `covered-by-vector`, or
 `deviation`. A package is marked `"enforced"` once it is ported; CI then fails
 on anything neither ported nor skipped. Most `dom-only` tests should be ported

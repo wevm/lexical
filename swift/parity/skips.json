@@ -391,6 +391,30 @@
     "reason": "out-of-scope-package",
     "note": "Uses $patchStyleText from @lexical/selection; port with that package."
   },
+  "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > a dropped no-op update does not suppress the next notification": {
+    "reason": "dom-only",
+    "note": "Driven by the document's selectionchange event; the views own native selection events."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > focus produces one tagged commit and one callback": {
+    "reason": "dom-only",
+    "note": "editor.focus() focuses the DOM root; the views own focus."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with $onUpdate callbacks": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with none callbacks": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with onUpdate callbacks": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with selection listener callbacks": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
+  },
   "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > a late-added declared slot renders in its declared position in the DOM": {
     "reason": "dom-only",
     "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."

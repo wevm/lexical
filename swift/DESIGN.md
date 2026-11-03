@@ -175,8 +175,11 @@ These are reversible choices made while porting, under Q7 and Q27.
   commit the pending state again with `history-merge` (keeping queued
   updates and tags), and run root listeners. Styling, events and the
   mutation observer are the views' job. With a root set, a changed range
-  selection dispatches `SELECTION_CHANGE_COMMAND`, as in JS. The TextKit
-  views will call it when the incremental reconciler lands.
+  selection dispatches `SELECTION_CHANGE_COMMAND`, as in JS, while the root
+  is connected: a root that conforms to `LexicalRootElement` reports
+  `isConnected` (a view: whether it is in a window), and any other root
+  counts as connected. The TextKit views will call it when the incremental
+  reconciler lands.
 
 ## Scope of v0.1.0 (Q21)
 

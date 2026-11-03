@@ -39,3 +39,16 @@ package func scheduleMicroTask(_ task: @escaping () -> Void) {
 package func scheduleMacroTask(_ task: @escaping () -> Void) {
   ThreadContext.current.macrotasks.append(task)
 }
+
+/// Runs the queued microtasks only, leaving `setTimeout(fn, 0)` work queued,
+/// as `await Promise.resolve()` does in JS.
+package func drainMicrotasksOnly() {
+  let context = ThreadContext.current
+  if context.drainingMicrotasks { return }
+  context.drainingMicrotasks = true
+  defer { context.drainingMicrotasks = false }
+  while !context.microtasks.isEmpty {
+    let task = context.microtasks.removeFirst()
+    task()
+  }
+}

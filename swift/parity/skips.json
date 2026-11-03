@@ -1,4 +1,320 @@
 {
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > announces a restore only when one happened": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > describes the history shapes @lexical/history really has": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not overwrite the replacement snapshot when the old editor is disposed": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not overwrite valid saved state with empty editor state on first-mount effect run (validPrev path)": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not re-run transforms over the document on every undo": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not serialize anything until the state is restored": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not warn for a single editor without id": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not warn for an editor that was built but never mounted": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not warn on sequential HMR cycles without id": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not warn when a nested editor is given an id": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not warn when a replacement editor overlaps the one it replaces": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not warn when multiple editors have distinct namespaces and no id": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does not warn when multiple editors provide distinct ids": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > does nothing when hot is null": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > drops only the history entry that cannot be restored": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > isolates two editors by namespace without requiring id": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > keeps a nested editor sharing its parent history through a cycle": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > keys a namespace containing the separator apart from a namespace and id": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > leaves behind history entries recorded by another editor": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves NodeState on the root through an HMR cycle": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves a collapsed caret through an HMR cycle": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves a node selection through an HMR cycle": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves a selection spanning two paragraphs through an HMR cycle": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves editable flag even when saved state fails to parse": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves editable flag through HMR cycle": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves editor content through HMR cycle": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves independent state for multiple editors sharing one HotContext": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves independent undo/redo history for multiple editors sharing one HotContext": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves state for a nested editor under a plain unnamespaced parent": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves state for a nested editor whose parent has no namespace": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves state for an editor whose namespace is an empty string": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves state for an editor with no configured namespace": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves state through multiple HMR cycles": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves the caret of an undo history entry": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > preserves undo and redo history through HMR cycle": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > rejects a payload whose node versions are shaped differently": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > rejects a payload whose states describe no document": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > restored history entries keep the structural sharing they had": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > restores a payload whose history is absent rather than null": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > restores a payload whose states carry no selection": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > restores the content when the saved selection no longer resolves": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > serialization work does not grow with the number of editor updates": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > serializes each shared node once rather than once per state": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > silently skips history when saved historyState has invalid shape": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > starts fresh when saved state has invalid shape": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > starts fresh when saved state is corrupted": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > starts fresh when serializing the previous states throws": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > stores a reference to the live editor state instead of a serialized copy": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > uses initial state when saved editorState is empty": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > warns in dev when id is an empty string": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > warns when a nested editor shares its parent HMR key": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > warns when saved history exists but HistoryExtension is no longer present": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > warns when the saved state was written by another build": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > warns when two mounted editors share an HMR key": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/HMRExtension.test.ts::HMRExtension > works without HistoryExtension": {
+    "reason": "deviation",
+    "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
+  },
+  "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > clears the attribute from still-mounted DOM on teardown": {
+    "reason": "dom-only",
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+  },
+  "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > matches a registered subclass of the configured node": {
+    "reason": "dom-only",
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+  },
+  "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > mirrors NodeSelection onto the configured node host": {
+    "reason": "dom-only",
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+  },
+  "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > mirrors a NodeSelection already committed when register() runs": {
+    "reason": "dom-only",
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+  },
+  "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > removes the attribute when the node leaves the selection": {
+    "reason": "dom-only",
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+  },
+  "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > throws when a configured class is not registered on the editor": {
+    "reason": "dom-only",
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a click or keydown outside the editor cancels it": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a keydown cancels it": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a modifier key on its own does not cancel it": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a pointerdown cancels it, even without a mousedown": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a single or double click cancels it": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a triple click outside the editor does not arm it": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does not trim a selection change made by code": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does not trim a selection set by code after the mouseup": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does not trim a selection set by code once it reaches the DOM": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does not trim a selection set by code while the button is held": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does nothing without a triple click": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > only trims the first selection change": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > still trims the triple click after a selection change made by code": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims a native selection reported after the mouseup": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims a triple click on formatted text": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims after a fourth click": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims the selection change however late it arrives": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
+  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims the selection change that follows a triple click": {
+    "reason": "dom-only",
+    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+  },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a heading": {
     "reason": "out-of-scope-package",
     "packages": [

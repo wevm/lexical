@@ -256,6 +256,16 @@ Reversible choices made porting `@lexical/extension` under Q18.
 - **`dispose()` is on `Editor`.** JS returns `LexicalEditorWithDispose`;
   every Swift `Editor` has `dispose()`, which does nothing unless the
   builder made it. Tests write `defer { editor.dispose() }` for `using`.
+- **`HMRExtension` is not ported.** It carries the editor state and history
+  across a bundler's hot module replacement (`import.meta.hot`), which
+  Swift has no equivalent of; its tests are `deviation` skips.
+- **Extensions that only touch the DOM wait for the views.**
+  `NodeSelectionDataSelectedExtension` (a host element attribute) and
+  `NormalizeTripleClickSelectionExtension` (DOM event ordering) port with
+  the native host views in M3; their tests are `dom-only` until then.
+- **`NormalizeInlineElementsExtension` adds its transform to every element
+  class.** JS adds it only to classes that override `isInline`, which Swift
+  can't detect; the transform does nothing for a node that isn't inline.
 
 ## Scope of v0.1.0 (Q21)
 

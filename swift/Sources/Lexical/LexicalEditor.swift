@@ -4,7 +4,7 @@
 /// A node transform, compared by identity like the JS function.
 public final class Transform {
   let fn: (LexicalNode) throws -> Void
-  init(_ fn: @escaping (LexicalNode) throws -> Void) { self.fn = fn }
+  package init(_ fn: @escaping (LexicalNode) throws -> Void) { self.fn = fn }
 }
 
 /// `RegisteredNode`: a node class as an editor knows it.
@@ -29,13 +29,13 @@ public final class RegisteredNode {
     for transform in transforms { addTransform(transform) }
   }
 
-  func addTransform(_ transform: Transform) {
+  package func addTransform(_ transform: Transform) {
     let id = ObjectIdentifier(transform)
     transforms.add(id)
     transformsByID[id] = transform
   }
 
-  func deleteTransform(_ transform: Transform) {
+  package func deleteTransform(_ transform: Transform) {
     let id = ObjectIdentifier(transform)
     transforms.delete(id)
     transformsByID[id] = nil

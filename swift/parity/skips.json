@@ -2555,55 +2555,6 @@
     "reason": "dom-only",
     "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
   },
-  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::declarePeerDependency > validates the type argument": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
-  },
-  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > can define an extension without config": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
-  },
-  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > does not change identity": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
-  },
-  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the correct init type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
-  },
-  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (base case)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
-  },
-  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (config inference)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
-  },
-  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (output inference)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
-  },
   "lexical/src/__tests__/unit/LexicalFirefoxCompositionEndTag.test.ts::Firefox composition-end tag forwarding > onInput emits COMPOSITION_END_TAG after a deferred compositionend": {
     "reason": "dom-only",
     "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."

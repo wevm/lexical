@@ -12,6 +12,7 @@ let package = Package(
     .library(name: "Lexical", targets: ["Lexical"]),
     .library(name: "LexicalTesting", targets: ["LexicalTesting"]),
     .library(name: "LexicalTextKit", targets: ["LexicalTextKit"]),
+    .library(name: "LexicalExtension", targets: ["LexicalExtension"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -32,6 +33,11 @@ let package = Package(
         .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
         .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax"),
       ]),
+    // @lexical/extension: the builder, signals and the core extensions.
+    .target(name: "LexicalExtension", dependencies: ["Lexical"]),
+    .testTarget(
+      name: "LexicalExtensionTests",
+      dependencies: ["Lexical", "LexicalExtension", "LexicalTesting"]),
     // The TextKit 2 text views and the platform-neutral document they show.
     .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
     .testTarget(name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalTextKit"]),

@@ -5,6 +5,13 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added the `LexicalExtension` module: `buildEditorFromExtensions`,
+  `LexicalBuilder`, `InitialStateExtension`, signals (a port of
+  `@preact/signals-core`: `signal`, `computed`, `effect`, `batch`,
+  `untracked`, `namedSignals`, `watchedSignal`) and the dependency helpers
+  (`getExtensionDependencyFromEditor`, `getPeerDependencyFromEditor`, …).
+  Core gains `defineExtension`, `configExtension`, `declarePeerDependency`,
+  `Partial<Config>`, `shallowMergeConfig`, `safeCast` and `Editor.dispose()`.
 - With a root element attached, commits now run the reconciler's model
   half: mutation listeners receive created, updated and destroyed nodes,
   `RootNode` caches its text, and elements take `textFormat`/`textStyle`

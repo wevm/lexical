@@ -368,6 +368,18 @@ public final class Editor {
   package var _dirtyElements = JSMap<NodeKey, Bool>()
   package var _normalizedNodes = JSSet<NodeKey>()
   package var _updateTags = JSSet<UpdateTag>()
+  /// The `LexicalBuilder` that built this editor (JS `editor[builderSymbol]`).
+  package var _builder: AnyObject?
+  /// Undoes what the builder registered (`LexicalEditorWithDispose`).
+  package var _dispose: (() -> Void)?
+
+  /// `dispose()` of an editor built from extensions: unregisters every
+  /// extension and detaches the root, once. Does nothing for other editors.
+  public func dispose() {
+    let dispose = _dispose
+    _dispose = nil
+    dispose?()
+  }
   package var _key: String
   package var _onError: ErrorHandler
   package var _onWarn: ErrorHandler

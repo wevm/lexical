@@ -222,6 +222,41 @@ These are reversible choices made while porting, under Q7 and Q27.
   (`{ _ -> ListenerCleanup? in … }`). Two unlabeled overloads that differ
   only by return type are otherwise ambiguous for multi-statement closures.
 
+## Extension conventions (decided during M2, for tmm to review)
+
+Reversible choices made porting `@lexical/extension` under Q18.
+
+- **Extensions are classes.** `LexicalExtension<Config, Output, Init>` is a
+  `final class`, because the builder tells extensions apart by identity, as
+  JS does. It is `@unchecked Sendable` so an extension can be a global
+  `let`, as JS defines them at module scope. `defineExtension` has an
+  overload for each combination of `config`, `init` and `build` left out,
+  because Swift generic parameters have no defaults. An extension with
+  no config has `EmptyConfig`; no output or init is `Void`. The
+  `InitialEditorConfig` fields (namespace, theme, editable, onError,
+  `$initialEditorState`, …) are grouped in `editorConfig:`, and
+  `nodes: { [...] }` is the deferred form.
+- **Partial configs record which keys are set.** `Partial<Config>` holds
+  key-path overrides, written `configExtension(Ext) { $0.disabled = true }`.
+  A custom `mergeConfig` reads `partial.rules` as `nil` when the key is
+  absent, as JS tests `partial.rules`. For an optional key,
+  `$0.set(\.b, nil)` overrides with `nil` (JS `{b: null}`); assigning `nil`
+  through the member unsets it. Peer configs name the peer's config type:
+  `declarePeerDependency("Pair", config: PairConfig.self) { ... }`.
+- **Signals are a port of `@preact/signals-core` 1.14.4** (`Signals.swift`,
+  MIT), with the same graph and effect order; its expected order is checked
+  against the real package. Values compare with `==` when `Equatable` and
+  by identity for objects, where JS compares by identity, so setting an equal
+  struct does not notify. Accessors can't throw, so an effect that throws
+  while a `value` setter flushes is reported as uncaught; `try set(_:)`
+  rethrows it. An effect body that returns a clean-up spells its type
+  (`{ () -> (() -> Void)? in ... }`), like the listener clean-ups.
+  `namedSignals(config)` reads as `output.disabled.value` through dynamic
+  member lookup.
+- **`dispose()` is on `Editor`.** JS returns `LexicalEditorWithDispose`;
+  every Swift `Editor` has `dispose()`, which does nothing unless the
+  builder made it. Tests write `defer { editor.dispose() }` for `using`.
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

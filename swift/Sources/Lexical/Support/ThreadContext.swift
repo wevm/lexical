@@ -42,6 +42,9 @@ package final class ThreadContext {
   /// `setTimeout(fn, 0)` tasks, run by `drainMicrotasks` after the microtasks.
   package var macrotasks: [() -> Void] = []
   package var drainingMicrotasks = false
+  /// The module state of the signals in LexicalExtension
+  /// (`@preact/signals-core`).
+  package var signalsState: AnyObject?
 
   init() {}
 

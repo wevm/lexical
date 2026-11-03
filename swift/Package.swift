@@ -13,6 +13,7 @@ let package = Package(
     .library(name: "LexicalTesting", targets: ["LexicalTesting"]),
     .library(name: "LexicalTextKit", targets: ["LexicalTextKit"]),
     .library(name: "LexicalExtension", targets: ["LexicalExtension"]),
+    .library(name: "LexicalSelection", targets: ["LexicalSelection"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -38,6 +39,11 @@ let package = Package(
     .testTarget(
       name: "LexicalExtensionTests",
       dependencies: ["Lexical", "LexicalExtension", "LexicalTesting"]),
+    // @lexical/selection: style patching, block conversion and wrapping.
+    .target(name: "LexicalSelection", dependencies: ["Lexical"]),
+    .testTarget(
+      name: "LexicalSelectionTests",
+      dependencies: ["Lexical", "LexicalExtension", "LexicalSelection", "LexicalTesting"]),
     // The TextKit 2 text views and the platform-neutral document they show.
     .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
     .testTarget(name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalTextKit"]),

@@ -5,6 +5,14 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added the `LexicalSelection` module: `patchStyleText`, `setBlocksType`,
+  `wrapNodes`, `getSelectionStyleValueForProperty`,
+  `sliceSelectedTextNodeContent`, `trimTextContentFromAnchor`,
+  `shouldOverrideDefaultCharacterSelection`, `moveCharacter` and the other
+  `@lexical/selection` helpers. A root element reports computed styles
+  (direction, writing mode) by conforming to `ComputedStyleProvider`.
+- Added `getStyleObjectFromCSS`, which returns an ordered `StyleObject`, and
+  `INTERNAL_isInlineContent` to core.
 - Added keyboard and DOM event types (`KeyboardEvent`, `ClipboardEvent`,
   `InputEvent`, `DataTransfer`, …), the `KEY_*`, clipboard, drag and focus
   commands, `isExactShortcutMatch`, `compileKeyboardShortcuts` and a default

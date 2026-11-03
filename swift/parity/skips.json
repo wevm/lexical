@@ -4345,23 +4345,7 @@
     "reason": "dom-only",
     "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
   },
-  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > drops comments and respects quotes and parentheses": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
-  },
-  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > parses CSS text into a style object": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
-  },
-  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > parses values with comments, semicolons and colons inside quotes and parentheses": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
-  },
   "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > replaces previous inline styles when CSS text changes": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
-  },
-  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > returns a fresh style object for each parse": {
     "reason": "dom-only",
     "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
   },

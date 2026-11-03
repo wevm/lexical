@@ -266,6 +266,17 @@ Reversible choices made porting `@lexical/extension` under Q18.
 - **`NormalizeInlineElementsExtension` adds its transform to every element
   class.** JS adds it only to classes that override `isInline`, which Swift
   can't detect; the transform does nothing for a node that isn't inline.
+- **Computed styles come from the root element.** `@lexical/selection`
+  reads `getComputedStyle` of a node's DOM for `direction` and
+  `writing-mode`. In Swift the root element answers through
+  `ComputedStyleProvider.computedStyle(forKey:)`; the views will conform.
+  Without a provider there is no computed style, as in JS for a node that
+  isn't rendered. `createDOMRange` and `createRectsFromDOMRange` are not
+  ported: the views measure through TextKit.
+- **Style objects keep property order.** `getStyleObjectFromCSS` returns a
+  `StyleObject`, ordered like a JS object's keys, so `patchStyleText`
+  writes CSS in the same order as JS. A patch is `KeyValuePairs` for the
+  same reason.
 
 ## Scope of v0.1.0 (Q21)
 

@@ -11,6 +11,25 @@ public func isBlockContainer(_ node: LexicalNode?) throws -> Bool {
   return try isRootOrShadowRoot(node)
 }
 
+/// Whether a class is `OverflowNode` (`@lexical/overflow`) or a subclass:
+/// a class in its chain whose own config names the type `overflow` and
+/// extends `ElementNode`.
+private func isOverflowClass(_ klass: LexicalNode.Type) -> Bool {
+  getNodeClassRecord(klass).chain.contains { link in
+    link.ownNodeType == "overflow" && link.ownNodeConfig?.extends == ElementNode.self
+  }
+}
+
+/// `INTERNAL_isInlineContent`: whether node structure normalization treats
+/// `node` as inline content: text, line breaks, inline elements and
+/// decorators, and `OverflowNode`.
+public func INTERNAL_isInlineContent(_ node: LexicalNode) -> Bool {
+  if node is TextNode || node is LineBreakNode || isOverflowClass(type(of: node)) {
+    return true
+  }
+  return (try? node.isInline()) ?? true
+}
+
 /// `$recordDeleted`: records a deleted node while the editor records text
 /// edits. The port does not record text edits yet, so this is a no-op.
 package func recordDeleted(_ node: LexicalNode) {}

@@ -234,8 +234,8 @@ public func isLineBreakNode(_ node: LexicalNode?) -> Bool { node is LineBreakNod
 
 /// A horizontal tab. Its text, detail, and mode are fixed.
 open class TabNode: TextNode {
-  open override class func config() -> NodeConfig? {
-    NodeConfig(
+  open override class func config() throws -> NodeConfig? {
+    try NodeConfig(
       TabNode.self, type: "tab", extends: TextNode.self,
       json: [
         // Export-only: the values are fixed for a tab, so they are derived on

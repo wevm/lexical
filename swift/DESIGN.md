@@ -105,6 +105,16 @@ These are reversible choices made while porting, under Q7 and Q27.
   keys first, and holds `undefined` (`nil`), which `stringify` skips.
 - **Schemas** (`SchemaField`, `NodeConfig`) stand in for `$config` until the
   `@LexicalNode` macro generates them; a schema's values are `JSONValue?`.
+  A field's accessors are closures on its `SchemaField`, not names resolved
+  by reflection, so the JS tests of accessor naming are skipped as
+  deviations. `transformValue` maps JSON to JSON. Values are immutable, so
+  where JS compares two containers by reference the port compares them by
+  content, and freezing has nothing to do.
+- **Declarations throw where they are made.** A combinator JS refuses with
+  an invariant (`numberValue` with an empty domain, `enumValue([])`, a
+  nested `arraySetValue`) throws `LexicalError`, so `config()` is
+  `throws`. A class whose `config()` throws gets type `""`, and registering
+  it throws that error.
 - **NodeState** values are typed (`StateConfig<V>`). `unparse` is required
   unless the value is `JSONValueConvertible`.
 - **Carets** are one `PointCaret` value whose `kind` (`sibling`, `child`,

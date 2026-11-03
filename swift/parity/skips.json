@@ -18,5 +18,21 @@
   "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() without registration > traversal methods require guards to narrow base node types": {
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf); Swift's traversal return types are fixed by their signatures."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::updateFromJSON tolerates partial and out-of-domain JSON > accessor resolution > null states that a direction is deliberately unsupported": {
+    "reason": "deviation",
+    "note": "Accessors are named by string on the JS schema (withField/withAccessors) and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or to refuse twice."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::updateFromJSON tolerates partial and out-of-domain JSON > withAccessors is the outermost combinator of a property > a wrapper names nothing of its own": {
+    "reason": "deviation",
+    "note": "Accessors are named by string on the JS schema (withField/withAccessors) and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or to refuse twice."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::updateFromJSON tolerates partial and out-of-domain JSON > withAccessors is the outermost combinator of a property > withAccessors records both directions at once": {
+    "reason": "deviation",
+    "note": "Accessors are named by string on the JS schema (withField/withAccessors) and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or to refuse twice."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::updateFromJSON tolerates partial and out-of-domain JSON > withAccessors is the outermost combinator of a property > withField splits its options into the direction each belongs to": {
+    "reason": "deviation",
+    "note": "Accessors are named by string on the JS schema (withField/withAccessors) and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or to refuse twice."
   }
 }

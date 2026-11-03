@@ -20,8 +20,8 @@ open class TextNode: LexicalNode {
   package var __mode = 0
   package var __detail = 0
 
-  open override class func config() -> NodeConfig? {
-    NodeConfig(
+  open override class func config() throws -> NodeConfig? {
+    try NodeConfig(
       TextNode.self, type: "text", extends: LexicalNode.self,
       json: [
         SchemaField(

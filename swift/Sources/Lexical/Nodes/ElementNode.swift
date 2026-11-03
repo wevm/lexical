@@ -21,8 +21,8 @@ open class ElementNode: LexicalNode, SlotNode {
   package var __slotHost: NodeKey?
   package var __slots: SlotMap?
 
-  open override class func config() -> NodeConfig? {
-    NodeConfig(
+  open override class func config() throws -> NodeConfig? {
+    try NodeConfig(
       ElementNode.self, extends: LexicalNode.self,
       json: [
         SchemaField(

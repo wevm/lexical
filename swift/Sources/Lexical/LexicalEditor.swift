@@ -263,6 +263,9 @@ public func createEditor(_ args: CreateEditorArgs = CreateEditorArgs()) throws -
         isSubclass(replaceWithKlass, of: klass) && replaceWithKlass != klass,
         "\(replaceWithKlass) doesn't extend the \(klass)")
     }
+    if let configError = getNodeClassRecord(klass).configError {
+      throw configError
+    }
     let type = klass.getType()
     try invariant(!type.isEmpty, "LexicalNode: Node \(klass) does not implement .getType().")
     registeredNodes.set(

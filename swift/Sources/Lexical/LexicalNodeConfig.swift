@@ -79,10 +79,23 @@ package final class NodeClassRecord: @unchecked Sendable {
   package let importJSON: ((JSONObject) throws -> LexicalNode)?
   /// The `inline` declaration of the nearest class that makes one.
   package let inline: Bool?
+  /// What `config()` threw for this class or a superclass, thrown again on
+  /// registration.
+  package let configError: (any Error)?
 
   init(_ klass: LexicalNode.Type) {
     self.klass = klass
-    let config = klass.config()
+    var configError: (any Error)?
+    var config: NodeConfig?
+    do {
+      config = try klass.config()
+      if let own = config, own.klass == klass {
+        try checkFieldNames("nodeSchema", own.json.map(\.key), own.json.map(\.schema))
+      }
+    } catch {
+      configError = error
+      config = nil
+    }
     let own = config.flatMap { $0.klass == klass ? $0 : nil }
     self.ownNodeConfig = own
     // A class without its own config inherits its superclass's, type
@@ -93,6 +106,11 @@ package final class NodeClassRecord: @unchecked Sendable {
       chain += getNodeClassRecord(next).chain
     }
     self.chain = chain
+    self.configError =
+      configError
+      ?? chain.dropFirst().first.flatMap {
+        getNodeClassRecord($0.klass).configError
+      }
 
     // composeSchema: most-derived declaration of each key wins, written in
     // most-derived-first order; setters apply base-first.

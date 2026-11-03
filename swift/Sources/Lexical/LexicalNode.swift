@@ -30,8 +30,10 @@ open class LexicalNode {
   }
 
   /// The node's static configuration: `$config()`. A class that does not
-  /// override it inherits its superclass's, type included, as in JS.
-  open class func config() -> NodeConfig? { nil }
+  /// override it inherits its superclass's, type included, as in JS. An
+  /// error thrown here (a schema refused where it is declared) is thrown
+  /// again when the class is registered.
+  open class func config() throws -> NodeConfig? { nil }
 
   /// `static importJSON(serializedNode)`. The default builds the node with
   /// `$create` and applies the schema, which is what JS synthesizes for a

@@ -76,6 +76,11 @@ public final class ContextRecord {
     values[ObjectIdentifier(config)] = value
   }
 
+  /// `Object.hasOwn(record, key)`.
+  func hasOwn(_ config: AnyContextConfig) -> Bool {
+    values[ObjectIdentifier(config)] != nil
+  }
+
   func deleteOwn(_ config: AnyContextConfig) {
     values[ObjectIdentifier(config)] = nil
   }

@@ -5,6 +5,16 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `DOMImportExtension` and `CoreImportExtension` to `LexicalHTML`:
+  `defineImportRule`, the `sel` selector builders and `parseSelector`,
+  `defineOverlayRules`, `BlockSchema`, `InlineSchema`, `NestedBlockSchema`,
+  `RootSchema`, `distributeInlineWrapper`,
+  `propagateTextAlignToBlockChildren`, `CoreImportRules`, the import
+  context states (`ImportSource`, `ImportTextFormat`, `ImportTextStyle`,
+  `ImportWhitespaceConfig`, `ImportOverlays`, `createImportState`,
+  `getImportContextValue`, `withImportContext`), preprocessors with
+  `inlineStylesFromStyleSheets`, and `generateNodesFromDOMViaExtension`.
+  `LexicalExtension` gains `HorizontalRuleNode`.
 - Added `DOMRenderExtension` to `LexicalHTML`: `domOverride`,
   `DOMRenderMatchConfig`, `DOMOverrideOptions`, the render context
   (`createRenderState`, `RenderContextRoot`, `RenderContextExport`,

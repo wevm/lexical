@@ -318,6 +318,16 @@ Reversible choices made porting `@lexical/extension` under Q18.
   reconcile rather than recreating DOM. Upstream tests that read the
   reconciled DOM of a root element are `dom-only`; the ones on export and
   render context are ported.
+  `DOMImportExtension` (rules, `sel` selectors, overlays, schemas, the
+  import context and session, preprocessors) follows JS rule for rule.
+  Selector regexes are Swift `Regex`, and captures are `RegExpMatch`
+  values (`[0]` the match, then the groups). `$inlineStylesFromStyleSheets`
+  has no CSSOM to read: it parses each `<style>` sheet's style rules
+  (skipping at-rules) and matches their selectors with `parseSelector`'s
+  subset, skipping any selector outside it, as JS skips one
+  `querySelectorAll` rejects. `HorizontalRuleNode` is in
+  `LexicalExtension`; `HorizontalRuleExtension` (insert command and click
+  selection) ports with `NodeSelectionExtension`.
 
 - **Rich text (`LexicalRichText`).** `registerRichText` handles the
   commands as JS does on a browser without `beforeinput`: native views

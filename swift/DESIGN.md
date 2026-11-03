@@ -82,6 +82,37 @@ means updating this file in the same commit.
 - **Collaboration** (Q14, Q20): deferred. NodeKeys, update tags, and dirty
   sets match JS, and History is replaceable, so a binding can come later.
 
+## Port conventions (decided during M1, for tmm to review)
+
+These are reversible choices made while porting, under Q7 and Q27.
+
+- **No `$` prefix.** Swift identifiers cannot start with `$`, so
+  `$getRoot()` is `getRoot()`, `$createTextNode` is `createTextNode`,
+  `$isTextNode` is `isTextNode`, `$create` is `create`. Doc comments name the
+  JS function in backticks so a search for the JS name finds the port.
+- **Errors throw.** JS `invariant` and `devInvariant` become a thrown
+  `LexicalError` carrying the same message, so almost every API `throws`. Dev
+  checks always run, because the vectors and tests come from the JS dev build.
+- **Module state is per thread.** The JS module-scope variables (active
+  editor and state, read-only mode, key and UID counters, compact export,
+  export memo) live in a `ThreadContext` in thread-local storage, saved and
+  restored around updates as JS does.
+- **Microtasks** are a per-thread queue, drained by `drainMicrotasks()`;
+  `editor.read()` force-commits as in JS.
+- **Ordered collections.** `JSMap` and `JSSet` are insertion-ordered
+  reference types whose iteration sees changes made during it, like JS `Map`
+  and `Set`. `JSONObject` keeps key order the way a JS object does, array-index
+  keys first, and holds `undefined` (`nil`), which `stringify` skips.
+- **Schemas** (`SchemaField`, `NodeConfig`) stand in for `$config` until the
+  `@LexicalNode` macro generates them; a schema's values are `JSONValue?`.
+- **NodeState** values are typed (`StateConfig<V>`). `unparse` is required
+  unless the value is `JSONValueConvertible`.
+- **Carets** are one `PointCaret` value whose `kind` (`sibling`, `child`,
+  `text(offset:)`) is the JS caret class; `SiblingCaret`, `ChildCaret` and
+  `TextPointCaret` are aliases of it.
+- **Slots** keep their map in a value type (`SlotMap`), so a writable host
+  never shares the frozen version's map.
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

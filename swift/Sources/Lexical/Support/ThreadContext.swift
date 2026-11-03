@@ -1,0 +1,64 @@
+#if canImport(Darwin)
+  import Darwin
+#elseif canImport(Glibc)
+  import Glibc
+#elseif canImport(Musl)
+  import Musl
+#endif
+
+/// The module-scope variables of the JS implementation, one set per thread.
+///
+/// JS keeps the active editor, the active editor state, and a few counters in
+/// module scope, which is safe there because JS runs one thread. An `Editor`
+/// is bound to the thread that created it (DESIGN.md, Q27), so the port keeps
+/// those variables per thread, which preserves the JS semantics exactly:
+/// updates save, set, and restore them around their callbacks.
+package final class ThreadContext {
+  // LexicalUpdates.ts
+  package var activeEditorState: EditorState?
+  package var activeEditor: Editor?
+  package var isReadOnlyMode = false
+  package var isAttemptingToRecoverFromReconcilerError = false
+  package var isCommittingPendingUpdates = false
+  package var editorsWithPendingCascadeReset = Set<ObjectIdentifier>()
+  package var editorsWithPendingSelectionChange = Set<ObjectIdentifier>()
+  package var editorsDispatchingCommitListeners = Set<ObjectIdentifier>()
+  package var infiniteTransformCount = 0
+  // LexicalUtils.ts
+  package var keyCounter = 1
+  package var serverUIDCounter = 0
+  package var exportWalk = false
+  package var exportMemo: ExportMemo?
+  // LexicalSerializedExport.ts
+  package var compactExport = false
+  // LexicalTextNode.ts
+  package var textEditSuspended: NodeKey?
+  // The microtask queue (see Microtasks.swift).
+  package var microtasks: [() -> Void] = []
+  package var drainingMicrotasks = false
+
+  init() {}
+
+  /// The context of the calling thread.
+  @inline(__always)
+  package static var current: ThreadContext {
+    if let pointer = pthread_getspecific(key) {
+      return Unmanaged<ThreadContext>.fromOpaque(pointer).takeUnretainedValue()
+    }
+    let context = ThreadContext()
+    pthread_setspecific(key, Unmanaged.passRetained(context).toOpaque())
+    return context
+  }
+
+  private nonisolated(unsafe) static let key: pthread_key_t = {
+    var key = pthread_key_t()
+    pthread_key_create(&key) { pointer in
+      #if canImport(Darwin)
+        Unmanaged<ThreadContext>.fromOpaque(pointer).release()
+      #else
+        if let pointer { Unmanaged<ThreadContext>.fromOpaque(pointer).release() }
+      #endif
+    }
+    return key
+  }()
+}

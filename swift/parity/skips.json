@@ -279,6 +279,30 @@
     "reason": "out-of-scope-package",
     "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
   },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret at 0.5 preserves clamping and direction": {
+    "reason": "deviation",
+    "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret at 1.5 preserves clamping and direction": {
+    "reason": "deviation",
+    "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret at NaN preserves clamping and direction": {
+    "reason": "deviation",
+    "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret in an empty element at 0.5 stays at its boundary": {
+    "reason": "deviation",
+    "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret in an empty element at 1.5 stays at its boundary": {
+    "reason": "deviation",
+    "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret in an empty element at NaN stays at its boundary": {
+    "reason": "deviation",
+    "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
+  },
   "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::getDOMSlot tests > DOM selection uses getDOMSlot element for element selections": {
     "reason": "dom-only",
     "note": "Tests ElementDOMSlot, the DOM placement of children."

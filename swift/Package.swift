@@ -1,4 +1,5 @@
 // swift-tools-version: 6.4
+import CompilerPluginSupport
 import PackageDescription
 
 // One module per upstream package, added as each one is ported. The non-UI
@@ -11,8 +12,25 @@ let package = Package(
     .library(name: "Lexical", targets: ["Lexical"]),
     .library(name: "LexicalTesting", targets: ["LexicalTesting"]),
   ],
+  dependencies: [
+    // The `@LexicalNode` macro (Q30).
+    .package(url: "https://github.com/swiftlang/swift-syntax", from: "604.0.0")
+  ],
   targets: [
-    .target(name: "Lexical"),
+    .target(name: "Lexical", dependencies: ["LexicalMacros"]),
+    .macro(
+      name: "LexicalMacros",
+      dependencies: [
+        .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+        .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+      ]),
+    .testTarget(
+      name: "LexicalMacrosTests",
+      dependencies: [
+        "LexicalMacros",
+        .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
+        .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax"),
+      ]),
     // Test support: the `.upstream(...)` trait the parity ledger reads.
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
     // Replays packages/lexical-conformance/vectors, which only the monorepo

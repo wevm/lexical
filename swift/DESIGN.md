@@ -112,8 +112,12 @@ These are reversible choices made while porting, under Q7 and Q27.
   reference types whose iteration sees changes made during it, like JS `Map`
   and `Set`. `JSONObject` keeps key order the way a JS object does, array-index
   keys first, and holds `undefined` (`nil`), which `stringify` skips.
-- **Schemas** (`SchemaField`, `NodeConfig`) stand in for `$config` until the
-  `@LexicalNode` macro generates them; a schema's values are `JSONValue?`.
+- **Schemas** (`SchemaField`, `NodeConfig`) are the runtime form of
+  `$config`; `@LexicalNode` generates them from `@Field` properties
+  (`withField`), in declaration order, with `getX`/`setX` accessors. Fields
+  with custom accessors (`withAccessors`) and the built-in nodes, whose
+  properties all have them, still write `SchemaField`s by hand. A schema's
+  values are `JSONValue?`.
   A field's accessors are closures on its `SchemaField`, not names resolved
   by reflection, so the JS tests of accessor naming are skipped as
   deviations. `transformValue` maps JSON to JSON. Values are immutable, so

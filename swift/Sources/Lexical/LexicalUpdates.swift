@@ -357,6 +357,7 @@ func commitPendingUpdatesImpl(_ editor: Editor, _ recoveryEditorState: EditorSta
     pendingEditorState._readOnly = true
     pendingEditorState._nodeMap._frozen = true
   }
+  let dirtyType = editor._dirtyType
   let dirtyLeaves = editor._dirtyLeaves
   let dirtyElements = editor._dirtyElements
   let normalizedNodes = editor._normalizedNodes
@@ -396,7 +397,7 @@ func commitPendingUpdatesImpl(_ editor: Editor, _ recoveryEditorState: EditorSta
   let payload = UpdateListenerPayload(
     dirtyElements: dirtyElements, dirtyLeaves: dirtyLeaves, editorState: pendingEditorState,
     mutatedNodes: mutatedNodes, normalizedNodes: normalizedNodes,
-    prevEditorState: recoveryEditorState ?? currentEditorState, tags: tags)
+    prevEditorState: recoveryEditorState ?? currentEditorState, tags: tags, dirtyType: dirtyType)
   try triggerListeners(editor._updateListeners, editor, true) { try $0(payload) }
   if !previouslyUpdating {
     try triggerDeferredUpdateCallbacks(editor, deferred, clearEditorDeferred: false)

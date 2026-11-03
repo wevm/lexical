@@ -155,6 +155,10 @@ public struct UpdateListenerPayload {
   public let normalizedNodes: JSSet<NodeKey>
   public let prevEditorState: EditorState
   public let tags: JSSet<UpdateTag>
+  /// The commit's `_dirtyType`, which JS's DOM reconciler reads inside the
+  /// commit. Not in JS: the TextKit reconciler, which runs from an update
+  /// listener, renders everything when it is `FULL_RECONCILE`.
+  package let dirtyType: Int
 }
 
 public typealias MutatedNodes = JSMap<ObjectIdentifier, JSMap<NodeKey, NodeMutation>>

@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `LexicalTextKit` reconciles incrementally: `TextKitReconciler` turns each
+  commit into `TextKitEdit` replacements for a `TextKitStorage`, and
+  `TextKitInputController.onRender` now delivers those edits (one full edit
+  for the first render and `setEditorState`) instead of the whole document.
 - The editor views moved out of `LexicalTextKit`: `LexicalNSTextView` is in
   `LexicalAppKit` and `LexicalUITextView` in `LexicalUIKit`. Added
   `LexicalSwiftUI` with `LexicalEditor`, a SwiftUI view for an editor.

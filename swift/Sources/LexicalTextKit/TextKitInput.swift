@@ -62,22 +62,27 @@ public func registerTextKitSliceEditing(_ editor: Editor) -> () -> Void {
   return { removers.forEach { $0() } }
 }
 
-/// Drives an editor from a text view: input in, rendered document and
-/// selection out.
+/// Drives an editor from a text view: input in, edits to the rendered text
+/// and selection out.
 public final class TextKitInputController {
   public let editor: Editor
   public let movement = TextKitMovement()
+  /// Keeps `document` in step with the editor's commits.
+  public let reconciler = TextKitReconciler()
   /// The document last rendered, which the view shows.
-  public private(set) var document = TextKitDocument()
-  /// Called after every commit with the new document and selected range.
-  public var onRender: ((TextKitDocument, (location: Int, length: Int)?) -> Void)?
+  public var document: TextKitDocument { reconciler.document }
+  /// Called after every commit with the edits that bring the view's text
+  /// from the previous rendering to `document`, and the selected range. A
+  /// full render (`setEditorState`) is one edit replacing everything.
+  public var onRender:
+    ((_ edits: [TextKitEdit], _ selectedRange: (location: Int, length: Int)?) -> Void)?
   private var removeListener: (() -> Void)?
 
   public init(editor: Editor) {
     self.editor = editor
     editor.selectionMovement = movement
-    removeListener = editor.registerUpdateListener { [weak self] _ in
-      try self?.render()
+    removeListener = editor.registerUpdateListener { [weak self] payload in
+      try self?.render(payload)
     }
     do {
       try editor.update(discrete: true) {
@@ -89,7 +94,9 @@ public final class TextKitInputController {
           _ = try root.selectEnd()
         }
       }
-      try render()
+      if reconciler.editorState !== editor.getEditorState() {
+        try reconciler.render(editor.getEditorState())
+      }
     } catch {
       try? editor._onError(error)
     }
@@ -97,38 +104,34 @@ public final class TextKitInputController {
 
   deinit { removeListener?() }
 
-  private func render() throws {
-    let (document, range) = try editor.read(.latest) {
-      () throws -> (TextKitDocument, (location: Int, length: Int)?) in
-      let document = try TextKitDocument(root: getRoot())
-      guard let selection = try getSelection() as? RangeSelection,
-        let a = document.location(for: selection.anchor),
-        let f = document.location(for: selection.focus)
-      else { return (document, nil) }
-      return (document, (min(a, f), abs(a - f)))
-    }
-    self.document = document
-    onRender?(document, range)
+  private func render(_ payload: UpdateListenerPayload) throws {
+    let edits = try reconciler.reconcile(payload)
+    let range = try payload.editorState.read { try selectedRange(getSelection()) }
+    onRender?(edits, range)
+  }
+
+  private func selectedRange(_ selection: (any BaseSelection)?) -> (location: Int, length: Int)? {
+    guard let selection = selection as? RangeSelection,
+      let a = reconciler.document.location(for: selection.anchor),
+      let f = reconciler.document.location(for: selection.focus)
+    else { return nil }
+    return (min(a, f), abs(a - f))
   }
 
   /// The selected range in the rendered text.
   public func selectedRange() throws -> (location: Int, length: Int)? {
-    try editor.read(.latest) {
-      guard let selection = try getSelection() as? RangeSelection,
-        let a = document.location(for: selection.anchor),
-        let f = document.location(for: selection.focus)
-      else { return nil }
-      return (min(a, f), abs(a - f))
-    }
+    try editor.read(.latest) { try selectedRange(getSelection()) }
   }
 
   /// The view's selection changed (a tap, a click, arrow keys): select the
   /// model points at those locations.
   public func setSelectedRange(location: Int, length: Int) throws {
-    let document = self.document
+    // Mapped before the update, so the reconciler's document is not shared
+    // (and copied) while the commit edits it.
+    let anchor = document.point(at: location)
+    let focus = document.point(at: location + length)
     try editor.update(discrete: true) {
-      try selectPoints(
-        document.point(at: location), document.point(at: location + length))
+      try selectPoints(anchor, focus)
     }
   }
 

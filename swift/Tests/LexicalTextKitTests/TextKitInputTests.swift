@@ -18,13 +18,13 @@ private func json(_ controller: TextKitInputController) throws -> String {
 @Suite struct TextKitInputTests {
   @Test func typesAndRenders() throws {
     let c = try makeController()
-    var rendered: [String] = []
-    c.onRender = { document, _ in rendered.append(document.string) }
+    var rendered: [[TextKitEdit]] = []
+    c.onRender = { edits, _ in rendered.append(edits) }
     try c.insertText("Hello")
     try c.insertText(" world")
     #expect(c.document.string == "Hello world")
     #expect(try c.selectedRange()! == (11, 0))
-    #expect(rendered.last == "Hello world")
+    #expect(rendered.last?.map(\.string) == ["Hello world"])
     try c.insertNewline()
     try c.insertText("Next")
     #expect(c.document.string == "Hello world\nNext")

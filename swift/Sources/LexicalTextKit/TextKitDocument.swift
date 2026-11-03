@@ -1,10 +1,9 @@
 import Lexical
 
 // The text a TextKit view shows for an editor state, and the map between its
-// UTF-16 locations and model points. This is the thin M1 slice of the
-// reconciler (Q11, Q12): it renders the whole document each time, which the
-// incremental reconciler replaces later. It holds no UI types, so it builds
-// and tests on Linux.
+// UTF-16 locations and model points (Q11, Q12). `TextKitReconciler` keeps it
+// up to date edit by edit; `init(root:)` renders a whole state. It holds no
+// UI types, so it builds and tests on Linux.
 //
 // Blocks are separated by "\n", a LineBreakNode is U+2028 (a line break
 // within a paragraph, as TextKit reads it), a decorator is U+FFFC, and text
@@ -27,73 +26,184 @@ public struct TextKitRun: Equatable, Sendable {
 }
 
 public struct TextKitDocument: Sendable {
+  /// What a node renders as.
+  enum Kind: Sendable {
+    case text, lineBreak, decorator, element
+  }
+
+  /// One child of an element: where it starts, relative to the element, and
+  /// whether it is a block (a block is set apart from its siblings by "\n").
+  struct Kid: Sendable {
+    var key: NodeKey
+    var start: Int
+    var isBlock: Bool
+  }
+
+  /// A rendered node. Children are located relative to their parent, so an
+  /// edit moves only the later siblings of the edited node's ancestors.
+  struct Entry: Sendable {
+    var kind: Kind
+    var parent: NodeKey?
+    /// The index in the parent's `kids`.
+    var index: Int
+    var length: Int
+    var format = 0
+    var style = ""
+    var kids: [Kid] = []
+  }
+
   /// The rendered text.
-  public private(set) var string = ""
-  /// The text nodes, in document order.
-  public private(set) var runs: [TextKitRun] = []
-  /// Every node's span, its descendants and separators included.
-  public private(set) var spans: [NodeKey: TextKitSpan] = [:]
-  private var children: [NodeKey: [NodeKey]] = [:]
-  private var textKeys: Set<NodeKey> = []
-  private var length = 0
+  public internal(set) var string = ""
+  /// Every rendered node, by key.
+  var entries: [NodeKey: Entry] = [:]
 
   public init() {}
 
   /// The document of `root` (call it in a read or update).
   public init(root: RootNode) throws {
-    try append(root)
+    var text = ""
+    var runs: [TextKitRun] = []
+    try build(root, parent: nil, index: 0, at: 0, into: &text, runs: &runs)
+    string = text
   }
 
-  private mutating func add(_ text: String) {
-    string += text
-    length += text.utf16.count
+  /// The rendered text's length in UTF-16 code units.
+  public var length: Int { entries["root"]?.length ?? 0 }
+
+  /// The text nodes, in document order.
+  public var runs: [TextKitRun] {
+    var runs: [TextKitRun] = []
+    walk { key, entry, location in
+      if entry.kind == .text {
+        runs.append(
+          TextKitRun(
+            key: key, location: location, length: entry.length, format: entry.format,
+            style: entry.style))
+      }
+    }
+    return runs
   }
 
-  private mutating func append(_ node: LexicalNode) throws {
+  /// Every node's span, its descendants and separators included.
+  public var spans: [NodeKey: TextKitSpan] {
+    var spans: [NodeKey: TextKitSpan] = [:]
+    walk { key, entry, location in
+      spans[key] = TextKitSpan(location: location, length: entry.length)
+    }
+    return spans
+  }
+
+  /// One node's span, found through its ancestors, or `nil` when it isn't
+  /// shown.
+  public func span(_ key: NodeKey) -> TextKitSpan? {
+    guard let entry = entries[key], let location = start(of: key) else { return nil }
+    return TextKitSpan(location: location, length: entry.length)
+  }
+
+  private func walk(_ visit: (NodeKey, Entry, Int) -> Void) {
+    func visitNode(_ key: NodeKey, _ location: Int) {
+      guard let entry = entries[key] else { return }
+      visit(key, entry, location)
+      for kid in entry.kids {
+        visitNode(kid.key, location + kid.start)
+      }
+    }
+    visitNode("root", 0)
+  }
+
+  /// Where the node at `key` starts.
+  func start(of key: NodeKey) -> Int? {
+    guard var entry = entries[key] else { return nil }
+    var key = key
+    var location = 0
+    while let parentKey = entry.parent {
+      guard let parent = entries[parentKey], entry.index < parent.kids.count,
+        parent.kids[entry.index].key == key
+      else { return nil }
+      location += parent.kids[entry.index].start
+      key = parentKey
+      entry = parent
+    }
+    return key == "root" ? location : nil
+  }
+
+  static func isBlock(_ node: LexicalNode) throws -> Bool {
+    try (node is ElementNode || node is DecoratorNode) && !node.isInline()
+  }
+
+  /// Renders `node` at `location` into `text` and `runs`, recording it and
+  /// its descendants; returns its length. A node rendered before (a move)
+  /// forgets its old descendants first.
+  @discardableResult
+  mutating func build(
+    _ node: LexicalNode, parent: NodeKey?, index: Int, at location: Int,
+    into text: inout String, runs: inout [TextKitRun]
+  ) throws -> Int {
     let key = node.getKey()
-    let start = length
-    if let text = node as? TextNode {
-      let content = try text.getTextContent()
-      add(content)
-      textKeys.insert(key)
+    if let old = entries[key]?.kids {
+      for kid in old { removeSubtree(kid.key, parent: key) }
+    }
+    let entry: Entry
+    if let node = node as? TextNode {
+      let content = try node.getTextContent()
+      let length = content.utf16.count
+      text += content
+      entry = Entry(
+        kind: .text, parent: parent, index: index, length: length, format: try node.getFormat(),
+        style: try node.getStyle())
       runs.append(
         TextKitRun(
-          key: key, location: start, length: content.utf16.count, format: try text.getFormat(),
-          style: try text.getStyle()))
+          key: key, location: location, length: length, format: entry.format, style: entry.style))
     } else if node is LineBreakNode {
-      add("\u{2028}")
-    } else if let element = node as? ElementNode {
-      let kids = try element.getChildren()
-      children[key] = kids.map { $0.getKey() }
-      var previous: LexicalNode?
-      for child in kids {
-        if let previous, try isBlock(previous) || isBlock(child) {
-          add("\n")
+      text += "\u{2028}"
+      entry = Entry(kind: .lineBreak, parent: parent, index: index, length: 1)
+    } else if let node = node as? ElementNode {
+      var kids: [Kid] = []
+      var offset = 0
+      var previousIsBlock = false
+      for (i, child) in try node.getChildren().enumerated() {
+        let isBlock = try Self.isBlock(child)
+        if i > 0, previousIsBlock || isBlock {
+          text += "\n"
+          offset += 1
         }
-        try append(child)
-        previous = child
+        kids.append(Kid(key: child.getKey(), start: offset, isBlock: isBlock))
+        offset += try build(
+          child, parent: key, index: i, at: location + offset, into: &text, runs: &runs)
+        previousIsBlock = isBlock
       }
+      entry = Entry(kind: .element, parent: parent, index: index, length: offset, kids: kids)
     } else {
-      add("\u{FFFC}")
+      text += "\u{FFFC}"
+      entry = Entry(kind: .decorator, parent: parent, index: index, length: 1)
     }
-    spans[key] = TextKitSpan(location: start, length: length - start)
+    entries[key] = entry
+    return entry.length
   }
 
-  private func isBlock(_ node: LexicalNode) throws -> Bool {
-    try (node is ElementNode || node is DecoratorNode) && !node.isInline()
+  /// Forgets the node at `key` and its descendants, unless it has been
+  /// rendered under another parent since (it moved).
+  mutating func removeSubtree(_ key: NodeKey, parent: NodeKey) {
+    guard let entry = entries[key], entry.parent == parent else { return }
+    entries[key] = nil
+    for kid in entry.kids {
+      removeSubtree(kid.key, parent: key)
+    }
   }
 
   /// The location of a model point, or `nil` when its node isn't shown.
   public func location(_ key: NodeKey, _ offset: Int, _ type: PointType) -> Int? {
-    guard let span = spans[key] else { return nil }
+    guard let entry = entries[key], let start = start(of: key) else { return nil }
     if type == .text {
-      return span.location + min(offset, span.length)
+      return start + min(offset, entry.length)
     }
-    let kids = children[key] ?? []
-    if offset < kids.count {
-      return spans[kids[offset]]?.location
+    if offset < entry.kids.count {
+      return start + entry.kids[offset].start
     }
-    return kids.last.flatMap { spans[$0]?.end } ?? span.location
+    if let last = entry.kids.last, let lastEntry = entries[last.key] {
+      return start + last.start + lastEntry.length
+    }
+    return start
   }
 
   public func location(for point: Point) -> Int? {
@@ -105,22 +215,43 @@ public struct TextKitDocument: Sendable {
   public func point(at location: Int) -> (NodeKey, Int, PointType) {
     let location = max(0, min(location, length))
     var element: NodeKey = "root"
-    while true {
-      let kids = children[element] ?? []
-      let containing = kids.filter { key in
-        spans[key].map { $0.location <= location && location <= $0.end } ?? false
+    var base = 0
+    while let entry = entries[element] {
+      let kids = entry.kids
+      func end(_ i: Int) -> Int { base + kids[i].start + (entries[kids[i].key]?.length ?? 0) }
+      // The children that contain `location` are a run starting at the
+      // first one that ends at or after it.
+      var low = 0
+      var high = kids.count
+      while low < high {
+        let mid = (low + high) / 2
+        if end(mid) < location { low = mid + 1 } else { high = mid }
       }
-      if let text = containing.first(where: textKeys.contains) {
-        return (text, location - spans[text]!.location, .text)
+      var child: (key: NodeKey, start: Int)?
+      var i = low
+      while i < kids.count, base + kids[i].start <= location {
+        let start = base + kids[i].start
+        switch entries[kids[i].key]?.kind {
+        case .text: return (kids[i].key, location - start, .text)
+        case .element where child == nil: child = (kids[i].key, start)
+        default: break
+        }
+        i += 1
       }
-      if let child = containing.first(where: { children[$0] != nil }) {
-        element = child
+      if let child {
+        element = child.key
+        base = child.start
         continue
       }
-      let index =
-        kids.firstIndex { (spans[$0]?.location ?? 0) >= location } ?? kids.count
-      return (element, index, .element)
+      low = 0
+      high = kids.count
+      while low < high {
+        let mid = (low + high) / 2
+        if base + kids[mid].start < location { low = mid + 1 } else { high = mid }
+      }
+      return (element, low, .element)
     }
+    return (element, 0, .element)
   }
 
   /// The location one `granularity` unit before or after `location`.

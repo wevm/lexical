@@ -94,6 +94,19 @@ note pointing here; fuzz vectors keep offsets off pair interiors.
   reconciler targets a protocol, not the view. Thin `UITextView` and
   `NSTextView` subclasses, a SwiftUI `LexicalEditor` wrapping them, and
   DecoratorNodes rendered as SwiftUI views.
+- **TextKit reconciler** (Q11, Q32): `TextKitReconciler` turns each commit
+  into replacements of UTF-16 ranges (text plus its runs) that the views apply
+  to their storage through `TextKitStorage`, walking the trees as
+  `$reconcileRoot` does: clean, uncloned subtrees are skipped, an uncloned
+  element reconciles only its dirty children, and a cloned one splices what
+  changed between its unchanged first and last children. A full reconcile
+  (`setEditorState`, error recovery), which the update listener payload now
+  reports in a package-only `dirtyType`, renders the whole document as one
+  edit. The document stores each child's location relative to its parent, so
+  an edit shifts only the later siblings of its ancestors and points are
+  found by binary search; a typing keystroke on 5,000 paragraphs reconciles
+  in about 0.2 ms in a debug build, and what remains of the keystroke is the
+  core update (mostly the node map copy).
 - **Input is model-first** (Q28, Q40): every native input becomes the command
   JS would dispatch (text input, NSResponder selectors, paste, drop,
   dictation, spellcheck, autocorrect, Writing Tools, text replacement). The

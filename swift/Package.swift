@@ -127,7 +127,8 @@ let package = Package(
     // and the input controller that turns native input into commands.
     .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
     .testTarget(
-      name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalRichText", "LexicalTextKit"]),
+      name: "LexicalTextKitTests",
+      dependencies: ["Lexical", "LexicalRichText", "LexicalTesting", "LexicalTextKit"]),
     // The TextKit 2 editor views (Apple-only; empty modules elsewhere).
     .target(name: "LexicalAppKit", dependencies: ["Lexical", "LexicalTextKit"]),
     .testTarget(

@@ -10,11 +10,20 @@
   /// The attributed string a `TextKitDocument` shows.
   @MainActor
   func renderedAttributedString(_ document: TextKitDocument, size: CGFloat) -> NSAttributedString {
+    renderedAttributedString(document.string, runs: document.runs, at: 0, size: size)
+  }
+
+  /// The attributed string of `string`, which starts at `location` and holds
+  /// `runs` (a `TextKitEdit`'s text).
+  @MainActor
+  func renderedAttributedString(
+    _ string: String, runs: [TextKitRun], at location: Int, size: CGFloat
+  ) -> NSAttributedString {
     let result = NSMutableAttributedString(
-      string: document.string,
+      string: string,
       attributes: [.font: NSFont.systemFont(ofSize: size), .foregroundColor: NSColor.textColor])
-    for run in document.runs where run.length > 0 {
-      let range = NSRange(location: run.location, length: run.length)
+    for run in runs where run.length > 0 {
+      let range = NSRange(location: run.location - location, length: run.length)
       let bold = run.format & IS_BOLD != 0
       var font = NSFont.systemFont(ofSize: size, weight: bold ? .bold : .regular)
       if run.format & IS_CODE != 0 {
@@ -59,8 +68,8 @@
       super.init(frame: frame, textContainer: container)
       isRichText = true
       allowsUndo = false
-      controller.onRender = { [weak self] document, range in
-        MainActor.assumeIsolated { self?.show(document, range) }
+      controller.onRender = { [weak self] edits, range in
+        MainActor.assumeIsolated { self?.apply(edits, range) }
       }
       show(controller.document, try? controller.selectedRange())
     }
@@ -72,6 +81,23 @@
       isRendering = true
       defer { isRendering = false }
       textStorage?.setAttributedString(renderedAttributedString(document, size: fontSize))
+      if let range { setSelectedRange(NSRange(location: range.location, length: range.length)) }
+    }
+
+    /// Applies the reconciler's edits to the text storage.
+    private func apply(_ edits: [TextKitEdit], _ range: (location: Int, length: Int)?) {
+      isRendering = true
+      defer { isRendering = false }
+      if let textStorage, !edits.isEmpty {
+        textStorage.beginEditing()
+        for edit in edits {
+          textStorage.replaceCharacters(
+            in: NSRange(location: edit.location, length: edit.length),
+            with: renderedAttributedString(
+              edit.string, runs: edit.runs, at: edit.location, size: fontSize))
+        }
+        textStorage.endEditing()
+      }
       if let range { setSelectedRange(NSRange(location: range.location, length: range.length)) }
     }
 

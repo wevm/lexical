@@ -308,6 +308,7 @@ public func createEditor(_ args: CreateEditorArgs = CreateEditorArgs()) throws -
     args.onWarn ?? { error in throw error },
     isEditable, args)
   editor._headless = args.headless || (parentEditor?._headless ?? false)
+  editor._htmlConversions = LexicalNode.conversionCache(registeredNodes, args.html?.import)
   if let initialEditorState = args.editorState {
     editor._pendingEditorState = initialEditorState
     editor._dirtyType = FULL_RECONCILE
@@ -344,10 +345,16 @@ public struct EditorConfig {
 public struct HTMLConfig {
   /// `export`: a node class's `exportDOM` replacement.
   public var export: [ObjectIdentifier: (Editor, LexicalNode) throws -> DOMExportOutput]
+  /// `import`: importers added after the node classes'.
+  public var `import`: DOMConversionMap?
 
-  public init(export: [(LexicalNode.Type, (Editor, LexicalNode) throws -> DOMExportOutput)] = []) {
+  public init(
+    export: [(LexicalNode.Type, (Editor, LexicalNode) throws -> DOMExportOutput)] = [],
+    import: DOMConversionMap? = nil
+  ) {
     self.export = Dictionary(
       export.map { (ObjectIdentifier($0.0), $0.1) }, uniquingKeysWith: { $1 })
+    self.import = `import`
   }
 }
 
@@ -385,6 +392,8 @@ public final class Editor {
   >()
   package var _commands: [ObjectIdentifier: [DequeSet<CommandListenerBox>]] = [:]
   package let _nodes: JSMap<String, RegisteredNode>
+  /// `_htmlConversions`: the importers by DOM node name.
+  public internal(set) var _htmlConversions: [String: [(DOMNode) throws -> DOMConversion?]] = [:]
   package var _decorators: [NodeKey: Any] = [:]
   package var _pendingDecorators: [NodeKey: Any]?
   /// `_keyToDOMMap`: what the reconciler keeps per node while a root is

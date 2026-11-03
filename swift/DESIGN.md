@@ -302,6 +302,9 @@ Reversible choices made porting `@lexical/extension` under Q18.
   framesets, the `<select>` and `<ruby>` insertion modes, and SVG/MathML
   name case adjustment, which pasted rich text does not need; their
   content parses as body content.
+  `importDOM` is a class method returning a `DOMConversionMap`. JS skips a
+  class whose static `importDOM` is inherited unchanged; Swift can't tell
+  and registers it again, which changes nothing.
   `getDocument()` is one document per thread, as JS has one global
   `document`. `DOMSlot` is the base slot only: `ElementDOMSlot`'s managed
   line breaks and decorator anchors belong to the DOM reconciler, which the

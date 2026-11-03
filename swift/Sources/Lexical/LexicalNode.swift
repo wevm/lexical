@@ -370,6 +370,10 @@ open class LexicalNode {
   /// call `super`.
   // MARK: View
 
+  /// `static importDOM()`: the class's HTML importers, by lower-case DOM
+  /// node name (see `DOMConversionMap`).
+  open class func importDOM() -> DOMConversionMap? { nil }
+
   /// `createDOM(config, editor)`: the element this node renders as. Must
   /// be overridden by nodes that render.
   open func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement {

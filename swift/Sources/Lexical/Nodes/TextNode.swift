@@ -129,6 +129,8 @@ open class TextNode: LexicalNode {
 
   // MARK: View
 
+  open override class func importDOM() -> DOMConversionMap? { coreImporters }
+
   open override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement
   {
     let format = __format

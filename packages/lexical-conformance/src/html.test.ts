@@ -6,7 +6,7 @@
  *
  */
 import {createHeadlessEditor} from '@lexical/headless';
-import {$generateHtmlFromNodes} from '@lexical/html';
+import {$generateHtmlFromNodes, $generateNodesFromDOM} from '@lexical/html';
 import {JSDOM} from 'jsdom';
 import {
   $createLineBreakNode,
@@ -14,11 +14,13 @@ import {
   $createTabNode,
   $createTextNode,
   $getRoot,
+  $isElementNode,
   type EditorThemeClasses,
   type ElementFormatType,
   type LexicalNode,
   TEXT_TYPE_TO_FORMAT,
 } from 'lexical';
+import {readFileSync} from 'node:fs';
 import {test} from 'vitest';
 
 import {emitVectors} from './vectors';
@@ -38,14 +40,14 @@ type Case = {
  * DOM the upstream unit tests run on (`@lexical/headless/dom` would give
  * happy-dom, which normalizes inline styles differently).
  */
-function withJSDOM<T>(f: () => T): T {
+function withJSDOM<T>(f: (dom: JSDOM['window']) => T): T {
   const dom = new JSDOM('').window;
   const globals = globalThis as {window?: unknown; document?: unknown};
   const prev = [globals.window, globals.document];
   globals.window = dom;
   globals.document = dom.document;
   try {
-    return f();
+    return f(dom);
   } finally {
     [globals.window, globals.document] = prev;
     dom.close();
@@ -179,6 +181,85 @@ test('html/export', () => {
     'html/export',
     'html-export',
     'Core-node documents (seeded random, some with a theme) and the HTML $generateHtmlFromNodes writes for them in jsdom, the DOM of the upstream unit tests.',
+    cases,
+  );
+});
+
+/** A node and its subtree as JSON, as `exportJSON` writes each node. */
+function $nodeToJSON(node: LexicalNode): Record<string, unknown> {
+  const json: Record<string, unknown> = {...node.exportJSON()};
+  if ($isElementNode(node)) {
+    json.children = node.getChildren().map($nodeToJSON);
+  }
+  return json;
+}
+
+type ImportCase = {html: string; nodes: string};
+
+const IMPORT_CORPUS = [
+  '<p>Hello world</p>',
+  '<p>a<p>b',
+  'plain text',
+  '<p>  leading and   collapsed   spaces  </p>',
+  '<span>a </span><span> b</span>',
+  '<p>one<br>two<br></p>',
+  '<p><br></p>',
+  '<div>x<br><br></div>',
+  '<b>bold</b><i>italic</i><u>u</u><s>s</s><code>c</code><mark>m</mark><sub>2</sub><sup>3</sup>',
+  '<strong>s</strong><em>e</em>',
+  '<b style="font-weight:normal;" id="docs-internal-guid-1"><p dir="ltr"><span style="font-weight:700;font-style:italic;text-decoration:underline line-through;">Docs</span></p></b>',
+  '<span style="vertical-align: super">sup</span><span style="vertical-align:sub">sub</span><span style="text-transform: uppercase">up</span>',
+  '<p style="text-align: center">centered</p><p align="right">legacy</p><p dir="rtl">rtl</p>',
+  '<p style="padding-inline-start: 80px">indent</p><p data-lexical-indent="3">attr</p>',
+  '<div><p>nested</p>loose text<p>again</p></div>',
+  '<div style="text-align: right">a<p>b</p>c</div>',
+  '<pre>  keep\n\tspaces</pre>',
+  '<span style="white-space: pre-wrap">a  \t b</span>',
+  '<ul><li>one</li><li>two</li></ul>',
+  '<h1>Title</h1><blockquote>quote</blockquote>',
+  '<a href="https://example.com">link</a> after',
+  'a<div></div>b',
+  '<table><tr><td>cell</td></tr></table>',
+  '<p>tab\there</p>',
+  '<p>&amp; &lt;tag&gt; &nbsp;nbsp</p>',
+  '<script>x</script><p>after</p>',
+];
+
+test('html/import', () => {
+  const htmls = [
+    ...IMPORT_CORPUS,
+    // Everything html/export writes must import too.
+    ...JSON.parse(
+      readFileSync(
+        new URL('../vectors/html/export.json', import.meta.url),
+        'utf8',
+      ),
+    ).cases.map((c: Case) => c.html),
+  ];
+  const cases: ImportCase[] = htmls.map(html => {
+    const editor = createHeadlessEditor({
+      onError: e => {
+        throw e;
+      },
+    });
+    let nodes = '';
+    withJSDOM(win => {
+      const dom = new win.DOMParser().parseFromString(html, 'text/html');
+      editor.update(
+        () => {
+          nodes = JSON.stringify(
+            $generateNodesFromDOM(editor, dom).map($nodeToJSON),
+          );
+        },
+        {discrete: true},
+      );
+    });
+    return {html, nodes};
+  });
+  emitVectors(
+    'html/import',
+    'html-import',
+    'HTML (curated, plus every html/export output) and the nodes $generateNodesFromDOM makes from it in jsdom, each as exportJSON with its children.',
     cases,
   );
 });

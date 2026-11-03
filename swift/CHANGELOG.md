@@ -5,6 +5,13 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added HTML import: `LexicalHTML.generateNodesFromDOM`, `importDOM` on
+  nodes (`DOMConversionMap`, `DOMConversion`, `DOMConversionOutput`), the
+  core nodes' importers, `HTMLConfig.import`, and the helpers
+  `setNodeIndentFromDOM`, `setDirectionFromDOM`, `setFormatFromDOM`,
+  `isInlineDomNode`, `isOnlyChildInBlockNode`, `isLastChildInBlockNode` and
+  `findParentPreDOMNode`. It matches `@lexical/html` on the `html/import`
+  vectors. Inlining `<style>` sheets is not ported yet.
 - Added `DOMParser`, a pure-Swift HTML parser (WHATWG tokenizer, named
   and numeric character references, and the tree builder's head, body,
   table, list and formatting rules). It builds the same documents as

@@ -118,6 +118,10 @@ open class ParagraphNode: ElementNode {
     NodeConfig(ParagraphNode.self, type: "paragraph", extends: ElementNode.self)
   }
 
+  open override class func importDOM() -> DOMConversionMap? {
+    ["p": { _ in DOMConversion(ParagraphNode.convertParagraphElement) }]
+  }
+
   open override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement
   {
     let dom = getDocument().createElement("p")
@@ -253,6 +257,16 @@ open class LineBreakNode: LexicalNode {
   }
 
   open override func getTextContent() throws -> String { "\n" }
+
+  open override class func importDOM() -> DOMConversionMap? {
+    [
+      "br": { node in
+        // A <br> alone in, or at the end of, a block isn't rendered.
+        if isOnlyChildInBlockNode(node) || isLastChildInBlockNode(node) { return nil }
+        return DOMConversion { _ in DOMConversionOutput(node: try createLineBreakNode()) }
+      }
+    ]
+  }
 
   open override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement
   {

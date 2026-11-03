@@ -324,7 +324,7 @@ public func createEditor(_ args: CreateEditorArgs = CreateEditorArgs()) throws -
   return editor
 }
 
-func isSubclass(_ klass: LexicalNode.Type, of base: LexicalNode.Type) -> Bool {
+package func isSubclass(_ klass: LexicalNode.Type, of base: LexicalNode.Type) -> Bool {
   var current: LexicalNode.Type? = klass
   while let c = current {
     if c == base { return true }

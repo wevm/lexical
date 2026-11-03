@@ -55,7 +55,8 @@ let package = Package(
         "Lexical", "LexicalExtension", "LexicalSelection", "LexicalUtils", "LexicalTesting",
       ]),
     // @lexical/html: HTML export and import over the DOM in core.
-    .target(name: "LexicalHTML", dependencies: ["Lexical", "LexicalSelection"]),
+    .target(
+      name: "LexicalHTML", dependencies: ["Lexical", "LexicalExtension", "LexicalSelection"]),
     .testTarget(
       name: "LexicalHTMLTests",
       dependencies: ["Lexical", "LexicalExtension", "LexicalHTML", "LexicalTesting"]),

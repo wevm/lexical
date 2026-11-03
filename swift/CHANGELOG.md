@@ -5,6 +5,14 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `DOMRenderExtension` to `LexicalHTML`: `domOverride`,
+  `DOMRenderMatchConfig`, `DOMOverrideOptions`, the render context
+  (`createRenderState`, `RenderContextRoot`, `RenderContextExport`,
+  `getRenderContextValue`, `setRenderContextValue`,
+  `updateRenderContextValue`, `withRenderContext`) and
+  `getSessionDOMRenderConfig`. HTML export runs with the session's render
+  config. `LexicalBuilder` now merges each extension's `html` config, as
+  upstream does. `LexicalTesting` gains `prettifyHTML`.
 - Added the `LexicalRichText` module: `HeadingNode`, `QuoteNode` (with
   `quoteShadowRootState`), their HTML importers and exporters,
   `registerRichText`, `RichTextExtension`, the escape-format triggers and

@@ -150,6 +150,36 @@ public var defaultTestNodes: [LexicalNodeConfig] {
   ]
 }
 
+/// Stands in for upstream's `prettifyHtml`, which `expectHtmlToBeEqual`
+/// compares both sides with. The repo's prettier config ignores whitespace
+/// beside tags (`htmlWhitespaceSensitivity: ignore`) and sorts attributes
+/// (`prettier-plugin-organize-attributes`: `class`, then `id` and `name`,
+/// the rest, `aria-*`, `data-*`, each group by name), so this drops that
+/// whitespace, parses the HTML and sorts each element's attributes the same
+/// way. Upstream's `html` template literal is a plain string.
+public func prettifyHTML(_ html: String) -> String {
+  let stripped = html.replacing("\n", with: "")
+    .replacing(/>\s+/, with: ">")
+    .replacing(/\s+</, with: "<")
+  guard let body = DOMParser().parseFromString(stripped).body else { return stripped }
+  func group(_ name: String) -> Int {
+    if name == "class" { return 0 }
+    if name == "id" || name == "name" { return 1 }
+    if name.hasPrefix("aria-") { return 3 }
+    if name.hasPrefix("data-") { return 4 }
+    return 2
+  }
+  for element in body.descendantElements() {
+    let attributes = element.attributes
+    let sorted = attributes.sorted {
+      (group($0.name), $0.name) < (group($1.name), $1.name)
+    }
+    for attribute in attributes { element.removeAttribute(attribute.name) }
+    for attribute in sorted { element.setAttribute(attribute.name, attribute.value) }
+  }
+  return body.innerHTML
+}
+
 /// The committed document as a string, standing in for the reconciled HTML
 /// upstream tests compare: an element is `<type>…</type>`, a text node
 /// `[text]`, a line break `<br>`, and any other leaf `<type/>`.

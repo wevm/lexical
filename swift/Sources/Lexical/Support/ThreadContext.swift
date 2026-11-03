@@ -45,6 +45,9 @@ package final class ThreadContext {
   /// The module state of the signals in LexicalExtension
   /// (`@preact/signals-core`).
   package var signalsState: AnyObject?
+  /// The active render and import context of LexicalHTML
+  /// (`ContextRecord.ts`'s `activeContext`).
+  package var htmlContext: AnyObject?
   /// `withIsApple`: overrides `IS_APPLE` on this thread.
   package var isAppleOverride: Bool?
   /// The document of `getDocument()`.

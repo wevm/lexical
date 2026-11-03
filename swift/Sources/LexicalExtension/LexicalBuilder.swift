@@ -246,6 +246,8 @@ public final class LexicalBuilder {
     var seenKlasses = Set<ObjectIdentifier>()
     var replacedNodes: [ObjectIdentifier: ExtensionRep] = [:]
     var theme: EditorThemeClasses = [:]
+    var htmlExport: [ObjectIdentifier: (Editor, LexicalNode) throws -> DOMExportOutput] = [:]
+    var htmlImport: DOMConversionMap = [:]
     let extensionReps = try sortedExtensionReps()
     for extensionRep in extensionReps {
       let extension_ = extensionRep.extension_
@@ -273,12 +275,22 @@ public final class LexicalBuilder {
           nodes.append(node)
         }
       }
+      if let html = editorConfig.html {
+        htmlExport.merge(html.export) { $1 }
+        if let htmlImportMap = html.import { htmlImport.merge(htmlImportMap) { $1 } }
+      }
       if let extensionTheme = editorConfig.theme {
         deepThemeMergeInPlace(&theme, extensionTheme)
       }
     }
     if !theme.isEmpty { config.theme = theme }
     if !nodes.isEmpty { config.nodes = nodes }
+    if !htmlImport.isEmpty || !htmlExport.isEmpty {
+      var html = HTMLConfig()
+      html.export = htmlExport
+      if !htmlImport.isEmpty { html.import = htmlImport }
+      config.html = html
+    }
     for extensionRep in extensionReps {
       try extensionRep.`init`(&config)
     }

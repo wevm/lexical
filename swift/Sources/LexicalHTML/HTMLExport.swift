@@ -1,9 +1,9 @@
 import Lexical
 import LexicalSelection
 
-// Port of the export half of packages/lexical-html/src/index.ts.
-// `DOMRenderExtension`'s per-session render context is not ported yet: the
-// export walks with the editor's `EditorDOMRenderConfig`.
+// Port of the export half of packages/lexical-html/src/index.ts. An export
+// runs with `RenderContextExport` set and walks with the session's render
+// config (`DOMRenderExtension`'s overrides, less those disabled for it).
 
 /// `$generateHtmlFromNodes(editor, selection)`: the HTML of the editor's
 /// state, or of `selection`. Call it inside `editor.read` or `update`.
@@ -23,13 +23,18 @@ public func generateDOMFromNodes<T: DOMNode>(
   _ container: T, _ selection: BaseSelection? = nil, _ editor: Editor? = nil
 ) throws -> T {
   let editor = try editor ?? getEditor()
-  let domConfig = getEditorDOMRenderConfig(editor)
-  let frame = try getSelectionSlotFrame(selection) as? ElementNode
-  let parent: ElementNode = try frame ?? getRoot()
-  for topLevelNode in try parent.getChildren() {
-    try appendNodesToHTML(editor, topLevelNode, { container.appendChild($0) }, selection, domConfig)
+  return try withRenderContext([contextValue(RenderContextExport, true)], editor) {
+    let domConfig = try getSessionDOMRenderConfig(editor)
+    // A selection wholly inside a slot never includes its host, so walk the
+    // selection's slot frame; outside slots this is the root.
+    let frame = try getSelectionSlotFrame(selection) as? ElementNode
+    let parent: ElementNode = try frame ?? getRoot()
+    for topLevelNode in try parent.getChildren() {
+      try appendNodesToHTML(
+        editor, topLevelNode, { container.appendChild($0) }, selection, domConfig)
+    }
+    return container
   }
-  return container
 }
 
 /// `$generateDOMFromRoot(container, root)` (`@experimental`): appends the
@@ -42,9 +47,13 @@ public func generateDOMFromRoot<T: DOMNode>(
 {
   let editor = try getEditor()
   let root = try root ?? getRoot()
-  try appendNodesToHTML(
-    editor, root, { container.appendChild($0) }, nil, getEditorDOMRenderConfig(editor))
-  return container
+  return try withRenderContext(
+    [contextValue(RenderContextExport, true), contextValue(RenderContextRoot, true)], editor
+  ) {
+    try appendNodesToHTML(
+      editor, root, { container.appendChild($0) }, nil, getSessionDOMRenderConfig(editor))
+    return container
+  }
 }
 
 /// `$appendNodeToHTML(editor, node, parentElement, selection)`
@@ -55,8 +64,10 @@ public func appendNodeToHTML(
   _ editor: Editor, _ node: LexicalNode, _ parentElement: DOMNode,
   _ selection: BaseSelection? = nil
 ) throws -> Bool {
+  // Through the session, so session-disabled and export-only overrides apply
+  // to slot subtrees as to the content around them.
   try appendNodesToHTML(
-    editor, node, { parentElement.appendChild($0) }, selection, getEditorDOMRenderConfig(editor))
+    editor, node, { parentElement.appendChild($0) }, selection, getSessionDOMRenderConfig(editor))
 }
 
 /// A `<br>` ending a block is not rendered, so importers drop it; after a

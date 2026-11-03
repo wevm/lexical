@@ -309,6 +309,15 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `document`. `DOMSlot` is the base slot only: `ElementDOMSlot`'s managed
   line breaks and decorator anchors belong to the DOM reconciler, which the
   views replace.
+  `DOMRenderExtension` (`@experimental` upstream) compiles its overrides
+  into the editor's `EditorDOMRenderConfig` as JS does, with the same
+  ordering (class overrides by class depth, then predicates, then
+  wildcards) and the render context (`createRenderState`,
+  `withRenderContext`, editor and session gates). Overrides have no
+  `getSlotTargetElement`, and toggling an editor gate runs a full
+  reconcile rather than recreating DOM. Upstream tests that read the
+  reconciled DOM of a root element are `dom-only`; the ones on export and
+  render context are ported.
 
 - **Rich text (`LexicalRichText`).** `registerRichText` handles the
   commands as JS does on a browser without `beforeinput`: native views

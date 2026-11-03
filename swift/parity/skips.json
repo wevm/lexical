@@ -315,6 +315,58 @@
     "reason": "dom-only",
     "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
   },
+  "lexical-html/src/__tests__/unit/DOMRenderConditionalOverrides.test.ts::DOMRender conditional overrides > disabledForEditor $decorateDOM recreates to apply and revert decoration": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, querySelector); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderConditionalOverrides.test.ts::DOMRender conditional overrides > disabledForEditor removes the override and recreates live DOM": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, querySelector); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderConditionalOverrides.test.ts::DOMRender conditional overrides > disabledForSession does not affect live reconciliation": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, querySelector); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > $createDOM overrides apply to HTML export (with root: true)": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > $decorateDOM runs after children are reconciled": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > $decorateDOM runs on create and update with correct prevNode": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > $getDOMSlot returns ElementDOMSlot for ElementNode through the hook": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > $setTextContent routes text writes through a TextNode $getDOMSlot override": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > can override DOM create + update": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > default leaf-node slot returns DOMSlot pointing at keyed DOM": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > leaf-node extension can wrap createDOM and expose inner via $getDOMSlot (visible-linebreak)": {
+    "reason": "dom-only",
+    "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
+  },
+  "lexical-html/src/__tests__/unit/compileDOMRenderConfigOverrides.test.ts::precompileDOMRenderConfigOverrides > precompiles with only type overrides": {
+    "reason": "deviation",
+    "note": "Asserts the precompiled override table by JS function identity (toEqual on the internal PreEditorDOMRenderConfig); Swift closures have no identity and the table is private. The ordering it pins is checked through behavior by the DOMRenderExtension type merge and decorateDOM order tests."
+  },
+  "lexical-html/src/__tests__/unit/compileDOMRenderConfigOverrides.test.ts::precompileDOMRenderConfigOverrides > precompiles with wildcards, predicates, and type overrides": {
+    "reason": "deviation",
+    "note": "Asserts the precompiled override table by JS function identity (toEqual on the internal PreEditorDOMRenderConfig); Swift closures have no identity and the table is private. The ordering it pins is checked through behavior by the DOMRenderExtension type merge and decorateDOM order tests."
+  },
   "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > list with an empty item: cross-block me…": {
     "reason": "out-of-scope-package",
     "packages": [

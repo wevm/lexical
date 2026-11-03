@@ -38,7 +38,7 @@ extension Optional: JSONValueConvertible where Wrapped: JSONValueConvertible {
 
 /// `Object.is` for values of unknown type: `==` for `Equatable` values,
 /// identity for objects, otherwise unequal.
-func jsObjectIs(_ a: Any, _ b: Any) -> Bool {
+package func jsObjectIs(_ a: Any, _ b: Any) -> Bool {
   func equals<T: Equatable>(_ a: T, _ b: Any) -> Bool {
     guard let b = b as? T else { return false }
     return a == b

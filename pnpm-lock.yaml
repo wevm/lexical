@@ -707,6 +707,9 @@ importers:
       '@lexical/html':
         specifier: workspace:*
         version: link:../lexical-html
+      entities:
+        specifier: 2.2.0
+        version: 2.2.0
       lexical:
         specifier: workspace:*
         version: link:../lexical

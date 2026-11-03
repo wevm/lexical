@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `DOMParser`, a pure-Swift HTML parser (WHATWG tokenizer, named
+  and numeric character references, and the tree builder's head, body,
+  table, list and formatting rules). It builds the same documents as
+  jsdom's `DOMParser` for the `html/parse` vectors.
 - Added the `LexicalHTML` module's export half: `generateHtmlFromNodes`,
   `generateDOMFromNodes`, `generateDOMFromRoot` and `appendNodeToHTML`,
   which match `@lexical/html` byte for byte (`html/export` vectors).

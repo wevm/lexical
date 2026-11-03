@@ -48,6 +48,7 @@ Rebase onto `origin/main`, then run:
   && swift build --build-tests && swift test --skip-build)
 pnpm --filter lexical-conformance run test
 pnpm --filter lexical-conformance run check-ledger
+npx tsc -p ./tsconfig.build.json --noEmit   # after changing lexical-conformance
 ```
 
 UI changes also run on macOS and the iOS Simulator.

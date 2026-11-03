@@ -297,6 +297,11 @@ Reversible choices made porting `@lexical/extension` under Q18.
   generate the accepted property table (`CSSProperties.swift`) and the
   `css/values` vectors pin the normalization. Unlike jsdom it does not
   reject values it can't parse; it keeps them with whitespace collapsed.
+  `DOMParser` is a pure-Swift WHATWG parser checked against jsdom by the
+  `html/parse` and `html/entities` vectors. It leaves out templates,
+  framesets, the `<select>` and `<ruby>` insertion modes, and SVG/MathML
+  name case adjustment, which pasted rich text does not need; their
+  content parses as body content.
   `getDocument()` is one document per thread, as JS has one global
   `document`. `DOMSlot` is the base slot only: `ElementDOMSlot`'s managed
   line breaks and decorator anchors belong to the DOM reconciler, which the

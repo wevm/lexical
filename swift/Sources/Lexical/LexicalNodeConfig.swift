@@ -27,12 +27,19 @@ public struct NodeConfig {
   public var inline: Bool?
   /// `slots`: the canonical order of the node's named slots.
   public var slots: [String]?
+  /// `children` (`@experimental node-structure`): what an element of this
+  /// class may hold.
+  public var children: NodeChildrenConfig?
+  /// `mergeAdjacent` (`@experimental node-structure`): when adjacent
+  /// siblings of this class are the same thing; `.off` is JS `false`.
+  public var mergeAdjacent: MergeAdjacentDeclaration?
 
   public init(
     _ klass: LexicalNode.Type, type: String? = nil, extends: LexicalNode.Type? = nil,
     json: [SchemaField] = [], transform: ((LexicalNode) throws -> Void)? = nil,
     importJSON: ((JSONObject) throws -> LexicalNode)? = nil,
-    stateConfigs: [RequiredNodeStateConfig] = [], inline: Bool? = nil, slots: [String]? = nil
+    stateConfigs: [RequiredNodeStateConfig] = [], inline: Bool? = nil, slots: [String]? = nil,
+    children: NodeChildrenConfig? = nil, mergeAdjacent: MergeAdjacentDeclaration? = nil
   ) {
     self.klass = klass
     self.type = type
@@ -43,6 +50,8 @@ public struct NodeConfig {
     self.stateConfigs = stateConfigs
     self.inline = inline
     self.slots = slots
+    self.children = children
+    self.mergeAdjacent = mergeAdjacent
   }
 }
 

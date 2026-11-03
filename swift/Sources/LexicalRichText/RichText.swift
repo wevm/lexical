@@ -1,4 +1,5 @@
 import Lexical
+import LexicalClipboard
 import LexicalExtension
 import LexicalSelection
 import LexicalUtils
@@ -6,12 +7,12 @@ import LexicalUtils
 // Port of registerRichText and its helpers from
 // packages/lexical-rich-text/src/index.ts.
 //
-// Not ported yet: the copy, cut, paste, drop and drag handlers, which need
-// @lexical/clipboard; they arrive with LexicalClipboard. Two branches are
-// left out by design (DESIGN.md, "Rich text"): the `IS_IOS`/`IS_SAFARI`
+// Left out by design (DESIGN.md, "Rich text"): the `IS_IOS`/`IS_SAFARI`
 // `beforeinput` fall-throughs of Backspace and Enter, because native views
-// have no `beforeinput` to fall through to, and inline-grid line
-// navigation, which needs CSS grid layout.
+// have no `beforeinput` to fall through to; inline-grid line navigation,
+// which needs CSS grid layout; the embedded-input checks of copy, cut and
+// paste, because a native control inside a decorator handles its own
+// clipboard; and the iOS text-file drop fall-through, a WebKit quirk.
 
 /// `DRAG_DROP_PASTE`: files dropped or pasted into the editor.
 public let DRAG_DROP_PASTE = LexicalCommand<[DataTransferFile]>("DRAG_DROP_PASTE_FILE")
@@ -386,6 +387,55 @@ private func nearestBlock(_ node: LexicalNode) throws -> ElementNode? {
   } as? ElementNode
 }
 
+/// `onPasteForRichText`.
+private func onPasteForRichText(_ event: PasteCommandType, _ editor: Editor) throws {
+  event.event.preventDefault()
+  try editor.update(tag: PASTE_TAG) {
+    let selection = try getSelection()
+    // PASTE_TAG gives the paste its own undo entry (#8609).
+    if case .clipboard(let clipboardEvent) = event,
+      let clipboardData = clipboardEvent.clipboardData,
+      let selection
+    {
+      try insertDataTransferForRichText(clipboardData, selection, editor)
+    }
+  }
+}
+
+/// `onCutForRichText`.
+private func onCutForRichText(_ event: ClipboardOrKeyboardEvent?, _ editor: Editor) throws {
+  // Widen a whole-document range to the blocks themselves before the copy,
+  // so the clipboard carries exactly what the removal takes out (#5835).
+  try editor.update(tag: CUT_TAG, discrete: true) {
+    if let selection = try getSelection() as? RangeSelection, !selection.isCollapsed() {
+      try INTERNAL_expandSelectionToWholeDocument(selection)
+    }
+  }
+  try copyToClipboard(editor, clipboardEvent(event))
+  try editor.update(tag: CUT_TAG) {
+    let selection = try getSelection()
+    if let selection = selection as? RangeSelection {
+      try selection.removeText()
+    } else if let selection = selection as? NodeSelection {
+      for node in try selection.getNodes() {
+        try node.remove()
+      }
+    }
+  }
+}
+
+private func clipboardEvent(_ event: ClipboardOrKeyboardEvent?) -> ClipboardEvent? {
+  if case .clipboard(let clipboardEvent) = event { return clipboardEvent }
+  return nil
+}
+
+/// `caretFromPoint(event.clientX, event.clientY, editor.getRootElement())`:
+/// the caret the root view resolves at the event's point.
+func caretFromEvent(_ event: MouseEvent, _ editor: Editor) throws -> PointCaret? {
+  try (editor.getRootElement() as? LexicalRootElement)?.caretFromPoint(
+    event.clientX, event.clientY)
+}
+
 /// `registerRichText(editor, escapeFormatTriggers, shouldHandlePasteAsFiles)`.
 public func registerRichText(
   _ editor: Editor,
@@ -714,6 +764,85 @@ public func registerRichText(
           try selectAll(nil)
         }
         return true
+      }, COMMAND_PRIORITY_EDITOR),
+    editor.registerCommand(
+      DROP_COMMAND,
+      { event, editor in
+        let (_, files, _) = eventFiles(event)
+        if !files.isEmpty {
+          if let caret = try caretFromEvent(event, editor) {
+            let selection = try setSelectionFromCaretRange(getCollapsedCaretRange(caret))
+            try setSelection(normalizeSelection(selection))
+          }
+          // The drop point does not always resolve to a caret; the files are
+          // forwarded regardless, or the drop would be discarded.
+          _ = try editor.dispatchCommand(DRAG_DROP_PASTE, files)
+          event.preventDefault()
+          return true
+        }
+        return try handleRichTextDrop(event, editor, caretFromEvent(event, editor))
+      }, COMMAND_PRIORITY_EDITOR),
+    editor.registerCommand(
+      DRAGSTART_COMMAND,
+      { event, editor in
+        let (isFileTransfer, _, _) = eventFiles(event)
+        let selection = try getSelection()
+        if isFileTransfer && !(selection is RangeSelection) {
+          return false
+        }
+        if let selection = selection as? RangeSelection, !selection.isCollapsed(),
+          let dataTransfer = event.dataTransfer
+        {
+          // Lexical's own serialization lets custom nodes survive a drop
+          // back into a Lexical editor; the marker lets another editor
+          // remove the source range.
+          setLexicalClipboardDataTransfer(
+            dataTransfer, try getClipboardDataFromSelection(selection))
+          writeDragSourceToDataTransfer(dataTransfer, editor)
+        }
+        return true
+      }, COMMAND_PRIORITY_EDITOR),
+    editor.registerCommand(
+      DRAGOVER_COMMAND,
+      { event, editor in
+        let (isFileTransfer, _, _) = eventFiles(event)
+        let overSelection = try getSelection()
+        if isFileTransfer && !(overSelection is RangeSelection) {
+          return false
+        }
+        // Only a decorator, which shows no native drop caret, cancels the
+        // dragover; text drags keep the platform's drop handling.
+        if let caret = try caretFromEvent(event, editor), caret.origin is DecoratorNode {
+          event.preventDefault()
+        }
+        return true
+      }, COMMAND_PRIORITY_EDITOR),
+    editor.registerCommand(
+      COPY_COMMAND,
+      { event, editor in
+        try copyToClipboard(editor, clipboardEvent(event))
+        return true
+      }, COMMAND_PRIORITY_EDITOR),
+    editor.registerCommand(
+      CUT_COMMAND,
+      { event, editor in
+        try onCutForRichText(event, editor)
+        return true
+      }, COMMAND_PRIORITY_EDITOR),
+    editor.registerCommand(
+      PASTE_COMMAND,
+      { event, editor in
+        let (_, files, hasTextContent) = eventFiles(event)
+        if shouldHandlePasteAsFiles.peek()(files, hasTextContent),
+          try editor.dispatchCommand(DRAG_DROP_PASTE, files)
+        {
+          return true
+        }
+        if try getSelection() != nil {
+          try onPasteForRichText(event, editor)
+          return true
+        }
+        return false
       }, COMMAND_PRIORITY_EDITOR),
     editor.registerCommand(
       KEY_SPACE_COMMAND,

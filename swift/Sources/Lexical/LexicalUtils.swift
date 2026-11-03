@@ -831,10 +831,6 @@ package func createChildrenArray(_ element: ElementNode, _ nodeMap: NodeMap?) th
   return children
 }
 
-/// The node-structure extension is not ported yet, so structure is never
-/// enforced.
-package func INTERNAL_isNodeStructureEnforced(_ editor: Editor) throws -> Bool { false }
-
 /// `getRegisteredSubtypeMap`: each registered type mapped to itself and the
 /// types of the registered classes that extend it.
 public func getRegisteredSubtypeMap(_ nodes: [LexicalNode.Type]) -> JSMap<String, JSSet<String>> {

@@ -50,6 +50,9 @@ package final class ThreadContext {
   package var htmlContext: AnyObject?
   /// `withIsApple`: overrides `IS_APPLE` on this thread.
   package var isAppleOverride: Bool?
+  /// Runs before each `getParent()` of an element on this thread: a test's
+  /// stand-in for patching `ElementNode.prototype.getParent` in JS.
+  package var elementGetParentHook: (() throws -> Void)?
   /// The document of `getDocument()`.
   package lazy var defaultDocument = DOMDocument()
 

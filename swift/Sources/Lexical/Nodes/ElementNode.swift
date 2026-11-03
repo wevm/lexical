@@ -19,6 +19,10 @@ open class ElementNode: LexicalNode, SlotNode {
   package var __textFormat = 0
   package var __textStyle = ""
   package var __slotHost: NodeKey?
+  /// What the node-structure normalization last recorded about this
+  /// version's rule inputs (JS keeps it in a `WeakMap` keyed by version);
+  /// never cloned.
+  package var __structureRuleInputs: Int?
   package var __slots: SlotMap?
 
   open override class func config() throws -> NodeConfig? {
@@ -419,6 +423,17 @@ open class ElementNode: LexicalNode, SlotNode {
   ) throws
     -> Self
   {
+    try elementSplice(start, deleteCount, nodesToInsert)
+  }
+
+  /// `ElementNode.prototype.splice.call(node, ...)`: ElementNode's own
+  /// splice, which an override cannot change.
+  @discardableResult
+  package final func elementSplice(
+    _ start: Int, _ deleteCount: Int, _ nodesToInsert: [LexicalNode]
+  ) throws
+    -> Self
+  {
     try invariant(
       !__ephemeral,
       "ElementNode.splice: Ephemeral nodes can not mutate their children (key \(__key) type \(__type))"
@@ -572,7 +587,11 @@ open class ElementNode: LexicalNode, SlotNode {
 
   open func canInsertTextAfter() throws -> Bool { true }
 
-  open override func isInline() throws -> Bool { false }
+  /// `false`, or the `inline` a class in its config chain declares (JS
+  /// synthesizes an `isInline()` returning it for the declaring class).
+  open override func isInline() throws -> Bool {
+    getNodeClassRecord(Swift.type(of: self)).inline ?? false
+  }
 
   /// A shadow root is an element that should behave like the root for its
   /// children: a table cell, for example.

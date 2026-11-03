@@ -1,3 +1,5 @@
+import LexicalExtension
+import LexicalHistory
 import LexicalTesting
 import Testing
 
@@ -519,6 +521,69 @@ private func same(_ a: (any BaseSelection)?, _ b: (any BaseSelection)?) -> Bool 
     unregister()
     #expect(try committedText(editor) == "Transformed")
     #expect(updates == 1)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with onUpdate callbacks"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with $onUpdate callbacks"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with selection listener callbacks"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with none callbacks"
+    ),
+    arguments: ["onUpdate", "$onUpdate", "selection listener", "none"])
+  func preservesTypingUndoMerging(callback: String) throws {
+    resetRandomKey()
+    drainMicrotasks()
+    let editor = try buildEditorFromExtensions(
+      configExtension(HistoryExtension) {
+        $0.delay = 1000
+        $0.now = { 0 }
+      })
+    defer { editor.dispose() }
+    try mountEditor(editor)
+    try editor.update(discrete: true) {
+      let paragraph = try createParagraphNode()
+      try getRoot().clear().append(paragraph)
+      _ = try paragraph.selectEnd()
+    }
+    drainMicrotasksOnly()
+    var onUpdateCalls = 0
+    let onUpdateFn = { onUpdateCalls += 1 }
+    var updates = 0
+    // Toolbars listen to history availability during the commit, while
+    // callbacks from selection listeners are still waiting to run.
+    editor.registerCommand(CAN_UNDO_COMMAND, { _, _ in false }, COMMAND_PRIORITY_LOW)
+    let unregisterSelection = onSelectionChange(editor) {
+      if callback == "selection listener" {
+        try onUpdate(onUpdateFn)
+      }
+      return false
+    }
+    let unregister = editor.registerUpdateListener { _ in updates += 1 }
+    for character in "abcd" {
+      try editor.update(
+        {
+          try rangeSelection().insertText(String(character))
+          if callback == "$onUpdate" {
+            try onUpdate(onUpdateFn)
+          }
+        },
+        EditorUpdateOptions(onUpdate: callback == "onUpdate" ? onUpdateFn : nil, discrete: true))
+      drainMicrotasksOnly()
+    }
+    #expect(try committedText(editor) == "abcd")
+    unregister()
+    unregisterSelection()
+    try editor.dispatchCommand(UNDO_COMMAND)
+    #expect(try committedText(editor) == "")
+    #expect(updates == 4)
+    #expect(onUpdateCalls == (callback == "none" ? 0 : 4))
   }
 
   @Test(

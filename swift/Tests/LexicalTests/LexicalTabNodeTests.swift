@@ -2,10 +2,10 @@ import Lexical
 import LexicalTesting
 import Testing
 
-// Port of nodes/__tests__/unit/LexicalTabNode.test.tsx. The paste tests need
-// @lexical/clipboard and the indentation tests need @lexical/rich-text,
-// @lexical/list and the tab indentation plugin, so they wait for those
-// packages.
+// Port of nodes/__tests__/unit/LexicalTabNode.test.tsx. The paste tests,
+// which need @lexical/clipboard, are in LexicalClipboardTests; the
+// indentation tests need @lexical/list and the tab indentation plugin, so
+// they wait for those packages.
 
 /// `beforeEach`: an empty, selected paragraph.
 private func tabNodeEditor() throws -> Editor {

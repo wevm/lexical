@@ -181,10 +181,34 @@ public protocol LexicalRootElement: AnyObject {
   /// Gives up the focus and clears the native selection, as `editor.blur()`
   /// does to the DOM root. Does nothing by default.
   func blur()
+  /// Whether the root (or a view inside it) has the focus, as
+  /// `root.contains(document.activeElement)` says of a DOM root. `false` by
+  /// default.
+  var hasFocus: Bool { get }
+  /// Takes the focus, as `rootElement.focus()` does. Does nothing by
+  /// default.
+  func focus()
+  /// The caret at a point in the root's coordinates, as
+  /// `caretFromPoint(x, y, rootElement)` from `@lexical/clipboard` hit-tests
+  /// the DOM; read inside an update. `nil` (the default) when no caret
+  /// resolves there.
+  func caretFromPoint(_ x: Double, _ y: Double) throws -> PointCaret?
 }
 
 extension LexicalRootElement {
   public func blur() {}
+  public var hasFocus: Bool { false }
+  public func focus() {}
+  public func caretFromPoint(_ x: Double, _ y: Double) throws -> PointCaret? { nil }
+}
+
+/// `EditorFocusOptions`.
+public struct EditorFocusOptions {
+  /// `'rootStart'` or `'rootEnd'` (the default): where the selection goes
+  /// when the editor is focused with no selection.
+  public var defaultSelection: String?
+
+  public init(defaultSelection: String? = nil) { self.defaultSelection = defaultSelection }
 }
 
 /// `RootListener`: the new and previous root elements; it may return a
@@ -299,6 +323,7 @@ public func createEditor(_ args: CreateEditorArgs = CreateEditorArgs()) throws -
     if let configError = getNodeClassRecord(klass).configError {
       throw configError
     }
+    try validateNodeStructure(klass)
     let type = klass.getType()
     try invariant(!type.isEmpty, "LexicalNode: Node \(klass) does not implement .getType().")
     registeredNodes.set(
@@ -379,6 +404,9 @@ public final class Editor {
   /// `Selection.modify`. When `nil`, as headless, moves within text stop
   /// where JS stops without a DOM.
   public weak var selectionMovement: (any SelectionMovement)?
+  /// The node-structure registration (`INTERNAL_registerNodeStructure`),
+  /// which JS keeps in a `WeakMap` keyed by editor.
+  package var _nodeStructureRegistration: NodeStructureRegistration?
   package var _parentEditor: Editor?
   /// The native view the editor renders into; `nil` when headless.
   package var _rootElement: AnyObject?
@@ -678,6 +706,37 @@ public final class Editor {
     (_rootElement as? LexicalRootElement)?.blur()
   }
 
+  /// `focus(callbackFn, options)`: with a root element, marks the selection
+  /// dirty so it is applied to the view again, or selects the start or end
+  /// of the root when there is none, tagging the update `focus`; the
+  /// callback runs after it commits. (JS also turns off `autocapitalize`
+  /// on the DOM root around the update, which the views have no need of.)
+  public func focus(
+    _ callbackFn: (() throws -> Void)? = nil, _ options: EditorFocusOptions = EditorFocusOptions()
+  ) throws {
+    guard _rootElement != nil else { return }
+    try updateEditorSync(self) {
+      let selection = try getSelection()
+      let root = try getRoot()
+      if let selection {
+        // Marking the selection dirty will force the selection back to it.
+        if !selection.dirty {
+          try setSelection(selection.clone())
+        }
+      } else if try root.getChildrenSize() != 0 {
+        if options.defaultSelection == "rootStart" {
+          _ = try root.selectStart()
+        } else {
+          _ = try root.selectEnd()
+        }
+      }
+      try addUpdateTag(FOCUS_TAG)
+      try onUpdate {
+        try callbackFn?()
+      }
+    }
+  }
+
   /// Attaches the editor to `nextRootElement`, the native view it renders
   /// into, or detaches it with `nil`. As in JS, the editor is reset and the
   /// pending state (or the current one) is committed again, keeping queued
@@ -757,6 +816,8 @@ public final class Editor {
     _compositionKey = nil
     _slotsUsed = _slotsUsed || editorState._slotsUsed
     let parsedState = writableEditorState
+    // Always with options, as JS passes `{discrete: undefined}` while
+    // updating, so this never runs inline in the current update.
     try updateEditorSync(
       self,
       { [unowned self] in
@@ -779,7 +840,7 @@ public final class Editor {
             }
           }
         }
-      }, _updating ? nil : EditorUpdateOptions(discrete: true))
+      }, EditorUpdateOptions(discrete: !_updating))
   }
 
   /// Parses a serialized editor state, in either form.

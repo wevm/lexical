@@ -2,9 +2,7 @@ import Lexical
 
 // Port of HorizontalRuleNode from
 // packages/lexical-extension/src/HorizontalRuleExtension.ts. The extension
-// itself (INSERT_HORIZONTAL_RULE_COMMAND, click selection and the selected
-// class) needs EditorStateExtension and NodeSelectionExtension, and ports
-// with them.
+// is in HorizontalRuleExtension.swift.
 
 /// `HorizontalRuleNode`: an `<hr>`, a block decorator with no fields.
 open class HorizontalRuleNode: DecoratorNode {

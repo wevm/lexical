@@ -637,14 +637,19 @@ public struct SchemaField {
   /// declared with `field:` (`withField`), so its class needs no
   /// `afterCloneFrom`.
   let carry: ((LexicalNode, LexicalNode) -> Void)?
+  /// `derived: true`: the node's own code recomputes the property from the
+  /// rest of the document, so tools that copy or compare a node's data can
+  /// leave it out, and `mergeAdjacent` may not name it.
+  public let derived: Bool
 
   public init<Node: LexicalNode>(
     _ key: String, _ schema: SerializationSchema, of _: Node.Type,
     get: ((Node) throws -> JSONValue?)?,
     when: ((Node) throws -> Bool)? = nil,
-    set: ((Node, JSONValue?) throws -> Void)?
+    set: ((Node, JSONValue?) throws -> Void)?, derived: Bool = false
   ) throws {
     try notNestedSet("withAccessors", schema)
+    self.derived = derived
     self.key = key
     self.schema = schema
     self.get = get.map { get in { try get($0 as! Node) } }
@@ -658,9 +663,11 @@ public struct SchemaField {
   /// writes it only where it holds.
   public init<Node: LexicalNode, Value: SchemaFieldValue>(
     _ key: String, _ schema: SerializationSchema,
-    field: ReferenceWritableKeyPath<Node, Value>, when: ((Node) throws -> Bool)? = nil
+    field: ReferenceWritableKeyPath<Node, Value>, when: ((Node) throws -> Bool)? = nil,
+    derived: Bool = false
   ) throws {
     try notNestedSet("withField", schema)
+    self.derived = derived
     // An optional property is absent when it has no value; any other one
     // writes JSON `null`.
     let absent: JSONValue? =

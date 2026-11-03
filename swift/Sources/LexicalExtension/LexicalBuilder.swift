@@ -294,6 +294,10 @@ public final class LexicalBuilder {
     for extensionRep in extensionReps {
       try extensionRep.`init`(&config)
     }
+    if config.onError == nil {
+      // `defaultOnError`: rethrow.
+      config.onError = { error, _ in throw error }
+    }
     let args = CreateEditorArgs(
       namespace: config.namespace, nodes: config.nodes ?? [], parentEditor: config.parentEditor,
       editable: config.editable, theme: config.theme, headless: config.headless ?? false,

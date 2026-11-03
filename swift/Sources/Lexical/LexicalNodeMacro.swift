@@ -20,7 +20,8 @@ public macro LexicalNode(
   type: String, extends: LexicalNode.Type? = nil,
   transform: ((LexicalNode) throws -> Void)? = nil,
   importJSON: ((JSONObject) throws -> LexicalNode)? = nil,
-  stateConfigs: [RequiredNodeStateConfig] = [], inline: Bool? = nil, slots: [String]? = nil
+  stateConfigs: [RequiredNodeStateConfig] = [], inline: Bool? = nil, slots: [String]? = nil,
+  children: NodeChildrenConfig? = nil, mergeAdjacent: MergeAdjacentDeclaration? = nil
 ) = #externalMacro(module: "LexicalMacros", type: "LexicalNodeMacro")
 
 /// Declares a stored property as a JSON schema field of a `@LexicalNode`

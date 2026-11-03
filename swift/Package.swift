@@ -17,7 +17,10 @@ let package = Package(
     .library(name: "LexicalUtils", targets: ["LexicalUtils"]),
     .library(name: "LexicalHTML", targets: ["LexicalHTML"]),
     .library(name: "LexicalRichText", targets: ["LexicalRichText"]),
+    .library(name: "LexicalClipboard", targets: ["LexicalClipboard"]),
+    .library(name: "LexicalHistory", targets: ["LexicalHistory"]),
     .library(name: "LexicalHeadless", targets: ["LexicalHeadless"]),
+    .library(name: "LexicalPlainText", targets: ["LexicalPlainText"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -42,19 +45,25 @@ let package = Package(
     .target(name: "LexicalExtension", dependencies: ["Lexical"]),
     .testTarget(
       name: "LexicalExtensionTests",
-      dependencies: ["Lexical", "LexicalExtension", "LexicalTesting"]),
+      dependencies: [
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHeadless", "LexicalHistory",
+        "LexicalHTML", "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
+      ]),
     // @lexical/selection: style patching, block conversion and wrapping.
     .target(name: "LexicalSelection", dependencies: ["Lexical"]),
     .testTarget(
       name: "LexicalSelectionTests",
-      dependencies: ["Lexical", "LexicalExtension", "LexicalSelection", "LexicalTesting"]),
+      dependencies: [
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalRichText",
+        "LexicalSelection", "LexicalTesting", "LexicalUtils",
+      ]),
     // @lexical/utils: traversal, insertion and editing helpers.
     .target(name: "LexicalUtils", dependencies: ["Lexical", "LexicalSelection"]),
     .testTarget(
       name: "LexicalUtilsTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalSelection", "LexicalUtils",
-        "LexicalTesting",
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalRichText",
+        "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/html: HTML export and import over the DOM in core.
     .target(
@@ -68,12 +77,40 @@ let package = Package(
     .target(
       name: "LexicalRichText",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalSelection", "LexicalUtils",
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalSelection",
+        "LexicalUtils",
       ]),
     .testTarget(
       name: "LexicalRichTextTests",
       dependencies: [
         "Lexical", "LexicalExtension", "LexicalHTML", "LexicalRichText", "LexicalTesting",
+      ]),
+    // @lexical/clipboard: copy and paste in the Lexical, HTML and plain text
+    // formats.
+    .target(
+      name: "LexicalClipboard",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalSelection", "LexicalUtils",
+      ]),
+    .testTarget(
+      name: "LexicalClipboardTests",
+      dependencies: [
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalRichText",
+        "LexicalSelection", "LexicalTesting",
+      ]),
+    // @lexical/history: undo and redo.
+    .target(name: "LexicalHistory", dependencies: ["Lexical", "LexicalExtension", "LexicalUtils"]),
+    .testTarget(
+      name: "LexicalHistoryTests",
+      dependencies: [
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalHTML",
+        "LexicalPlainText", "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
+      ]),
+    // @lexical/plain-text: the plain text commands.
+    .target(
+      name: "LexicalPlainText",
+      dependencies: [
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalSelection", "LexicalUtils",
       ]),
     // @lexical/headless: an editor that never attaches to a view.
     .target(name: "LexicalHeadless", dependencies: ["Lexical"]),
@@ -93,7 +130,12 @@ let package = Package(
     .testTarget(
       name: "ConformanceTests", dependencies: ["Lexical", "LexicalHTML", "LexicalTesting"]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
-    .testTarget(name: "LexicalTests", dependencies: ["Lexical", "LexicalHTML", "LexicalTesting"]),
+    .testTarget(
+      name: "LexicalTests",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalHTML", "LexicalRichText",
+        "LexicalTesting",
+      ]),
   ],
   swiftLanguageModes: [.v6]
 )

@@ -51,7 +51,7 @@ open class LexicalNode {
   public required init(key: NodeKey? = nil) throws {
     self.__type = Swift.type(of: self).getType()
     try setNodeKey(self, key)
-    if __type != "root" {
+    if __type != "root" && key != STRUCTURE_PROBE_KEY {
       try errorOnTypeKlassMismatch(__type, Swift.type(of: self))
     }
   }
@@ -168,6 +168,9 @@ open class LexicalNode {
   }
 
   public func getParent() throws -> ElementNode? {
+    if let hook = ThreadContext.current.elementGetParentHook, self is ElementNode {
+      try hook()
+    }
     guard let parent = try getLatest().__parent else {
       return nil
     }

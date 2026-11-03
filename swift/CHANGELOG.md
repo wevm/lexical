@@ -5,6 +5,33 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `LexicalClipboard`: copy and paste in the Lexical, HTML and plain
+  text formats (`copyToClipboard`, `insertDataTransferForRichText`,
+  `insertDataTransferForPlainText`, `getClipboardDataFromSelection`,
+  `GetClipboardDataExtension`, `ClipboardImportExtension`), and drag and
+  drop (`handleRichTextDrop`, `handlePlainTextDrop`,
+  `writeDragSourceToDataTransfer`).
+- `RichTextExtension` now handles copy, cut, paste, drop, dragstart and
+  dragover.
+- Added `LexicalPlainText`: `registerPlainText` and `PlainTextExtension`.
+- `LexicalRootElement` gained `caretFromPoint(_:_:)`, which a view
+  implements to resolve drop points; it returns `nil` by default.
+- Editors built with `buildEditorFromExtensions` now rethrow errors from
+  updates when no `onError` is configured, as in JS; they were swallowed.
+- Added to `LexicalExtension`: `NodeStructureExtension`,
+  `NodeSelectionExtension`, `EditorStateExtension`, `HorizontalRuleExtension`
+  (`INSERT_HORIZONTAL_RULE_COMMAND`), `SelectBlockExtension`,
+  `PreventSelectAllExtension`, `ClickAfterLastBlockExtension`,
+  `DecoratorTextExtension` (`DecoratorTextNode`), `TabIndentationExtension`
+  (`registerTabIndentation`) and `AutoFocusExtension`.
+- Added node structure to core (`LexicalStructure.swift`): `NodeConfig`'s
+  `children:` and `mergeAdjacent:`, `getDeclaredNodeStructure`, and a real
+  `INTERNAL_isNodeStructureEnforced`. Paragraphs, headings and quotes
+  declare `children: .inline`. Added `Editor.focus`.
+- Added `LexicalHistory`: `registerHistory`, `createEmptyHistoryState`,
+  `HistoryState`, `HistoryExtension` and `SharedHistoryExtension`.
+- `Editor.setEditorState` called during an update now applies the state in
+  a nested update, as in JS, instead of inline in the current one.
 - Added `LexicalHeadless`: `createHeadlessEditor` and `HeadlessExtension`,
   which mark the editor headless and refuse a root element.
 - `generateHtmlFromNodes` now works inside a legacy

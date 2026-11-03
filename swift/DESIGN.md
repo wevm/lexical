@@ -208,7 +208,11 @@ These are reversible choices made while porting, under Q7 and Q27.
   other than the root takes its cached text from `getTextContent()`,
   because Swift cannot ask whether a subclass overrides it (JS does so only
   for elements that override it). Unit tests whose upstream editor is
-  mounted use `createMountedTestEditor()`.
+  mounted use `createMountedTestEditor()`. `@lexical/selection`'s
+  `LexicalSelection.test.tsx` drives a React editor through the DOM; its
+  port keeps those steps in model terms in the test (the mounted DOM shape,
+  `$internalResolveSelectionPoints` for a native selection change, and the
+  utils' `Selection.modify` polyfill as an `Editor.selectionMovement`).
 - **Overriding `getTextContent` alone.** JS gives a class that overrides
   `getTextContent` but not `getTextContentSize` a size delegated to
   `getTextContent()`. Swift cannot detect the override, so a Swift node that
@@ -260,9 +264,51 @@ Reversible choices made porting `@lexical/extension` under Q18.
   across a bundler's hot module replacement (`import.meta.hot`), which
   Swift has no equivalent of; its tests are `deviation` skips.
 - **Extensions that only touch the DOM wait for the views.**
-  `NodeSelectionDataSelectedExtension` (a host element attribute) and
-  `NormalizeTripleClickSelectionExtension` (DOM event ordering) port with
-  the native host views in M3; their tests are `dom-only` until then.
+  `NodeSelectionDataSelectedExtension` (a host element attribute),
+  `NormalizeTripleClickSelectionExtension` (DOM event ordering) and
+  `IMEExtension` (a `compositionend` listener around
+  `COMPOSITION_START_COMMAND`) have no model part; they port with the
+  native host views in M3, and their tests are `dom-only` until then.
+- **`PreventSelectAllExtension` registers nothing.** In JS it stops a
+  `keydown` inside a decorator's DOM from reaching Lexical; key events reach
+  the views, never a control inside a decorator, so only its config and
+  `disabled` signal are ported, for `SelectBlockExtension` to depend on.
+- **`ClickAfterLastBlockExtension` handles `CLICK_COMMAND`.** JS listens
+  for `mousedown` and `click` on the root element and checks the click is
+  below the last block's bounding rect; Swift handles `CLICK_COMMAND` at
+  `COMMAND_PRIORITY_CRITICAL` when its `targetKey` is `"root"`, which the
+  views send only for a click past the last block. The `shouldInsertAfter`
+  predicate runs once, inside the update, where JS runs it on `mousedown`
+  and again on `click`.
+- **`HorizontalRuleExtension` selects on `targetKey`.** A click whose
+  `CLICK_COMMAND` `targetKey` is a horizontal rule toggles a NodeSelection
+  of it, where JS compares `event.target` with the rule's DOM. The
+  `selected` theme class (a mutation listener that edits the DOM) is not
+  ported: the views draw the selection. `NodeSelectionExtension` is ported
+  for its `watchNodeKey` output, which no view reads yet.
+- **`AutoFocusExtension` focuses through `LexicalRootElement`.** It calls
+  `Editor.focus`, then asks the root element `hasFocus` and calls its
+  `focus()`, where JS reads `document.activeElement`. `Editor.focus` does
+  not touch `autocapitalize`, which native views don't have.
+- **`TabIndentationExtension` indents are `Int`.** `maxIndent` is `Int?`,
+  and 0 means no maximum, as JS tests `!maxIndent`; fractional indents are
+  `deviation` skips. It keeps private copies of `@lexical/utils`'
+  `$getNearestBlockElementAncestorOrThrow` and `$handleIndentAndOutdent`,
+  as `HorizontalRuleExtension` does of `$insertNodeToNearestRoot`, because
+  `LexicalExtension` does not depend on `LexicalUtils`.
+- **`DecoratorTextNode` has no `$applyFormatToDom` alias.** The method is
+  `applyFormatToDom` only; the deprecated alias's test is a `deviation`
+  skip.
+- **Node structure (`LexicalStructure.swift`) instantiates to probe.**
+  `NodeStructureExtension` makes `INTERNAL_isNodeStructureEnforced` real,
+  as in JS. Reading `isInline` from a class creates an instance with a
+  probe key (which skips the registration check), where JS calls the
+  prototype method. Every class but root counts as having instance rule
+  inputs, because Swift can't tell an overridden method; the inputs are
+  kept on the node version and not cloned. The merge, split and lift hooks
+  are protocols (`NodeStructureMergeHook`, …) instead of methods looked up
+  by name, and the structure code calls `elementSplice`, `ElementNode`'s
+  own splice, where JS calls `ElementNode.prototype.splice`.
 - **`NormalizeInlineElementsExtension` adds its transform to every element
   class.** JS adds it only to classes that override `isInline`, which Swift
   can't detect; the transform does nothing for a node that isn't inline.
@@ -326,8 +372,8 @@ Reversible choices made porting `@lexical/extension` under Q18.
   (skipping at-rules) and matches their selectors with `parseSelector`'s
   subset, skipping any selector outside it, as JS skips one
   `querySelectorAll` rejects. `HorizontalRuleNode` is in
-  `LexicalExtension`; `HorizontalRuleExtension` (insert command and click
-  selection) ports with `NodeSelectionExtension`.
+  `LexicalExtension`, with `HorizontalRuleExtension` (insert command and
+  click selection).
 
 - **Rich text (`LexicalRichText`).** `registerRichText` handles the
   commands as JS does on a browser without `beforeinput`: native views
@@ -340,8 +386,10 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `dom.contains(event.target)`. Up/down next to a block decorator asks
   `Editor.selectionMovement` for a `.line` move where JS probes
   `Selection.modify`; inline-grid line navigation (a CSS layout probe) is
-  left out. The copy, cut, paste, drop and drag handlers arrive with
-  `LexicalClipboard`. `RichTextExtension` depends on
+  left out. The copy, cut, paste, drop and drag handlers use
+  `LexicalClipboard`. Their embedded-input checks are left out, because a
+  native control inside a decorator handles its own clipboard, and so is
+  the iOS text-file drop fall-through, a WebKit quirk. `RichTextExtension` depends on
   `NormalizeInlineElementsExtension`, `CoreImportExtension` and its own
   import rules; `@lexical/a11y` (HeadingAnnounce) and the M3 event
   extensions (Dragon, NormalizeTripleClickSelection) are not ported yet. `HeadingNode.insertNewAfter()` (no selection) is a separate
@@ -349,6 +397,33 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `QuoteNode.isShadowRoot()` can't throw, so outside a read or update it
   reads the node it is called on. `SET_TEXT_FORMAT_COMMAND` carries
   ordered pairs, as a JS object keeps its keys in order.
+- **History (`LexicalHistory`).** `HistoryState` is a class, so editors
+  share one by reference as JS shares the object. The default clock
+  (`historyDateNow`) reads milliseconds on a monotonic `ContinuousClock`
+  where JS reads `Date.now()`; only differences matter. `HistoryConfig.disabled`
+  defaults to `false`, where JS disables history when there is no `window`.
+  `registerHistory` takes `delay` and `maxDepth` as plain values or as
+  signals through two overloads. `SharedHistoryExtension` does not re-link
+  after an HMR restore, since `HMRExtension` is not ported.
+
+- **Clipboard (`LexicalClipboard`).** The export and import stacks
+  (`GetClipboardDataExtension`, `ClipboardImportExtension`,
+  `ClipboardDOMImportExtension`) and the JSON and HTML payloads follow JS;
+  objects keyed by MIME type are a `MimeTypeMap` that keeps insertion
+  order. Native platforms have no DOM clipboard, so `copyToClipboard` is
+  synchronous and only fills a `DataTransfer`: the event's, or, without an
+  event, a `pasteboard` the view then writes, where JS fires a `copy` event
+  at the document. It also skips JS's check that the DOM selection is inside
+  the editor. `caretFromPoint` is left out, as it hit-tests browser layout:
+  the root view resolves drop points instead
+  (`LexicalRootElement.caretFromPoint(_:_:)`), and the drop handlers take
+  that caret, and `nil`
+  declines the drop as an unresolved point does in JS. A cross-editor drop
+  doesn't dispatch `deleteByDrag` at the source editor's root, since there
+  is no shared DOM to find it in; the source view removes the dragged range
+  when its drag session ends as a move. Trusted Types (`trustHTML`) don't
+  exist outside a browser, so pasted HTML is parsed as is, and the
+  `console.error` of a failed default importer goes to `consoleWarn`.
 
 - **Headless (`LexicalHeadless`).** JS replaces the DOM-only methods of a
   headless editor with throwing stubs. Swift can't replace a method on an

@@ -1,12 +1,12 @@
 {
   "lexical": "enforced",
   "lexical-extension": "pending",
-  "lexical-rich-text": "pending",
-  "lexical-plain-text": "pending",
-  "lexical-history": "pending",
+  "lexical-rich-text": "enforced",
+  "lexical-plain-text": "enforced",
+  "lexical-history": "enforced",
   "lexical-selection": "pending",
   "lexical-utils": "enforced",
   "lexical-headless": "enforced",
   "lexical-html": "enforced",
-  "lexical-clipboard": "pending"
+  "lexical-clipboard": "enforced"
 }

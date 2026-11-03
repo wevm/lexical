@@ -20,7 +20,8 @@ open class QuoteNode: ElementNode {
   open override class func config() -> NodeConfig? {
     NodeConfig(
       QuoteNode.self, type: "quote", extends: ElementNode.self,
-      stateConfigs: [RequiredNodeStateConfig(quoteShadowRootState, flat: true)])
+      stateConfigs: [RequiredNodeStateConfig(quoteShadowRootState, flat: true)],
+      children: .inline)
   }
 
   open override class func importDOM() -> DOMConversionMap? {
@@ -119,7 +120,7 @@ open class HeadingNode: ElementNode {
       HeadingNode.self, type: "heading", extends: ElementNode.self,
       json: [
         SchemaField("tag", enumValue(headingTags.map { .string($0) }), field: \HeadingNode.__tag)
-      ])
+      ], children: .inline)
   }
 
   open override class func importDOM() -> DOMConversionMap? {

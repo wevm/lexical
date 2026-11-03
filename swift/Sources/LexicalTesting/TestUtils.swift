@@ -124,6 +124,18 @@ public final class TestElementNode: ElementNode {
   public override class func config() -> NodeConfig? {
     NodeConfig(TestElementNode.self, type: "test_block", extends: ElementNode.self)
   }
+  public override func createDOM(
+    _ config: EditorConfig, _ editor: Editor? = nil
+  ) throws
+    -> DOMElement
+  {
+    getDocument().createElement("div")
+  }
+  public override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws -> Bool {
+    false
+  }
 }
 
 public func createTestElementNode() throws -> TestElementNode { try TestElementNode() }
@@ -132,6 +144,18 @@ public func createTestElementNode() throws -> TestElementNode { try TestElementN
 public final class TestInlineElementNode: ElementNode {
   public override class func config() -> NodeConfig? {
     NodeConfig(TestInlineElementNode.self, type: "test_inline_block", extends: ElementNode.self)
+  }
+  public override func createDOM(
+    _ config: EditorConfig, _ editor: Editor? = nil
+  ) throws
+    -> DOMElement
+  {
+    getDocument().createElement("a")
+  }
+  public override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws -> Bool {
+    false
   }
   public override func isInline() throws -> Bool { true }
   public override func canBeEmpty() throws -> Bool { false }
@@ -145,6 +169,18 @@ public func createTestInlineElementNode() throws -> TestInlineElementNode {
 public final class TestShadowRootNode: ElementNode {
   public override class func config() -> NodeConfig? {
     NodeConfig(TestShadowRootNode.self, type: "test_shadow_root", extends: ElementNode.self)
+  }
+  public override func createDOM(
+    _ config: EditorConfig, _ editor: Editor? = nil
+  ) throws
+    -> DOMElement
+  {
+    getDocument().createElement("div")
+  }
+  public override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws -> Bool {
+    false
   }
   public override func isShadowRoot() -> Bool { true }
 }

@@ -115,7 +115,8 @@ public func isRootNode(_ node: LexicalNode?) -> Bool { node is RootNode }
 /// A paragraph of inline content.
 open class ParagraphNode: ElementNode {
   open override class func config() -> NodeConfig? {
-    NodeConfig(ParagraphNode.self, type: "paragraph", extends: ElementNode.self)
+    NodeConfig(
+      ParagraphNode.self, type: "paragraph", extends: ElementNode.self, children: .inline)
   }
 
   open override class func importDOM() -> DOMConversionMap? {
@@ -397,7 +398,11 @@ open class DecoratorNode: LexicalNode, SlotNode {
 
   open func isIsolated() -> Bool { false }
 
-  open override func isInline() throws -> Bool { true }
+  /// `true`, or the `inline` a class in its config chain declares (JS
+  /// synthesizes an `isInline()` returning it for the declaring class).
+  open override func isInline() throws -> Bool {
+    getNodeClassRecord(Swift.type(of: self)).inline ?? true
+  }
 
   open func isKeyboardSelectable() -> Bool { true }
 }

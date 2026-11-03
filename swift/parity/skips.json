@@ -103,6 +103,10 @@
     "reason": "out-of-scope-package",
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
+  "lexical/src/__tests__/unit/FastPathCrossParent.test.ts::fast path differential fuzz — cross-parent moves > fast path matches the general walk across cross-parent moves": {
+    "reason": "deviation",
+    "note": "Compares the reconciler's children fast path with its general walk (DOM, JSON and text snapshots); the Swift reconciler has only the general walk, so there is nothing to compare. FastPathCrossParentTextCache checks the cache it keeps."
+  },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: Ghostty terminal paste with inline divs": {
     "reason": "out-of-scope-package",
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
@@ -1842,6 +1846,98 @@
   "lexical/src/__tests__/unit/LexicalNodeState.test.ts::LexicalNode state > __state is not an enumerable property": {
     "reason": "deviation",
     "note": "JS property enumerability; Swift nodes have no enumerable properties."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves preserve the source insertion anchor (regression #9273) > setEditorState: move x from cxy to a and insert z before y": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves preserve the source insertion anchor (regression #9273) > setEditorState: move x from cxy to ab and insert z before y": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves preserve the source insertion anchor (regression #9273) > setEditorState: move x from xy to a and insert z before y": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves preserve the source insertion anchor (regression #9273) > setEditorState: move x from xy to ab and insert z before y": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves preserve the source insertion anchor (regression #9273) > update: move x from cxy to a and insert z before y": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves preserve the source insertion anchor (regression #9273) > update: move x from cxy to ab and insert z before y": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves preserve the source insertion anchor (regression #9273) > update: move x from xy to a and insert z before y": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves preserve the source insertion anchor (regression #9273) > update: move x from xy to ab and insert z before y": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves reuse DOM (regression #8420) > Cross-parent swap with updateDOM=true does not throw": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves reuse DOM (regression #8420) > Decorator wrapped in another element reuses its DOM": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves reuse DOM (regression #8420) > Element subtree move preserves descendant DOM identities": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves reuse DOM (regression #8420) > Multi-level nested subtree move preserves all descendant DOMs": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Cross-parent moves reuse DOM (regression #8420) > Same-parent reorder is unaffected by the reuse branch": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Should allow overriding direction of root node children when root node has direction": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Should allow overriding direction of root node children when root node has no direction": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Should not set direction of root node children if root node has direction": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Should set direction of root node children to auto if root node has no direction": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > Should update root children when root node direction changes": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > children fast path: contiguous-suffix incremental update > AUDIT-5: size-delta suffix routes DOM ops to slot.element on wrapping parents": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > children fast path: contiguous-suffix incremental update > AUDIT-5b: size-delta suffix routes $reconcileNode replaceChild through slot.element on wrapping parents": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > children fast path: contiguous-suffix incremental update > AUDIT-6: same-size suffix reads current-state cache after $updateDOM=true": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > setElementIndent > clears padding when indent returns to 0": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
+  },
+  "lexical/src/__tests__/unit/LexicalReconciler.test.ts::LexicalReconciler > setElementIndent > emits a CSS variable reference rather than a pre-resolved value": {
+    "reason": "dom-only",
+    "note": "Asserts the reconciled DOM (dir attributes, indent CSS, DOM node reuse and order on moves, wrapping-parent DOM slots, updateDOM=true replacement); the TextKit views render, and the model half of the reconciler is ported in LexicalReconcilerTests."
   },
   "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a blur event dispatches its command, also while read-only: false": {
     "reason": "dom-only",

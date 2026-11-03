@@ -195,6 +195,10 @@ These are reversible choices made while porting, under Q7 and Q27.
   because Swift cannot ask whether a subclass overrides it (JS does so only
   for elements that override it). Unit tests whose upstream editor is
   mounted use `createMountedTestEditor()`.
+- **Overriding `getTextContent` alone.** JS gives a class that overrides
+  `getTextContent` but not `getTextContentSize` a size delegated to
+  `getTextContent()`. Swift cannot detect the override, so a Swift node that
+  overrides `getTextContent` must override `getTextContentSize` too.
 - **Listener clean-ups.** In JS any update, editable, decorator or text
   content listener that returns a function has it called before its next
   call and on teardown. Swift keeps the `Void` listener types and adds an

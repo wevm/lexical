@@ -761,4 +761,95 @@ private func same(_ a: (any BaseSelection)?, _ b: (any BaseSelection)?) -> Bool 
     try editor.read {}
     #expect(calls == 1)
   }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves mutation-listener updates: move (discrete: false)"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves mutation-listener updates: clear (discrete: false)"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves mutation-listener updates: replace (discrete: false)"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves mutation-listener updates: content only (discrete: false)"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves mutation-listener updates: move (discrete: true)"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves mutation-listener updates: clear (discrete: true)"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves mutation-listener updates: replace (discrete: true)"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves mutation-listener updates: content only (discrete: true)"
+    ),
+    arguments: [
+      ("move", false), ("clear", false), ("replace", false), ("content only", false),
+      ("move", true), ("clear", true), ("replace", true), ("content only", true),
+    ])
+  func preservesMutationListenerUpdates(change: String, discrete: Bool) throws {
+    let editor = try buildEditor()
+    try mountEditor(editor)
+    try editor.update(discrete: true) {
+      let text = try createTextNode("Hello world")
+      try getRoot().clear().append(try createParagraphNode().append(text))
+      _ = try text.select(1, 1)
+    }
+    var selections: [BaseSelection?] = []
+    let unregisterCommand = onSelectionChange(editor) {
+      selections.append(try getSelection()?.clone())
+      return false
+    }
+    var unregisterMutation: (() -> Void)?
+    unregisterMutation = try editor.registerMutationListener(
+      TextNode.self,
+      { _, _ in
+        unregisterMutation?()
+        try editor.update(discrete: discrete) {
+          if change == "clear" {
+            try setSelection(nil)
+          } else if change == "replace" {
+            let text = try createTextNode("Replacement")
+            try getRoot().clear().append(try createParagraphNode().append(text))
+            _ = try text.select(7, 7)
+          } else if change == "move" {
+            _ = try firstText().select(7, 7)
+          } else {
+            try firstText().setTextContent("Hello world!?")
+          }
+        }
+      }, skipInitialization: true)
+    try editor.update(discrete: true) {
+      let text = try firstText()
+      try text.setTextContent("Hello world!")
+      _ = try text.select(2, 2)
+    }
+    try editor.read { () throws in
+      let selection = try getSelection()
+      if change == "clear" {
+        #expect(selection == nil)
+      } else {
+        let range = try #require(selection as? RangeSelection)
+        let offset = change == "content only" ? 2 : 7
+        #expect([range.anchor.offset, range.focus.offset] == [offset, offset])
+      }
+      #expect(
+        try getRoot().getTextContent()
+          == (change == "replace"
+            ? "Replacement" : change == "content only" ? "Hello world!?" : "Hello world!"))
+      // Mutation listeners run after the first selection has committed.
+      // Their changes belong to a second update and notify before its commit.
+      #expect(selections.count == (change == "content only" ? 1 : 2))
+      if let selection {
+        #expect(try selections.last.flatMap { $0 }.map { try selection.is($0) } == true)
+      } else {
+        #expect(selections.last.map { $0 == nil } == true)
+      }
+    }
+    unregisterCommand()
+  }
 }

@@ -5,6 +5,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- An update that `onError` starts while handling a failed update is now
+  queued until the failed update is cleaned up, as in JS, instead of running
+  at once.
 - `getRegisteredSubtypeMap(_:)`, and `withWarningHandler(_:_:)` to capture
   the warnings Lexical writes to standard error, such as the one
   `createEditor` now gives for a replacement without `withKlass`.

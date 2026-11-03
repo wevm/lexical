@@ -733,7 +733,9 @@ func beginUpdate(
       restore()
       throw error
     }
-    restore()
+    // As in JS's `finally`, the update's context is restored only after
+    // onError and the commit, so an update onError starts is queued.
+    defer { restore() }
     discardPendingUpdate(editor, queuedBefore)
     var rethrown: Error? = nil
     do {

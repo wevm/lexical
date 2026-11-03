@@ -5,6 +5,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `RichTextExtension` now registers `CoreImportExtension` and
+  `RichTextImportRules` (headings, quotes, the Google Docs title), and
+  `ShadowRootQuoteRule` is available to import shadow root quotes.
 - Added `DOMImportExtension` and `CoreImportExtension` to `LexicalHTML`:
   `defineImportRule`, the `sel` selector builders and `parseSelector`,
   `defineOverlayRules`, `BlockSchema`, `InlineSchema`, `NestedBlockSchema`,

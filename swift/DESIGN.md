@@ -341,11 +341,10 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `Editor.selectionMovement` for a `.line` move where JS probes
   `Selection.modify`; inline-grid line navigation (a CSS layout probe) is
   left out. The copy, cut, paste, drop and drag handlers arrive with
-  `LexicalClipboard`. `RichTextExtension` depends only on
-  `NormalizeInlineElementsExtension` until `@lexical/a11y`
-  (HeadingAnnounce), the M3 event extensions (Dragon,
-  NormalizeTripleClickSelection) and the DOMImportExtension pipeline are
-  ported. `HeadingNode.insertNewAfter()` (no selection) is a separate
+  `LexicalClipboard`. `RichTextExtension` depends on
+  `NormalizeInlineElementsExtension`, `CoreImportExtension` and its own
+  import rules; `@lexical/a11y` (HeadingAnnounce) and the M3 event
+  extensions (Dragon, NormalizeTripleClickSelection) are not ported yet. `HeadingNode.insertNewAfter()` (no selection) is a separate
   method, because Swift's override takes a non-optional selection.
   `QuoteNode.isShadowRoot()` can't throw, so outside a read or update it
   reads the node it is called on. `SET_TEXT_FORMAT_COMMAND` carries

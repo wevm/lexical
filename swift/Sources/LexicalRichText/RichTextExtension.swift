@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalHTML
 
 // Port of packages/lexical-rich-text/src/LexicalRichTextExtension.ts.
 
@@ -36,13 +37,17 @@ func mergeEscapeFormatTriggers(
 
 /// `RichTextExtension`: headings, quotes and the rich text commands.
 ///
-/// Of upstream's dependencies, only NormalizeInlineElementsExtension is
-/// ported. HeadingAnnounce needs @lexical/a11y; Dragon and
-/// NormalizeTripleClickSelection handle browser events; the
-/// DOMImportExtension rules arrive with that pipeline (DESIGN.md).
+/// Of upstream's dependencies, HeadingAnnounce (which needs @lexical/a11y),
+/// Dragon and NormalizeTripleClickSelection (browser events) are not
+/// ported (DESIGN.md).
 public let RichTextExtension = defineExtension(
   name: "@lexical/rich-text", config: RichTextConfig(), conflictsWith: ["@lexical/plain-text"],
-  dependencies: [NormalizeInlineElementsExtension],
+  dependencies: [
+    NormalizeInlineElementsExtension,
+    // DOMImportExtension support for the nodes registered here.
+    CoreImportExtension,
+    configExtension(DOMImportExtension) { $0.rules = RichTextImportRules.map(\.entry) },
+  ],
   mergeConfig: { config, overrides in
     var merged = overrides.applied(to: config)
     if let triggers = overrides.escapeFormatTriggers {

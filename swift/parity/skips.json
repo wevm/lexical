@@ -331,6 +331,42 @@
     "reason": "dom-only",
     "note": "Tests the DOM node the reconciler creates."
   },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > can paste HTML with tabs and new lines (2)": {
+    "reason": "out-of-scope-package",
+    "note": "Uses @lexical/clipboard paste; port with LexicalClipboard."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > can paste plain text with tabs and newlines in plain text": {
+    "reason": "out-of-scope-package",
+    "note": "Uses @lexical/clipboard paste; port with LexicalClipboard."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > can paste plain text with tabs and newlines in rich text": {
+    "reason": "out-of-scope-package",
+    "note": "Uses @lexical/clipboard paste; port with LexicalClipboard."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element indents when selection at the start of the block": {
+    "reason": "out-of-scope-package",
+    "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (1)": {
+    "reason": "out-of-scope-package",
+    "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (2)": {
+    "reason": "out-of-scope-package",
+    "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (3)": {
+    "reason": "out-of-scope-package",
+    "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > elements indent when selection spans across multiple blocks": {
+    "reason": "out-of-scope-package",
+    "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > elements tabs when selection is not at the start and overlaps another tab": {
+    "reason": "out-of-scope-package",
+    "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
+  },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > applies styles with direct DOM property updates": {
     "reason": "dom-only",
     "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."

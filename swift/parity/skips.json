@@ -311,6 +311,14 @@
     "reason": "out-of-scope-package",
     "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
   },
+  "lexical/src/__tests__/unit/LexicalSelectionCaretSlices.test.ts::selection text slices > styling retains the selected prefix at an element start (backward=false)": {
+    "reason": "out-of-scope-package",
+    "note": "Uses $patchStyleText from @lexical/selection; port with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionCaretSlices.test.ts::selection text slices > styling retains the selected prefix at an element start (backward=true)": {
+    "reason": "out-of-scope-package",
+    "note": "Uses $patchStyleText from @lexical/selection; port with that package."
+  },
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns globalThis.document when called with no active editor": {
     "reason": "dom-only",
     "note": "There is no document in the native port."

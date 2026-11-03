@@ -178,6 +178,13 @@ public typealias ListenerCleanup = () -> Void
 /// does not conform counts as connected.
 public protocol LexicalRootElement: AnyObject {
   var isConnected: Bool { get }
+  /// Gives up the focus and clears the native selection, as `editor.blur()`
+  /// does to the DOM root. Does nothing by default.
+  func blur()
+}
+
+extension LexicalRootElement {
+  public func blur() {}
 }
 
 /// `RootListener`: the new and previous root elements; it may return a
@@ -662,6 +669,11 @@ public final class Editor {
   public func getDecorators() -> [NodeKey: Any] { _decorators }
 
   public func getRootElement() -> AnyObject? { _rootElement }
+
+  /// `blur()`: the root gives up the focus and its native selection.
+  public func blur() {
+    (_rootElement as? LexicalRootElement)?.blur()
+  }
 
   /// Attaches the editor to `nextRootElement`, the native view it renders
   /// into, or detaches it with `nil`. As in JS, the editor is reset and the

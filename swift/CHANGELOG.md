@@ -5,6 +5,15 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added the `LexicalRichText` module: `HeadingNode`, `QuoteNode` (with
+  `quoteShadowRootState`), their HTML importers and exporters,
+  `registerRichText`, `RichTextExtension`, the escape-format triggers and
+  `DRAG_DROP_PASTE`. Clipboard and drag handlers come with
+  `LexicalClipboard`. `Editor.blur()` and `LexicalRootElement.blur()` are
+  new; `SelectionGranularity` gains `.line`, and `SET_TEXT_FORMAT_COMMAND`
+  now carries ordered `(format, value)` pairs.
+- The upstream test utilities (the test editor, the test nodes and the
+  model-shape helpers) are public in `LexicalTesting`.
 - Added HTML import: `LexicalHTML.generateNodesFromDOM`, `importDOM` on
   nodes (`DOMConversionMap`, `DOMConversion`, `DOMConversionOutput`), the
   core nodes' importers, `HTMLConfig.import`, and the helpers

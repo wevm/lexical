@@ -315,6 +315,20 @@
     "reason": "dom-only",
     "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
   },
+  "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > list with an empty item: cross-block me…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds ListNode and ListItemNode; ports with @lexical/list."
+  },
+  "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > preserves heading when followed by a non-paragraph sibling": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds ListNode and ListItemNode; ports with @lexical/list."
+  },
   "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > Expect initial output to be a block with no text": {
     "reason": "out-of-scope-package",
     "packages": [

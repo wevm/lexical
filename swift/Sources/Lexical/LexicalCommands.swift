@@ -47,8 +47,9 @@ public let REMOVE_TEXT_COMMAND = LexicalCommand<Void>("REMOVE_TEXT_COMMAND")
 public let DELETE_WORD_COMMAND = LexicalCommand<Bool>("DELETE_WORD_COMMAND")
 public let DELETE_LINE_COMMAND = LexicalCommand<Bool>("DELETE_LINE_COMMAND")
 public let FORMAT_TEXT_COMMAND = LexicalCommand<TextFormatType>("FORMAT_TEXT_COMMAND")
-/// The formats to set (`true`) or clear (`false`); others are left alone.
-public let SET_TEXT_FORMAT_COMMAND = LexicalCommand<[TextFormatType: Bool]>(
+/// The formats to set (`true`) or clear (`false`), in order, as the keys of
+/// the JS payload object are; others are left alone.
+public let SET_TEXT_FORMAT_COMMAND = LexicalCommand<[(TextFormatType, Bool)]>(
   "SET_TEXT_FORMAT_COMMAND")
 public let UNDO_COMMAND = LexicalCommand<Void>("UNDO_COMMAND")
 public let REDO_COMMAND = LexicalCommand<Void>("REDO_COMMAND")

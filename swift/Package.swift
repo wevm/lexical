@@ -16,6 +16,7 @@ let package = Package(
     .library(name: "LexicalSelection", targets: ["LexicalSelection"]),
     .library(name: "LexicalUtils", targets: ["LexicalUtils"]),
     .library(name: "LexicalHTML", targets: ["LexicalHTML"]),
+    .library(name: "LexicalRichText", targets: ["LexicalRichText"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -58,6 +59,15 @@ let package = Package(
     .testTarget(
       name: "LexicalHTMLTests",
       dependencies: ["Lexical", "LexicalExtension", "LexicalHTML", "LexicalTesting"]),
+    // @lexical/rich-text: headings, quotes and the rich text commands.
+    .target(
+      name: "LexicalRichText",
+      dependencies: ["Lexical", "LexicalExtension", "LexicalSelection", "LexicalUtils"]),
+    .testTarget(
+      name: "LexicalRichTextTests",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalRichText", "LexicalTesting",
+      ]),
     // The TextKit 2 text views and the platform-neutral document they show.
     .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
     .testTarget(name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalTextKit"]),

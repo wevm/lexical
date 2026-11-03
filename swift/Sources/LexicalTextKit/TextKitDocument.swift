@@ -153,6 +153,23 @@ public struct TextKitDocument: Sendable {
         while i < units.count, !isSpace(units[i]) { i += 1 }
       }
       return i
+    case .line:
+      // The same column on the previous or next line, clamped to its end.
+      var start = location
+      while start > 0, !isBreak(units[start - 1]) { start -= 1 }
+      let column = location - start
+      if isBackward {
+        guard start > 0 else { return location }
+        var prevStart = start - 1
+        while prevStart > 0, !isBreak(units[prevStart - 1]) { prevStart -= 1 }
+        return min(prevStart + column, start - 1)
+      }
+      var end = location
+      while end < units.count, !isBreak(units[end]) { end += 1 }
+      guard end < units.count else { return location }
+      var nextEnd = end + 1
+      while nextEnd < units.count, !isBreak(units[nextEnd]) { nextEnd += 1 }
+      return min(end + 1 + column, nextEnd)
     case .lineboundary:
       var i = location
       if isBackward {

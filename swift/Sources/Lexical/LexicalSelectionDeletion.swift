@@ -24,9 +24,9 @@ public enum SelectionAlter: String, Sendable {
   case move, extend
 }
 
-/// `'character'`, `'word'` or `'lineboundary'`.
+/// `'character'`, `'word'`, `'line'` or `'lineboundary'`.
 public enum SelectionGranularity: String, Sendable {
-  case character, word, lineboundary
+  case character, word, line, lineboundary
 }
 
 /// `$needsBlockCursorBeside`: whether a caret beside `node` needs a block

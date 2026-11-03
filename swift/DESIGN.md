@@ -310,6 +310,28 @@ Reversible choices made porting `@lexical/extension` under Q18.
   line breaks and decorator anchors belong to the DOM reconciler, which the
   views replace.
 
+- **Rich text (`LexicalRichText`).** `registerRichText` handles the
+  commands as JS does on a browser without `beforeinput`: native views
+  have no `beforeinput` to fall through to, so the `IS_IOS`/`IS_SAFARI`
+  early returns of Backspace and Enter are left out, as upstream's unit
+  tests (jsdom) leave them out. Key events reach the editor, never a
+  control inside a decorator, so the decorator pass-through of Backspace
+  and Delete has no equivalent; a click keeps a NodeSelection when its
+  `targetKey` is the selected node or inside it, where JS tests
+  `dom.contains(event.target)`. Up/down next to a block decorator asks
+  `Editor.selectionMovement` for a `.line` move where JS probes
+  `Selection.modify`; inline-grid line navigation (a CSS layout probe) is
+  left out. The copy, cut, paste, drop and drag handlers arrive with
+  `LexicalClipboard`. `RichTextExtension` depends only on
+  `NormalizeInlineElementsExtension` until `@lexical/a11y`
+  (HeadingAnnounce), the M3 event extensions (Dragon,
+  NormalizeTripleClickSelection) and the DOMImportExtension pipeline are
+  ported. `HeadingNode.insertNewAfter()` (no selection) is a separate
+  method, because Swift's override takes a non-optional selection.
+  `QuoteNode.isShadowRoot()` can't throw, so outside a read or update it
+  reads the node it is called on. `SET_TEXT_FORMAT_COMMAND` carries
+  ordered pairs, as a JS object keeps its keys in order.
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

@@ -28,6 +28,16 @@ for tool in swift swiftc sourcekit-lsp docc; do
 done
 swift --version
 
+echo '==> Installing git subtree, for splitting swift/ into the mirror'
+if [[ ! -x "$(git --exec-path)/git-subtree" ]]; then
+  git_version="$(git --version | awk '{print $3}')"
+  subtree_tmp="$(mktemp)"
+  curl -sSfL -o "$subtree_tmp" \
+    "https://raw.githubusercontent.com/git/git/v${git_version}/contrib/subtree/git-subtree.sh"
+  sudo install -m 0755 "$subtree_tmp" "$(git --exec-path)/git-subtree"
+  rm -f "$subtree_tmp"
+fi
+
 echo '==> Selecting the repository Node and pnpm versions'
 node_version="$(tr -d '[:space:]' < .nvmrc)"
 if [[ "$(node -p 'process.versions.node')" != "$node_version" ]]; then

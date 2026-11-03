@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@lexical/headless": "workspace:*",
+    "@lexical/html": "workspace:*",
     "lexical": "workspace:*"
   }
 }

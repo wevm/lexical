@@ -6,13 +6,38 @@
 /// text node or nothing) and an optional hook to run on it once its
 /// children are appended.
 public struct DOMExportOutput {
+  /// Runs once the children are appended; a returned node replaces it.
   public var after: ((DOMNode?) throws -> DOMNode?)?
   public var element: DOMNode?
+  /// Appends the exported children somewhere other than `element`.
+  public var append: ((DOMDocumentFragment) throws -> Void)?
+  /// The children to export in place of the node's own.
+  public var getChildNodes: (() throws -> [LexicalNode])?
 
-  public init(element: DOMNode?, after: ((DOMNode?) throws -> DOMNode?)? = nil) {
+  public init(
+    element: DOMNode?, after: ((DOMNode?) throws -> DOMNode?)? = nil,
+    append: ((DOMDocumentFragment) throws -> Void)? = nil,
+    getChildNodes: (() throws -> [LexicalNode])? = nil
+  ) {
     self.element = element
     self.after = after
+    self.append = append
+    self.getChildNodes = getChildNodes
   }
+}
+
+private let blockTags: Set<String> = [
+  "address", "article", "aside", "blockquote", "canvas", "dd", "div", "dl", "dt", "fieldset",
+  "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hr",
+  "li", "main", "nav", "noscript", "ol", "p", "pre", "section", "table", "td", "tfoot", "ul",
+  "video",
+]
+
+/// `isBlockDomNode(node)`: a block-level tag not displayed inline.
+public func isBlockDomNode(_ node: DOMNode) -> Bool {
+  guard let element = node as? DOMElement else { return false }
+  if element.style["display"].hasPrefix("inline") { return false }
+  return blockTags.contains(element.localName)
 }
 
 /// `EditorDOMRenderConfig` (`@experimental`): how an editor turns nodes

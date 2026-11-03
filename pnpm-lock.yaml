@@ -704,6 +704,9 @@ importers:
       '@lexical/headless':
         specifier: workspace:*
         version: link:../lexical-headless
+      '@lexical/html':
+        specifier: workspace:*
+        version: link:../lexical-html
       lexical:
         specifier: workspace:*
         version: link:../lexical

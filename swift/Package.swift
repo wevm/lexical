@@ -15,6 +15,7 @@ let package = Package(
     .library(name: "LexicalExtension", targets: ["LexicalExtension"]),
     .library(name: "LexicalSelection", targets: ["LexicalSelection"]),
     .library(name: "LexicalUtils", targets: ["LexicalUtils"]),
+    .library(name: "LexicalHTML", targets: ["LexicalHTML"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -52,6 +53,11 @@ let package = Package(
       dependencies: [
         "Lexical", "LexicalExtension", "LexicalSelection", "LexicalUtils", "LexicalTesting",
       ]),
+    // @lexical/html: HTML export and import over the DOM in core.
+    .target(name: "LexicalHTML", dependencies: ["Lexical", "LexicalSelection"]),
+    .testTarget(
+      name: "LexicalHTMLTests",
+      dependencies: ["Lexical", "LexicalExtension", "LexicalHTML", "LexicalTesting"]),
     // The TextKit 2 text views and the platform-neutral document they show.
     .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
     .testTarget(name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalTextKit"]),
@@ -59,7 +65,8 @@ let package = Package(
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
     // Replays packages/lexical-conformance/vectors, which only the monorepo
     // carries; skipped elsewhere.
-    .testTarget(name: "ConformanceTests", dependencies: ["Lexical", "LexicalTesting"]),
+    .testTarget(
+      name: "ConformanceTests", dependencies: ["Lexical", "LexicalHTML", "LexicalTesting"]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
     .testTarget(name: "LexicalTests", dependencies: ["Lexical", "LexicalTesting"]),
   ],

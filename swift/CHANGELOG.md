@@ -5,6 +5,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added the `LexicalHTML` module's export half: `generateHtmlFromNodes`,
+  `generateDOMFromNodes`, `generateDOMFromRoot` and `appendNodeToHTML`,
+  which match `@lexical/html` byte for byte (`html/export` vectors).
+  `DOMExportOutput` gains `append` and `getChildNodes`; core gains
+  `isBlockDomNode`.
 - Added `createDOM`, `updateDOM`, `getDOMSlot` and `exportDOM` to nodes,
   with the core nodes' implementations (theme classes, inline styles, the
   `<b>`/`<i>`/`<s>`/`<u>` export wrappers), `EditorDOMRenderConfig`,

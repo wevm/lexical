@@ -19,13 +19,81 @@
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf); Swift's traversal return types are fixed by their signatures."
   },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a default is metadata, so nothing hands out a mutable one > a comparator is called with no receiver, and its type says so": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a default is metadata, so nothing hands out a mutable one > a nested reference default is frozen too, not just the outer one": {
+    "reason": "deviation",
+    "note": "JS freezes reference-typed defaults and tracks caller-owned values; Swift JSON values are immutable value types, so there is nothing to freeze or leak."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a default is metadata, so nothing hands out a mutable one > nor does an enclosing schema deriving its own default": {
+    "reason": "deviation",
+    "note": "JS freezes reference-typed defaults and tracks caller-owned values; Swift JSON values are immutable value types, so there is nothing to freeze or leak."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a default is metadata, so nothing hands out a mutable one > transformValue does not freeze the value its transform returned": {
+    "reason": "deviation",
+    "note": "JS freezes reference-typed defaults and tracks caller-owned values; Swift JSON values are immutable value types, so there is nothing to freeze or leak."
+  },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::a field stands in for its accessor only while nobody overrides it > the accessor resolves through the whole chain, not just one level": {
     "reason": "deviation",
     "note": "Tests resolveSchemaField, the JS reflective accessor lookup; Swift accessors dispatch dynamically through open methods instead."
   },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a misconfigured accessor fails at registration > a `setterTable` that cannot setterTable the default is refused": {
+    "reason": "deviation",
+    "note": "Accessors are named by string on the JS schema and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to check at registration."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a misconfigured accessor fails at registration > and keeps failing, rather than registering in silence": {
+    "reason": "deviation",
+    "note": "Accessors are named by string on the JS schema and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to check at registration."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a misspelled field name is caught in both directions > a misspelled optional field is still a misspelling": {
+    "reason": "deviation",
+    "note": "A Swift withField names its field by key path, which the compiler checks, so a misspelled or missing field cannot be declared."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a misspelled field name is caught in both directions > a swallowed failure does not retire the check": {
+    "reason": "deviation",
+    "note": "A Swift withField names its field by key path, which the compiler checks, so a misspelled or missing field cannot be declared."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a misspelled field name is caught in both directions > exporting reports a typo that only the import side declares": {
+    "reason": "deviation",
+    "note": "A Swift withField names its field by key path, which the compiler checks, so a misspelled or missing field cannot be declared."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a schema is bound to the node it was checked against > an objectValue is not a node schema": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a schema is bound to the node it was checked against > it does not install on an unrelated node": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a schema is bound to the node it was checked against > it installs on the node it names, and on a subclass of it": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a schema tracks what it accepts, not only what it parses to > a node composes its flat NodeState too": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a schema tracks what it accepts, not only what it parses to > a node schema keeps the input of the fields it was given": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
+  },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::defaults and untrusted input > a union names its accessors on the union, not on a member": {
     "reason": "deviation",
     "note": "Accessors are named by string on the JS schema and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or resolve."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::review fixes > a caller-supplied default is not frozen": {
+    "reason": "deviation",
+    "note": "JS freezes reference-typed defaults and tracks caller-owned values; Swift JSON values are immutable value types, so there is nothing to freeze or leak."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::the JSON input types > LexicalUpdateJSON keeps the properties a hand-written override reads": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::the JSON input types > a $importJSON callback typed against SerializedLexicalNode still fits": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
   },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::the export and parse shapes differ only where parsing is looser > an element relaxes its children too": {
     "reason": "deviation",

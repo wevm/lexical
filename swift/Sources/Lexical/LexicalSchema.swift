@@ -633,6 +633,10 @@ public struct SchemaField {
   /// Applies a parsed value. `nil` declares the property derived on import
   /// (`setter: null`), which the compact form leaves out.
   public let set: ((LexicalNode, JSONValue?) throws -> Void)?
+  /// Copies the field from the node a clone is made from, for a property
+  /// declared with `field:` (`withField`), so its class needs no
+  /// `afterCloneFrom`.
+  let carry: ((LexicalNode, LexicalNode) -> Void)?
 
   public init<Node: LexicalNode>(
     _ key: String, _ schema: SerializationSchema, of _: Node.Type,
@@ -646,10 +650,113 @@ public struct SchemaField {
     self.get = get.map { get in { try get($0 as! Node) } }
     self.when = when.map { when in { try when($0 as! Node) } }
     self.set = set.map { set in { try set($0 as! Node, $1) } }
+    self.carry = nil
+  }
+
+  /// `withField(schema, {field})`: the property is the stored field at
+  /// `field`, read and written directly, and carried across a clone. `when`
+  /// writes it only where it holds.
+  public init<Node: LexicalNode, Value: SchemaFieldValue>(
+    _ key: String, _ schema: SerializationSchema,
+    field: ReferenceWritableKeyPath<Node, Value>, when: ((Node) throws -> Bool)? = nil
+  ) throws {
+    try notNestedSet("withField", schema)
+    // An optional property is absent when it has no value; any other one
+    // writes JSON `null`.
+    let absent: JSONValue? =
+      if case .optional = schema.meta { nil } else { .null }
+    self.key = key
+    self.schema = schema
+    self.get = { node in (node as! Node)[keyPath: field].schemaValue ?? absent }
+    self.when = when.map { when in { try when($0 as! Node) } }
+    self.set = { node, value in
+      if let value = Value(schemaValue: value) {
+        (node as! Node)[keyPath: field] = value
+      }
+    }
+    self.carry = { to, from in
+      (to as! Node)[keyPath: field] = (from as! Node)[keyPath: field]
+    }
   }
 
   /// Whether the compact form omits `value`: `undefined`, or the default.
   func isCompactDefault(_ value: JSONValue?) -> Bool {
     value == nil || schema.isSchemaDefault(value)
+  }
+}
+
+/// A Swift type a `withField` property can be stored as, converted to and
+/// from the schema's JSON domain.
+public protocol SchemaFieldValue {
+  /// The value as the schema's JSON; `nil` when it has none.
+  var schemaValue: JSONValue? { get }
+  /// The value a parsed JSON value stands for, or `nil` when it is not one.
+  init?(schemaValue: JSONValue?)
+}
+
+extension String: SchemaFieldValue {
+  public var schemaValue: JSONValue? { .string(self) }
+  public init?(schemaValue: JSONValue?) {
+    guard case .string(let s)? = schemaValue else { return nil }
+    self = s
+  }
+}
+
+extension Double: SchemaFieldValue {
+  public var schemaValue: JSONValue? { .number(self) }
+  public init?(schemaValue: JSONValue?) {
+    guard case .number(let n)? = schemaValue else { return nil }
+    self = n
+  }
+}
+
+extension Int: SchemaFieldValue {
+  public var schemaValue: JSONValue? { .int(self) }
+  public init?(schemaValue: JSONValue?) {
+    guard case .number(let n)? = schemaValue, let i = Int(exactly: n) else { return nil }
+    self = i
+  }
+}
+
+extension Bool: SchemaFieldValue {
+  public var schemaValue: JSONValue? { .bool(self) }
+  public init?(schemaValue: JSONValue?) {
+    guard case .bool(let b)? = schemaValue else { return nil }
+    self = b
+  }
+}
+
+extension JSONValue: SchemaFieldValue {
+  public var schemaValue: JSONValue? { self }
+  public init?(schemaValue: JSONValue?) {
+    guard let schemaValue else { return nil }
+    self = schemaValue
+  }
+}
+
+extension Optional: SchemaFieldValue where Wrapped: SchemaFieldValue {
+  /// `nil` has no value: absent from the JSON, or `null` for a nullable.
+  public var schemaValue: JSONValue? { self?.schemaValue }
+  public init?(schemaValue: JSONValue?) {
+    if schemaValue == nil || schemaValue == .null {
+      self = .none
+    } else if let wrapped = Wrapped(schemaValue: schemaValue) {
+      self = .some(wrapped)
+    } else {
+      return nil
+    }
+  }
+}
+
+extension Array: SchemaFieldValue where Element: SchemaFieldValue {
+  public var schemaValue: JSONValue? { .array(map { $0.schemaValue ?? .null }) }
+  public init?(schemaValue: JSONValue?) {
+    guard case .array(let items)? = schemaValue else { return nil }
+    var result: [Element] = []
+    for item in items {
+      guard let element = Element(schemaValue: item) else { return nil }
+      result.append(element)
+    }
+    self = result
   }
 }

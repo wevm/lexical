@@ -73,6 +73,10 @@ package final class NodeClassRecord: @unchecked Sendable {
   package let getters: [SchemaField]
   /// Import setters, base-first key order.
   package let setters: [SchemaField]
+  /// The `withField` properties a clone carries, one per key.
+  package let carried: [SchemaField]
+  /// Every property of the composed schema, most derived first.
+  package let fields: [SchemaField]
   /// The flat NodeState configs, read at the top level of the JSON.
   package let flatStates: [AnyStateConfig]
   /// `$importJSON` of the nearest class that declares one.
@@ -140,6 +144,8 @@ package final class NodeClassRecord: @unchecked Sendable {
       }
     }
     self.getters = derivedFirst.filter { $0.get != nil }
+    self.carried = derivedFirst.filter { $0.carry != nil }
+    self.fields = derivedFirst
     self.setters = baseFirst.filter { $0.set != nil }
     self.flatStates = flatStates
     self.importJSON = chain.lazy.compactMap { $0.ownNodeConfig?.importJSON }.first
@@ -232,4 +238,20 @@ package func applyJSONSetters<T: LexicalNode>(_ node: T, _ serializedNode: JSONO
     try entry.set!(current, entry.schema.parse(serializedNode[entry.key]))
   }
   return current
+}
+
+/// `getComposedSchemaFields(klass)`: the schema of every property of
+/// `klass`'s JSON, its flat NodeState included, keyed by property.
+public func getComposedSchemaFields(_ klass: LexicalNode.Type) -> [String: SerializationSchema] {
+  let record = getNodeClassRecord(klass)
+  var fields: [String: SerializationSchema] = [:]
+  for stateConfig in record.flatStates {
+    if let schema = stateConfig.schema {
+      fields[stateConfig.key] = schema
+    }
+  }
+  for field in record.fields {
+    fields[field.key] = field.schema
+  }
+  return fields
 }

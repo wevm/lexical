@@ -68,7 +68,8 @@ open class LexicalNode {
   }
 
   /// Copies the state of `prevNode`, the version this node clones (same
-  /// key), or the node it copies (a new key). A subclass that stores more
+  /// key), or the node it copies (a new key), including every property
+  /// declared with `SchemaField(_:_:field:)`. A subclass that stores more
   /// than its schema declares overrides this and calls `super` first.
   open func afterCloneFrom(_ prevNode: LexicalNode) throws {
     if __key == prevNode.__key {
@@ -78,6 +79,9 @@ open class LexicalNode {
       __state = prevNode.__state
     } else if let state = prevNode.__state {
       __state = state.getWritable(self)
+    }
+    for field in getNodeClassRecord(Swift.type(of: self)).carried {
+      field.carry!(self, prevNode)
     }
   }
 

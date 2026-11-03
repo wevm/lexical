@@ -19,6 +19,14 @@
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf); Swift's traversal return types are fixed by their signatures."
   },
+  "lexical/src/__tests__/unit/LexicalNodeState.test.ts::$setState stores the value as given for every state that is not an arraySetValue > arrayValue, a hand-written parse and an updater keep the exact reference": {
+    "reason": "deviation",
+    "note": "Checks JS reference identity and an ill-typed value; Swift state values are typed value types."
+  },
+  "lexical/src/__tests__/unit/LexicalNodeState.test.ts::LexicalNode state > __state is not an enumerable property": {
+    "reason": "deviation",
+    "note": "JS property enumerability; Swift nodes have no enumerable properties."
+  },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::a compact document relaxes at every depth > a child property is unknown until it is narrowed": {
     "reason": "deviation",
     "note": "TypeScript type-level assertions on serialized-node types; Swift's JSONObject is not refined per node."

@@ -127,11 +127,12 @@ public func createState<V: JSONValueConvertible>(
 /// `createState(key, {parse: schema})`: a state described by a schema, whose
 /// default and equality come from it.
 public func createState(
-  _ key: String, schema: SerializationSchema, resetOnCopyNode: Bool = false,
+  _ key: String, schema: SerializationSchema,
+  unparse: ((JSONValue?) -> JSONValue?)? = nil, resetOnCopyNode: Bool = false,
   derived: Bool = false
 ) -> StateConfig<JSONValue?> {
   StateConfig(
-    key, parse: { schema.parse($0) }, unparse: { $0 },
+    key, parse: { schema.parse($0) }, unparse: unparse ?? { $0 },
     isEqual: { schema.isSchemaEqual($0, $1) }, resetOnCopyNode: resetOnCopyNode,
     derived: derived, schema: schema, defaultValue: .some(schema.defaultValue))
 }
@@ -398,7 +399,17 @@ public func setState<N: LexicalNode, V>(
 )
   throws -> N
 {
-  try setStateAny(node, stateConfig, value)
+  try errorOnReadOnly()
+  return try setStateAny(node, stateConfig, canonicalValue(stateConfig, value))
+}
+
+/// `canonicalValue`: a set-valued state (`arraySetValue`) stores what its
+/// parse makes of the value; any other state stores the value as given.
+private func canonicalValue<V>(_ stateConfig: StateConfig<V>, _ value: V) -> V {
+  if let schema = stateConfig.schema, case .set = schema.meta, let json = value as? JSONValue? {
+    return schema.parse(json) as! V
+  }
+  return value
 }
 
 /// `$setState(node, stateConfig, updater)`: a no-op when the updater
@@ -410,7 +421,7 @@ public func setState<N: LexicalNode, V>(
   try errorOnReadOnly()
   let latest = try node.getLatest()
   let prevValue = try getState(latest, stateConfig)
-  let value = try updater(prevValue)
+  let value = canonicalValue(stateConfig, try updater(prevValue))
   if stateConfig.isEqual(prevValue, value) {
     return latest
   }

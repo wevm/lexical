@@ -130,8 +130,9 @@ func canSimpleTextNodesBeMerged(_ node1: TextNode, _ node2: TextNode) -> Bool {
   let node2State = node2.__state
   return node1.__mode == node2.__mode && node1.__format == node2.__format
     && node1.__style == node2.__style
-    && (node1State == nil || node1State === node2State
-      || nodeStatesAreEquivalent(node1State, node2State))
+    // JS also tests `node1.__state === null`, which never holds: a node
+    // without state has `undefined`, so it is compared like any other.
+    && (node1State === node2State || nodeStatesAreEquivalent(node1State, node2State))
 }
 
 func mergeTextNodes(_ node1: TextNode, _ node2: TextNode) throws -> TextNode {

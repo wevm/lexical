@@ -26,7 +26,7 @@ final class PlainNode: LexicalNode {
 }
 
 /// `TestNode` from LexicalNode.test.ts.
-final class TestNode: LexicalNode {
+class TestNode: LexicalNode {
   override class func config() -> NodeConfig? {
     NodeConfig(TestNode.self, type: "test", extends: LexicalNode.self)
   }

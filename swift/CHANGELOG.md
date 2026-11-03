@@ -17,3 +17,6 @@ workflow publishes the section headed `## <swift/VERSION>`.
 - `SchemaField(_:_:field:)` is `withField`: a property stored in a key-path
   field, carried across a clone with no `afterCloneFrom`.
   `getComposedSchemaFields(_:)` returns a class's composed schema.
+- `setState` stores an `arraySetValue` state in its canonical form, and
+  `createState(_:schema:)` takes an `unparse`. A text node without NodeState
+  no longer merges with a neighbor that has state.

@@ -603,10 +603,14 @@ public final class Editor {
     try Lexical.parseEditorState(serialized, self, updateFn)
   }
 
-  /// Reads the editor state in `callback`. By default, pending updates are
-  /// committed first.
-  public func read<T>(_ mode: EditorReadMode = .forceCommit, _ callback: () throws -> T) throws -> T
-  {
+  /// Reads the editor state in `callback`, committing pending updates
+  /// first.
+  public func read<T>(_ callback: () throws -> T) throws -> T {
+    try read(.forceCommit, callback)
+  }
+
+  /// Reads the editor state in `callback`, as `mode` says.
+  public func read<T>(_ mode: EditorReadMode, _ callback: () throws -> T) throws -> T {
     if mode == .forceCommit {
       if !isDispatchingCommitListeners(self) {
         try commitPendingUpdates(self)

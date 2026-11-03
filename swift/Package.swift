@@ -18,6 +18,8 @@ let package = Package(
     // Replays packages/lexical-conformance/vectors, which only the monorepo
     // carries; skipped elsewhere.
     .testTarget(name: "ConformanceTests", dependencies: ["Lexical", "LexicalTesting"]),
+    // Ports of the upstream unit tests, each marked with `.upstream(...)`.
+    .testTarget(name: "LexicalTests", dependencies: ["Lexical", "LexicalTesting"]),
   ],
   swiftLanguageModes: [.v6]
 )

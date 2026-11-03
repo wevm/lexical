@@ -279,6 +279,58 @@
     "reason": "out-of-scope-package",
     "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
   },
+  "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::getDOMSlot tests > DOM selection uses getDOMSlot element for element selections": {
+    "reason": "dom-only",
+    "note": "Tests ElementDOMSlot, the DOM placement of children."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::getDOMSlot tests > can create wrapper": {
+    "reason": "dom-only",
+    "note": "Tests ElementDOMSlot, the DOM placement of children."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::indexPath > nested child": {
+    "reason": "dom-only",
+    "note": "indexPath is a DOM tree helper of LexicalDOMSlot."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::indexPath > nested child with siblings": {
+    "reason": "dom-only",
+    "note": "indexPath is a DOM tree helper of LexicalDOMSlot."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::indexPath > no path": {
+    "reason": "dom-only",
+    "note": "indexPath is a DOM tree helper of LexicalDOMSlot."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::indexPath > only child": {
+    "reason": "dom-only",
+    "note": "indexPath is a DOM tree helper of LexicalDOMSlot."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalLineBreakNode.test.ts::LexicalLineBreakNode tests > LineBreakNode.createDOM()": {
+    "reason": "dom-only",
+    "note": "Tests the DOM node the reconciler creates."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalLineBreakNode.test.ts::LexicalLineBreakNode tests > LineBreakNode.updateDOM()": {
+    "reason": "dom-only",
+    "note": "Tests the DOM node the reconciler creates."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.createDOM()": {
+    "reason": "dom-only",
+    "note": "Tests the DOM node the reconciler creates."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.importDOM handles both CSS text-align and legacy align attribute": {
+    "reason": "dom-only",
+    "note": "Tests importDOM of a <p> element; paragraph HTML import is ported with @lexical/html."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.updateDOM()": {
+    "reason": "dom-only",
+    "note": "Tests the DOM node the reconciler creates."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode.createDOM()": {
+    "reason": "dom-only",
+    "note": "Tests the DOM node the reconciler creates."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode.updateDOM()": {
+    "reason": "dom-only",
+    "note": "Tests the DOM node the reconciler creates."
+  },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > applies styles with direct DOM property updates": {
     "reason": "dom-only",
     "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."

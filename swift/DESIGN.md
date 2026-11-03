@@ -142,6 +142,14 @@ These are reversible choices made while porting, under Q7 and Q27.
   adopts.
 - **Parameterized upstream tests** become one Swift test with `arguments:`,
   carrying one `.upstream(...)` trait per upstream case.
+- **Expectations that come from the DOM.** Upstream unit tests mount a
+  `contenteditable` root, so some expected values only hold after the
+  reconciler or a DOM selection round trip has run (`RootNode.__cachedText`
+  is filled by the reconciler; `applyDOMRange` normalizes element points to
+  text points). Where the rest of the test is about the model, the port
+  asserts what the headless JS editor produces, checked by running upstream
+  headless, and says so in a comment. Tests that are only about such values
+  (the `__cachedText` tests) stay unported until the reconciler lands.
 
 ## Scope of v0.1.0 (Q21)
 

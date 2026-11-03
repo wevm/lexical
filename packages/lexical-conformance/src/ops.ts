@@ -526,8 +526,16 @@ const TRANSFORMS: Record<string, (ctx: Context) => () => void> = {
     }),
 };
 
-/** Runs `script` on a new headless editor and records every step. */
-export function runScript(script: Script): ScriptResult {
+/** A script's editor, set up with its transforms, handlers and listeners,
+ * that runs steps one at a time. */
+export type Session = {
+  editor: LexicalEditor;
+  /** Runs `step` and records it; `snapshot` records the state too. */
+  run(step: Step, snapshot: boolean): StepResult;
+};
+
+/** Starts `script` (without running its steps) on a new headless editor. */
+export function startSession(script: Omit<Script, 'steps'>): Session {
   resetRandomKey();
   const editor = createEditor({
     namespace: '',
@@ -578,7 +586,7 @@ export function runScript(script: Script): ScriptResult {
       ctx.log.push(['textContent', content]);
     });
   }
-  const results: StepResult[] = script.steps.map((step, i) => {
+  const run = (step: Step, snapshot: boolean): StepResult => {
     ctx.log = [];
     let error = false;
     try {
@@ -611,9 +619,8 @@ export function runScript(script: Script): ScriptResult {
       selection: $selectionSnapshot(),
       text: $getRoot().getTextContent(),
     }));
-    const state = editor.getEditorState();
-    const last = i === script.steps.length - 1;
-    if (script.snapshot !== 'final' || last) {
+    if (snapshot) {
+      const state = editor.getEditorState();
       result.state = JSON.stringify(state.toJSON());
       result.compact = JSON.stringify(state.toJSON(true));
     }
@@ -621,6 +628,18 @@ export function runScript(script: Script): ScriptResult {
       result.error = true;
     }
     return result;
-  });
+  };
+  return {editor, run};
+}
+
+/** Runs `script` on a new headless editor and records every step. */
+export function runScript(script: Script): ScriptResult {
+  const session = startSession(script);
+  const results = script.steps.map((step, i) =>
+    session.run(
+      step,
+      script.snapshot !== 'final' || i === script.steps.length - 1,
+    ),
+  );
   return {...script, results};
 }

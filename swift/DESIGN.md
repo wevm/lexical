@@ -151,6 +151,13 @@ These are reversible choices made while porting, under Q7 and Q27.
   adopts.
 - **Parameterized upstream tests** become one Swift test with `arguments:`,
   carrying one `.upstream(...)` trait per upstream case.
+- **Unpaired surrogates.** A JS string can hold half of a surrogate pair,
+  which an offset inside an emoji leaves behind (`splitText`, `removeText`,
+  a selection there). A Swift `String` cannot, so each half becomes U+FFFD,
+  which is also one UTF-16 unit, so lengths and offsets still agree with JS.
+  The text differs, and two halves merged back stay two U+FFFD. Fuzz vectors
+  keep offsets off pair interiors. Storing text as UTF-16 arrays would close
+  the gap at the cost of every text API.
 - **Expectations that come from the DOM.** Upstream unit tests mount a
   `contenteditable` root, so some expected values only hold after the
   reconciler or a DOM selection round trip has run (`RootNode.__cachedText`

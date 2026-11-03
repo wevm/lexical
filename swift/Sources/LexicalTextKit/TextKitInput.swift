@@ -273,8 +273,16 @@ public final class TextKitInputController {
       try commitMarkedText(text)
       return
     }
-    if let replacementRange {
-      let caret = try selectedRange()
+    // A lone newline is Enter, however it arrives (the iOS keyboard's
+    // Return replaces the selection with it), as Safari reports it.
+    if text == "\n" {
+      try beforeInput("insertParagraph", targetRange: replacementRange)
+      return
+    }
+    let caret = try selectedRange()
+    // A replacement of the selection is typing (the iOS keyboard sends each
+    // key that way), as Safari reports it, so history merges it.
+    if let replacementRange, replacementRange != caret {
       let transfer = DataTransfer()
       transfer.setData("text/plain", text)
       try beforeInput(

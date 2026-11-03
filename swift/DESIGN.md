@@ -495,7 +495,20 @@ Reversible choices made porting `@lexical/extension` under Q18.
   still reach the storage another way (Writing Tools, services, spelling
   menu) are refused in `shouldChangeText(in:replacementString:)` /
   `textView(_:shouldChangeTextIn:replacementText:)` and dispatched as a
-  replacement. Each dispatch is a discrete update followed by
+  replacement. On iOS the keyboard asks there first for what it types (over
+  the selection, or anything while it composes) and then calls
+  `insertText(_:)` / `setMarkedText(_:selectedRange:)`, so those changes
+  are allowed through to them; refusing them cuts an IME's composition
+  short after one key. The iOS keyboard types each key as a replacement of
+  the selection, which is `insertText` (as Safari reports typing, so
+  history merges it), and a lone newline is `insertParagraph` however it
+  arrives. An edit the text view still makes to its own storage (the
+  Korean keyboard merges jamo into a syllable that way) is caught from
+  `NSTextStorage.didProcessEditingNotification` and, before the next input,
+  the model's text is shown again and the edit replays as a replacement,
+  as JS's mutation observer folds DOM edits it did not make back into the
+  model. `undoManager` on iOS is the editor's history, so Command-Z, shake
+  and the three-finger swipe undo through `historyUndo`. Each dispatch is a discrete update followed by
   `drainMicrotasks()`, and the views install a main run loop observer that
   drains microtasks before the loop sleeps, so updates an app makes outside
   the views commit as they would at the end of a browser task.

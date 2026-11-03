@@ -28,7 +28,13 @@
     /// Set while a drag that started here is dropped back here.
     private var isDropFromSelf = false
     let decorators = DecoratorAttachments()
+    private let history = HistoryUndoManager()
+    public override var undoManager: UndoManager? { history }
     private let blockBarsView = BlockBarsView()
+    /// Character edits the text view made to its own text, bypassing
+    /// UITextInput (the Korean keyboard merges jamo into a syllable that
+    /// way), oldest first: the range each replaced and its text.
+    private var foreignEdits: [(range: NSRange, text: String)] = []
 
     public init(editor: Editor, frame: CGRect = .zero) {
       controller = TextKitInputController(editor: editor)
@@ -44,7 +50,13 @@
       blockBarsView.backgroundColor = .clear
       insertSubview(blockBarsView, at: 0)
       MicrotaskPump.install()
+      let storageObserver = NotificationCenter.default.addObserver(
+        forName: NSTextStorage.didProcessEditingNotification, object: textStorage, queue: nil
+      ) { [weak self] _ in
+        MainActor.assumeIsolated { self?.recordForeignEdit() }
+      }
       removeListeners = [
+        { NotificationCenter.default.removeObserver(storageObserver) },
         editor.registerCommand(
           CAN_UNDO_COMMAND,
           { [weak self] canUndo, _ in
@@ -58,6 +70,14 @@
             return false
           }, COMMAND_PRIORITY_CRITICAL),
       ]
+      history.canUndoEdit = { [weak self] in
+        MainActor.assumeIsolated { self?.canUndo ?? false }
+      }
+      history.canRedoEdit = { [weak self] in
+        MainActor.assumeIsolated { self?.canRedo ?? false }
+      }
+      history.onUndo = { [weak self] in MainActor.assumeIsolated { self?.undo() } }
+      history.onRedo = { [weak self] in MainActor.assumeIsolated { self?.redo() } }
       decorators.onClick = { [weak self] key in
         self?.perform { try self?.controller.click(MouseEvent("click", targetKey: key)) }
       }
@@ -78,8 +98,39 @@
     }
 
     private func perform(_ body: () throws -> Void) {
-      do { try body() } catch {
+      do {
+        try replayForeignEdits()
+        try body()
+      } catch {
         try? editor._onError(error)
+      }
+    }
+
+    private func recordForeignEdit() {
+      guard !isRendering, textStorage.editedMask.contains(.editedCharacters) else { return }
+      let edited = textStorage.editedRange
+      foreignEdits.append(
+        (
+          NSRange(location: edited.location, length: edited.length - textStorage.changeInLength),
+          (textStorage.string as NSString).substring(with: edited)
+        ))
+    }
+
+    /// Brings the model up to the edits the text view made on its own, before
+    /// the next input reaches it: the model's text is shown again, and the
+    /// edits replay as input.
+    private func replayForeignEdits() throws {
+      guard !foreignEdits.isEmpty else { return }
+      let edits = foreignEdits
+      foreignEdits = []
+      try controller.renderAll(replacing: textStorage.length)
+      for edit in edits {
+        let target = TextKitRange(location: edit.range.location, length: edit.range.length)
+        if edit.text.isEmpty {
+          try controller.beforeInput("deleteContent", targetRange: target)
+        } else {
+          try controller.insertText(edit.text, replacementRange: target)
+        }
       }
     }
 
@@ -88,6 +139,14 @@
     /// Applies a commit's edits and styles to the text storage, and the
     /// model's selection to the view.
     private func apply(_ update: TextKitUpdate) {
+      // A commit that did not come from input finds the text edited on its
+      // own: those edits are lost, and the model's text is shown again.
+      if !foreignEdits.isEmpty, !update.isFull {
+        foreignEdits = []
+        controller.report { try controller.renderAll(replacing: textStorage.length) }
+        return
+      }
+      foreignEdits = []
       isRendering = true
       defer { isRendering = false }
       textStorage.beginEditing()
@@ -221,11 +280,6 @@
     }
 
     public override func insertText(_ text: String) {
-      // Return on the software keyboard is Enter, as Safari reports it.
-      if text == "\n", controller.markedRange == nil {
-        beforeInput("insertParagraph")
-        return
-      }
       perform { try controller.insertText(text) }
     }
 
@@ -266,11 +320,20 @@
 
     /// The backstop for edits that reach the text another way (dictation,
     /// Writing Tools, menu actions): they become a replacement of that
-    /// range, and the text is left alone.
+    /// range, and the text is left alone. The keyboard asks first for what
+    /// it types over the selection or the marked text, and then calls
+    /// `insertText(_:)` or `setMarkedText(_:selectedRange:)`, so that
+    /// change, and any while it composes, is let through to them: refusing
+    /// it would cut the IME's composition short.
     public func textView(
       _ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String
     ) -> Bool {
       if isRendering { return true }
+      // While composing, the keyboard asks with the caret and the key it
+      // typed, not the marked text.
+      if controller.markedRange != nil || (!text.isEmpty && range == selectedRange) {
+        return true
+      }
       perform {
         let target = TextKitRange(location: range.location, length: range.length)
         if text.isEmpty {
@@ -302,6 +365,12 @@
     }
 
     // MARK: Selection
+
+    /// The text view edited its own text: the edits replay as input.
+    public func textViewDidChange(_ textView: UITextView) {
+      if isRendering { return }
+      perform {}
+    }
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
       guard !isRendering else { return }

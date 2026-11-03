@@ -5,6 +5,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `LexicalUITextView` works with the iOS software keyboard: IME
+  composition (Japanese, Chinese, Korean) goes through the model instead
+  of committing after each key, Return inserts a paragraph, typed keys
+  merge into one undo step, and the system's undo (Command-Z, shake,
+  three-finger swipe) undoes through the editor's history.
 - `TextKitInputController.setSelectedRange` keeps the selection's anchor
   when the new range still ends at it, so a selection extended backward
   (Shift-Left) is backward in the model, as in a browser.

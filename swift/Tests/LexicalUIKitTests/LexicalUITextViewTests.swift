@@ -66,6 +66,17 @@
       let end = try #require(view.position(from: start, offset: 4))
       view.replace(try #require(view.textRange(from: start, to: end)), withText: "world")
       #expect(view.text == "Bye\nworld")
+      // The keyboard's Return replaces the selection with a newline: Enter.
+      let caret = try #require(view.selectedTextRange)
+      view.replace(caret, withText: "\n")
+      #expect(view.text == "Bye\nworld\n")
+      #expect(try view.editor.getEditorState().read { try getRoot().getChildrenSize() } == 3)
+      // The system's undo (Command-Z, shake) goes to the editor's history.
+      view.undoManager?.undo()
+      #expect(view.text == "Bye\nworld")
+      #expect(view.undoManager?.canRedo == true)
+      view.undoManager?.redo()
+      #expect(view.text == "Bye\nworld\n")
       _ = window
     }
 
@@ -113,6 +124,31 @@
       view.redo()
       view.redo()
       #expect(view.text == "Hello\nWorld")
+      _ = window
+    }
+
+    @Test func replaysEditsTheTextViewMakesToItsOwnText() throws {
+      let (view, window) = try makeView()
+      view.insertText("ㅎ")
+      // The Korean keyboard deletes the jamo in the text storage itself,
+      // then inserts the syllable.
+      view.textStorage.replaceCharacters(in: NSRange(location: 0, length: 1), with: "")
+      view.insertText("하")
+      #expect(view.text == "하")
+      #expect(try json(view).contains(#""text":"하""#))
+      _ = window
+    }
+
+    @Test func mergesKeysTypedAsReplacementsOfTheSelection() throws {
+      let (view, window) = try makeView()
+      // The iOS keyboard types each key by replacing the selection.
+      for key in ["O", "n", "e"] {
+        view.replace(try #require(view.selectedTextRange), withText: key)
+      }
+      #expect(view.text == "One")
+      #expect(view.selectedRange == NSRange(location: 3, length: 0))
+      view.undoManager?.undo()
+      #expect(view.text == "")
       _ = window
     }
 

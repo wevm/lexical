@@ -5,6 +5,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added a small DOM to core (`DOMDocument`, `DOMElement`, `DOMText`,
+  `DOMComment`, `DOMDocumentFragment`, `DOMTokenList`,
+  `CSSStyleDeclaration`) with `innerHTML`/`outerHTML` serialization. Inline
+  styles normalize values as jsdom does (`css/values` vectors), so HTML
+  export can match upstream byte for byte.
 - Added the `LexicalUtils` module: `dfs`, `reverseDfs`, the slot-aware
   traversals, `firstToLastIterator`/`lastToFirstIterator` (lazy, throwing
   `StepwiseIterator`s), `insertNodeToNearestRoot`, `insertNodeIntoLeaf`,

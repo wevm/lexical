@@ -8,7 +8,8 @@
     "test": "vitest run",
     "generate": "UPDATE_VECTORS=1 vitest run",
     "ledger": "node scripts/ledger.mjs",
-    "check-ledger": "node scripts/ledger.mjs --check"
+    "check-ledger": "node scripts/ledger.mjs --check",
+    "css-properties": "node scripts/css-properties.mjs"
   },
   "devDependencies": {
     "@lexical/headless": "workspace:*",

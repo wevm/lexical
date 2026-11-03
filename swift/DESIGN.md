@@ -288,6 +288,16 @@ Reversible choices made porting `@lexical/extension` under Q18.
   rect filtering they share is (`filterSelectionRects`,
   `dedupeSelectionRects`), on `SelectionRect`.
 
+- **The DOM is a small model of jsdom's.** `createDOM`, `exportDOM` and
+  HTML import and export run on `DOMDocument`/`DOMElement` in core
+  (Q17). Upstream's tests see jsdom, so serialization escapes as jsdom does
+  and `CSSStyleDeclaration` normalizes values the way jsdom's declaration
+  does for what Lexical writes: colors to `rgb()`, trimmed numbers, `0px`,
+  lowercase keywords, `calc()` of a product. The `css/properties` vectors
+  generate the accepted property table (`CSSProperties.swift`) and the
+  `css/values` vectors pin the normalization. Unlike jsdom it does not
+  reject values it can't parse; it keeps them with whitespace collapsed.
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

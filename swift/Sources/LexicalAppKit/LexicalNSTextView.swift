@@ -1,6 +1,7 @@
 #if os(macOS)
   import AppKit
   import Lexical
+  import LexicalA11y
   import LexicalTextKit
 
   // The AppKit editor view: a TextKit 2 `NSTextView` that never edits its
@@ -31,6 +32,9 @@
     /// Set while a drag that started here is dropped back here.
     private var isDropFromSelf = false
     let decorators = DecoratorAttachments()
+    /// The editor's live region, while this view hosts it
+    /// (`AriaLiveRegionExtension`); its announcements are spoken.
+    public internal(set) var liveRegion: LiveRegion?
 
     /// Kept here because the layout manager refers to it weakly.
     private let contentStorage: NSTextContentStorage

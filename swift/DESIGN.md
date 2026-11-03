@@ -614,6 +614,13 @@ Reversible choices made porting `@lexical/extension` under Q18.
   - A view's selected range has no direction, so `setSelectedRange` keeps the
     model's anchor when the new range still ends there (a shift-arrow
     extending backward), and otherwise selects forward.
+- **Live region.** The views are `LiveRegionHost`s: each new
+  `textContent` (without the U+200B that marks a repeat) is posted as an
+  announcement, `UIAccessibility.post(notification: .announcement, ...)`
+  with `accessibilitySpeechAnnouncementPriority`, or
+  `NSAccessibility.post(element:notification: .announcementRequested, ...)`
+  with `.priority`; assertive is high priority, polite default (iOS) or
+  medium (macOS).
 - **Tier 2 differences** are listed in `parity/deviations.json`.
 
 ## Scope of v0.1.0 (Q21)

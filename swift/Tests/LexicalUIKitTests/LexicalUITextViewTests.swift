@@ -1,5 +1,6 @@
 #if canImport(UIKit)
   import Lexical
+  import LexicalA11y
   import LexicalExtension
   import LexicalHistory
   import LexicalRichText
@@ -42,6 +43,10 @@
       #expect(view.textLayoutManager != nil, "expected TextKit 2")
       #expect(view.editor.getRootElement() === view)
       #expect(view.isConnected)
+      // RichTextExtension's announcers speak through the view.
+      let region = try #require(view.liveRegion)
+      #expect(region.host === view)
+      region.textContent = "Heading 1\u{200B}"
       view.blur()
       #expect(!view.hasFocus)
       view.focus()

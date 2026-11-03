@@ -1,6 +1,7 @@
 #if os(macOS)
   import AppKit
   import Lexical
+  import LexicalA11y
   import LexicalAppKit
   import LexicalExtension
   import LexicalHistory
@@ -67,6 +68,10 @@
       #expect(view.textLayoutManager != nil, "expected TextKit 2")
       #expect(view.editor.getRootElement() === view)
       #expect(view.isConnected)
+      // RichTextExtension's announcers speak through the view.
+      let region = try #require(view.liveRegion)
+      #expect(region.host === view)
+      region.textContent = "Heading 1\u{200B}"
       #expect(view.hasFocus)
       view.blur()
       #expect(!view.hasFocus)

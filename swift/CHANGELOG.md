@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `LexicalNSTextView` and `LexicalUITextView` host the editor's live
+  region (`LiveRegionHost`): the `LexicalA11y` announcers' messages are
+  spoken by VoiceOver as accessibility announcements, at high priority when
+  the region is assertive. The view's `liveRegion` is the mounted region.
 - `LexicalUITextView` works with the iOS software keyboard: IME
   composition (Japanese, Chinese, Korean) goes through the model instead
   of committing after each key, Return inserts a paragraph, typed keys

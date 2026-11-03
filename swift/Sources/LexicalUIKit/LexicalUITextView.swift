@@ -1,5 +1,6 @@
 #if canImport(UIKit)
   import Lexical
+  import LexicalA11y
   import LexicalTextKit
   import UIKit
 
@@ -28,6 +29,9 @@
     /// Set while a drag that started here is dropped back here.
     private var isDropFromSelf = false
     let decorators = DecoratorAttachments()
+    /// The editor's live region, while this view hosts it
+    /// (`AriaLiveRegionExtension`); its announcements are spoken.
+    public internal(set) var liveRegion: LiveRegion?
     private let history = HistoryUndoManager()
     public override var undoManager: UndoManager? { history }
     private let blockBarsView = BlockBarsView()

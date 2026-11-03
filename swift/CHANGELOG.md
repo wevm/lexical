@@ -22,6 +22,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
   `TextKitInputController.onRender` delivers a `TextKitUpdate`: the styled
   edits, the paragraphs and decorators to style again, the selection and
   the tags.
+- Each update copies the node map without rehashing it, so a keystroke in a
+  5,000-paragraph document takes about a third of the time (release build on
+  Linux: 11.5 ms to 3.9 ms p95).
 - `LexicalTextKit` reconciles incrementally: `TextKitReconciler` turns each
   commit into `TextKitEdit` replacements for a `TextKitStorage`, and
   `TextKitInputController.onRender` now delivers those edits (one full edit

@@ -67,10 +67,14 @@ public final class JSMap<Key: Hashable, Value> {
     tombstones = 0
   }
 
-  /// A copy, like `new Map(map)`.
+  /// A copy, like `new Map(map)`. It shares the storage until either side
+  /// writes, so the copy never rehashes; tombstones and order carry over.
   public func copy() -> JSMap {
     let copy = JSMap()
-    for (key, value) in self { copy.set(key, value) }
+    copy.keys = keys
+    copy.values = values
+    copy.index = index
+    copy.tombstones = tombstones
     return copy
   }
 

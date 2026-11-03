@@ -1,0 +1,17 @@
+{
+  "name": "lexical-conformance",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Conformance vectors generated from the JS Lexical packages, replayed by the Swift port in swift/.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "generate": "UPDATE_VECTORS=1 vitest run",
+    "ledger": "node scripts/ledger.mjs",
+    "check-ledger": "node scripts/ledger.mjs --check"
+  },
+  "devDependencies": {
+    "@lexical/headless": "workspace:*",
+    "lexical": "workspace:*"
+  }
+}

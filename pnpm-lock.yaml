@@ -699,6 +699,15 @@ importers:
         specifier: ^4.63.5
         version: 4.63.5
 
+  packages/lexical-conformance:
+    devDependencies:
+      '@lexical/headless':
+        specifier: workspace:*
+        version: link:../lexical-headless
+      lexical:
+        specifier: workspace:*
+        version: link:../lexical
+
   packages/lexical-devtools:
     dependencies:
       '@chakra-ui/react':

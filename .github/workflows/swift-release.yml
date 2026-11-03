@@ -1,0 +1,118 @@
+name: Swift Release
+
+# Releases the Swift port when swift/VERSION names a version that isn't
+# released yet. After approval in the swift-release environment:
+# - publishes swift/ to the SwiftPM mirror (wevm/lexical-swift) and tags the
+#   version there. SwiftPM needs Package.swift at a repository root and clones
+#   whole repositories, so consumers install from the mirror.
+# - creates a GitHub release on the mirror from the version's section of
+#   swift/CHANGELOG.md.
+# Each step is skipped when its release already exists, so a failed run can be
+# rerun. 0.0.0 means unreleased.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'swift/VERSION'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swift-release
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      mirror: ${{ steps.plan.outputs.mirror }}
+      release: ${{ steps.plan.outputs.release }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          sparse-checkout: swift/VERSION
+          sparse-checkout-cone-mode: false
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < swift/VERSION)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$version" = "0.0.0" ]; then
+            echo "mirror=false" >> "$GITHUB_OUTPUT"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git ls-remote --exit-code --tags https://github.com/wevm/lexical-swift.git "refs/tags/$version" >/dev/null; then
+            echo "mirror=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "mirror=true" >> "$GITHUB_OUTPUT"
+          fi
+          status="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/wevm/lexical-swift/releases/tags/$version")"
+          case "$status" in
+            200) echo "release=false" >> "$GITHUB_OUTPUT" ;;
+            404) echo "release=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "Looking up the $version release returned HTTP $status." >&2; exit 1 ;;
+          esac
+
+  mirror:
+    name: Publish mirror
+    runs-on: ubuntu-latest
+    needs: plan
+    if: needs.plan.outputs.mirror == 'true' || needs.plan.outputs.release == 'true'
+    environment: swift-release
+    permissions:
+      contents: read
+      id-token: write # For the github-sts token exchange.
+    env:
+      MIRROR_REPO: wevm/lexical-swift
+      VERSION: ${{ needs.plan.outputs.version }}
+    steps:
+      # Short-lived token for the mirror, authorized by
+      # swift/.github/sts/mirror.sts.yaml (published to the mirror's main).
+      - name: Fetch mirror token
+        id: sts
+        uses: wevm/actions/.github/actions/github-sts@5ba8f9b728c490f855f7bad3d0ba6dc9c1ab32ff # main
+        with:
+          scope: wevm/lexical-swift
+          policy: mirror
+          ttl: 5m
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Split and push
+        if: needs.plan.outputs.mirror == 'true'
+        env:
+          MIRROR_TOKEN: ${{ steps.sts.outputs.token }}
+        run: |
+          set -euo pipefail
+          git subtree split --prefix=swift -b mirror
+          remote="https://x-access-token:${MIRROR_TOKEN}@github.com/${MIRROR_REPO}.git"
+          git push "$remote" mirror:main
+          git tag "$VERSION" mirror
+          git push "$remote" "refs/tags/$VERSION"
+      # The version's changelog section. Its commit hashes are wevm/lexical's,
+      # which GitHub doesn't link from the mirror, so they become links.
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ steps.sts.outputs.token }}
+        run: |
+          set -euo pipefail
+          awk -v v="## $VERSION" '$0 == v {f = 1; next} /^## / {f = 0} f' swift/CHANGELOG.md |
+            sed -E 's|^- ([0-9a-f]{7,40}):|- [`\1`](https://github.com/wevm/lexical/commit/\1):|' \
+            >"$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "No section for $VERSION in swift/CHANGELOG.md." >&2
+            exit 1
+          fi
+          gh release create "$VERSION" -R "$MIRROR_REPO" --verify-tag \
+            --title "$VERSION" --notes-file "$RUNNER_TEMP/notes.md"

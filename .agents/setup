@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Orb setup for wevm/lexical: the Node and pnpm upstream pins, the workspace
+# dependencies, and the Swift toolchain for swift/ (the Swift that ships with
+# Xcode 27).
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+export CI=true
+export DEBIAN_FRONTEND=noninteractive
+
+echo '==> Installing the Swift toolchain for swift/'
+swift_version='6.4.2'
+if [[ "$(/opt/swift/usr/bin/swift --version 2>/dev/null || true)" != *"swift-${swift_version}-RELEASE"* ]]; then
+  sudo apt-get update
+  sudo apt-get install -y binutils-gold libicu-dev libcurl4-openssl-dev \
+    libedit-dev libsqlite3-dev libncurses-dev libpython3-dev libxml2-dev \
+    tzdata uuid-dev gnupg2 zlib1g-dev
+  swift_tmp="$(mktemp -d)"
+  curl -sSfL -o "$swift_tmp/swift.tar.gz" \
+    "https://download.swift.org/swift-${swift_version}-release/debian12/swift-${swift_version}-RELEASE/swift-${swift_version}-RELEASE-debian12.tar.gz"
+  sudo rm -rf /opt/swift
+  sudo mkdir -p /opt/swift
+  sudo tar -xzf "$swift_tmp/swift.tar.gz" -C /opt/swift --strip-components=1
+  rm -rf "$swift_tmp"
+fi
+for tool in swift swiftc sourcekit-lsp docc; do
+  sudo ln -sf "/opt/swift/usr/bin/$tool" "/usr/local/bin/$tool"
+done
+swift --version
+
+echo '==> Selecting the repository Node and pnpm versions'
+node_version="$(tr -d '[:space:]' < .nvmrc)"
+if [[ "$(node -p 'process.versions.node')" != "$node_version" ]]; then
+  command -v n >/dev/null || sudo npm install --global n@11.0.0
+  sudo n "$node_version"
+  hash -r
+fi
+package_manager="$(node -p 'require("./package.json").packageManager')"
+if [[ "$(pnpm --version 2>/dev/null || true)" != "${package_manager#pnpm@}" ]]; then
+  sudo npm install --global "$package_manager"
+fi
+node --version
+pnpm --version
+PATH="${PNPM_HOME:-$HOME/.local/share/pnpm}/bin:$PATH" \
+  pnpm config set --global verify-deps-before-run false
+
+echo '==> Installing workspace dependencies from the lockfile'
+pnpm install --frozen-lockfile

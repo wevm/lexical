@@ -29,3 +29,6 @@ pnpm-lock.yaml
 **/.next/**
 # Verbatim clipboard payloads — preserved exactly as the source app emitted.
 dev-examples/dom-import/src/fixtures/
+packages/lexical-conformance/vectors/
+swift/parity/
+swift/.build/

@@ -54,4 +54,7 @@ jobs:
         run: |
           device="$(xcrun simctl list devices available -j |
             python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in d.items() if "iOS" in k for x in v if x["name"].startswith("iPhone")))')"
-          xcodebuild test -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation
+          # The macro expansion tests link swift-syntax for the host; they run
+          # in the macOS job and cannot load in the simulator.
+          xcodebuild test -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
+            -skip-testing:LexicalMacrosTests

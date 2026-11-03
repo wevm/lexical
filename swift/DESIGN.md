@@ -35,6 +35,15 @@ means updating this file in the same commit.
   Fuzz vectors use fixed seeds in CI; a local macOS-only JavaScriptCore mode
   runs long random-seed fuzzing. The Swift suites skip on the mirror, which
   doesn't carry the vectors.
+- **Script vectors** (decided during M1): `vectors/scripts/*.json` are editor
+  sessions written in a small JSON action language (`src/ops.ts`; node and
+  selection methods by name, serialized nodes, named transforms and command
+  handlers). JS records the state in both forms, selection, text and a log
+  of transforms, handlers and listeners after every step; the Swift runner
+  (`Tests/ConformanceTests/Ops.swift`) interprets the same scripts and must
+  record the same. Fuzz vectors are scripts generated from fixed seeds. A
+  headless JS editor has no window for `Selection.modify`, so scripts only
+  delete within text where the model resolves it.
 - **Parity ledger** (Q15, Q34): `parity/upstream-tests.json` lists every
   upstream unit test of the packages in `parity/packages.json`. Each is
   ported (`@Test(.upstream("<id>"))`) or skipped in `parity/skips.json` with a

@@ -5,6 +5,8 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Editors handle `BEFORE_INPUT_COMMAND`, `COMPOSITION_START_COMMAND` and
+  `COMPOSITION_END_COMMAND` by default, as in JS (in controlled mode).
 - `LexicalTextKit` reconciles incrementally: `TextKitReconciler` turns each
   commit into `TextKitEdit` replacements for a `TextKitStorage`, and
   `TextKitInputController.onRender` now delivers those edits (one full edit

@@ -689,9 +689,286 @@ func handleKeyDown(_ event: KeyboardEvent, _: Editor) throws -> Bool {
   return true
 }
 
+// MARK: - Input and composition (LexicalEvents.ts, model-first)
+//
+// The native views never edit their own text (Q28, Q40), so every
+// `beforeinput` they send is handled the way JS handles one it prevents:
+// in controlled mode, with no DOM to read back. The view moves the model
+// selection to the input's target range before dispatching, where JS
+// applies `getTargetRanges()`, and the composed text is already in the
+// model when composition ends, where JS reads it from the DOM.
+
+/// `$maybeMoveSelectionPastTrailingAcceptanceBoundary`: after a text
+/// replacement accepted by the key that ends it (a space, Enter, Tab), puts
+/// the caret after that key's character, which the replacement arrived in
+/// front of.
+private func maybeMoveSelectionPastTrailingAcceptanceBoundary(_ insertedText: String?) throws {
+  guard let insertedText, insertedText.utf16.count > 1,
+    let lastKeyCode = try getActiveEditor()._inputState.lastKeyCode
+  else { return }
+  let characterToSearchFor: String? =
+    lastKeyCode.utf16.count == 1
+    ? lastKeyCode : lastKeyCode == "Enter" ? "\n" : lastKeyCode == "Tab" ? "\t" : nil
+  guard let characterToSearchFor,
+    let selection = try getSelection() as? RangeSelection, selection.isCollapsed(),
+    let anchorNode = try selection.anchor.getNode() as? TextNode
+  else { return }
+  let offset = selection.anchor.offset
+  let text = Array(try anchorNode.getTextContent().utf16)
+  let search = Array(characterToSearchFor.utf16)
+  if text.count == offset {
+    let nextSibling = try anchorNode.getNextSibling()
+    if characterToSearchFor == "\n" {
+      // iOS sends the replacement before the Enter's paragraph, so there is
+      // no boundary yet.
+      #if os(iOS)
+        return
+      #else
+        if let lineBreak = nextSibling as? LineBreakNode {
+          _ = try lineBreak.selectEnd()
+        } else if nextSibling == nil {
+          let block = try findMatchingParent(anchorNode) { try isBlockElementNode($0) }
+          if let nextBlock = try block?.getNextSibling() as? ElementNode {
+            _ = try nextBlock.selectStart()
+          }
+        }
+      #endif
+    } else if characterToSearchFor == "\t" {
+      if let tab = nextSibling as? TabNode {
+        _ = try tab.selectEnd()
+      }
+    } else if let next = nextSibling as? TextNode,
+      try Array(next.getTextContent().utf16).starts(with: search)
+    {
+      _ = try next.select(1, 1)
+    }
+  } else if Array(text[offset...]).starts(with: search) {
+    _ = try anchorNode.select(offset + 1, offset + 1)
+  }
+}
+
+/// `$canRemoveText(anchorNode, focusNode)`.
+private func canRemoveText(_ anchorNode: LexicalNode, _ focusNode: LexicalNode) throws -> Bool {
+  if anchorNode !== focusNode || anchorNode is ElementNode || focusNode is ElementNode {
+    return true
+  }
+  guard let anchorText = anchorNode as? TextNode, let focusText = focusNode as? TextNode else {
+    return true
+  }
+  return try !isTokenOrTab(anchorText) || !isTokenOrTab(focusText)
+}
+
+/// `$handleBeforeInput`: turns an input into the command it stands for.
+/// Text is always inserted in controlled mode
+/// (`CONTROLLED_TEXT_INSERTION_COMMAND`), since there is no DOM edit to let
+/// through; the Android, Chrome and Firefox workarounds have no native
+/// counterpart and are left out.
+func handleBeforeInput(_ event: InputEvent, _: Editor) throws -> Bool {
+  let inputType = event.inputType
+  let editor = try getActiveEditor()
+  let selection = try getSelection()
+
+  if inputType == "deleteContentBackward" {
+    if selection == nil {
+      // Use previous selection
+      guard let prevSelection = try getPreviousSelection() as? RangeSelection else {
+        return true
+      }
+      try setSelection(prevSelection.clone())
+    }
+    if try getSelection() is RangeSelection {
+      try setCompositionKey(nil)
+      event.preventDefault()
+      try dispatchCommand(editor, DELETE_CHARACTER_COMMAND, true)
+      return true
+    }
+  }
+
+  guard let selection = selection as? RangeSelection else {
+    if inputType == "historyUndo" || inputType == "historyRedo" {
+      event.preventDefault()
+      try dispatchCommand(editor, inputType == "historyUndo" ? UNDO_COMMAND : REDO_COMMAND, ())
+    }
+    return true
+  }
+
+  let data = event.data
+  if inputType == "insertText" || inputType == "insertTranspose" {
+    event.preventDefault()
+    if data == "\n" {
+      try dispatchCommand(editor, INSERT_LINE_BREAK_COMMAND, false)
+    } else if data == DOUBLE_LINE_BREAK {
+      try dispatchCommand(editor, INSERT_PARAGRAPH_COMMAND, ())
+    } else if data == nil, let dataTransfer = event.dataTransfer {
+      try selection.insertRawText(dataTransfer.getData("text/plain"))
+    } else if let data {
+      try dispatchCommand(editor, CONTROLLED_TEXT_INSERTION_COMMAND, data)
+      try maybeMoveSelectionPastTrailingAcceptanceBoundary(data)
+    }
+    return true
+  }
+
+  // Prevent the default, so we control the output.
+  event.preventDefault()
+  let anchorNode = try selection.anchor.getNode()
+  let focusNode = try selection.focus.getNode()
+
+  switch inputType {
+  case "insertFromYank", "insertFromDrop", "insertReplacementText":
+    let text = event.dataTransfer?.getData("text/plain") ?? data ?? ""
+    try dispatchCommand(editor, CONTROLLED_TEXT_INSERTION_COMMAND, text)
+    try maybeMoveSelectionPastTrailingAcceptanceBoundary(text)
+  case "insertFromComposition":
+    try setCompositionKey(nil)
+    try dispatchCommand(editor, CONTROLLED_TEXT_INSERTION_COMMAND, data ?? "")
+  case "insertLineBreak":
+    try setCompositionKey(nil)
+    editor._inputState.isInsertLineBreak = false
+    try dispatchCommand(editor, INSERT_LINE_BREAK_COMMAND, false)
+  case "insertParagraph":
+    try setCompositionKey(nil)
+    if editor._inputState.isInsertLineBreak {
+      editor._inputState.isInsertLineBreak = false
+      try dispatchCommand(editor, INSERT_LINE_BREAK_COMMAND, false)
+    } else {
+      try dispatchCommand(editor, INSERT_PARAGRAPH_COMMAND, ())
+    }
+  case "insertFromPaste", "insertFromPasteAsQuotation":
+    try dispatchCommand(editor, PASTE_COMMAND, .input(event))
+  case "deleteByComposition":
+    if try canRemoveText(anchorNode, focusNode) {
+      try dispatchCommand(editor, REMOVE_TEXT_COMMAND, ())
+    }
+  case "deleteByDrag":
+    try addUpdateTag(SKIP_SELECTION_FOCUS_TAG)
+    try dispatchCommand(editor, REMOVE_TEXT_COMMAND, ())
+  case "deleteByCut":
+    try dispatchCommand(editor, REMOVE_TEXT_COMMAND, ())
+  case "deleteContent":
+    try dispatchCommand(editor, DELETE_CHARACTER_COMMAND, false)
+  case "deleteWordBackward":
+    try dispatchCommand(editor, DELETE_WORD_COMMAND, true)
+  case "deleteWordForward":
+    try dispatchCommand(editor, DELETE_WORD_COMMAND, false)
+  case "deleteHardLineBackward", "deleteSoftLineBackward":
+    try dispatchCommand(editor, DELETE_LINE_COMMAND, true)
+  case "deleteContentForward":
+    // JS measures a plain Delete from its target range; with the model
+    // selection set to that range, it is one character.
+    try dispatchCommand(editor, DELETE_CHARACTER_COMMAND, false)
+  case "deleteHardLineForward", "deleteSoftLineForward":
+    try dispatchCommand(editor, DELETE_LINE_COMMAND, false)
+  case "formatStrikeThrough":
+    try dispatchCommand(editor, FORMAT_TEXT_COMMAND, "strikethrough")
+  case "formatBold":
+    try dispatchCommand(editor, FORMAT_TEXT_COMMAND, "bold")
+  case "formatItalic":
+    try dispatchCommand(editor, FORMAT_TEXT_COMMAND, "italic")
+  case "formatUnderline":
+    try dispatchCommand(editor, FORMAT_TEXT_COMMAND, "underline")
+  case "historyUndo":
+    try dispatchCommand(editor, UNDO_COMMAND, ())
+  case "historyRedo":
+    try dispatchCommand(editor, REDO_COMMAND, ())
+  default:
+    break
+  }
+  return true
+}
+
+/// `$handleCompositionStart`: marks the anchor's node as the one being
+/// composed. JS also prepares a text node for the browser to compose into
+/// (the empty space heuristic); the views insert the marked text through
+/// the model, which creates one as typing does.
+func handleCompositionStart(_ event: CompositionEvent, _: Editor) throws -> Bool {
+  let editor = try getActiveEditor()
+  if let selection = try getSelection() as? RangeSelection, !editor.isComposing() {
+    try setCompositionKey(selection.anchor.key)
+    try addUpdateTag(COMPOSITION_START_TAG)
+  }
+  return true
+}
+
+/// `$cleanupComposedSubclass`: a composition that ended in a plain-text
+/// subclass node it was redirected into turns that node back into a
+/// `TextNode`.
+private func cleanupComposedSubclass(_ compositionKey: NodeKey?) throws {
+  let editor = try getActiveEditor()
+  let composedSegmentedKey = editor._composedSegmentedKey
+  editor._composedSegmentedKey = nil
+  guard let compositionKey, compositionKey == composedSegmentedKey,
+    let composedNode = try getNodeByKey(compositionKey) as? TextNode,
+    composedNode.getType() != "text", try !isTokenOrSegmented(composedNode),
+    try composedNode.isAttached()
+  else { return }
+  let sel = try getSelection() as? RangeSelection
+  let offset = sel?.anchor.key == compositionKey ? sel?.anchor.offset : nil
+  let replacement = try createTextNode(composedNode.getTextContent())
+  try replacement.setFormat(composedNode.getFormat())
+  try replacement.setStyle(composedNode.getStyle())
+  try composedNode.replace(replacement)
+  if let offset {
+    let safeOffset = min(offset, try replacement.getTextContentSize())
+    _ = try replacement.select(safeOffset, safeOffset)
+  }
+}
+
+/// `$onCompositionEndImpl(editor, data)`. The composed text is already in
+/// the model (the views write the marked text through it), so where JS
+/// reads it back from the DOM there is nothing left to do.
+private func onCompositionEndImpl(_ editor: Editor, _ data: String?) throws {
+  let compositionKey = editor._compositionKey
+  try setCompositionKey(nil)
+  if compositionKey != nil, let data {
+    if data.isEmpty {
+      try cleanupComposedSubclass(compositionKey)
+      return
+    }
+    if data.hasSuffix("\n") {
+      let selection = try getSelection()
+      if selection is RangeSelection || selection is NodeSelection {
+        // If the last character is a line break, we also need to insert
+        // a line break.
+        if let selection = selection as? RangeSelection {
+          let focus = selection.focus
+          try selection.anchor.set(focus.key, focus.offset, focus.type)
+        }
+        try dispatchCommand(editor, KEY_ENTER_COMMAND, nil)
+        try cleanupComposedSubclass(compositionKey)
+        return
+      }
+    }
+    // A composition that ended on a token node puts the composed text
+    // beside it, through insertText's token redirect.
+    if let compositionKey, let node = try getNodeByKey(compositionKey) as? TextNode,
+      try isTokenOrSegmented(node)
+    {
+      try node.markDirty()
+      let selection = try getSelection() as? RangeSelection
+      let textLen = try node.getTextContentSize()
+      let offset = selection?.anchor.key == compositionKey ? selection!.anchor.offset : textLen
+      try node.select(offset, offset).insertText(data)
+      return
+    }
+  }
+  try cleanupComposedSubclass(compositionKey)
+}
+
+/// `$handleCompositionEnd`.
+func handleCompositionEnd(_ event: CompositionEvent, _: Editor) throws -> Bool {
+  let editor = try getActiveEditor()
+  try onCompositionEndImpl(editor, event.data)
+  try addUpdateTag(COMPOSITION_END_TAG)
+  return true
+}
+
 /// `registerDefaultCommandHandlers(editor)`: the handlers every editor
-/// has. The input and composition handlers come with the native input
-/// layer.
+/// has.
 func registerDefaultCommandHandlers(_ editor: Editor) {
+  _ = editor.registerCommand(BEFORE_INPUT_COMMAND, handleBeforeInput, COMMAND_PRIORITY_EDITOR)
+  _ = editor.registerCommand(
+    COMPOSITION_START_COMMAND, handleCompositionStart, COMMAND_PRIORITY_EDITOR)
+  _ = editor.registerCommand(
+    COMPOSITION_END_COMMAND, handleCompositionEnd, COMMAND_PRIORITY_EDITOR)
   _ = editor.registerCommand(KEY_DOWN_COMMAND, handleKeyDown, COMMAND_PRIORITY_EDITOR)
 }

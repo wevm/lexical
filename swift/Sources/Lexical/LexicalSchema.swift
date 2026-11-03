@@ -338,15 +338,24 @@ public func enumValue(
     case .none: values[0]
     case .some(let value): value
     }
-  guard values.contains(where: { $0 == fallback }) else {
+  // A JS `Set` matches by SameValueZero, so `NaN` is a member of itself.
+  @Sendable func allowed(_ value: JSONValue?) -> Bool {
+    values.contains { member in
+      if case .number(let a)? = member, case .number(let b)? = value, a.isNaN, b.isNaN {
+        return true
+      }
+      return member == value
+    }
+  }
+  guard allowed(fallback) else {
     throw LexicalError("enumValue: the default value is not one of the values")
   }
   return SerializationSchema(
     { value in
-      value != nil && values.contains(where: { $0 == value }) ? value : fallback
+      value != nil && allowed(value) ? value : fallback
     }, .enumeration(values), fallback,
     accepts: { value in
-      values.contains(where: { $0 == value }) && (value != nil || fallback == nil)
+      allowed(value) && (value != nil || fallback == nil)
     })
 }
 

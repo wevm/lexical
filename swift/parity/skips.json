@@ -19,6 +19,26 @@
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf); Swift's traversal return types are fixed by their signatures."
   },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a field stands in for its accessor only while nobody overrides it > the accessor resolves through the whole chain, not just one level": {
+    "reason": "deviation",
+    "note": "Tests resolveSchemaField, the JS reflective accessor lookup; Swift accessors dispatch dynamically through open methods instead."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::defaults and untrusted input > a union names its accessors on the union, not on a member": {
+    "reason": "deviation",
+    "note": "Accessors are named by string on the JS schema and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or resolve."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::the export and parse shapes differ only where parsing is looser > an element relaxes its children too": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::the export and parse shapes differ only where parsing is looser > the compact form is typed as the partial it returns": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::the export and parse shapes differ only where parsing is looser > version is optional exactly where it is absent": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf); Swift's JSON types are not refined per schema."
+  },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::updateFromJSON tolerates partial and out-of-domain JSON > accessor resolution > null states that a direction is deliberately unsupported": {
     "reason": "deviation",
     "note": "Accessors are named by string on the JS schema (withField/withAccessors) and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or to refuse twice."
@@ -34,5 +54,13 @@
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::updateFromJSON tolerates partial and out-of-domain JSON > withAccessors is the outermost combinator of a property > withField splits its options into the direction each belongs to": {
     "reason": "deviation",
     "note": "Accessors are named by string on the JS schema (withField/withAccessors) and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or to refuse twice."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::withField compiles to direct field access > a field property adds no version resolution to an export": {
+    "reason": "deviation",
+    "note": "Counts getLatest() calls made by the JS compiled field path; getLatest is final in Swift and a SchemaField closure decides its own reads."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::withField compiles to direct field access > the field name is introspectable, which is what makes it compilable": {
+    "reason": "deviation",
+    "note": "Accessors are named by string on the JS schema and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or resolve."
   }
 }

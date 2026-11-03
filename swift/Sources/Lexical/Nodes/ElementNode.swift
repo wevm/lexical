@@ -28,24 +28,24 @@ open class ElementNode: LexicalNode, SlotNode {
         SchemaField(
           "direction", enumValue([.null, "ltr", "rtl"]), of: ElementNode.self,
           get: { try $0.getDirection().map(JSONValue.string) ?? .null },
-          set: { $0.__dir = $1?.stringValue }),
+          set: { try $0.setDirection($1?.stringValue) }),
         SchemaField(
           "format", enumValue(["", "left", "start", "center", "right", "end", "justify"]),
           of: ElementNode.self,
           get: { try .string($0.getFormatType()) },
-          set: { $0.__format = $1?.stringValue.flatMap { ELEMENT_TYPE_TO_FORMAT[$0] } ?? 0 }),
+          set: { try $0.setFormat($1?.stringValue ?? "") }),
         SchemaField(
           "indent", numberValue(0, integer: true, min: 0), of: ElementNode.self,
           get: { try .int($0.getIndent()) },
-          set: { $0.__indent = Int($1?.numberValue ?? 0) }),
+          set: { try $0.setIndent(Int($1?.numberValue ?? 0)) }),
         SchemaField(
           "textFormat", numberValue(), of: ElementNode.self,
           get: { try $0.getSerializedTextFormat().map(JSONValue.int) },
-          set: { $0.__textFormat = Int($1?.numberValue ?? 0) }),
+          set: { try $0.setTextFormat(Int($1?.numberValue ?? 0)) }),
         SchemaField(
           "textStyle", stringValue(), of: ElementNode.self,
           get: { try $0.getSerializedTextStyle().map(JSONValue.string) },
-          set: { $0.__textStyle = $1?.stringValue ?? "" }),
+          set: { try $0.setTextStyle($1?.stringValue ?? "") }),
       ],
       transform: { try normalizeShadowRootChildren($0 as! ElementNode) })
   }
@@ -77,15 +77,15 @@ open class ElementNode: LexicalNode, SlotNode {
     try getLatest().__format
   }
 
-  public func getFormatType() throws -> ElementFormatType {
+  open func getFormatType() throws -> ElementFormatType {
     ELEMENT_FORMAT_TO_TYPE[try getFormat()] ?? ""
   }
 
-  public func getStyle() throws -> String {
+  open func getStyle() throws -> String {
     try getLatest().__style
   }
 
-  public func getIndent() throws -> Int {
+  open func getIndent() throws -> Int {
     try getLatest().__indent
   }
 
@@ -252,11 +252,11 @@ open class ElementNode: LexicalNode, SlotNode {
     return textContentSize
   }
 
-  public func getDirection() throws -> ElementDirection? {
+  open func getDirection() throws -> ElementDirection? {
     try getLatest().__dir
   }
 
-  public func getTextFormat() throws -> Int {
+  open func getTextFormat() throws -> Int {
     try getLatest().__textFormat
   }
 
@@ -279,7 +279,7 @@ open class ElementNode: LexicalNode, SlotNode {
     toggleTextFormatType(try getLatest().__textFormat, type, alignWithFormat)
   }
 
-  public func getTextStyle() throws -> String {
+  open func getTextStyle() throws -> String {
     try getLatest().__textStyle
   }
 
@@ -370,42 +370,42 @@ open class ElementNode: LexicalNode, SlotNode {
   }
 
   @discardableResult
-  public func setDirection(_ direction: ElementDirection?) throws -> Self {
+  open func setDirection(_ direction: ElementDirection?) throws -> Self {
     let latest = try getWritable()
     latest.__dir = direction
     return latest
   }
 
   @discardableResult
-  public func setFormat(_ type: ElementFormatType) throws -> Self {
+  open func setFormat(_ type: ElementFormatType) throws -> Self {
     let latest = try getWritable()
     latest.__format = type != "" ? ELEMENT_TYPE_TO_FORMAT[type] ?? 0 : 0
     return latest
   }
 
   @discardableResult
-  public func setStyle(_ style: String) throws -> Self {
+  open func setStyle(_ style: String) throws -> Self {
     let latest = try getWritable()
     latest.__style = style
     return latest
   }
 
   @discardableResult
-  public func setTextFormat(_ type: Int) throws -> Self {
+  open func setTextFormat(_ type: Int) throws -> Self {
     let latest = try getWritable()
     latest.__textFormat = type
     return latest
   }
 
   @discardableResult
-  public func setTextStyle(_ style: String) throws -> Self {
+  open func setTextStyle(_ style: String) throws -> Self {
     let latest = try getWritable()
     latest.__textStyle = style
     return latest
   }
 
   @discardableResult
-  public func setIndent(_ indentLevel: Int) throws -> Self {
+  open func setIndent(_ indentLevel: Int) throws -> Self {
     let latest = try getWritable()
     latest.__indent = indentLevel
     return latest

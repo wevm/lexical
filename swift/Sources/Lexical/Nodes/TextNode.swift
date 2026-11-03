@@ -28,12 +28,12 @@ open class TextNode: LexicalNode {
           "detail", aliasedValue(numberValue(), DETAIL_TYPE_TO_DETAIL.mapValues(JSONValue.int)),
           of: TextNode.self,
           get: { try .int($0.getDetail()) },
-          set: { $0.__detail = Int($1?.numberValue ?? 0) }),
+          set: { try $0.setDetail(Int($1?.numberValue ?? 0)) }),
         SchemaField(
           "format", aliasedValue(numberValue(), TEXT_TYPE_TO_FORMAT.mapValues(JSONValue.int)),
           of: TextNode.self,
           get: { try .int($0.getFormat()) },
-          set: { $0.__format = Int($1?.numberValue ?? 0) }),
+          set: { try $0.setFormat(Int($1?.numberValue ?? 0)) }),
         SchemaField(
           "mode", enumValue(["normal", "token", "segmented"]), of: TextNode.self,
           get: { try .string($0.getMode()) },
@@ -41,11 +41,11 @@ open class TextNode: LexicalNode {
         SchemaField(
           "style", stringValue(), of: TextNode.self,
           get: { try .string($0.getStyle()) },
-          set: { $0.__style = $1?.stringValue ?? "" }),
+          set: { try $0.setStyle($1?.stringValue ?? "") }),
         SchemaField(
           "text", stringValue(), of: TextNode.self,
           get: { try .string($0.getTextContent()) },
-          set: { $0.__text = $1?.stringValue ?? "" }),
+          set: { try $0.setTextContent($1?.stringValue ?? "") }),
       ])
   }
 
@@ -69,19 +69,19 @@ open class TextNode: LexicalNode {
     __text = prevNode.__text
   }
 
-  public func getFormat() throws -> Int {
+  open func getFormat() throws -> Int {
     try getLatest().__format
   }
 
-  public func getDetail() throws -> Int {
+  open func getDetail() throws -> Int {
     try getLatest().__detail
   }
 
-  public func getMode() throws -> TextModeType {
+  open func getMode() throws -> TextModeType {
     TEXT_TYPE_TO_MODE[try getLatest().__mode] ?? "normal"
   }
 
-  public func getStyle() throws -> String {
+  open func getStyle() throws -> String {
     try getLatest().__style
   }
 
@@ -137,7 +137,7 @@ open class TextNode: LexicalNode {
   {}
 
   @discardableResult
-  public func setFormat(_ format: Int) throws -> Self {
+  open func setFormat(_ format: Int) throws -> Self {
     let latest = try getWritable()
     latest.__format = format
     return latest
@@ -161,7 +161,7 @@ open class TextNode: LexicalNode {
   }
 
   @discardableResult
-  public func setStyle(_ style: String) throws -> Self {
+  open func setStyle(_ style: String) throws -> Self {
     let latest = try getWritable()
     latest.__style = style
     return latest

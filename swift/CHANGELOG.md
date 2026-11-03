@@ -11,3 +11,6 @@ workflow publishes the section headed `## <swift/VERSION>`.
   `unionValue` and `transformValue`, with `accepts` and union member
   selection as in JS. Schema declarations JS refuses now throw, so
   `config()` is `throws`.
+- Node accessors a schema property reads or writes (`getStyle`, `setIndent`,
+  `setTextContent` and the rest) are `open`, and importing JSON goes through
+  them, so a subclass that overrides one owns its property as in JS.

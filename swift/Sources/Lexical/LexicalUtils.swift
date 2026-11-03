@@ -833,3 +833,24 @@ package func createChildrenArray(_ element: ElementNode, _ nodeMap: NodeMap?) th
 /// The node-structure extension is not ported yet, so structure is never
 /// enforced.
 package func INTERNAL_isNodeStructureEnforced(_ editor: Editor) throws -> Bool { false }
+
+/// `getRegisteredSubtypeMap`: each registered type mapped to itself and the
+/// types of the registered classes that extend it.
+public func getRegisteredSubtypeMap(_ nodes: [LexicalNode.Type]) -> JSMap<String, JSSet<String>> {
+  let subtypes = JSMap<String, JSSet<String>>()
+  let klassByType = JSMap<String, LexicalNode.Type>()
+  for klass in nodes {
+    if let ownNodeType = getStaticNodeConfig(klass).ownNodeType {
+      klassByType.set(ownNodeType, klass)
+      subtypes.set(ownNodeType, JSSet())
+    }
+  }
+  for (type, klass) in klassByType {
+    for link in iterStaticNodeConfigChain(klass) {
+      if let ownNodeType = link.ownNodeType, let bucket = subtypes.get(ownNodeType) {
+        bucket.add(type)
+      }
+    }
+  }
+  return subtypes
+}

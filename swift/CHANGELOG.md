@@ -5,6 +5,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `getRegisteredSubtypeMap(_:)`, and `withWarningHandler(_:_:)` to capture
+  the warnings Lexical writes to standard error, such as the one
+  `createEditor` now gives for a replacement without `withKlass`.
 - `LexicalTextKit`: a first typeable editor, `LexicalNSTextView` and
   `LexicalUITextView` on TextKit 2, which turn typing, deletion, Enter and
   selection changes into commands and show what the model renders.

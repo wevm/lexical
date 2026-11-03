@@ -247,6 +247,190 @@
     "reason": "out-of-scope-package",
     "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
   },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns globalThis.document when called with no active editor": {
+    "reason": "dom-only",
+    "note": "There is no document in the native port."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns globalThis.document when rootElement is null": {
+    "reason": "dom-only",
+    "note": "There is no document in the native port."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns ownerDocument when rootElement is mounted": {
+    "reason": "dom-only",
+    "note": "There is no document in the native port."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::$updateTextNodeFromDOMContent > does not remove delayed composition text node if IME repopulates it": {
+    "reason": "dom-only",
+    "note": "DOM text mutation during composition; native input goes through the input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::$updateTextNodeFromDOMContent > removes delayed composition text node if it stays empty": {
+    "reason": "dom-only",
+    "note": "DOM text mutation during composition; native input goes through the input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > emptyFunction()": {
+    "reason": "deviation",
+    "note": "JS-only helper; Swift has no equivalent."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > getCaretRect, which measures the caret for scrollIntoViewIfNeeded > keeps the empty rect when there is no character to measure": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > getCaretRect, which measures the caret for scrollIntoViewIfNeeded > measures the character before a caret that has no rect": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > getCaretRect, which measures the caret for scrollIntoViewIfNeeded > measures the first character for a caret at the start that has no rect": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > getCaretRect, which measures the caret for scrollIntoViewIfNeeded > returns the rect of a caret that has one": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isArray()": {
+    "reason": "deviation",
+    "note": "JS-only helper; Swift has Array."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() fallback to event.code for single-letter in event.key via non-English layout": {
+    "reason": "dom-only",
+    "note": "Keyboard events are platform input; covered by the view layer."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() matches by event.key for single-letter": {
+    "reason": "dom-only",
+    "note": "Keyboard events are platform input; covered by the view layer."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() matches optional keys": {
+    "reason": "dom-only",
+    "note": "Keyboard events are platform input; covered by the view layer."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() matches special keys": {
+    "reason": "dom-only",
+    "note": "Keyboard events are platform input; covered by the view layer."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() matches to event.key for ASCII remapped layout (English (US) Dvorak)": {
+    "reason": "dom-only",
+    "note": "Keyboard events are platform input; covered by the view layer."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isSelectionWithinEditor()": {
+    "reason": "dom-only",
+    "note": "Needs the DOM; the native views cover this through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scheduleMicroTask(): native": {
+    "reason": "dom-only",
+    "note": "Needs the DOM; the native views cover this through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scheduleMicroTask(): promise": {
+    "reason": "dom-only",
+    "note": "Needs the DOM; the native views cover this through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded ignores a selection rect that lies entirely above the editor": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > does not scroll the ancestors of the root sideways": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > ignores a rect above the editor and an empty rect": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > ignores an element with overflow-x: clip": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > ignores an element with overflow-x: hidden": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > ignores an element with overflow-x: visible": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > keeps the caret out of the scroll-padding when it does not fit at scrollLeft 0": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > leaves a visible caret alone and skips styles when nothing overflows": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > only scrolls vertically without a selection node": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > reveals a caret above or below a scroller sideways too": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > reveals a caret below and right of a root that scrolls both ways": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > reveals the caret in a zoomed or scaled scroll container": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > reveals the inline start of a rect wider than the view": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > rounds the scroll position toward the caret": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > scrolls all the way back when the caret fits at scrollLeft 0": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > scrolls nested scroll containers from the caret outward": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > scrolls right to left containers with negative scrollLeft": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > scrolls the editor root itself sideways": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > scrolls to reveal a caret past the right edge": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded in horizontal scroll containers > still scrolls the window vertically, and only vertically": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scrollIntoViewIfNeeded respects scroll-padding on document element": {
+    "reason": "dom-only",
+    "note": "DOM scrolling; the native views scroll through TextKit."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > crosses ShadowRoot to host when parentElement is null": {
+    "reason": "dom-only",
+    "note": "Shadow DOM traversal has no native equivalent."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > crosses one ShadowRoot per call for nested shadow trees": {
+    "reason": "dom-only",
+    "note": "Shadow DOM traversal has no native equivalent."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > iterStaticNodeConfigChain > handles a loose transform": {
+    "reason": "deviation",
+    "note": "Prototype-based inheritance without class syntax cannot be expressed in Swift."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > returns null for a detached node with no parent": {
+    "reason": "dom-only",
+    "note": "Shadow DOM traversal has no native equivalent."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > returns parent element for a text node inside a shadow tree": {
+    "reason": "dom-only",
+    "note": "Shadow DOM traversal has no native equivalent."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > returns the light-DOM parentElement when present": {
+    "reason": "dom-only",
+    "note": "Shadow DOM traversal has no native equivalent."
+  },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > multiple blocks > remove range between list and nested list": {
     "reason": "out-of-scope-package",
     "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."

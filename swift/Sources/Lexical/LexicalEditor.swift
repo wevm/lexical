@@ -262,6 +262,10 @@ public func createEditor(_ args: CreateEditorArgs = CreateEditorArgs()) throws -
       try invariant(
         isSubclass(replaceWithKlass, of: klass) && replaceWithKlass != klass,
         "\(replaceWithKlass) doesn't extend the \(klass)")
+    } else if replace != nil {
+      consoleWarn(
+        "Override for \(klass) specifies 'replace' without 'withKlass'. 'withKlass' will be required in a future version."
+      )
     }
     if let configError = getNodeClassRecord(klass).configError {
       throw configError

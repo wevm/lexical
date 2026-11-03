@@ -33,6 +33,8 @@ package final class ThreadContext {
   package var compactExport = false
   // LexicalTextNode.ts
   package var textEditSuspended: NodeKey?
+  // `console.warn` (see Warnings.swift).
+  package var warningHandler: ((String) -> Void)?
   // The microtask queue (see Microtasks.swift).
   package var microtasks: [() -> Void] = []
   package var drainingMicrotasks = false

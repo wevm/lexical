@@ -32,6 +32,9 @@ private final class LegacyParagraph: ParagraphNode {
   }
 }
 
+/// Stands in for the contenteditable a test mounts the editor on.
+private final class RootElement {}
+
 private func field(_ value: Any?) -> String {
   value.map { "\($0)" } ?? "null"
 }
@@ -186,6 +189,102 @@ private func createReplacementEditor(
 }
 
 @Suite(.serialized) struct LexicalEditorModelTests {
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > Should create an editor with an initial editor state"
+    ))
+  func initialEditorState() throws {
+    let initialEditor = try initEditor()
+    try initialEditor.update {
+      try getRoot().append(try createParagraphNode().append(try createTextNode("This works!")))
+    }
+    let rootElement = RootElement()
+    try initialEditor.setRootElement(rootElement)
+    drainMicrotasks()
+    #expect(try shape(initialEditor) == "<paragraph>[This works!]</paragraph>")
+    let initialEditorState = initialEditor.getEditorState()
+    try initialEditor.setRootElement(nil)
+    let editor = try createEditor(
+      CreateEditorArgs(
+        editorState: initialEditorState, namespace: "", nodes: defaultTestNodes,
+        onError: { _ in }, theme: [:]))
+    try editor.setRootElement(rootElement)
+    #expect(try editor.getEditorState().toJSON() == initialEditorState.toJSON())
+    #expect(try shape(editor) == "<paragraph>[This works!]</paragraph>")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > Should be able to recover from an update error"
+    ))
+  func recoversFromUpdateError() throws {
+    let errorListener = Calls()
+    let editor = try initEditor(onError: { errorListener.record($0) })
+    try editor.setRootElement(RootElement())
+    try editor.update {
+      let root = try getRoot()
+      if try root.getFirstChild() == nil {
+        try root.append(try createParagraphNode().append(try createTextNode("This works!")))
+      }
+    }
+    drainMicrotasks()
+    #expect(try shape(editor) == "<paragraph>[This works!]</paragraph>")
+    #expect(errorListener.count == 0)
+    try editor.update {
+      // `$assertNodeType(..., $isElementNode)` on the paragraph's text child.
+      let paragraph = try #require(try getRoot().getFirstChild() as? ElementNode)
+      guard let element = try paragraph.getFirstChild() as? ElementNode else {
+        throw LexicalError("Expected node to be an ElementNode")
+      }
+      _ = try (try element.getFirstChild() as! TextNode).setTextContent("Foo")
+    }
+    #expect(errorListener.count == 1)
+    #expect(try shape(editor) == "<paragraph>[This works!]</paragraph>")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > Retains pendingEditor while rootNode is not set (editable)"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > Retains pendingEditor while rootNode is not set (non-editable)"
+    ), arguments: [true, false])
+  func retainsPendingEditor(_ editable: Bool) throws {
+    let jsonEditorState =
+      #"{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"123","type":"text","version":1}],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}"#
+    let editor = try initEditor(onError: { throw $0 })
+    let contentEditable = RootElement()
+    try editor.setRootElement(contentEditable)
+    try editor.setEditable(editable)
+    try editor.update { try getRoot().markDirty() }
+    try editor.setRootElement(nil)
+    #expect(editor.getEditorState()._readOnly)
+    try editor.setEditorState(try editor.parseEditorState(jsonEditorState))
+    try editor.update {}
+    try editor.setRootElement(contentEditable)
+    #expect(.object(try editor.getEditorState().toJSON()) == (try JSONValue.parse(jsonEditorState)))
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > setRootElement preserves queued updates and tags across reset (#7360)"
+    ))
+  func setRootElementPreservesQueue() throws {
+    let newEditor = try initEditor()
+    var queuedRan = false
+    newEditor._updates.append(QueuedUpdate({ queuedRan = true }, nil))
+    newEditor._updateTags.add("custom_tag")
+    var listenerTags: JSSet<UpdateTag>?
+    newEditor.registerUpdateListener { payload in
+      if payload.tags.has("custom_tag") {
+        listenerTags = payload.tags
+      }
+    }
+    try newEditor.setRootElement(RootElement())
+    #expect(queuedRan)
+    #expect(listenerTags?.has("custom_tag") == true)
+  }
+
   @Test(
     .upstream(
       "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > parseEditorState() > exportJSON API - parses parsed JSON"

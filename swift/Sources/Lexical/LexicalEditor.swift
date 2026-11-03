@@ -163,6 +163,11 @@ public typealias UpdateListener = (UpdateListenerPayload) throws -> Void
 public typealias TextContentListener = (String) throws -> Void
 public typealias EditableListener = (Bool) throws -> Void
 public typealias DecoratorListener = ([NodeKey: Any]) throws -> Void
+/// `RootListener`: the new and previous root elements; it may return a
+/// clean-up for the next change.
+public typealias RootListener = (_ rootElement: AnyObject?, _ prevRootElement: AnyObject?) -> (
+  () -> Void
+)?
 public typealias MutationListener = (JSMap<NodeKey, NodeMutation>, MutationListenerPayload) throws
   -> Void
 public typealias CommandListener<P> = (P, Editor) throws -> Bool
@@ -333,6 +338,7 @@ public final class Editor {
   package let _textContentListeners = ListenerMap<TextContentListener>()
   package let _editableListeners = ListenerMap<EditableListener>()
   package let _decoratorListeners = ListenerMap<DecoratorListener>()
+  package let _rootListeners = ListenerMap<RootListener>()
   package let _mutationListeners = JSMap<
     ObjectIdentifier, (MutationListener, JSSet<ObjectIdentifier>)
   >()
@@ -545,6 +551,59 @@ public final class Editor {
 
   public func getRootElement() -> AnyObject? { _rootElement }
 
+  /// Attaches the editor to `nextRootElement`, the native view it renders
+  /// into, or detaches it with `nil`. As in JS, the editor is reset and the
+  /// pending state (or the current one) is committed again, keeping queued
+  /// updates and their tags; root listeners then run.
+  public func setRootElement(_ nextRootElement: AnyObject?) throws {
+    let prevRootElement = _rootElement
+    if nextRootElement === prevRootElement {
+      return
+    }
+    let pendingEditorState = _pendingEditorState ?? _editorState
+    _rootElement = nextRootElement
+    resetEditor(self, pendingEditorState, preserveUpdateQueue: true)
+    if nextRootElement != nil {
+      _dirtyType = FULL_RECONCILE
+    }
+    _updateTags.add(HISTORY_MERGE_TAG)
+    try commitPendingUpdates(self)
+    let previouslyUpdating = _updating
+    _updating = false
+    defer { _updating = previouslyUpdating }
+    for (id, entry) in Array(_rootListeners.entries) {
+      if let unregister = entry.unregister {
+        entry.unregister = nil
+        unregister()
+      }
+      let nextUnregister = entry.listener(nextRootElement, prevRootElement)
+      if _rootListeners.entries.has(id) {
+        entry.unregister = nextUnregister
+      } else {
+        nextUnregister?()
+      }
+    }
+  }
+
+  /// Registers `listener` for root element changes. It runs at once with
+  /// the current root, and with `nil` when unregistered; a clean-up it
+  /// returns runs before its next call.
+  @discardableResult
+  public func registerRootListener(_ listener: @escaping RootListener) -> () -> Void {
+    let entry = ListenerEntry(listener)
+    entry.unregister = listener(_rootElement, nil)
+    let id = ObjectIdentifier(entry)
+    _rootListeners.entries.set(id, entry)
+    return { [weak self] in
+      guard let self, self._rootListeners.entries.has(id) else { return }
+      entry.unregister?()
+      entry.unregister = listener(nil, self._rootElement)
+      self._rootListeners.entries.delete(id)
+      entry.unregister?()
+      entry.unregister = nil
+    }
+  }
+
   public func getKey() -> String { _key }
 
   public func getEditorState() -> EditorState { _editorState }
@@ -675,5 +734,26 @@ public final class Editor {
 public final class ArtificialNode__DO_NOT_USE: ElementNode {
   public override class func config() -> NodeConfig? {
     NodeConfig(ArtificialNode__DO_NOT_USE.self, type: "artificial", extends: ElementNode.self)
+  }
+}
+
+/// `resetEditor`: an empty current state with `pendingEditorState` pending,
+/// and no dirty nodes; queued updates and their tags go too unless
+/// `preserveUpdateQueue`. The views own the DOM half of the JS function.
+package func resetEditor(
+  _ editor: Editor, _ pendingEditorState: EditorState, preserveUpdateQueue: Bool = false
+) {
+  editor._editorState = createEmptyEditorState()
+  editor._pendingEditorState = pendingEditorState
+  editor._compositionKey = nil
+  editor._dirtyType = NO_DIRTY_NODES
+  editor._cloneNotNeeded.clear()
+  editor._dirtyLeaves = JSSet()
+  editor._dirtyElements.clear()
+  editor._normalizedNodes = JSSet()
+  if !preserveUpdateQueue {
+    editor._updateTags = JSSet()
+    editor._updates = []
+    editor._cascadeCount = 0
   }
 }

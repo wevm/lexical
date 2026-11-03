@@ -7,6 +7,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 - Added `mergeRegister(_:)`, which `lexical` exports: one clean-up that runs
   the given clean-ups in reverse order, once.
+- Added `Editor.setRootElement(_:)` and `registerRootListener(_:)`. The root
+  is the native view; attaching or detaching it resets the editor and
+  commits the pending state again, keeping queued updates and their tags.
 - `LexicalNSTextView` now builds its TextKit 2 stack itself; it had no text
   system, so it showed nothing.
 - A committed state's node map is frozen as in JS's dev build: writing to it

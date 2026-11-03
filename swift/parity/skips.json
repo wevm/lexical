@@ -1,4 +1,12 @@
 {
+  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > Should be able to handle a change in root element": {
+    "reason": "react-only",
+    "note": "Swaps the root element through React re-renders; setRootElement itself is covered by the pendingEditor and #7360 tests."
+  },
+  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > Should be able to update an editor state without a root element": {
+    "reason": "react-only",
+    "note": "Mounts the root through React effects; setRootElement itself is covered by the pendingEditor and #7360 tests."
+  },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > With node decorators > Should correctly render React component into Lexical node #1": {
     "reason": "react-only",
     "note": "Renders React components into decorator nodes."
@@ -10,6 +18,10 @@
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > does not include linebreak into inline elements": {
     "reason": "dom-only",
     "note": "Asserts the reconciled DOM (no managed <br> inside an empty inline element)."
+  },
+  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > editor.focus() callback is called": {
+    "reason": "dom-only",
+    "note": "editor.focus() focuses the DOM root; the views own focus."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > has an invariant payload type for commands": {
     "reason": "deviation",
@@ -54,6 +66,10 @@
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > should call importDOM methods only once": {
     "reason": "dom-only",
     "note": "Asserts how often the static importDOM is read; the views own DOM import."
+  },
+  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms do not discard unintentional dirtyElements": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list (ListNode normalization); port with that package."
   },
   "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a $config that names an ancestor's generated code is refused": {
     "reason": "deviation",

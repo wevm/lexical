@@ -170,6 +170,13 @@ These are reversible choices made while porting, under Q7 and Q27.
   asserts what the headless JS editor produces, checked by running upstream
   headless, and says so in a comment. Tests that are only about such values
   (the `__cachedText` tests) stay unported until the reconciler lands.
+- **The root element is the native view.** `setRootElement(_:)` takes
+  `AnyObject?` and does the model half of the JS method: reset the editor,
+  commit the pending state again with `history-merge` (keeping queued
+  updates and tags), and run root listeners. Styling, events and the
+  mutation observer are the views' job. With a root set, a changed range
+  selection dispatches `SELECTION_CHANGE_COMMAND`, as in JS. The TextKit
+  views will call it when the incremental reconciler lands.
 
 ## Scope of v0.1.0 (Q21)
 

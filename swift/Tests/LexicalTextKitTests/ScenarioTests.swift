@@ -151,6 +151,8 @@ private final class ScenarioRunner {
       try c.beforeInput(chord.shift ? "insertLineBreak" : "insertParagraph")
     case ("ArrowLeft", _, false, _), ("ArrowRight", _, false, _):
       try moveHorizontally(chord)
+    case ("ArrowUp", false, false, _), ("ArrowDown", false, false, _):
+      try moveVertically(chord)
     case ("Tab", _, _, _), ("Escape", _, _, _):
       break
     case (let key, false, false, false) where key.count == 1:
@@ -167,18 +169,7 @@ private final class ScenarioRunner {
     let granularity: SelectionGranularity =
       chord.meta ? .lineboundary : chord.alt ? .word : .character
     let document = controller.document
-    var (anchor, focus) = try editor.read(.latest) { () -> (Int, Int) in
-      guard let selection = try getSelection() as? RangeSelection,
-        let anchor = document.location(for: selection.anchor),
-        let focus = document.location(for: selection.focus)
-      else { return (0, 0) }
-      return (anchor, focus)
-    }
-    if let view = viewSelection, min(view.anchor, view.focus) == min(anchor, focus),
-      max(view.anchor, view.focus) == max(anchor, focus)
-    {
-      (anchor, focus) = view
-    }
+    let (anchor, focus) = try currentSelection()
     if chord.shift {
       let target = document.move(focus, isBackward: isBackward, granularity: granularity)
       try select(anchor: anchor, focus: target)
@@ -190,6 +181,46 @@ private final class ScenarioRunner {
       let target = document.move(from, isBackward: isBackward, granularity: granularity)
       try select(anchor: target, focus: target)
     }
+  }
+
+  /// `moveUp:` and `moveDown:` (to the start or end of the text from the
+  /// first or last line), `moveToBeginningOfDocument:` and
+  /// `moveToEndOfDocument:` with Command, and their `AndModifySelection:`
+  /// forms.
+  private func moveVertically(_ chord: Chord) throws {
+    let isBackward = chord.key == "ArrowUp"
+    let document = controller.document
+    var (anchor, focus) = try currentSelection()
+    let target: Int
+    if chord.meta {
+      target = isBackward ? 0 : document.length
+    } else {
+      let from = chord.shift ? focus : isBackward ? min(anchor, focus) : max(anchor, focus)
+      let moved = document.move(from, isBackward: isBackward, granularity: .line)
+      target = moved != from ? moved : isBackward ? 0 : document.length
+    }
+    if !chord.shift { anchor = target }
+    focus = target
+    try select(anchor: anchor, focus: focus)
+  }
+
+  /// The view's selection: the model's, with the view's own anchor while
+  /// the range is the one the view set last.
+  private func currentSelection() throws -> (Int, Int) {
+    let document = controller.document
+    let model = try editor.read(.latest) { () -> (Int, Int) in
+      guard let selection = try getSelection() as? RangeSelection,
+        let anchor = document.location(for: selection.anchor),
+        let focus = document.location(for: selection.focus)
+      else { return (0, 0) }
+      return (anchor, focus)
+    }
+    if let view = viewSelection, min(view.anchor, view.focus) == min(model.0, model.1),
+      max(view.anchor, view.focus) == max(model.0, model.1)
+    {
+      return view
+    }
+    return model
   }
 
   private func select(anchor: Int, focus: Int) throws {

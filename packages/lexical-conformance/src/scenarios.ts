@@ -100,6 +100,41 @@ export const TEXT_ENTRY: Scenario[] = [
       {type: ' :)'},
     ],
   },
+  {
+    modes: both,
+    name: 'TextEntry > First paragraph backspace handling',
+    steps: [
+      {type: '  '},
+      {press: 'Enter'},
+      {press: 'ArrowUp'},
+      {press: 'Backspace'},
+    ],
+  },
+  {
+    modes: both,
+    name: 'TextEntry > Mix of paragraphs and break points',
+    steps: [
+      {press: 'Shift+Enter', times: 3},
+      {press: 'ArrowUp', times: 3},
+      {press: 'Enter'},
+      {press: 'ArrowUp'},
+      {type: '\u0647\u064E'},
+    ],
+  },
+  {
+    modes: both,
+    name: 'TextEntry > Empty paragraph and new line node selection',
+    steps: [
+      {press: 'Enter'},
+      {press: 'ArrowLeft'},
+      {press: 'ArrowRight'},
+      {press: 'ArrowLeft'},
+      {press: 'Delete'},
+      {press: 'Shift+Enter'},
+      {press: 'ArrowLeft'},
+      {press: 'Delete'},
+    ],
+  },
 ];
 
 export const SCENARIO_FILES: {name: string; scenarios: Scenario[]}[] = [

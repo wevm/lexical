@@ -1,15 +1,6 @@
 import Lexical
 import LexicalSelection
-
-/// `TestShadowRootNode` from packages/lexical/src/__tests__/utils.
-final class TestShadowRootNode: ElementNode {
-  override class func config() -> NodeConfig? {
-    NodeConfig(TestShadowRootNode.self, type: "test_shadow_root", extends: ElementNode.self)
-  }
-  override func isShadowRoot() -> Bool { true }
-}
-
-func createTestShadowRootNode() throws -> TestShadowRootNode { try TestShadowRootNode() }
+import LexicalTesting
 
 /// A root element that reports a left-to-right computed style for each
 /// node the reconciler has rendered, as `getComputedStyle` does for a

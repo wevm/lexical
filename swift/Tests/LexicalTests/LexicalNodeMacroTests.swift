@@ -1,4 +1,5 @@
 import Lexical
+import LexicalTesting
 import Testing
 
 // The `@LexicalNode` macro on real node classes: the config it generates

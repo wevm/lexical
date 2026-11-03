@@ -20,7 +20,8 @@
     "@lexical/devtools",
     "@lexical/eslint-plugin-internal",
     "@lexical/website",
-    "@lexical/dev-*"
+    "@lexical/dev-*",
+    "lexical-conformance"
   ],
   "linked": [],
   "updateInternalDependencies": "patch"

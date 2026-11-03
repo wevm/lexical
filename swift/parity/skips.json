@@ -319,6 +319,34 @@
     "reason": "out-of-scope-package",
     "note": "Uses $patchStyleText from @lexical/selection; port with that package."
   },
+  "lexical/src/__tests__/unit/LexicalSlotSelection.test.ts::named-slots: selection across a root slot > anchor in the body, focus dragged into a root slot placed after the body, clamps focus to the root end": {
+    "reason": "dom-only",
+    "note": "Drives a DOM selection through the mounted editor; the TextKit views own native selection."
+  },
+  "lexical/src/__tests__/unit/LexicalSlotSelection.test.ts::named-slots: selection across a root slot > anchor in the body, focus dragged into a root slot, clamps focus to the root edge": {
+    "reason": "dom-only",
+    "note": "Drives a DOM selection through the mounted editor; the TextKit views own native selection."
+  },
+  "lexical/src/__tests__/unit/LexicalSlotSelection.test.ts::named-slots: selection across nested slots > dragging from a slot value's own element point into its slot clamps by DOM order": {
+    "reason": "dom-only",
+    "note": "Drives a DOM selection through the mounted editor; the TextKit views own native selection."
+  },
+  "lexical/src/__tests__/unit/LexicalSlotSelection.test.ts::named-slots: selection containment (slot isolation) > a selection entirely within the body is left untouched": {
+    "reason": "dom-only",
+    "note": "Drives a DOM selection through the mounted editor; the TextKit views own native selection."
+  },
+  "lexical/src/__tests__/unit/LexicalSlotSelection.test.ts::named-slots: selection containment (slot isolation) > anchor in a slot, focus dragged into the body, clamps focus into the slot": {
+    "reason": "dom-only",
+    "note": "Drives a DOM selection through the mounted editor; the TextKit views own native selection."
+  },
+  "lexical/src/__tests__/unit/LexicalSlotSelection.test.ts::named-slots: selection containment (slot isolation) > anchor in the body, focus dragged into a slot of the host containing it mounted after its children, clamps focus to the end of the host": {
+    "reason": "dom-only",
+    "note": "Drives a DOM selection through the mounted editor; the TextKit views own native selection."
+  },
+  "lexical/src/__tests__/unit/LexicalSlotSelection.test.ts::named-slots: selection containment (slot isolation) > anchor in the body, focus dragged into a slot of the host containing it, clamps focus to the start of the host": {
+    "reason": "dom-only",
+    "note": "Drives a DOM selection through the mounted editor; the TextKit views own native selection."
+  },
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns globalThis.document when called with no active editor": {
     "reason": "dom-only",
     "note": "There is no document in the native port."

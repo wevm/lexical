@@ -195,9 +195,104 @@ export const HISTORY: Scenario[] = [
   },
 ];
 
+const bold: ScenarioStep = {press: 'Meta+b'};
+const italic: ScenarioStep = {press: 'Meta+i'};
+
+// TextFormatting.spec.mjs requires rich text. Its toolbar (font size and
+// family) and decorator (#2523) tests are out of scope.
+export const TEXT_FORMATTING: Scenario[] = [
+  {
+    modes: ['rich'],
+    name: 'TextFormatting > Can create bold text using the shortcut',
+    steps: [{type: 'Hello'}, bold, {type: ' World'}, bold, {type: '!'}],
+  },
+  {
+    modes: ['rich'],
+    name: 'TextFormatting > Can select multiple text parts and format them with shortcuts',
+    steps: [
+      {type: 'Hello world!'},
+      {press: 'ArrowLeft'},
+      {press: 'Shift+ArrowLeft', times: 5},
+      bold,
+      {press: 'ArrowLeft'},
+      {press: 'ArrowRight'},
+      {press: 'Shift+ArrowRight', times: 2},
+      italic,
+      bold,
+      {press: 'ArrowLeft', times: 2},
+      {press: 'Shift+ArrowRight', times: 5},
+      bold,
+      italic,
+      italic,
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'TextFormatting > Can insert range of formatted text and select part and replace with character',
+    steps: [
+      {type: '123'},
+      bold,
+      {type: '456'},
+      bold,
+      {type: '789'},
+      {press: 'Shift+Enter'},
+      {type: 'abc'},
+      bold,
+      {type: 'def'},
+      bold,
+      {type: 'ghi'},
+      {press: 'ArrowUp'},
+      {press: 'Meta+ArrowLeft'},
+      {press: 'ArrowRight', times: 2},
+      {press: 'Shift+ArrowDown'},
+      {press: 'Shift+ArrowRight', times: 8},
+      {type: 'z'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'TextFormatting > Regression #2439: can format backwards when at first text node boundary',
+    steps: [
+      {type: '123456'},
+      {press: 'ArrowLeft', times: 3},
+      {press: 'Shift+ArrowLeft', times: 3},
+      bold,
+      {press: 'Meta+ArrowRight'},
+      {press: 'Shift+ArrowLeft', times: 4},
+      bold,
+      bold,
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'TextFormatting > The active state of the button in the toolbar should to be displayed correctly',
+    steps: [
+      {type: 'A'},
+      {press: 'Enter'},
+      {type: 'B'},
+      {press: 'Shift+ArrowLeft', times: 3},
+      bold,
+      italic,
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'TextFormatting > Multiline selection format ignores new lines',
+    steps: [
+      {type: 'Fist'},
+      {press: 'Enter'},
+      {press: 'Meta+u'},
+      {type: 'Second'},
+      {press: 'ArrowLeft', times: 7},
+      {press: 'Shift+ArrowRight', times: 7},
+    ],
+  },
+];
+
 export const SCENARIO_FILES: {name: string; scenarios: Scenario[]}[] = [
   {name: 'text-entry', scenarios: TEXT_ENTRY},
   {name: 'history', scenarios: HISTORY},
+  {name: 'text-formatting', scenarios: TEXT_FORMATTING},
 ];
 
 /**

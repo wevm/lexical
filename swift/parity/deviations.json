@@ -37,9 +37,17 @@
   },
   "native/caret-format-at-run-boundary": {
     "category": "platform-selection",
-    "description": "A caret moved onto the boundary of two text nodes with different formats takes the format of the node before it, as Cocoa's typing attributes come from the preceding character. WebKit keeps its DOM caret in the node the arrow key came from, so moving left into the start of bold text leaves a bold caret in JS. The model point is the same; only the caret's format differs.",
+    "description": "A location on the boundary of two text nodes is a point at the end of the node before it, and a caret there takes that node's format, as Cocoa's typing attributes come from the preceding character. WebKit keeps its DOM caret in the node an arrow key moved through, so after moving left onto a boundary JS has the point at the start of the node after it (which $normalizeSelectionPointsForBoundaries keeps when a range starts there) and a caret with that node's format.",
     "scenarios": [
-      "TextEntry > Can insert a paragraph between two text nodes (rich)"
+      "TextEntry > Can insert a paragraph between two text nodes (rich)",
+      "TextFormatting > Can select multiple text parts and format them with shortcuts (rich)"
+    ]
+  },
+  "native/vertical-move-by-x-position": {
+    "category": "platform-selection",
+    "description": "ArrowUp and ArrowDown keep the caret's horizontal position in points, so where it lands depends on the fonts' metrics, which differ between WebKit and TextKit. The Linux scenario replay has no layout and keeps the character column, so the caret can land a character away from WebKit's.",
+    "scenarios": [
+      "TextFormatting > Can insert range of formatted text and select part and replace with character (rich)"
     ]
   }
 }

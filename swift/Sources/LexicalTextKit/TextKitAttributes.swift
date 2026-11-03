@@ -1,0 +1,591 @@
+import Lexical
+
+// The attribute layer between the model and the text views: what each JS
+// `EditorThemeClasses` key looks like natively, and the attributes a text
+// node and its block resolve to. Resolution follows the CSS cascade the DOM
+// editor gets: the root, then each ancestor from the outside in (its theme
+// key, `ltr`/`rtl`, `indent`), then the text node's `text.*` keys, then its
+// inline `style`, which wins as an inline style does. It holds no UI types;
+// the views map the descriptors to platform fonts and attributes.
+
+/// An sRGB color, components in 0...1.
+public struct TextKitColor: Hashable, Sendable {
+  public var red: Double
+  public var green: Double
+  public var blue: Double
+  public var alpha: Double
+
+  public init(red: Double, green: Double, blue: Double, alpha: Double = 1) {
+    self.red = red
+    self.green = green
+    self.blue = blue
+    self.alpha = alpha
+  }
+
+  /// A color from 0...255 channels, as CSS `rgb(r, g, b)` writes it.
+  public init(_ red: Int, _ green: Int, _ blue: Int, alpha: Double = 1) {
+    self.init(
+      red: Double(red) / 255, green: Double(green) / 255, blue: Double(blue) / 255, alpha: alpha)
+  }
+
+  /// Parses a CSS color: `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`, `rgb()`,
+  /// `rgba()` (comma or space separated, numbers or percentages) and the
+  /// basic named colors. Anything else is `nil`.
+  public init?(css: String) {
+    let value = cssTrim(css).lowercased()
+    if value.hasPrefix("#") {
+      let digits = value.dropFirst().map { $0.hexDigitValue }
+      guard digits.allSatisfy({ $0 != nil }) else { return nil }
+      let d = digits.map { Double($0!) }
+      switch d.count {
+      case 3, 4:
+        self.init(
+          red: d[0] * 17 / 255, green: d[1] * 17 / 255, blue: d[2] * 17 / 255,
+          alpha: d.count == 4 ? d[3] * 17 / 255 : 1)
+      case 6, 8:
+        self.init(
+          red: (d[0] * 16 + d[1]) / 255, green: (d[2] * 16 + d[3]) / 255,
+          blue: (d[4] * 16 + d[5]) / 255, alpha: d.count == 8 ? (d[6] * 16 + d[7]) / 255 : 1)
+      default:
+        return nil
+      }
+      return
+    }
+    if let open = value.firstIndex(of: "("), value.hasSuffix(")") {
+      let name = cssTrim(String(value[..<open]))
+      guard name == "rgb" || name == "rgba" else { return nil }
+      let inner = String(value[value.index(after: open)..<value.index(before: value.endIndex)])
+      var parts: [String]
+      if inner.contains(",") {
+        parts = inner.split(separator: ",", omittingEmptySubsequences: false).map {
+          cssTrim(String($0))
+        }
+      } else {
+        let halves = inner.split(separator: "/", omittingEmptySubsequences: false)
+        guard halves.count <= 2 else { return nil }
+        parts = halves[0].split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+        if halves.count == 2 {
+          guard parts.count == 3 else { return nil }
+          parts.append(cssTrim(String(halves[1])))
+        }
+      }
+      guard parts.count == 3 || parts.count == 4 else { return nil }
+      var channels: [Double] = []
+      for part in parts.prefix(3) {
+        guard let channel = cssNumber(part, percentOf: 255) else { return nil }
+        channels.append(min(max(channel, 0), 255) / 255)
+      }
+      var alpha = 1.0
+      if parts.count == 4 {
+        guard let a = cssNumber(parts[3], percentOf: 1) else { return nil }
+        alpha = min(max(a, 0), 1)
+      }
+      self.init(red: channels[0], green: channels[1], blue: channels[2], alpha: alpha)
+      return
+    }
+    guard let named = namedColors[value] else { return nil }
+    self = named
+  }
+}
+
+/// The CSS basic color keywords, plus `orange`, `grey` and `transparent`.
+private let namedColors: [String: TextKitColor] = [
+  "black": TextKitColor(0, 0, 0), "silver": TextKitColor(192, 192, 192),
+  "gray": TextKitColor(128, 128, 128), "grey": TextKitColor(128, 128, 128),
+  "white": TextKitColor(255, 255, 255), "maroon": TextKitColor(128, 0, 0),
+  "red": TextKitColor(255, 0, 0), "purple": TextKitColor(128, 0, 128),
+  "fuchsia": TextKitColor(255, 0, 255), "magenta": TextKitColor(255, 0, 255),
+  "green": TextKitColor(0, 128, 0), "lime": TextKitColor(0, 255, 0),
+  "olive": TextKitColor(128, 128, 0), "yellow": TextKitColor(255, 255, 0),
+  "navy": TextKitColor(0, 0, 128), "blue": TextKitColor(0, 0, 255),
+  "teal": TextKitColor(0, 128, 128), "aqua": TextKitColor(0, 255, 255),
+  "cyan": TextKitColor(0, 255, 255), "orange": TextKitColor(255, 165, 0),
+  "transparent": TextKitColor(0, 0, 0, alpha: 0),
+]
+
+private func cssTrim(_ s: String) -> String {
+  var units = Substring(s)
+  while let first = units.first, first.isWhitespace { units.removeFirst() }
+  while let last = units.last, last.isWhitespace { units.removeLast() }
+  return String(units)
+}
+
+/// A finite CSS number, or a percentage of `percentOf`.
+private func cssNumber(_ s: String, percentOf: Double) -> Double? {
+  var text = cssTrim(s)
+  var scale = 1.0
+  if text.hasSuffix("%") {
+    text.removeLast()
+    scale = percentOf / 100
+  }
+  guard text.first.map({ $0.isNumber || $0 == "." || $0 == "-" || $0 == "+" }) == true,
+    let number = Double(text), number.isFinite
+  else { return nil }
+  return number * scale
+}
+
+/// A font size: in points (CSS `px`; `pt` is converted at 4/3 points
+/// each), or a multiple of the surrounding size (`em`, `%`).
+public enum TextKitFontSize: Hashable, Sendable {
+  case points(Double)
+  case scale(Double)
+
+  /// Parses a CSS `font-size` of `Npx`, `Npt`, `Nem` or `N%`; keywords and
+  /// other units are `nil`.
+  public init?(css: String) {
+    let value = cssTrim(css).lowercased()
+    for (unit, make) in [
+      ("px", { TextKitFontSize.points($0) }), ("pt", { .points($0 * 4 / 3) }),
+      ("em", { .scale($0) }), ("%", { .scale($0 / 100) }),
+    ] as [(String, (Double) -> TextKitFontSize)] where value.hasSuffix(unit) {
+      let number = String(value.dropLast(unit.count))
+      guard !number.contains(where: \.isWhitespace), let n = cssNumber(number, percentOf: 1),
+        n > 0
+      else {
+        return nil
+      }
+      self = make(n)
+      return
+    }
+    return nil
+  }
+
+  func resolve(in size: Double) -> Double {
+    switch self {
+    case .points(let points): points
+    case .scale(let scale): scale * size
+    }
+  }
+}
+
+/// CSS `text-transform`. The views apply it when drawing, so the string and
+/// its UTF-16 offsets stay the model's.
+public enum TextKitTextTransform: String, Hashable, Sendable {
+  case none, uppercase, lowercase, capitalize
+}
+
+/// A quote's bar: drawn `offset` points after the start of its block's box,
+/// `width` wide.
+public struct TextKitBlockBar: Hashable, Sendable {
+  public var offset: Double
+  public var width: Double
+  public var color: TextKitColor
+
+  public init(offset: Double, width: Double, color: TextKitColor) {
+    self.offset = offset
+    self.width = width
+    self.color = color
+  }
+}
+
+/// What one theme key looks like. Every property is optional: `nil` leaves
+/// what the key's element inherits. The character properties apply to the
+/// text inside; the paragraph ones only to blocks.
+public struct TextKitStyle: Hashable, Sendable {
+  /// Font families in fallback order; `monospace`, `serif` and `sans-serif`
+  /// are the CSS generic families.
+  public var fontFamily: [String]?
+  public var fontSize: TextKitFontSize?
+  /// A CSS weight: 400 is normal, 700 bold.
+  public var fontWeight: Int?
+  public var italic: Bool?
+  public var foregroundColor: TextKitColor?
+  /// Behind the text for text and inline elements, behind the paragraph for
+  /// blocks.
+  public var backgroundColor: TextKitColor?
+  public var underline: Bool?
+  public var strikethrough: Bool?
+  /// Raises (positive) or lowers the baseline, in ems of the surrounding
+  /// font, as `vertical-align: super` and `sub` do.
+  public var baselineShift: Double?
+  public var textTransform: TextKitTextTransform?
+  /// Points the block's content starts after its own start (margin, border
+  /// and padding at the inline start).
+  public var headIndent: Double?
+  public var spacingBefore: Double?
+  public var spacingAfter: Double?
+  public var lineHeightMultiple: Double?
+  public var blockBar: TextKitBlockBar?
+
+  public init(
+    fontFamily: [String]? = nil, fontSize: TextKitFontSize? = nil, fontWeight: Int? = nil,
+    italic: Bool? = nil, foregroundColor: TextKitColor? = nil,
+    backgroundColor: TextKitColor? = nil, underline: Bool? = nil, strikethrough: Bool? = nil,
+    baselineShift: Double? = nil, textTransform: TextKitTextTransform? = nil,
+    headIndent: Double? = nil, spacingBefore: Double? = nil, spacingAfter: Double? = nil,
+    lineHeightMultiple: Double? = nil, blockBar: TextKitBlockBar? = nil
+  ) {
+    self.fontFamily = fontFamily
+    self.fontSize = fontSize
+    self.fontWeight = fontWeight
+    self.italic = italic
+    self.foregroundColor = foregroundColor
+    self.backgroundColor = backgroundColor
+    self.underline = underline
+    self.strikethrough = strikethrough
+    self.baselineShift = baselineShift
+    self.textTransform = textTransform
+    self.headIndent = headIndent
+    self.spacingBefore = spacingBefore
+    self.spacingAfter = spacingAfter
+    self.lineHeightMultiple = lineHeightMultiple
+    self.blockBar = blockBar
+  }
+
+  /// The character properties of an inline `style` string, parsed with
+  /// `getStyleObjectFromCSS`: `font-size`, `font-family`, `color`,
+  /// `background-color` (or a color `background`), `font-weight`,
+  /// `font-style`, `text-decoration` and `text-transform`. Unknown
+  /// properties and values are ignored.
+  public init(css: String) {
+    self.init()
+    for (property, value) in getStyleObjectFromCSS(css) {
+      let lowered = cssTrim(value).lowercased()
+      switch property.lowercased() {
+      case "font-size": fontSize = TextKitFontSize(css: value) ?? fontSize
+      case "font-family": fontFamily = parseFontFamily(value) ?? fontFamily
+      case "color": foregroundColor = TextKitColor(css: value) ?? foregroundColor
+      case "background-color", "background":
+        backgroundColor = TextKitColor(css: value) ?? backgroundColor
+      case "font-weight":
+        switch lowered {
+        case "normal": fontWeight = 400
+        case "bold", "bolder": fontWeight = 700
+        default:
+          if let weight = Int(lowered), (1...1000).contains(weight) { fontWeight = weight }
+        }
+      case "font-style":
+        switch lowered {
+        case "italic", "oblique": italic = true
+        case "normal": italic = false
+        default: break
+        }
+      case "text-decoration", "text-decoration-line":
+        let words = Set(lowered.split(separator: " ").map(String.init))
+        if words == ["none"] {
+          underline = false
+          strikethrough = false
+        } else if !words.isEmpty, words.isSubset(of: ["underline", "line-through"]) {
+          underline = words.contains("underline")
+          strikethrough = words.contains("line-through")
+        }
+      case "text-transform":
+        textTransform = TextKitTextTransform(rawValue: lowered) ?? textTransform
+      default: break
+      }
+    }
+  }
+
+  /// `other` on top of this: its non-`nil` properties win.
+  func merging(_ other: TextKitStyle) -> TextKitStyle {
+    TextKitStyle(
+      fontFamily: other.fontFamily ?? fontFamily, fontSize: other.fontSize ?? fontSize,
+      fontWeight: other.fontWeight ?? fontWeight, italic: other.italic ?? italic,
+      foregroundColor: other.foregroundColor ?? foregroundColor,
+      backgroundColor: other.backgroundColor ?? backgroundColor,
+      underline: other.underline ?? underline, strikethrough: other.strikethrough ?? strikethrough,
+      baselineShift: other.baselineShift ?? baselineShift,
+      textTransform: other.textTransform ?? textTransform,
+      headIndent: other.headIndent ?? headIndent,
+      spacingBefore: other.spacingBefore ?? spacingBefore,
+      spacingAfter: other.spacingAfter ?? spacingAfter,
+      lineHeightMultiple: other.lineHeightMultiple ?? lineHeightMultiple,
+      blockBar: other.blockBar ?? blockBar)
+  }
+}
+
+/// A CSS `font-family` list, quotes removed; `nil` when empty.
+private func parseFontFamily(_ value: String) -> [String]? {
+  var families: [String] = []
+  var current = ""
+  var quote: Character?
+  for c in value {
+    if let q = quote {
+      if c == q { quote = nil } else { current.append(c) }
+    } else if c == "\"" || c == "'" {
+      quote = c
+    } else if c == "," {
+      families.append(cssTrim(current))
+      current = ""
+    } else {
+      current.append(c)
+    }
+  }
+  families.append(cssTrim(current))
+  families = families.filter { !$0.isEmpty }
+  return families.isEmpty ? nil : families
+}
+
+/// An element as the attribute layer sees it.
+public struct TextKitElement: Hashable, Sendable {
+  /// The node type, which is also its theme key (`paragraph`, `quote`,
+  /// `code`, `link`, ...).
+  public var type: String
+  /// A heading's tag (`h1`...`h6`), which makes its key `heading.h1`.
+  public var tag: String?
+  public var isInline: Bool
+  /// `getFormatType()`: `""`, `left`, `center`, `right`, `justify`,
+  /// `start` or `end`.
+  public var format: ElementFormatType
+  public var indent: Int
+  /// `getDirection()`: `ltr`, `rtl` or `nil`.
+  public var direction: ElementDirection?
+
+  public init(
+    type: String, tag: String? = nil, isInline: Bool = false, format: ElementFormatType = "",
+    indent: Int = 0, direction: ElementDirection? = nil
+  ) {
+    self.type = type
+    self.tag = tag
+    self.isInline = isInline
+    self.format = format
+    self.indent = indent
+    self.direction = direction
+  }
+
+  /// Reads `element` (call it in a read or update). The tag is the `tag` of
+  /// its JSON, so headings need no dependency on LexicalRichText.
+  public init(_ element: ElementNode) throws {
+    let type = element.getType()
+    self.init(
+      type: type,
+      tag: type == "heading" ? try element.exportJSON()["tag"]?.stringValue : nil,
+      isInline: try element.isInline(), format: try element.getFormatType(),
+      indent: try element.getIndent(), direction: try element.getDirection())
+  }
+
+  /// The `EditorThemeClasses` key the JS node reads in `createDOM`.
+  public var themeKey: String {
+    if type == "heading", let tag { "heading.\(tag)" } else { type }
+  }
+}
+
+/// `text-align`. `start` is `natural`, which follows the writing direction;
+/// `end` is the opposite side, which the view resolves.
+public enum TextKitTextAlignment: Hashable, Sendable {
+  case natural, left, center, right, justified, end
+}
+
+public enum TextKitWritingDirection: Hashable, Sendable {
+  /// `dir="auto"` or inherited: detected from the content.
+  case natural
+  case leftToRight
+  case rightToLeft
+}
+
+/// The resolved look of a text node's run.
+public struct TextKitTextAttributes: Hashable, Sendable {
+  /// Families in fallback order; empty is the system font.
+  public var fontFamily: [String] = []
+  public var fontSize: Double = 16
+  public var fontWeight: Int = 400
+  public var italic = false
+  public var foregroundColor = TextKitColor(0, 0, 0)
+  public var backgroundColor: TextKitColor?
+  public var underline = false
+  public var strikethrough = false
+  /// Points the baseline is raised (negative: lowered).
+  public var baselineOffset: Double = 0
+  /// The text has the `highlight` format.
+  public var highlight = false
+  public var textTransform = TextKitTextTransform.none
+
+  public init() {}
+
+  public var bold: Bool { fontWeight >= 600 }
+  public var monospace: Bool { fontFamily.contains("monospace") }
+
+  mutating func apply(_ style: TextKitStyle, background: Bool) {
+    let size = fontSize
+    if let v = style.fontFamily { fontFamily = v }
+    if let v = style.fontSize { fontSize = v.resolve(in: size) }
+    if let v = style.fontWeight { fontWeight = v }
+    if let v = style.italic { italic = v }
+    if let v = style.foregroundColor { foregroundColor = v }
+    if background, let v = style.backgroundColor { backgroundColor = v }
+    if let v = style.underline { underline = v }
+    if let v = style.strikethrough { strikethrough = v }
+    if let v = style.baselineShift { baselineOffset += v * size }
+    if let v = style.textTransform { textTransform = v }
+  }
+}
+
+/// The resolved look of a block's paragraph.
+public struct TextKitParagraphAttributes: Hashable, Sendable {
+  public var alignment = TextKitTextAlignment.natural
+  public var writingDirection = TextKitWritingDirection.natural
+  /// Points from the inline start (left in LTR, right in RTL).
+  public var headIndent: Double = 0
+  public var spacingBefore: Double = 0
+  public var spacingAfter: Double = 0
+  /// `nil` is the font's own line height.
+  public var lineHeightMultiple: Double?
+  public var backgroundColor: TextKitColor?
+  /// Quote bars, outermost first, offsets from the inline start.
+  public var blockBars: [TextKitBlockBar] = []
+
+  public init() {}
+}
+
+/// What each `EditorThemeClasses` key looks like natively. Keys are the JS
+/// key paths, nested keys joined with dots: `root`, `paragraph`, `quote`,
+/// `code`, `link`, `mark`, `heading.h1`...`heading.h6`, `indent`, `ltr`,
+/// `rtl`, and `text.bold`...`text.underlineStrikethrough`.
+public struct TextKitTheme: Hashable, Sendable {
+  public var styles: [String: TextKitStyle]
+  /// Points per indent level, `--lexical-indent-base-value` in JS.
+  public var indentWidth: Double
+
+  public init(styles: [String: TextKitStyle] = [:], indentWidth: Double = 40) {
+    self.styles = styles
+    self.indentWidth = indentWidth
+  }
+
+  public subscript(key: String) -> TextKitStyle? {
+    get { styles[key] }
+    set { styles[key] = newValue }
+  }
+
+  /// The upstream playground's look (`PlaygroundEditorTheme.css`), with the
+  /// browser's defaults for `h4`...`h6`.
+  public static let `default` = TextKitTheme(styles: [
+    "root": TextKitStyle(
+      fontSize: .points(16), fontWeight: 400, foregroundColor: TextKitColor(0, 0, 0),
+      lineHeightMultiple: 1.7),
+    "paragraph": TextKitStyle(spacingBefore: 0, spacingAfter: 0),
+    "quote": TextKitStyle(
+      foregroundColor: TextKitColor(101, 103, 107), headIndent: 40, spacingAfter: 10,
+      blockBar: TextKitBlockBar(offset: 20, width: 4, color: TextKitColor(206, 208, 212))),
+    "code": TextKitStyle(
+      fontFamily: ["Menlo", "Consolas", "Monaco", "monospace"], fontSize: .points(13),
+      backgroundColor: TextKitColor(240, 242, 245), headIndent: 52, spacingBefore: 8,
+      spacingAfter: 8, lineHeightMultiple: 1.53),
+    "link": TextKitStyle(foregroundColor: TextKitColor(33, 111, 219), underline: false),
+    "mark": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
+    "heading.h1": TextKitStyle(
+      fontSize: .points(24), fontWeight: 400, foregroundColor: TextKitColor(5, 5, 5)),
+    "heading.h2": TextKitStyle(
+      fontSize: .points(16), fontWeight: 700, foregroundColor: TextKitColor(101, 103, 107),
+      textTransform: .uppercase),
+    "heading.h3": TextKitStyle(fontSize: .points(12), textTransform: .uppercase),
+    "heading.h4": TextKitStyle(fontSize: .scale(1), fontWeight: 700),
+    "heading.h5": TextKitStyle(fontSize: .scale(0.83), fontWeight: 700),
+    "heading.h6": TextKitStyle(fontSize: .scale(0.67), fontWeight: 700),
+    "text.bold": TextKitStyle(fontWeight: 700),
+    "text.italic": TextKitStyle(italic: true),
+    "text.underline": TextKitStyle(underline: true),
+    "text.strikethrough": TextKitStyle(strikethrough: true),
+    "text.underlineStrikethrough": TextKitStyle(underline: true, strikethrough: true),
+    "text.code": TextKitStyle(
+      fontFamily: ["Menlo", "Consolas", "Monaco", "monospace"], fontSize: .scale(0.94),
+      backgroundColor: TextKitColor(240, 242, 245)),
+    "text.highlight": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
+    "text.subscript": TextKitStyle(fontSize: .scale(0.8), baselineShift: -0.2),
+    "text.superscript": TextKitStyle(fontSize: .scale(0.8), baselineShift: 0.33),
+    "text.lowercase": TextKitStyle(textTransform: .lowercase),
+    "text.uppercase": TextKitStyle(textTransform: .uppercase),
+    "text.capitalize": TextKitStyle(textTransform: .capitalize),
+  ])
+
+  /// The keys an element applies, in cascade order.
+  private func styles(of element: TextKitElement) -> [TextKitStyle] {
+    var keys = [element.themeKey]
+    if element.direction == "ltr" || element.direction == "rtl" { keys.append(element.direction!) }
+    if element.indent > 0 { keys.append("indent") }
+    return keys.compactMap { styles[$0] }
+  }
+
+  /// The `text.*` keys of `format`, as one layer: like the classes JS puts
+  /// on one element, later keys (in `TEXT_TYPE_TO_FORMAT` order) win, and
+  /// `underlineStrikethrough`, when the theme has it, replaces `underline`
+  /// and `strikethrough`.
+  private func textStyle(format: Int) -> TextKitStyle {
+    var layer = TextKitStyle()
+    let both = format & IS_UNDERLINE != 0 && format & IS_STRIKETHROUGH != 0
+    let combined = both ? styles["text.underlineStrikethrough"] : nil
+    if let combined { layer = layer.merging(combined) }
+    for key in TEXT_TYPE_TO_FORMAT.keys.sorted() where format & TEXT_TYPE_TO_FORMAT[key]! != 0 {
+      if combined != nil, key == "underline" || key == "strikethrough" { continue }
+      if let style = styles["text.\(key)"] { layer = layer.merging(style) }
+    }
+    return layer
+  }
+
+  /// The attributes of a text node with `format` and inline `style` inside
+  /// `ancestors`, outermost first (the root may be omitted).
+  public func textAttributes(
+    format: Int, style: String, ancestors: [TextKitElement]
+  )
+    -> TextKitTextAttributes
+  {
+    var attributes = TextKitTextAttributes()
+    if let root = styles["root"] { attributes.apply(root, background: false) }
+    for element in ancestors where element.type != "root" {
+      for style in styles(of: element) { attributes.apply(style, background: element.isInline) }
+    }
+    attributes.apply(textStyle(format: format).merging(TextKitStyle(css: style)), background: true)
+    attributes.highlight = format & IS_HIGHLIGHT != 0
+    return attributes
+  }
+
+  /// The attributes of the paragraph of `blocks`: the block itself last,
+  /// preceded by its ancestors, outermost first. Inline elements are
+  /// skipped. Indents and quote bars add up, spacing is the largest, and
+  /// alignment, direction, line height and background come from the
+  /// innermost block that sets them.
+  public func paragraphAttributes(blocks: [TextKitElement]) -> TextKitParagraphAttributes {
+    var attributes = TextKitParagraphAttributes()
+    var chain: [[TextKitStyle]] = [styles["root"].map { [$0] } ?? []]
+    var elements: [TextKitElement?] = [nil]
+    for element in blocks where element.type != "root" && !element.isInline {
+      chain.append(styles(of: element))
+      elements.append(element)
+    }
+    for (element, layer) in zip(elements, chain) {
+      for style in layer {
+        if let bar = style.blockBar {
+          attributes.blockBars.append(
+            TextKitBlockBar(
+              offset: attributes.headIndent + bar.offset, width: bar.width, color: bar.color))
+        }
+      }
+      for style in layer {
+        attributes.headIndent += style.headIndent ?? 0
+        attributes.spacingBefore = max(attributes.spacingBefore, style.spacingBefore ?? 0)
+        attributes.spacingAfter = max(attributes.spacingAfter, style.spacingAfter ?? 0)
+        if let v = style.lineHeightMultiple { attributes.lineHeightMultiple = v }
+        if let v = style.backgroundColor { attributes.backgroundColor = v }
+      }
+      guard let element else { continue }
+      attributes.headIndent += Double(element.indent) * indentWidth
+      switch element.direction {
+      case "ltr": attributes.writingDirection = .leftToRight
+      case "rtl": attributes.writingDirection = .rightToLeft
+      default: break
+      }
+      switch element.format {
+      case "left": attributes.alignment = .left
+      case "center": attributes.alignment = .center
+      case "right": attributes.alignment = .right
+      case "justify": attributes.alignment = .justified
+      case "start": attributes.alignment = .natural
+      case "end": attributes.alignment = .end
+      default: break
+      }
+    }
+    return attributes
+  }
+
+  /// The attributes of `node`'s run (call it in a read or update).
+  public func textAttributes(for node: TextNode) throws -> TextKitTextAttributes {
+    try textAttributes(
+      format: node.getFormat(), style: node.getStyle(),
+      ancestors: node.getParents().reversed().map(TextKitElement.init))
+  }
+
+  /// The attributes of `block`'s paragraph (call it in a read or update).
+  public func paragraphAttributes(for block: ElementNode) throws -> TextKitParagraphAttributes {
+    try paragraphAttributes(
+      blocks: ([block] + block.getParents()).reversed().map(TextKitElement.init))
+  }
+}

@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `TextKitTheme` to `LexicalTextKit`: the native look of each
+  `EditorThemeClasses` key (the playground's by default), resolving a text
+  node's format, inline style and blocks into `TextKitTextAttributes` and
+  `TextKitParagraphAttributes`.
 - Added `LexicalClipboard`: copy and paste in the Lexical, HTML and plain
   text formats (`copyToClipboard`, `insertDataTransferForRichText`,
   `insertDataTransferForPlainText`, `getClipboardDataFromSelection`,

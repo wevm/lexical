@@ -122,7 +122,8 @@ let package = Package(
       ]),
     // The TextKit 2 text views and the platform-neutral document they show.
     .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
-    .testTarget(name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalTextKit"]),
+    .testTarget(
+      name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalRichText", "LexicalTextKit"]),
     // Test support: the `.upstream(...)` trait the parity ledger reads.
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
     // Replays packages/lexical-conformance/vectors, which only the monorepo

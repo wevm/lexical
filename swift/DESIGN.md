@@ -99,7 +99,13 @@ note pointing here; fuzz vectors keep offsets off pair interiors.
   dictation, spellcheck, autocorrect, Writing Tools, text replacement). The
   text view never edits its own content; IME marked text commits through the
   `compositionend` path.
-- **Theme** (Q13): keys match JS `EditorThemeClasses`.
+- **Theme** (Q13): keys match JS `EditorThemeClasses`. The native look is a
+  separate `TextKitTheme` keyed by the JS key paths joined with dots
+  (`text.bold`, `heading.h1`, `quote`), defaulting to the playground's CSS,
+  while the editor's `theme` config stays the JS class map. Attributes resolve
+  in the DOM's cascade order (root, ancestors outside in, `text.*` keys as one
+  element's classes, then the inline `style`) into platform-neutral
+  descriptors that the views map to fonts.
 - **Accessibility** (Q41): VoiceOver, Dynamic Type, RTL and `direction`, full
   keyboard access on macOS.
 - **Collaboration** (Q14, Q20): deferred. NodeKeys, update tags, and dirty

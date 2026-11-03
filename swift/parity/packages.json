@@ -5,7 +5,7 @@
   "lexical-plain-text": "pending",
   "lexical-history": "pending",
   "lexical-selection": "pending",
-  "lexical-utils": "pending",
+  "lexical-utils": "enforced",
   "lexical-headless": "pending",
   "lexical-html": "pending",
   "lexical-clipboard": "pending"

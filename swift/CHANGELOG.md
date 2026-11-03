@@ -5,6 +5,14 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added the `LexicalUtils` module: `dfs`, `reverseDfs`, the slot-aware
+  traversals, `firstToLastIterator`/`lastToFirstIterator` (lazy, throwing
+  `StepwiseIterator`s), `insertNodeToNearestRoot`, `insertNodeIntoLeaf`,
+  `wrapNodeInElement`, `unwrapAndFilterDescendants`, `descendantsMatching`,
+  `registerNestedElementResolver`, `restoreEditorState`, `eventFiles`,
+  `handleIndentAndOutdent`, `onEscapeUp`/`onEscapeDown`, `makeStateWrapper`
+  and `dedupeSelectionRects`. `LexicalSelection` gains `SelectionRect` and
+  `filterSelectionRects`, the rect filter of `createRectsFromDOMRange`.
 - Added the `LexicalSelection` module: `patchStyleText`, `setBlocksType`,
   `wrapNodes`, `getSelectionStyleValueForProperty`,
   `sliceSelectedTextNodeContent`, `trimTextContentFromAnchor`,

@@ -315,6 +315,1282 @@
     "reason": "dom-only",
     "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
   },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > Expect initial output to be a block with no text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > Google Docs > should produce the correct editor state from Normal text (#1)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > Google Docs > should produce the correct editor state from bold text (#2)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > Google Docs > should produce the correct editor state from italic text (#3)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > Google Docs > should produce the correct editor state from strikethrough text (#4)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > block-level br followed by inline content is preserved (#29)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > collapsible spaces with nested structures (#16)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > collapsible spaces with nested structures (3) (#17)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > collapsibles and neighbors (1) (#9)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > collapsibles and neighbors (2) (#10)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > collapsibles and neighbors (3) (#11)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > collapsibles and neighbors (4) (#12)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > empty block (#13)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > empty block node between non inline siblings does not behave like a line break (#33)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > empty block node in div behaves like a line break (#31)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > empty block node in li behaves like a line break (#30)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > empty inline node does not behave like a line break (#32)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > forced line break should remain (#18)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > forced line break with tabs (#19)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > inline hello world (#1)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > inline hello world (2) (#2)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > last br in a block node is ignored (#36)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > lone block-level br between paragraphs collapses to an empty paragraph (#28)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > lone trailing block-level br collapses to an empty paragraph (#27)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > nested divs (#34)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > only br in a li (#35)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > pre (no touchy) (1) (#20)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > pre (no touchy) (2) (#21)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > pre + inline (inline collapses with pre) (#3)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > redundant inline at end (#15)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > redundant inline at start (#14)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > remove beginning + end spaces on the block (#6)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > remove beginning + end spaces on the block (2) (#7)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > remove beginning + end spaces on the block + anonymous inlines collapsible rules (#8)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > tabs are collapsed (#5)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > two Apple Notes lines + two paragraphs separated by an empty paragraph (#24)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > two Apple Notes paragraphs (#23)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > two lines + two paragraphs separated by an empty paragraph (2) (#25)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > two lines and br in spans (#26)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > white-space: pre (1) (no touchy) (#4)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > white-space: pre (no touchy) (2) (#22)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should ignore DOM node types that do not have transformers, but still process their children. (#15)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should ignore multiple levels of DOM node types that do not have transformers, but still process their children. (#16)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve formatting from HTML tags on deeply nested and top level text nodes. (#18)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve formatting from HTML tags on deeply nested text nodes. (#17)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve multiple types of formatting on deeply nested text nodes and top level text nodes (#19)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML anchor element (#12)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML b element (#7)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML em element (#9)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML h1 element (#1)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML h2 element (#2)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML h3 element (#3)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML i element (#8)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML u element (#10)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML ul element (#4)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted combination of HTML anchor elements and text nodes (#14)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted combination of an HTML text node followed by an anchor node (#13)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from pasted DOM Text Node (#6)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from pasted HTML ol element (#5)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from pasted heading node followed by a DOM Text Node (#11)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard"
+    ],
+    "note": "Pastes HTML into a React rich-text editor with code, link, list, hashtag and table nodes; ports with @lexical/rich-text and @lexical/clipboard."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalNodeHelpers.test.ts::LexicalNodeHelpers tests > dfs order > DFS starting at last child of element node should not include parent's siblings": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mark"
+    ],
+    "note": "Builds a MarkNode; ports with @lexical/mark."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalRootHelpers.test.ts::LexicalRootHelpers tests > isBlank": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-text"
+    ],
+    "note": "Tests $rootTextContent and $isRootTextContentEmpty from @lexical/text; ports with that package."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalRootHelpers.test.ts::LexicalRootHelpers tests > textContent": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-text"
+    ],
+    "note": "Tests $rootTextContent and $isRootTextContentEmpty from @lexical/text; ports with that package."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the beginning of paragraph": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the end of paragraph": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the end of paragraph that is followed by another block": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the end of the last nested list item": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert into empty paragraph": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert into nested list items": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert into paragraph in between two text nodes": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert with selection on root child": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert with selection on root end": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert with selection on root start": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > caret on root (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > empty, caret on paragraph (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > empty, caret on paragraph (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > sibling before, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > sibling before, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > sibling before, caret on sibling (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > sibling before, caret on text end (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > sibling before, caret on text middle (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > sibling before, caret on text start (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > sole child, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > sole child, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > caret on root (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > empty, caret on paragraph (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > empty, caret on paragraph (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > sibling before, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > sibling before, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > sibling before, caret on sibling (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > sibling before, caret on text end (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > sibling before, caret on text middle (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > sibling before, caret on text start (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > sole child, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last > sole child, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > caret on root (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > empty, caret on paragraph (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > empty, caret on paragraph (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > sibling before, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > sibling before, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > sibling before, caret on sibling (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > sibling before, caret on text end (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > sibling before, caret on text middle (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > sibling before, caret on text start (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > sole child, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first last removeEmptyDestination > sole child, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > caret on root (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > empty, caret on paragraph (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > empty, caret on paragraph (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > sibling before, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > sibling before, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > sibling before, caret on sibling (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > sibling before, caret on text end (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > sibling before, caret on text middle (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > sibling before, caret on text start (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > sole child, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first removeEmptyDestination > sole child, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > caret on root (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > empty, caret on paragraph (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > empty, caret on paragraph (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > sibling before, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > sibling before, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > sibling before, caret on sibling (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > sibling before, caret on text end (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > sibling before, caret on text middle (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > sibling before, caret on text start (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > sole child, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last > sole child, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > caret on root (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > empty, caret on paragraph (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > empty, caret on paragraph (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > sibling before, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > sibling before, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > sibling before, caret on sibling (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > sibling before, caret on text end (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > sibling before, caret on text middle (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > sibling before, caret on text start (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > sole child, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with last removeEmptyDestination > sole child, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > caret on root (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > empty, caret on paragraph (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > empty, caret on paragraph (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > sibling before, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > sibling before, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > sibling before, caret on sibling (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > sibling before, caret on text end (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > sibling before, caret on text middle (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > sibling before, caret on text start (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > sole child, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with no-splits-or-remove > sole child, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > caret on root (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > empty, caret on paragraph (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > empty, caret on paragraph (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > sibling before, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > sibling before, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > sibling before, caret on sibling (previous)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > sibling before, caret on text end (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > sibling before, caret on text middle (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > sibling before, caret on text start (next)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > sole child, caret on node (next) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with removeEmptyDestination > sole child, caret on node (previous) — caret.origin === node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
+    "note": "Builds rich-text editors (headings, quotes); ports with @lexical/rich-text."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split list items before the first text node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split list items between two text nodes": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split nested list items": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split paragraph after the last text node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split paragraph before the first text node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split paragraph in between two text nodes": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > throws when splitting root": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+  },
+  "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > calls onReposition for a range selection": {
+    "reason": "dom-only",
+    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
+  },
+  "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > does not throw for element-type selection points": {
+    "reason": "dom-only",
+    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
+  },
+  "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > does not throw for text-type selection points": {
+    "reason": "dom-only",
+    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
+  },
+  "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > returns a cleanup function that can be called safely": {
+    "reason": "dom-only",
+    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
+  },
+  "lexical-utils/src/__tests__/unit/positionNodeOnRange.test.tsx::positionNodeOnRange > does not re-insert its overlay after the root element was detached from the document": {
+    "reason": "dom-only",
+    "note": "positionNodeOnRange positions DOM overlay elements over a DOM Range; the views position overlays through TextKit (M3). Its rect filter is ported as filterSelectionRects."
+  },
+  "lexical-utils/src/__tests__/unit/positionNodeOnRange.test.tsx::positionNodeOnRange > keeps the wide selected area beside a vertically shifted inline box": {
+    "reason": "dom-only",
+    "note": "positionNodeOnRange positions DOM overlay elements over a DOM Range; the views position overlays through TextKit (M3). Its rect filter is ported as filterSelectionRects."
+  },
+  "lexical-utils/src/__tests__/unit/positionNodeOnRange.test.tsx::positionNodeOnRange > leaves no overlay behind when the root element changed while marking": {
+    "reason": "dom-only",
+    "note": "positionNodeOnRange positions DOM overlay elements over a DOM Range; the views position overlays through TextKit (M3). Its rect filter is ported as filterSelectionRects."
+  },
+  "lexical-utils/src/__tests__/unit/positionNodeOnRange.test.tsx::positionNodeOnRange > notifies when overlay rectangles shrink to 0": {
+    "reason": "dom-only",
+    "note": "positionNodeOnRange positions DOM overlay elements over a DOM Range; the views position overlays through TextKit (M3). Its rect filter is ported as filterSelectionRects."
+  },
+  "lexical-utils/src/__tests__/unit/positionNodeOnRange.test.tsx::positionNodeOnRange > notifies when overlay rectangles shrink to 1": {
+    "reason": "dom-only",
+    "note": "positionNodeOnRange positions DOM overlay elements over a DOM Range; the views position overlays through TextKit (M3). Its rect filter is ported as filterSelectionRects."
+  },
+  "lexical-utils/src/__tests__/unit/positionNodeOnRange.test.tsx::positionNodeOnRange > removes the overlay of an invocation that lands after it was disposed of": {
+    "reason": "dom-only",
+    "note": "positionNodeOnRange positions DOM overlay elements over a DOM Range; the views position overlays through TextKit (M3). Its rect filter is ported as filterSelectionRects."
+  },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a heading": {
     "reason": "out-of-scope-package",
     "packages": [

@@ -30,7 +30,7 @@ private enum ScenarioVectors {
     return FileManager.default.fileExists(atPath: url.path) ? url : nil
   }()
 
-  static let files = ["text-entry"]
+  static let files = ["text-entry", "history"]
 
   /// `swift/parity/deviations.json`: the deviation listing each scenario
   /// (`<name> (<mode>)`) that may differ from WebKit.
@@ -123,6 +123,11 @@ private final class ScenarioRunner {
       for character in text {
         try press(Chord(String(character)))
       }
+    } else if step["advanceHistoryClock"] != nil {
+      // The e2e helper: history's clock jumps past its merge delay.
+      let history = try getExtensionDependencyFromEditor(editor, HistoryExtension).output
+      let frozen = history.now.peek()() + history.delay.peek() + 50
+      history.now.value = { frozen }
     } else if let press = step["press"]?.stringValue {
       let times = step["times"]?.numberValue.map { Int($0) } ?? 1
       for _ in 0..<times {

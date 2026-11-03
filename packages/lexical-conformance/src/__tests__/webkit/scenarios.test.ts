@@ -5,7 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import {buildEditorFromExtensions} from '@lexical/extension';
+import {
+  buildEditorFromExtensions,
+  getExtensionDependencyFromEditor,
+} from '@lexical/extension';
 import {HistoryExtension} from '@lexical/history';
 import {PlainTextExtension} from '@lexical/plain-text';
 import {RichTextExtension} from '@lexical/rich-text';
@@ -143,6 +146,13 @@ async function record(
     for (const step of scenario.steps) {
       if ('type' in step) {
         await commands.keyboardType(step.type);
+      } else if ('advanceHistoryClock' in step) {
+        const {delay, now} = getExtensionDependencyFromEditor(
+          editor,
+          HistoryExtension,
+        ).output;
+        const frozen = now.peek()() + delay.peek() + 50;
+        now.value = () => frozen;
       } else {
         for (let i = 0; i < (step.times ?? 1); i++) {
           await commands.keyboardPress(linuxWebKitChord(step.press));

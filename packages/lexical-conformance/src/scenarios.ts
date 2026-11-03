@@ -21,7 +21,13 @@ export type ScenarioStep =
   /** Typed text, one key per character, as `page.keyboard.type`. */
   | {type: string}
   /** A key chord, as `page.keyboard.press`, `times` times in a row. */
-  | {press: string; times?: number};
+  | {press: string; times?: number}
+  /**
+   * The e2e helper `advanceHistoryClock`: history's clock moves past its
+   * merge delay (plus 50ms) and stays there, so the next change starts a
+   * new undo entry.
+   */
+  | {advanceHistoryClock: true};
 
 export type ScenarioMode = 'rich' | 'plain';
 
@@ -137,8 +143,61 @@ export const TEXT_ENTRY: Scenario[] = [
   },
 ];
 
+const advance: ScenarioStep = {advanceHistoryClock: true};
+const undo: ScenarioStep = {press: 'Meta+z'};
+const redo: ScenarioStep = {press: 'Meta+Shift+z'};
+
+export const HISTORY: Scenario[] = [
+  {
+    modes: both,
+    name: 'History > Can type two paragraphs of text and correctly undo and redo',
+    steps: [
+      advance,
+      {type: 'hello'},
+      advance,
+      {type: ' world'},
+      {press: 'Enter'},
+      {type: 'hello world again'},
+      {press: 'ArrowLeft', times: 6},
+      {type: ', again and'},
+      undo,
+      undo,
+      undo,
+      undo,
+      undo,
+      redo,
+      redo,
+      redo,
+      redo,
+      redo,
+      {press: 'Backspace', times: 4},
+      undo,
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'History > Can coalesce when switching inline styles (#1151)',
+    steps: [
+      advance,
+      {press: 'Meta+b'},
+      {type: 'foo'},
+      {press: 'Meta+b'},
+      {type: 'bar'},
+      {press: 'Meta+b'},
+      {type: 'baz'},
+      undo,
+      undo,
+      undo,
+      redo,
+      redo,
+      redo,
+    ],
+  },
+];
+
 export const SCENARIO_FILES: {name: string; scenarios: Scenario[]}[] = [
   {name: 'text-entry', scenarios: TEXT_ENTRY},
+  {name: 'history', scenarios: HISTORY},
 ];
 
 /**

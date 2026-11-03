@@ -7,7 +7,8 @@ func createTestEditor(nodes: [LexicalNodeConfig] = []) throws -> Editor {
   resetRandomKey()
   drainMicrotasks()
   return try createEditor(
-    CreateEditorArgs(namespace: "test", nodes: nodes, onError: { throw $0 }, theme: [:]))
+    CreateEditorArgs(
+      namespace: "test", nodes: defaultTestNodes + nodes, onError: { throw $0 }, theme: [:]))
 }
 
 /// `await editor.update(fn)`: the update, then its commit.
@@ -93,13 +94,20 @@ func createTestSegmentedNode(_ text: String = "") throws -> TestSegmentedNode {
   try TestSegmentedNode(text).setMode("segmented")
 }
 
-/// The test nodes of the `LexicalNode tests` suite.
+/// The upstream `DEFAULT_NODES` that are ported: the test nodes every test
+/// editor registers.
+var defaultTestNodes: [LexicalNodeConfig] {
+  [
+    .klass(TestElementNode.self), .klass(TestInlineElementNode.self),
+    .klass(TestShadowRootNode.self), .klass(TestSegmentedNode.self),
+  ]
+}
+
+/// The extra nodes of the `LexicalNode tests` suite.
 var lexicalNodeTestNodes: [LexicalNodeConfig] {
   [
     .klass(PlainNode.self), .klass(TestNode.self), .klass(InlineDecoratorNode.self),
-    .klass(BlockDecoratorNode.self), .klass(TestElementNode.self),
-    .klass(TestInlineElementNode.self), .klass(TestShadowRootNode.self),
-    .klass(TestSegmentedNode.self),
+    .klass(BlockDecoratorNode.self),
   ]
 }
 
@@ -124,4 +132,26 @@ func shape(_ node: LexicalNode) throws -> String {
     return "<br>"
   }
   return "<\(node.getType())/>"
+}
+
+/// The committed range selection's points, `key:offset:type` for the anchor
+/// and then the focus, after committing pending updates.
+func points(_ editor: Editor) throws -> String {
+  try editor.read {
+    guard let selection = try getSelection() as? RangeSelection else {
+      return "not a RangeSelection"
+    }
+    return [selection.anchor, selection.focus].map {
+      "\($0.key):\($0.offset):\($0.type.rawValue)"
+    }.joined(separator: " ")
+  }
+}
+
+/// `points` expected text: `key:offset:element` for both points.
+func elementPoints(
+  _ anchorKey: NodeKey, _ anchorOffset: Int, _ focusKey: NodeKey, _ focusOffset: Int
+)
+  -> String
+{
+  "\(anchorKey):\(anchorOffset):element \(focusKey):\(focusOffset):element"
 }

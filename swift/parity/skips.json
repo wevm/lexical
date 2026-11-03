@@ -71,6 +71,54 @@
     "reason": "out-of-scope-package",
     "note": "Needs @lexical/list (ListNode normalization); port with that package."
   },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > clear resets all state": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > clone shares state until first write": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > compact folds nursery into old and resets nursery": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > delete then resurrect preserves size and value": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > iteration skips tombstoned keys": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > iteration yields entries in nursery-overrides-old order": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > size tracks set/delete correctly across clone boundaries": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > write to a clone isolates that clone from the original": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > write to the original after clone isolates the original": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > GenMap source returns a clone (O(1) path)": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > plain Map at or above threshold returns a GenMap snapshot": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > plain Map below threshold returns a fresh plain Map": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+  },
   "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a $config that names an ancestor's generated code is refused": {
     "reason": "deviation",
     "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."

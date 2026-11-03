@@ -468,6 +468,92 @@ Reversible choices made porting `@lexical/extension` under Q18.
   build as empty modules. `LexicalTextKit` is the platform-neutral half
   (the rendered document, the input controller) and builds and tests on
   Linux.
+- **Input is `beforeinput`, in controlled mode** (Q28, Q40). The views turn
+  native input into the DOM events a browser on the same platform sends,
+  and `TextKitInputController` dispatches them: key presses
+  (`keyDown(with:)`, Command and Control shortcuts in
+  `performKeyEquivalent(with:)` before the menus, `pressesBegan` on iOS) are
+  `KEY_DOWN_COMMAND`, unless an IME is composing, as JS's `onKeyDown`
+  skips them. What no handler prevents goes on to the text view, which
+  moves the selection itself (TextKit's movement, as a browser moves the
+  DOM selection) and sends editing as `NSTextInputClient` / `UITextInput`
+  calls and NSResponder selectors. Those become `BEFORE_INPUT_COMMAND` with
+  the input type Safari reports (`deleteBackward:` is
+  `deleteContentBackward`, `deleteWordBackward:` `deleteWordBackward`,
+  `deleteToBeginningOfLine:` `deleteSoftLineBackward`, `insertNewline:` and
+  iOS Return `insertParagraph`, `insertLineBreak:` `insertLineBreak`,
+  `undo:` `historyUndo`, iOS Bold `formatBold`, a replacement range
+  `insertReplacementText`, ...). Core's default `BEFORE_INPUT_COMMAND`
+  handler is `$handleBeforeInput` with every branch that lets the browser
+  edit the DOM taken in controlled mode, since there is no DOM: text is
+  always `CONTROLLED_TEXT_INSERTION_COMMAND`, the view sets the model
+  selection to the input's target range before dispatching (JS applies
+  `getTargetRanges()`), and the Android, Chrome and Firefox workarounds are
+  left out. `deleteContentForward`, which JS measures from its target range
+  through `DELETE_LINE_COMMAND`, is `DELETE_CHARACTER_COMMAND`, the same
+  edit for the one-character range a forward delete targets. Edits that
+  still reach the storage another way (Writing Tools, services, spelling
+  menu) are refused in `shouldChangeText(in:replacementString:)` /
+  `textView(_:shouldChangeTextIn:replacementText:)` and dispatched as a
+  replacement. Each dispatch is a discrete update followed by
+  `drainMicrotasks()`, and the views install a main run loop observer that
+  drains microtasks before the loop sleeps, so updates an app makes outside
+  the views commit as they would at the end of a browser task.
+- **Selection** (Q28). A native selection change selects the model points
+  and runs the model half of JS `onSelectionChange` (a caret takes the
+  format and style of where it is, a range the formats all its text has),
+  then dispatches `SELECTION_CHANGE_COMMAND`. The views are the editor's
+  root element (`setRootElement(self)` at creation), so the core reconciler
+  runs, collects decorators and notifies selection changes while the view
+  is in a window. A model selection is shown after each commit; a
+  `NodeSelection` of one node shows as its range selected. A commit tagged
+  `focus` makes the view first responder, as `editor.focus()` focuses the
+  DOM root.
+- **Composition** (Q40). Marked text is written through the model, as a
+  browser writes it into the DOM: the first `setMarkedText` dispatches
+  `COMPOSITION_START_COMMAND`, each one replaces the marked range with
+  `insertText` on the composing node, and committing (`insertText` or
+  `unmarkText`) writes the final text and dispatches
+  `COMPOSITION_END_COMMAND` with it, so history makes the composition one
+  step. The core handlers are `$handleCompositionStart` without the empty
+  space heuristic (the model creates the text node, as typing does) and
+  `$onCompositionEndImpl` without reading the text back from the DOM. The
+  marked text is underlined with TextKit 2 rendering attributes, which
+  leave the storage the model's.
+- **Clipboard and drag and drop** (Q17). `NSPasteboard`, `UIPasteboard` and
+  drag items are `DataTransfer`s by the types in `TextKitPasteboard`:
+  `application/x-lexical-editor` as `dev.lexical.editor`, the drag marker as
+  `dev.lexical.drag`, `text/html` as `public.html`, `text/plain` and
+  `text/uri-list` as their public types, and file URLs and images as
+  `files`. `copy:` and `cut:` dispatch `COPY_COMMAND` / `CUT_COMMAND` with a
+  `ClipboardEvent` and write its data when a handler prevented the default;
+  `paste:` dispatches `PASTE_COMMAND`, and paste as plain text passes only
+  `text/plain`. RTF without HTML (from native apps) is converted to HTML,
+  as Safari does when it reads such a pasteboard. A drop dispatches
+  `DROP_COMMAND` at the drop point, which `caretFromPoint(_:_:)` resolves by
+  TextKit hit-testing (`characterIndexForInsertion(at:)`,
+  `closestPosition(to:)`); a drag of the selection dispatches
+  `DRAGSTART_COMMAND` for its data, and a drag the view sees end as a move
+  into another editor dispatches `deleteByDrag` here. On iOS the text
+  view's own drop interaction is replaced by one that loads the items and
+  dispatches the drop.
+- **Rendering** (Q13). Each commit's `TextKitEdit`s are applied to the
+  storage with the theme's attributes for their runs (`textAttributes(for:)`,
+  mapped to `NSFont`/`UIFont`, colors, underline, strikethrough, baseline);
+  then the paragraphs the commit touched (every leaf block of an element
+  marked dirty itself, and each dirty leaf block) get their
+  `NSParagraphStyle` again, and their separator the block's own text look,
+  so an empty block's line has its height. Quote bars are drawn behind the
+  text from the block's line fragments. `textTransform` is not drawn yet,
+  so the default theme's `h2` and `h3` show their case as typed.
+- **Decorators** (Q12). A decorator's U+FFFC carries an `NSTextAttachment`
+  whose view provider hosts the SwiftUI view its `decorate(_:)` returned
+  (`any View`; anything else renders nothing), in an `NSHostingView` or a
+  `UIHostingController`'s view, kept per node key across commits. Inline
+  decorators size to their view; block decorators take the line's width.
+  A click or tap on the view dispatches `CLICK_COMMAND` with the node's key
+  as `targetKey`.
+- **Tier 2 differences** are listed in `parity/deviations.json`.
 
 ## Scope of v0.1.0 (Q21)
 

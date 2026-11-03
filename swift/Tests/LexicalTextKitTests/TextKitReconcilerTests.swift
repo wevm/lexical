@@ -1,4 +1,5 @@
 import Lexical
+import LexicalRichText
 import LexicalTesting
 import LexicalTextKit
 import Testing
@@ -74,7 +75,7 @@ struct Harness {
   /// `onCommit` is an update listener that runs before the controller's.
   init(paragraphs: Int = 0, onCommit: (() -> Void)? = nil) throws {
     let editor = try createTestEditor()
-    registerTextKitSliceEditing(editor)
+    _ = registerRichText(editor)
     if let onCommit {
       editor.registerUpdateListener { _ in onCommit() }
     }
@@ -87,13 +88,15 @@ struct Harness {
       }
     }
     controller = TextKitInputController(editor: editor)
+    // Native input edits at the view's selection; a fresh editor has none.
+    try controller.setSelectedRange(location: controller.document.length, length: 0)
     let storage = storage
     storage.apply([
       TextKitEdit(
         location: 0, length: 0, string: controller.document.string,
         runs: controller.document.runs)
     ])
-    controller.onRender = { edits, _ in storage.apply(edits) }
+    controller.onRender = { update in storage.apply(update.edits.map(\.edit)) }
   }
 
   func fresh() throws -> TextKitDocument {
@@ -305,7 +308,7 @@ private func nodes(_ filter: (LexicalNode) -> Bool) throws -> [LexicalNode] {
     #expect(edit.count == span.length + 1)
     let after = h.controller.document
     #expect(after.span(paragraph)?.length == before.span(paragraph)!.length + 1)
-    #expect(try h.controller.selectedRange()! == (span.end + 1, 0))
+    #expect(try h.controller.selectedRange() == TextKitRange(location: span.end + 1, length: 0))
     try h.check(around: span.end)
   }
 
@@ -345,7 +348,8 @@ private func nodes(_ filter: (LexicalNode) -> Bool) throws -> [LexicalNode] {
     let h = try Harness(paragraphs: 10)
     var renders: [[TextKitEdit]] = []
     let storage = h.storage
-    h.controller.onRender = { edits, _ in
+    h.controller.onRender = { update in
+      let edits = update.edits.map(\.edit)
       renders.append(edits)
       storage.apply(edits)
     }
@@ -385,9 +389,9 @@ private func nodes(_ filter: (LexicalNode) -> Bool) throws -> [LexicalNode] {
     // The fake storage is not a text view, so the edits reach it after
     // the timed keystrokes.
     var edits: [[TextKitEdit]] = []
-    h.controller.onRender = { new, _ in
+    h.controller.onRender = { update in
       reconciles.append(clock.now - commit)
-      edits.append(new)
+      edits.append(update.edits.map(\.edit))
     }
     for _ in 0..<200 {
       let start = clock.now
@@ -403,5 +407,27 @@ private func nodes(_ filter: (LexicalNode) -> Bool) throws -> [LexicalNode] {
       "TextKit p95 over 200 keystrokes on 5,000 paragraphs: keystroke \(p95(keystrokes)) ms, "
         + "reconcile \(p95(reconciles)) ms")
     try h.check(around: span.end)
+  }
+}
+
+// The editing the tests above drive, as the views send it.
+extension TextKitInputController {
+  fileprivate func deleteBackward() throws { try beforeInput("deleteContentBackward") }
+  fileprivate func deleteForward() throws { try beforeInput("deleteContentForward") }
+  fileprivate func insertNewline() throws { try beforeInput("insertParagraph") }
+  fileprivate func insertLineBreak() throws { try beforeInput("insertLineBreak") }
+
+  fileprivate func toggleFormat(_ format: TextFormatType) throws {
+    try editor.update(discrete: true) {
+      _ = try self.editor.dispatchCommand(FORMAT_TEXT_COMMAND, format)
+    }
+  }
+
+  fileprivate func moveSelection(
+    _ alter: SelectionAlter, isBackward: Bool, granularity: SelectionGranularity
+  ) throws {
+    try editor.update(discrete: true) {
+      try (getSelection() as? RangeSelection)?.modify(alter, isBackward, granularity)
+    }
   }
 }

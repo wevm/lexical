@@ -1,1 +1,38 @@
-{}
+{
+  "native/insert-text-controlled": {
+    "category": "platform-input",
+    "description": "Every text input is CONTROLLED_TEXT_INSERTION_COMMAND. JS lets the browser insert most typed characters into the DOM and syncs the model from the input event; the native views never edit their own text (Q40). The resulting state is the same."
+  },
+  "native/replacement-keeps-caret": {
+    "category": "platform-input",
+    "description": "A replacement before a collapsed caret (autocorrection, a spelling fix, Writing Tools) leaves the caret where it was, shifted by the replacement's change in length, as NSTextView and UITextView do. JS leaves the caret after the replaced text unless the key that accepted it follows ($maybeMoveSelectionPastTrailingAcceptanceBoundary)."
+  },
+  "native/delete-content-forward": {
+    "category": "platform-input",
+    "description": "deleteContentForward dispatches DELETE_CHARACTER_COMMAND(false). JS dispatches DELETE_LINE_COMMAND(false) over the browser's one-character target range, which removes the same character."
+  },
+  "native/composition-in-model": {
+    "category": "platform-input",
+    "description": "IME marked text is written through the model with insertText on the composing node from COMPOSITION_START_COMMAND to COMPOSITION_END_COMMAND; JS lets the browser compose in the DOM and reads the text back. No COMPOSITION_START_CHAR placeholder is inserted (desktop WebKit inserts none either)."
+  },
+  "native/select-all-menu": {
+    "category": "platform-selection",
+    "description": "Select All from the menu or the iOS edit menu dispatches SELECT_ALL_COMMAND, as Command-A does. In a browser the menu item selects natively and only a selectionchange follows."
+  },
+  "native/ios-hardware-tab": {
+    "category": "platform-input",
+    "description": "On iOS, a hardware Tab that no KEY_TAB_COMMAND handler prevents reaches UITextView, which inserts a tab character. Safari moves the focus out of the contenteditable. On macOS, insertTab: moves the focus as a browser does."
+  },
+  "native/rtf-paste": {
+    "category": "platform-clipboard",
+    "description": "A pasteboard with RTF and no HTML (copied from a native app) is converted to HTML before PASTE_COMMAND, as Safari converts it when a page reads such a pasteboard."
+  },
+  "native/lexical-pasteboard-type": {
+    "category": "platform-clipboard",
+    "description": "application/x-lexical-editor travels on the pasteboard as the type dev.lexical.editor. Safari keeps a page's custom MIME types in WebKit's private pasteboard data, so Lexical JSON copied in a browser reaches the native views as HTML and text, and the reverse."
+  },
+  "native/drag-move-between-editors": {
+    "category": "platform-clipboard",
+    "description": "A drag moved into another editor is removed from the source by the source view when its drag session ends as a move (deleteByDrag there), where JS has the drop side find the source editor's root in the shared DOM."
+  }
+}

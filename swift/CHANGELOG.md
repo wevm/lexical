@@ -5,8 +5,23 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- The editor views are driven by the editor's extensions (`RichTextExtension`,
+  `PlainTextExtension`, `HistoryExtension`, ...) instead of their own
+  editing commands: key presses dispatch `KEY_DOWN_COMMAND`, text input and
+  NSResponder selectors `BEFORE_INPUT_COMMAND`, IME marked text
+  `COMPOSITION_START_COMMAND` / `COMPOSITION_END_COMMAND`, and the
+  clipboard and drag and drop `COPY_COMMAND`, `CUT_COMMAND`,
+  `PASTE_COMMAND`, `DRAGSTART_COMMAND` and `DROP_COMMAND` through
+  `NSPasteboard` / `UIPasteboard`. `registerTextKitSliceEditing` is
+  removed. The views are the editor's root element and implement
+  `focus()`, `blur()`, `hasFocus`, `isConnected` and `caretFromPoint(_:_:)`.
 - Editors handle `BEFORE_INPUT_COMMAND`, `COMPOSITION_START_COMMAND` and
   `COMPOSITION_END_COMMAND` by default, as in JS (in controlled mode).
+- The views render with `TextKitTheme` (fonts, colors, paragraph styles,
+  quote bars) and show DecoratorNodes' SwiftUI views as attachments.
+  `TextKitInputController.onRender` delivers a `TextKitUpdate`: the styled
+  edits, the paragraphs and decorators to style again, the selection and
+  the tags.
 - `LexicalTextKit` reconciles incrementally: `TextKitReconciler` turns each
   commit into `TextKitEdit` replacements for a `TextKitStorage`, and
   `TextKitInputController.onRender` now delivers those edits (one full edit

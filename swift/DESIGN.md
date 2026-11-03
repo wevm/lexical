@@ -551,8 +551,16 @@ Reversible choices made porting `@lexical/extension` under Q18.
   (`any View`; anything else renders nothing), in an `NSHostingView` or a
   `UIHostingController`'s view, kept per node key across commits. Inline
   decorators size to their view; block decorators take the line's width.
+  The size comes from the view provider's `attachmentBounds`, not the
+  attachment's: TextKit 2 never loads the view of an attachment that
+  overrides `attachmentBounds`, and draws a file icon in its place. The
+  attachment's `image` is a blank one for the same reason.
   A click or tap on the view dispatches `CLICK_COMMAND` with the node's key
   as `targetKey`.
+- **Attaching.** A view attaches itself as the root element before it
+  listens for renders, then renders the document in full, replacing its
+  own (empty) text. A view can so be created for an editor that already
+  has content, as `LexicalEditor` is in SwiftUI.
 - **Tier 2 differences** are listed in `parity/deviations.json`.
 
 ## Scope of v0.1.0 (Q21)

@@ -51,6 +51,9 @@
       hostingView = NSHostingView(rootView: AnyView(EmptyView()))
       super.init(data: nil, ofType: nil)
       allowsTextAttachmentView = true
+      // What TextKit draws where it does not show the view, in place of
+      // its file icon.
+      image = NSImage(size: NSSize(width: 1, height: 1))
       let click = DecoratorClickRecognizer(target: nil, action: nil)
       click.onClick = { onClick(key) }
       hostingView.addGestureRecognizer(click)
@@ -78,19 +81,28 @@
       return provider
     }
 
+    /// The decorator's frame on its line: an inline decorator takes its
+    /// view's size, a block decorator the line's width.
+    func bounds(proposedLineFragment: CGRect) -> CGRect {
+      if isInline {
+        return CGRect(origin: .zero, size: size)
+      }
+      return CGRect(x: 0, y: 0, width: max(proposedLineFragment.width, 1), height: size.height)
+    }
+  }
+
+  // The bounds are the provider's: TextKit 2 skips an attachment's view
+  // provider when the attachment overrides `attachmentBounds`, and draws a
+  // file icon instead.
+  final class DecoratorViewProvider: NSTextAttachmentViewProvider {
     override func attachmentBounds(
       for attributes: [NSAttributedString.Key: Any], location: any NSTextLocation,
       textContainer: NSTextContainer?, proposedLineFragment: CGRect, position: CGPoint
     ) -> CGRect {
-      if isInline {
-        return CGRect(origin: .zero, size: size)
-      }
-      let width = max(proposedLineFragment.width, 1)
-      return CGRect(x: 0, y: 0, width: width, height: size.height)
+      (textAttachment as? LexicalDecoratorAttachment)?.bounds(
+        proposedLineFragment: proposedLineFragment) ?? .zero
     }
-  }
 
-  final class DecoratorViewProvider: NSTextAttachmentViewProvider {
     override func loadView() {
       view = (textAttachment as? LexicalDecoratorAttachment)?.hostingView
     }

@@ -70,11 +70,13 @@
       decorators.onClick = { [weak self] key in
         self?.perform { try self?.controller.click(MouseEvent("click", targetKey: key)) }
       }
+      // Attaching commits what is pending; the view starts from the full
+      // render below, so it renders nothing before then.
+      controller.report { try editor.setRootElement(self) }
       controller.onRender = { [weak self] update in
         MainActor.assumeIsolated { self?.apply(update) }
       }
-      controller.report { try editor.setRootElement(self) }
-      controller.report { try controller.renderAll() }
+      controller.report { try controller.renderAll(replacing: textStorage?.length ?? 0) }
     }
 
     @available(*, unavailable)

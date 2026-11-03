@@ -86,11 +86,11 @@ public final class TextKitInputController {
   }
 
   /// Renders the whole document again, as one edit replacing the view's
-  /// text, and calls `onRender` with it. A view calls this when it first
-  /// shows the editor.
+  /// text of `length` UTF-16 code units, and calls `onRender` with it. A
+  /// view calls this when it first shows the editor, which may already
+  /// have content.
   @discardableResult
-  public func renderAll() throws -> TextKitUpdate {
-    let oldLength = reconciler.document.length
+  public func renderAll(replacing oldLength: Int) throws -> TextKitUpdate {
     let editorState = editor.getEditorState()
     var edits = try reconciler.render(editorState)
     edits[0] = TextKitEdit(

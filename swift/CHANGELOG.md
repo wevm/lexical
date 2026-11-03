@@ -5,6 +5,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- DecoratorNodes' SwiftUI views now show in the views (they rendered as
+  file icons), and a view can be created for an editor that already has
+  content, such as `LexicalEditor` for a loaded document (it crashed).
+  `TextKitInputController.renderAll(replacing:)` takes the length of the
+  text the view shows.
 - The editor views are driven by the editor's extensions (`RichTextExtension`,
   `PlainTextExtension`, `HistoryExtension`, ...) instead of their own
   editing commands: key presses dispatch `KEY_DOWN_COMMAND`, text input and

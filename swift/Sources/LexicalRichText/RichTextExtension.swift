@@ -18,7 +18,7 @@ public struct RichTextConfig {
 }
 
 /// `mergeEscapeFormatTriggers`: each format's triggers merge key by key; a
-/// format set to `.some(nil)` (JS `null`) replaces the default outright.
+/// format set to `nil` (JS `null`) replaces the default outright.
 func mergeEscapeFormatTriggers(
   _ config: EscapeFormatTriggerConfig, _ overrides: EscapeFormatTriggerConfig
 ) -> EscapeFormatTriggerConfig {

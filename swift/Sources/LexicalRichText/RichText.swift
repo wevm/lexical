@@ -65,8 +65,8 @@ public struct TriggerConfig: Equatable, Sendable {
 }
 
 /// `EscapeFormatTriggerConfig`: the triggers of each format. A format
-/// mapped to `.some(nil)` (JS `null`) has escape explicitly disabled, which
-/// matters when overriding the defaults.
+/// mapped to `nil` (JS `null`, as in `["uppercase": nil]`) has escape
+/// explicitly disabled, which matters when overriding the defaults.
 public typealias EscapeFormatTriggerConfig = [TextFormatType: TriggerConfig?]
 
 /// `DEFAULT_ESCAPE_FORMAT_TRIGGERS`.

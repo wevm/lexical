@@ -15,7 +15,7 @@
 
   /// The attributed string a `TextKitDocument` shows.
   @MainActor
-  func attributedString(_ document: TextKitDocument, size: CGFloat) -> NSAttributedString {
+  func renderedAttributedString(_ document: TextKitDocument, size: CGFloat) -> NSAttributedString {
     let result = NSMutableAttributedString(
       string: document.string,
       attributes: [.font: PlatformFont.systemFont(ofSize: size)])
@@ -76,7 +76,7 @@
       private func show(_ document: TextKitDocument, _ range: (location: Int, length: Int)?) {
         isRendering = true
         defer { isRendering = false }
-        textStorage?.setAttributedString(attributedString(document, size: fontSize))
+        textStorage?.setAttributedString(renderedAttributedString(document, size: fontSize))
         if let range { setSelectedRange(NSRange(location: range.location, length: range.length)) }
       }
 
@@ -157,7 +157,7 @@
       private func show(_ document: TextKitDocument, _ range: (location: Int, length: Int)?) {
         isRendering = true
         defer { isRendering = false }
-        attributedText = attributedString(document, size: fontSize)
+        attributedText = renderedAttributedString(document, size: fontSize)
         if let range { selectedRange = NSRange(location: range.location, length: range.length) }
       }
 

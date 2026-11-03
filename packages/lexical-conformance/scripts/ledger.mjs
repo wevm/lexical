@@ -9,7 +9,7 @@
 import {execFileSync} from 'node:child_process';
 import {mkdtempSync, readdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join, relative} from 'node:path';
+import {dirname, join, relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -47,14 +47,36 @@ function collectUpstream() {
     Object.keys(packages).map(name => [name, []]),
   );
   const report = readJSON(out);
+  const titlesOf = file =>
+    file.assertionResults.map(test =>
+      [...test.ancestorTitles, test.title].join(' > '),
+    );
+  const byName = new Map(report.testResults.map(file => [file.name, file]));
   for (const file of report.testResults.sort((a, b) =>
     a.name.localeCompare(b.name),
   )) {
     const path = relative(join(root, 'packages'), file.name);
     const name = path.split('/')[0];
+    // A test file that imports another test module (for its test nodes)
+    // also runs that module's suites; they belong to the imported file.
+    const imported = new Map();
+    for (const [, specifier] of readFileSync(file.name, 'utf8').matchAll(
+      /from '(\.{1,2}\/[^']*\.test)'/g,
+    )) {
+      const base = join(dirname(file.name), specifier);
+      const other = ['.ts', '.tsx']
+        .map(ext => byName.get(base + ext))
+        .find(Boolean);
+      for (const title of other ? titlesOf(other) : []) {
+        imported.set(title, (imported.get(title) ?? 0) + 1);
+      }
+    }
     const seen = new Map();
-    for (const test of file.assertionResults) {
-      const title = [...test.ancestorTitles, test.title].join(' > ');
+    for (const title of titlesOf(file)) {
+      if (imported.get(title)) {
+        imported.set(title, imported.get(title) - 1);
+        continue;
+      }
       const count = (seen.get(title) ?? 0) + 1;
       seen.set(title, count);
       byPackage[name].push(`${path}::${title}${count > 1 ? ` #${count}` : ''}`);

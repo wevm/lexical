@@ -415,6 +415,14 @@
     "reason": "out-of-scope-package",
     "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
   },
+  "lexical/src/__tests__/unit/LexicalSerializationContext.test.ts::$withCompactExport refuses an asynchronous callback > at the call site, and at runtime for an untyped caller": {
+    "reason": "deviation",
+    "note": "Tests rejecting an async/thenable callback; Swift's withCompactExport takes a synchronous closure, so the compiler rejects an async one."
+  },
+  "lexical/src/__tests__/unit/LexicalSerializationContext.test.ts::editorState.toJSON states its form at the call site > JSON.stringify passes a key, which must not select the compact form": {
+    "reason": "deviation",
+    "note": "Tests JS's JSON.stringify calling toJSON(key); Swift's toJSON takes a Bool, so no key can reach it."
+  },
   "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > a late-added declared slot renders in its declared position in the DOM": {
     "reason": "dom-only",
     "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."

@@ -122,6 +122,15 @@ These are reversible choices made while porting, under Q7 and Q27.
   `TextPointCaret` are aliases of it.
 - **Slots** keep their map in a value type (`SlotMap`), so a writable host
   never shares the frozen version's map.
+- **Other packages' nodes in core tests.** Where a core test uses a node from
+  another package only for its structure, the core test nodes stand in:
+  `TestInlineElementNode` (inline, `canBeEmpty` false) for `LinkNode` and
+  `MarkNode`, `TestElementNode` for list containers. A test that depends on
+  that package's own behavior (list normalization, table shadow roots,
+  `HeadingNode.insertNewAfter`) is skipped as `out-of-scope-package` until the
+  package is ported.
+- **Parameterized upstream tests** become one Swift test with `arguments:`,
+  carrying one `.upstream(...)` trait per upstream case.
 
 ## Scope of v0.1.0 (Q21)
 

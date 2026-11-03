@@ -14,6 +14,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 - Node accessors a schema property reads or writes (`getStyle`, `setIndent`,
   `setTextContent` and the rest) are `open`, and importing JSON goes through
   them, so a subclass that overrides one owns its property as in JS.
+- Caret editing: `removeTextFromCaretRange`, `splitAtPointCaretNext`,
+  `insertNodeToNearestRootAtCaret`, `splitTextPointCaret`,
+  `splitTextPointCaretSlice`, `getAdjacentSiblingOrParentSiblingCaret` and
+  `getAdjacentNodes`.
 - `SchemaField(_:_:field:)` is `withField`: a property stored in a key-path
   field, carried across a clone with no `afterCloneFrom`.
   `getComposedSchemaFields(_:)` returns a class's composed schema.

@@ -222,5 +222,37 @@
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::withField compiles to direct field access > the field name is introspectable, which is what makes it compilable": {
     "reason": "deviation",
     "note": "Accessors are named by string on the JS schema and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or resolve."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > multiple blocks > remove range between list and nested list": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported File e2e tests > $selectAll() with nesting and a trailing decorator": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported Headings e2e tests > Pressing return in the middle of a heading creates a new heading below": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/rich-text: depends on HeadingNode.insertNewAfter. Port with @lexical/rich-text."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported Table e2e tests > Can delete all with range selection anchored in table": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a list is replaced with an empty paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a table is replaced with an empty paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > an inline insert after the list deletion does not throw": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > an inline insert after the table deletion does not land in a table": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
   }
 }

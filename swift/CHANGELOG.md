@@ -5,6 +5,14 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- With a root element attached, commits now run the reconciler's model
+  half: mutation listeners receive created, updated and destroyed nodes,
+  `RootNode` caches its text, and elements take `textFormat`/`textStyle`
+  from their first text node, as in JS.
+- `editor.read()` warns when it is called from a commit listener while
+  another update is pending, as JS does in development.
+- Fixed: a mutation listener whose teardown was discarded could be replaced
+  by the next one registered.
 - Update, editable, decorator and text content listeners may return a
   `ListenerCleanup`, called before their next call and when they are
   unregistered, as in JS (`{ _ -> ListenerCleanup? in … }`).

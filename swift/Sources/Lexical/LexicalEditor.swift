@@ -358,6 +358,9 @@ public final class Editor {
   package let _nodes: JSMap<String, RegisteredNode>
   package var _decorators: [NodeKey: Any] = [:]
   package var _pendingDecorators: [NodeKey: Any]?
+  /// `_keyToDOMMap`: what the reconciler keeps per node while a root is
+  /// attached (see LexicalReconciler.swift).
+  package let _keyToDOMMap = JSMap<NodeKey, ReconciledNode>()
   package var _config: EditorConfig
   package var _dirtyType = NO_DIRTY_NODES
   package var _cloneNotNeeded = JSMap<NodeKey, LexicalNode>()
@@ -500,9 +503,12 @@ public final class Editor {
     skipInitialization: Bool = false
   ) throws -> () -> Void {
     let klassToMutate = try resolveRegisteredNodeAfterReplacements(getRegisteredNode(klass)).klass
-    let box = ListenerEntry(listener)
-    let id = ObjectIdentifier(box)
+    // Swift closures have no identity, so each registration is its own
+    // entry, keyed by its class set, which the map keeps alive. (A key from
+    // an object only the teardown holds could be reused once that teardown
+    // is discarded.)
     let klassSet = JSSet<ObjectIdentifier>()
+    let id = ObjectIdentifier(klassSet)
     klassSet.add(ObjectIdentifier(klassToMutate))
     _mutationListeners.set(id, (listener, klassSet))
     if !skipInitialization {
@@ -513,7 +519,6 @@ public final class Editor {
       if klassSet.size == 0 {
         self?._mutationListeners.delete(id)
       }
-      _ = box
     }
   }
 
@@ -738,6 +743,15 @@ public final class Editor {
     if mode == .forceCommit {
       if !isDispatchingCommitListeners(self) {
         try commitPendingUpdates(self)
+      } else if _pendingEditorState != nil {
+        consoleWarn(
+          "editor.read() was called while the editor was notifying listeners "
+            + "of a commit, and a listener had started another update. That "
+            + "update was not committed early, so that listeners observe "
+            + "commits in order, and the read observed the state being "
+            + "committed. Inside listeners, read with "
+            + "editor.getEditorState().read(fn, {editor}) or "
+            + "editor.read('latest', fn) instead.")
       }
     }
     let editorState = mode == .pending ? (_pendingEditorState ?? _editorState) : getEditorState()
@@ -796,6 +810,10 @@ public final class ArtificialNode__DO_NOT_USE: ElementNode {
 package func resetEditor(
   _ editor: Editor, _ pendingEditorState: EditorState, preserveUpdateQueue: Bool = false
 ) {
+  editor._keyToDOMMap.clear()
+  if editor._rootElement != nil {
+    editor._keyToDOMMap.set("root", ReconciledNode())
+  }
   editor._editorState = createEmptyEditorState()
   editor._pendingEditorState = pendingEditorState
   editor._compositionKey = nil

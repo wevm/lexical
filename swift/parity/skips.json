@@ -1479,6 +1479,10 @@
     "reason": "dom-only",
     "note": "Exercises the html export and import config, which is DOM serialization."
   },
+  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > recovers from reconciler failure and trigger proper prev editor state": {
+    "reason": "dom-only",
+    "note": "Makes ParagraphNode.updateDOM throw to force the recovery path; Swift nodes have no updateDOM. The recovery itself (onError, then a full reconcile) is ported in commitPendingUpdatesImpl."
+  },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > rejects creating an editor with invalid LexicalNode parent class": {
     "reason": "deviation",
     "note": "Swift's LexicalNodeConfig takes LexicalNode.Type, so a class that does not subclass LexicalNode, or nil, does not compile."

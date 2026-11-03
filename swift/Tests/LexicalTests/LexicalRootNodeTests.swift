@@ -4,9 +4,22 @@ import Testing
 @testable import Lexical
 
 // Port of nodes/__tests__/unit/LexicalRootNode.test.ts, except createDOM and
-// updateDOM, which are dom-only, and the __cachedText tests, which wait for
-// the reconciler: it is what fills the cache, and a headless editor (JS or
-// Swift) leaves it nil.
+// updateDOM, which are dom-only. The __cachedText tests mount the editor:
+// the reconciler is what fills the cache.
+
+/// `expectRootTextContentToBe`: the cached text, the text computed without
+/// the cache, and `getTextContent()` all agree.
+private func expectRootTextContentToBe(_ editor: Editor, _ text: String) throws {
+  try editor.getEditorState().read { () throws in
+    let root = try getRoot()
+    #expect(root.__cachedText == text)
+    // Read without the cache, as upstream does on a copy of the frozen root.
+    let cachedText = root.__cachedText
+    root.__cachedText = nil
+    defer { root.__cachedText = cachedText }
+    #expect(try root.getTextContent() == text)
+  }
+}
 
 @Suite struct LexicalRootNodeTests {
   @Test(
@@ -155,5 +168,84 @@ import Testing
       #expect(try getSelection() == nil)
     }
     try update(editor) { () throws in #expect(try getSelection() == nil) }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode __cachedText incremental update #8096"
+    ))
+  func cachedTextIncremental() throws {
+    let editor = try createMountedTestEditor()
+    try editor.update(discrete: true) {
+      try getRoot().append(
+        try createParagraphNode().append(try createTextNode("a")), try createParagraphNode(),
+        try createParagraphNode().append(try createTextNode("b")))
+    }
+    try expectRootTextContentToBe(editor, "a\n\n\n\nb")
+    try editor.update(discrete: true) {
+      _ = try getRoot().selectEnd().insertRawText(".")
+    }
+    try expectRootTextContentToBe(editor, "a\n\n\n\nb.")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode __cachedText"
+    ))
+  func cachedText() throws {
+    let editor = try createMountedTestEditor()
+    try update(editor) { try getRoot().append(createParagraphNode()) }
+    try expectRootTextContentToBe(editor, "")
+    try update(editor) {
+      let firstParagraph = try #require(try getRoot().getFirstChild() as? ElementNode)
+      try firstParagraph.append(createTextNode("first line"))
+    }
+    try expectRootTextContentToBe(editor, "first line")
+    try update(editor) { try getRoot().append(createParagraphNode()) }
+    try expectRootTextContentToBe(editor, "first line\n\n")
+    try update(editor) {
+      let secondParagraph = try #require(try getRoot().getLastChild() as? ElementNode)
+      try secondParagraph.append(createTextNode("second line"))
+    }
+    try expectRootTextContentToBe(editor, "first line\n\nsecond line")
+    try update(editor) { try getRoot().append(createParagraphNode()) }
+    try expectRootTextContentToBe(editor, "first line\n\nsecond line\n\n")
+    try update(editor) {
+      let thirdParagraph = try #require(try getRoot().getLastChild() as? ElementNode)
+      try thirdParagraph.append(createTextNode("third line"))
+    }
+    try expectRootTextContentToBe(editor, "first line\n\nsecond line\n\nthird line")
+    try update(editor) {
+      let secondParagraph = try #require(try getRoot().getChildAtIndex(1) as? ElementNode)
+      let secondParagraphText = try #require(try secondParagraph.getFirstChild() as? TextNode)
+      try secondParagraphText.setTextContent("second line!")
+    }
+    try expectRootTextContentToBe(editor, "first line\n\nsecond line!\n\nthird line")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode __cachedText (empty paragraph)"
+    ))
+  func cachedTextEmptyParagraphs() throws {
+    let editor = try createMountedTestEditor()
+    try update(editor) { try getRoot().append(createParagraphNode(), createParagraphNode()) }
+    try expectRootTextContentToBe(editor, "\n\n")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode __cachedText (inlines)"
+    ))
+  func cachedTextInlines() throws {
+    let editor = try createMountedTestEditor()
+    try update(editor) {
+      let paragraph = try createParagraphNode()
+      try getRoot().append(paragraph)
+      try paragraph.append(
+        createTextNode("a"), createTestElementNode(), createTextNode("b"),
+        createTestInlineElementNode(), createTextNode("c"))
+    }
+    try expectRootTextContentToBe(editor, "a\n\nbc")
   }
 }

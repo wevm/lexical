@@ -16,10 +16,8 @@ public final class RootNode: ElementNode {
     try super.init(key: "root")
   }
 
-  public override func afterCloneFrom(_ prevNode: LexicalNode) throws {
-    try super.afterCloneFrom(prevNode)
-    __cachedText = (prevNode as! RootNode).__cachedText
-  }
+  // `__cachedText` is not carried across a clone: as in JS, a clone starts
+  // without it until the reconciler fills it in.
 
   public override func getTopLevelElementOrThrow() throws -> LexicalNode {
     throw LexicalError("getTopLevelElementOrThrow: root nodes are not top level elements")

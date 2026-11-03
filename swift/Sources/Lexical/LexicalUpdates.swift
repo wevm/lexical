@@ -309,12 +309,49 @@ func commitPendingUpdatesImpl(_ editor: Editor, _ recoveryEditorState: EditorSta
   let currentEditorState = editor._editorState
   let needsUpdate = editor._dirtyType != NO_DIRTY_NODES
   let previouslyUpdating = editor._updating
-  let mutatedNodes: MutatedNodes? = nil
+  let rootElement = editor._rootElement
+  let shouldSkipDOM = editor._headless || rootElement == nil
+  var mutatedNodes: MutatedNodes? = nil
 
   editor._pendingEditorState = nil
   editor._editorState = pendingEditorState
 
-  // The reconciler runs here once a view is attached (see the UI layers).
+  if !shouldSkipDOM && needsUpdate {
+    let previousActiveEditorState = context.activeEditorState
+    let previousReadOnlyMode = context.isReadOnlyMode
+    let previousActiveEditor = context.activeEditor
+    context.activeEditor = editor
+    context.activeEditorState = pendingEditorState
+    context.isReadOnlyMode = false
+    // We don't want updates to sync block the reconciliation.
+    editor._updating = true
+    defer {
+      editor._updating = previouslyUpdating
+      context.activeEditorState = previousActiveEditorState
+      context.isReadOnlyMode = previousReadOnlyMode
+      context.activeEditor = previousActiveEditor
+    }
+    do {
+      mutatedNodes = try reconcileRoot(
+        currentEditorState, pendingEditorState, editor, editor._dirtyType, editor._dirtyElements,
+        editor._dirtyLeaves)
+    } catch {
+      // Report errors
+      try editor._onError(error)
+      // Reset editor and restore incoming editor state
+      if !context.isAttemptingToRecoverFromReconcilerError {
+        resetEditor(editor, pendingEditorState)
+        editor._dirtyType = FULL_RECONCILE
+        context.isAttemptingToRecoverFromReconcilerError = true
+        defer { context.isAttemptingToRecoverFromReconcilerError = false }
+        try commitPendingUpdates(editor, currentEditorState)
+      } else {
+        // To avoid a possible situation of infinite loops, lets throw
+        throw error
+      }
+      return
+    }
+  }
 
   if !pendingEditorState._readOnly {
     pendingEditorState._readOnly = true

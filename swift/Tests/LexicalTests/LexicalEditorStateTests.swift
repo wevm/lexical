@@ -3,13 +3,14 @@ import Testing
 
 @testable import Lexical
 
-// Port of packages/lexical/src/__tests__/unit/LexicalEditorState.test.ts.
+// Port of packages/lexical/src/__tests__/unit/LexicalEditorState.test.ts,
+// whose editor `initializeUnitTest` mounts (createMountedTestEditor).
 @Suite struct LexicalEditorStateTests {
   @Test(
     .upstream(
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > isEmpty"))
   func isEmpty() throws {
-    let editor = try createTestEditor()
+    let editor = try createMountedTestEditor()
     try editor.update { () throws in
       let root = try createRootNode()
       #expect(EditorState(NodeMap([("root", root)])).isEmpty())
@@ -23,7 +24,7 @@ import Testing
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > constructor"
     ))
   func constructor() throws {
-    let editor = try createTestEditor()
+    let editor = try createMountedTestEditor()
     try editor.update { () throws in
       let root = try createRootNode()
       let nodeMap = NodeMap([("root", root)])
@@ -38,7 +39,7 @@ import Testing
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > read('pending' | 'latest' | 'force-commit')"
     ))
   func readModes() throws {
-    let editor = try createTestEditor()
+    let editor = try createMountedTestEditor()
     let textContent = { try getRoot().getTextContent() }
     // A regular update is processed synchronously but committed
     // asynchronously.
@@ -64,7 +65,7 @@ import Testing
     .upstream(
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > read()"))
   func read() throws {
-    let editor = try createTestEditor()
+    let editor = try createMountedTestEditor()
     try update(editor) { () throws in
       let paragraph = try createParagraphNode()
       let text = try createTextNode("foo")
@@ -79,9 +80,7 @@ import Testing
       paragraph = try #require(try root.getFirstChild() as? ParagraphNode)
       text = try #require(try paragraph.getFirstChild() as? TextNode)
     }
-    withKnownIssue("The reconciler, not ported yet, sets __cachedText") {
-      #expect(root.__cachedText == "foo")
-    }
+    #expect(root.__cachedText == "foo")
     #expect(root.__dir == nil && root.__format == 0 && root.__indent == 0)
     #expect(root.__first == "1" && root.__last == "1" && root.__size == 1)
     #expect(root.__key == "root" && root.__parent == nil)
@@ -115,7 +114,7 @@ import Testing
     .upstream(
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > toJSON()"))
   func toJSON() throws {
-    let editor = try createTestEditor()
+    let editor = try createMountedTestEditor()
     try update(editor) { () throws in
       let paragraph = try createParagraphNode()
       let text = try createTextNode("Hello world")
@@ -136,7 +135,7 @@ import Testing
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > ensure garbage collection works as expected"
     ))
   func garbageCollection() throws {
-    let editor = try createTestEditor()
+    let editor = try createMountedTestEditor()
     try update(editor) { () throws in
       let paragraph = try createParagraphNode()
       try paragraph.append(createTextNode("foo"))
@@ -149,9 +148,7 @@ import Testing
     let nodeMap = editor.getEditorState()._nodeMap
     #expect(nodeMap.keysArray == ["root"])
     let root = try #require(nodeMap.get("root") as? RootNode)
-    withKnownIssue("The reconciler, not ported yet, sets __cachedText") {
-      #expect(root.__cachedText == "")
-    }
+    #expect(root.__cachedText == "")
     #expect(root.__first == nil && root.__last == nil && root.__size == 0)
     #expect(root.__key == "root" && root.__parent == nil && root.__type == "root")
   }

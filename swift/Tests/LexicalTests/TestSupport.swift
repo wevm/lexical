@@ -11,6 +11,18 @@ func createTestEditor(nodes: [LexicalNodeConfig] = []) throws -> Editor {
       namespace: "test", nodes: defaultTestNodes + nodes, onError: { throw $0 }, theme: [:]))
 }
 
+/// Stands in for the contenteditable `initializeUnitTest` mounts: with it
+/// attached, commits run the reconciler.
+final class TestRootElement {}
+
+/// `createTestEditor` mounted on a `TestRootElement`, as `initializeUnitTest`
+/// mounts its editor.
+func createMountedTestEditor(nodes: [LexicalNodeConfig] = []) throws -> Editor {
+  let editor = try createTestEditor(nodes: nodes)
+  try editor.setRootElement(TestRootElement())
+  return editor
+}
+
 /// `await editor.update(fn)`: the update, then its commit.
 func update(_ editor: Editor, _ updateFn: @escaping () throws -> Void) throws {
   try editor.update(updateFn)

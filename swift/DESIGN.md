@@ -168,8 +168,9 @@ These are reversible choices made while porting, under Q7 and Q27.
   is filled by the reconciler; `applyDOMRange` normalizes element points to
   text points). Where the rest of the test is about the model, the port
   asserts what the headless JS editor produces, checked by running upstream
-  headless, and says so in a comment. Tests that are only about such values
-  (the `__cachedText` tests) stay unported until the reconciler lands.
+  headless, and says so in a comment. Tests about values the reconciler
+  computes (`__cachedText`, mutations) mount their editor on a test root, so
+  the model reconciler runs (see below).
 - **The root element is the native view.** `setRootElement(_:)` takes
   `AnyObject?` and does the model half of the JS method: reset the editor,
   commit the pending state again with `history-merge` (keeping queued
@@ -180,6 +181,20 @@ These are reversible choices made while porting, under Q7 and Q27.
   `isConnected` (a view: whether it is in a window), and any other root
   counts as connected. The TextKit views will call it when the incremental
   reconciler lands.
+- **The reconciler's model half is in core** (`LexicalReconciler.swift`).
+  While a root is attached (and the editor is not headless), each commit
+  walks the previous and next trees as `$reconcileRoot` does, with a
+  `ReconciledNode` in place of each keyed DOM element. It reports created,
+  updated and destroyed nodes to mutation listeners, fills
+  `RootNode.__cachedText`, derives `__textFormat`/`__textStyle` from each
+  element's first text, collects decorators, and recovers from a failure
+  with a full reconcile, as JS does. Rendering is the views' job. Two
+  differences: the children fast paths (suffix splicing, the same-size
+  walk) are not ported, since they only save DOM work, and every element
+  other than the root takes its cached text from `getTextContent()`,
+  because Swift cannot ask whether a subclass overrides it (JS does so only
+  for elements that override it). Unit tests whose upstream editor is
+  mounted use `createMountedTestEditor()`.
 - **Listener clean-ups.** In JS any update, editable, decorator or text
   content listener that returns a function has it called before its next
   call and on teardown. Swift keeps the `Void` listener types and adds an

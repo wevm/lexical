@@ -6,8 +6,8 @@ import Testing
 // Port of src/__tests__/unit/LexicalEditor.test.tsx. Upstream mounts each
 // editor in a React root; these editors are headless, so expected HTML is
 // asserted as the model it renders, and the DOM half of a test waits for the
-// views. Mutation listeners fire from the reconciler (a headless JS editor
-// has none either), so their tests wait for it and stay unported.
+// views. The mutation listener tests, which need the reconciler, mount their
+// editors (LexicalEditorMutationTests.swift).
 
 /// `init(onError, nodes, onWarn)`: upstream's test editor, whose default
 /// `onError` swallows errors (`vi.fn()`).

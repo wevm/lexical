@@ -5,6 +5,14 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added keyboard and DOM event types (`KeyboardEvent`, `ClipboardEvent`,
+  `InputEvent`, `DataTransfer`, …), the `KEY_*`, clipboard, drag and focus
+  commands, `isExactShortcutMatch`, `compileKeyboardShortcuts` and a default
+  `KEY_DOWN_COMMAND` handler that dispatches the same commands as JS on
+  Apple and non-Apple platforms.
+- Added `ClearEditorExtension`, `NestedEditorExtension` and
+  `KeyboardShortcutsExtension`. Extension `init` now takes the editor config
+  `inout`, as JS mutates it.
 - Added the `LexicalExtension` module: `buildEditorFromExtensions`,
   `LexicalBuilder`, `InitialStateExtension`, signals (a port of
   `@preact/signals-core`: `signal`, `computed`, `effect`, `batch`,

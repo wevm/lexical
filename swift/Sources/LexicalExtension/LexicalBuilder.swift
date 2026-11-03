@@ -280,7 +280,7 @@ public final class LexicalBuilder {
     if !theme.isEmpty { config.theme = theme }
     if !nodes.isEmpty { config.nodes = nodes }
     for extensionRep in extensionReps {
-      try extensionRep.`init`(config)
+      try extensionRep.`init`(&config)
     }
     let args = CreateEditorArgs(
       namespace: config.namespace, nodes: config.nodes ?? [], parentEditor: config.parentEditor,

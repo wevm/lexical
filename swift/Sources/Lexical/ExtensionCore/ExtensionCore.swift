@@ -86,7 +86,8 @@ public enum InitialEditorStateType {
 }
 
 /// `InitialEditorConfig`: the editor configuration an extension
-/// contributes, and the argument of `init`.
+/// contributes, and the argument of `init`, which may change it (`inout`)
+/// as JS `init` changes the shared object.
 public struct InitialEditorConfig {
   public var namespace: String?
   public var nodes: [LexicalNodeConfig]?
@@ -358,9 +359,8 @@ public protocol AnyLexicalExtension: AnyObject, AnyLexicalExtensionArgument {
   /// `mergeConfigs`: the default config with each override merged in.
   func _mergeConfigs(_ configs: [Any]) throws -> Any
   func _init(
-    _ editorConfig: InitialEditorConfig, _ config: Any, _ state: ExtensionInitState
-  )
-    throws -> Any
+    _ editorConfig: inout InitialEditorConfig, _ config: Any, _ state: ExtensionInitState
+  ) throws -> Any
   func _build(
     _ editor: Editor, _ config: Any,
     _ state: ExtensionBuildState<Any>
@@ -389,7 +389,7 @@ public final class LexicalExtension<Config, Output, Init>: AnyLexicalExtension, 
   public var peerDependencies: [NormalizedPeerDependency]
   public var config: Config
   public var mergeConfig: ((Config, Partial<Config>) throws -> Config)?
-  public var initFn: ((InitialEditorConfig, Config, ExtensionInitState) throws -> Init)?
+  public var initFn: ((inout InitialEditorConfig, Config, ExtensionInitState) throws -> Init)?
   public var buildFn: ((Editor, Config, ExtensionBuildState<Init>) throws -> Output)?
   public var registerFn:
     ((Editor, Config, ExtensionRegisterState<Init, Output>) throws -> () -> Void)?
@@ -405,7 +405,7 @@ public final class LexicalExtension<Config, Output, Init>: AnyLexicalExtension, 
     mergeConfig: ((Config, Partial<Config>) throws -> Config)? = nil,
     nodes: (() -> [LexicalNodeConfig])? = nil,
     editorConfig: InitialEditorConfig = InitialEditorConfig(),
-    init initFn: ((InitialEditorConfig, Config, ExtensionInitState) throws -> Init)?,
+    init initFn: ((inout InitialEditorConfig, Config, ExtensionInitState) throws -> Init)?,
     build: ((Editor, Config, ExtensionBuildState<Init>) throws -> Output)?,
     register: ((Editor, Config, ExtensionRegisterState<Init, Output>) throws -> () -> Void)? =
       nil,
@@ -448,10 +448,10 @@ public final class LexicalExtension<Config, Output, Init>: AnyLexicalExtension, 
   }
 
   public func _init(
-    _ editorConfig: InitialEditorConfig, _ config: Any, _ state: ExtensionInitState
+    _ editorConfig: inout InitialEditorConfig, _ config: Any, _ state: ExtensionInitState
   ) throws -> Any {
     guard let initFn else { return () }
-    return try initFn(editorConfig, config as! Config, state)
+    return try initFn(&editorConfig, config as! Config, state)
   }
 
   public func _build(
@@ -542,7 +542,7 @@ public func defineExtension<Config, Output, Init>(
   mergeConfig: ((Config, Partial<Config>) throws -> Config)? = nil,
   nodes: (() -> [LexicalNodeConfig])? = nil,
   editorConfig: InitialEditorConfig = InitialEditorConfig(),
-  init initFn: @escaping (InitialEditorConfig, Config, ExtensionInitState) throws -> Init,
+  init initFn: @escaping (inout InitialEditorConfig, Config, ExtensionInitState) throws -> Init,
   build: @escaping (Editor, Config, ExtensionBuildState<Init>) throws -> Output,
   register: ((Editor, Config, ExtensionRegisterState<Init, Output>) throws -> () -> Void)? = nil,
   afterRegistration: (
@@ -587,7 +587,7 @@ public func defineExtension<Config, Init>(
   mergeConfig: ((Config, Partial<Config>) throws -> Config)? = nil,
   nodes: (() -> [LexicalNodeConfig])? = nil,
   editorConfig: InitialEditorConfig = InitialEditorConfig(),
-  init initFn: @escaping (InitialEditorConfig, Config, ExtensionInitState) throws -> Init,
+  init initFn: @escaping (inout InitialEditorConfig, Config, ExtensionInitState) throws -> Init,
   register: ((Editor, Config, ExtensionRegisterState<Init, Void>) throws -> () -> Void)? = nil,
   afterRegistration: ((Editor, Config, ExtensionRegisterState<Init, Void>) throws -> () -> Void)? =
     nil
@@ -625,7 +625,8 @@ public func defineExtension<Output, Init>(
   peerDependencies: [NormalizedPeerDependency] = [],
   nodes: (() -> [LexicalNodeConfig])? = nil,
   editorConfig: InitialEditorConfig = InitialEditorConfig(),
-  init initFn: @escaping (InitialEditorConfig, EmptyConfig, ExtensionInitState) throws -> Init,
+  init initFn:
+    @escaping (inout InitialEditorConfig, EmptyConfig, ExtensionInitState) throws -> Init,
   build: @escaping (Editor, EmptyConfig, ExtensionBuildState<Init>) throws -> Output,
   register: ((Editor, EmptyConfig, ExtensionRegisterState<Init, Output>) throws -> () -> Void)? =
     nil,
@@ -666,7 +667,8 @@ public func defineExtension<Init>(
   peerDependencies: [NormalizedPeerDependency] = [],
   nodes: (() -> [LexicalNodeConfig])? = nil,
   editorConfig: InitialEditorConfig = InitialEditorConfig(),
-  init initFn: @escaping (InitialEditorConfig, EmptyConfig, ExtensionInitState) throws -> Init,
+  init initFn:
+    @escaping (inout InitialEditorConfig, EmptyConfig, ExtensionInitState) throws -> Init,
   register: ((Editor, EmptyConfig, ExtensionRegisterState<Init, Void>) throws -> () -> Void)? =
     nil,
   afterRegistration: (

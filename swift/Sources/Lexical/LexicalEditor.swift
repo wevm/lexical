@@ -304,6 +304,7 @@ public func createEditor(_ args: CreateEditorArgs = CreateEditorArgs()) throws -
     editor._pendingEditorState = initialEditorState
     editor._dirtyType = FULL_RECONCILE
   }
+  registerDefaultCommandHandlers(editor)
   return editor
 }
 
@@ -368,6 +369,10 @@ public final class Editor {
   package var _dirtyElements = JSMap<NodeKey, Bool>()
   package var _normalizedNodes = JSSet<NodeKey>()
   package var _updateTags = JSSet<UpdateTag>()
+  package var _inputState = InputState()
+  /// `_keyDownShortcuts`: the compiled key-down bindings, for the platform
+  /// they were built for.
+  var _keyDownShortcuts: (isApple: Bool, shortcuts: CompiledKeyboardShortcuts<KeyDownShortcut>)?
   /// The `LexicalBuilder` that built this editor (JS `editor[builderSymbol]`).
   package var _builder: AnyObject?
   /// Undoes what the builder registered (`LexicalEditorWithDispose`).

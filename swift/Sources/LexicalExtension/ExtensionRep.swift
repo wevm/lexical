@@ -50,7 +50,7 @@ public final class ExtensionRep {
     try extension_._mergeConfigs(configs)
   }
 
-  func `init`(_ editorConfig: InitialEditorConfig) throws {
+  func `init`(_ editorConfig: inout InitialEditorConfig) throws {
     try invariant(
       state.id == .permanent, "ExtensionRep: Can not configure from state id \(state.id.rawValue)")
     let initState = ExtensionInitState(
@@ -66,7 +66,7 @@ public final class ExtensionRep {
     state.config = try mergeConfigs()
     state.initState = initState
     state.id = .configured
-    let initResult = try extension_._init(editorConfig, state.config!, initState)
+    let initResult = try extension_._init(&editorConfig, state.config!, initState)
     state.initResult = initResult
     state.buildState = buildState
     state.id = .initialized

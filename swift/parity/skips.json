@@ -2547,14 +2547,6 @@
     "reason": "dom-only",
     "note": "Types through a mounted contenteditable (DOM events and DOM selection) in a rich text editor; native typing is tested in the TextKit layer."
   },
-  "lexical/src/__tests__/unit/LexicalEventsKeyDown.test.ts::$handleKeyDown dispatch parity (IS_APPLE=false) > dispatches the same commands as the legacy predicate chain": {
-    "reason": "dom-only",
-    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
-  },
-  "lexical/src/__tests__/unit/LexicalEventsKeyDownApple.test.ts::$handleKeyDown dispatch parity (IS_APPLE=true) > dispatches the same commands as the legacy predicate chain": {
-    "reason": "dom-only",
-    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
-  },
   "lexical/src/__tests__/unit/LexicalFirefoxCompositionEndTag.test.ts::Firefox composition-end tag forwarding > onInput emits COMPOSITION_END_TAG after a deferred compositionend": {
     "reason": "dom-only",
     "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
@@ -3612,26 +3604,6 @@
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isArray()": {
     "reason": "deviation",
     "note": "JS-only helper; Swift has Array."
-  },
-  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() fallback to event.code for single-letter in event.key via non-English layout": {
-    "reason": "dom-only",
-    "note": "Keyboard events are platform input; covered by the view layer."
-  },
-  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() matches by event.key for single-letter": {
-    "reason": "dom-only",
-    "note": "Keyboard events are platform input; covered by the view layer."
-  },
-  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() matches optional keys": {
-    "reason": "dom-only",
-    "note": "Keyboard events are platform input; covered by the view layer."
-  },
-  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() matches special keys": {
-    "reason": "dom-only",
-    "note": "Keyboard events are platform input; covered by the view layer."
-  },
-  "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isExactShortcutMatch() matches to event.key for ASCII remapped layout (English (US) Dvorak)": {
-    "reason": "dom-only",
-    "note": "Keyboard events are platform input; covered by the view layer."
   },
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > isSelectionWithinEditor()": {
     "reason": "dom-only",

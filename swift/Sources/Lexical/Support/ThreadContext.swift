@@ -45,6 +45,8 @@ package final class ThreadContext {
   /// The module state of the signals in LexicalExtension
   /// (`@preact/signals-core`).
   package var signalsState: AnyObject?
+  /// `withIsApple`: overrides `IS_APPLE` on this thread.
+  package var isAppleOverride: Bool?
 
   init() {}
 

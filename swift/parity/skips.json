@@ -13758,114 +13758,37 @@
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: Ghostty terminal paste with inline divs": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
+      "lexical-code"
     ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: a paragraph element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: a single div": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: div with display:inline should not insert linebreaks": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+    "note": "Expects a CodeNode from @lexical/code, which is not ported."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: github checklist": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
+      "lexical-list"
     ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+    "note": "Pastes into ListNode/ListItemNode from @lexical/list, which is not ported."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: google doc checklist": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
+      "lexical-list"
     ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+    "note": "Pastes into ListNode/ListItemNode from @lexical/list, which is not ported."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: google doc list with right alignment": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
+      "lexical-list"
     ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+    "note": "Pastes into ListNode/ListItemNode from @lexical/list, which is not ported."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: joplin checklist": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
+      "lexical-list"
     ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: multiple nested spans and divs": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: nested div in a span": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: nested span in a div": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: pasting inheritance": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: plain DOM text node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
-  },
-  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > iOS fix: Word predictions should be handled as plain text to maintain selection formatting": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-clipboard",
-      "lexical-selection"
-    ],
-    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+    "note": "Pastes into ListNode/ListItemNode from @lexical/list, which is not ported."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > stays linear in the depth when each carries text fields, in a committed state": {
     "reason": "deviation",
@@ -15636,20 +15559,6 @@
       "lexical-list"
     ],
     "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
-  },
-  "lexical/src/__tests__/unit/LexicalSelectionCaretSlices.test.ts::selection text slices > styling retains the selected prefix at an element start (backward=false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-selection"
-    ],
-    "note": "Uses $patchStyleText from @lexical/selection; port with that package."
-  },
-  "lexical/src/__tests__/unit/LexicalSelectionCaretSlices.test.ts::selection text slices > styling retains the selected prefix at an element start (backward=true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-selection"
-    ],
-    "note": "Uses $patchStyleText from @lexical/selection; port with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > a dropped no-op update does not suppress the next notification": {
     "reason": "dom-only",

@@ -3,8 +3,8 @@ import LexicalTesting
 import Testing
 
 // Port of src/__tests__/unit/LexicalSelectionCaretSlices.test.ts. The two
-// styling tests use $patchStyleText from @lexical/selection and wait for that
-// package.
+// styling tests use $patchStyleText from @lexical/selection and are in
+// LexicalSelectionTests.
 
 private func formatOrExtract(_ selection: RangeSelection, _ operation: String) throws {
   if operation == "format" {

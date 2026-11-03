@@ -4,7 +4,7 @@
   "lexical-rich-text": "enforced",
   "lexical-plain-text": "enforced",
   "lexical-history": "enforced",
-  "lexical-selection": "pending",
+  "lexical-selection": "enforced",
   "lexical-utils": "enforced",
   "lexical-headless": "enforced",
   "lexical-html": "enforced",

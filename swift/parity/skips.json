@@ -223,6 +223,30 @@
     "reason": "deviation",
     "note": "Accessors are named by string on the JS schema and resolved by reflection; in Swift a SchemaField carries get/set closures, so there are no names to record or resolve."
   },
+  "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression #7551 - Selection boundary normalization for single-child inline elements > collapsed selection at end of multi-child inline element normalizes to next sibling": {
+    "reason": "dom-only",
+    "note": "Resolves a RangeSelection from a DOM Range ($internalCreateRangeSelection). Port with the TextKit selection mapping."
+  },
+  "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression #7551 - Selection boundary normalization for single-child inline elements > collapsed selection at end of single-child inline element stays inside": {
+    "reason": "dom-only",
+    "note": "Resolves a RangeSelection from a DOM Range ($internalCreateRangeSelection). Port with the TextKit selection mapping."
+  },
+  "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression #8098 > Do not apply format and style when moving to different node": {
+    "reason": "dom-only",
+    "note": "Resolves a RangeSelection from a DOM Range ($internalCreateRangeSelection). Port with the TextKit selection mapping."
+  },
+  "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list at the end of a paragraph leaves no empty paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
+  },
+  "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list at the start of a paragraph keeps the paragraph after it": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
+  },
+  "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list in the middle of a paragraph keeps the trailing text": {
+    "reason": "out-of-scope-package",
+    "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
+  },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > multiple blocks > remove range between list and nested list": {
     "reason": "out-of-scope-package",
     "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."

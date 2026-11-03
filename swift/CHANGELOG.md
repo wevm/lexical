@@ -18,7 +18,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
   `insertNodes`, `insertParagraph`, `insertLineBreak`, `extract` and
   `formatText`, with `insertNodes`, `formatText`, `setTextFormat`,
   `getCharacterOffsets`, `tokenizeRawText` and `generateNodesFromRawText`.
-  Deleting by character, word or line is not ported yet.
+  `deleteCharacter`, `deleteWord`, `deleteLine` and `modify` handle the
+  moves across decorators and blocks; moving by a character, word or line
+  within text waits for the TextKit views, as JS waits for the DOM.
 - Caret editing: `removeTextFromCaretRange`, `splitAtPointCaretNext`,
   `insertNodeToNearestRootAtCaret`, `splitTextPointCaret`,
   `splitTextPointCaretSlice`, `getAdjacentSiblingOrParentSiblingCaret` and

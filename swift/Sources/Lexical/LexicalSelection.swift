@@ -213,7 +213,7 @@ public final class NodeSelection: BaseSelection {
   }
 }
 
-private func ensureRootHasParagraph() throws {
+package func ensureRootHasParagraph() throws {
   let root = try getRoot()
   if try root.getChildrenSize() == 0, try getSelectionSlotFrame(getSelection()) == nil {
     let paragraph = try createParagraphNode()

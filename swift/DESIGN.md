@@ -129,6 +129,13 @@ These are reversible choices made while porting, under Q7 and Q27.
   that package's own behavior (list normalization, table shadow roots,
   `HeadingNode.insertNewAfter`) is skipped as `out-of-scope-package` until the
   package is ported.
+- **Selection movement without layout.** JS moves a selection by a
+  character, word or line through `Selection.modify`, after
+  `$modifySelectionAroundDecoratorsAndBlocks`. Headless, and in JS under
+  jsdom, only that first step runs, and the port does the same until the
+  TextKit views supply the layout step. `TestLinkNode` in the tests copies
+  LinkNode's core-facing overrides (`canInsertTextBefore/After`,
+  `insertNewAfter`, `extractWithChild`).
 - **Duck-typed JS checks become protocols.** `'__language' in node` (a code
   block, in `insertNodes`) is `CodeLanguageNode`, and
   `__isInlineFormattable` is `InlineFormattableNode`, which `TextNode`

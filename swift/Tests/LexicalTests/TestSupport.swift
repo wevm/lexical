@@ -75,6 +75,39 @@ final class TestDecoratorNode: DecoratorNode {
 
 func createTestDecoratorNode() throws -> TestDecoratorNode { try TestDecoratorNode() }
 
+/// Stands in for `LinkNode` from @lexical/link with the overrides core
+/// editing consults: inline, never empty, no text inserted at its edges,
+/// and split by copying itself.
+final class TestLinkNode: ElementNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(TestLinkNode.self, type: "link", extends: ElementNode.self)
+  }
+  override func insertNewAfter(
+    _ selection: RangeSelection, restoreSelection: Bool = true
+  ) throws
+    -> LexicalNode?
+  {
+    let linkNode = try copyNode(self)
+    try insertAfter(linkNode, restoreSelection: restoreSelection)
+    return linkNode
+  }
+  override func canInsertTextBefore() throws -> Bool { false }
+  override func canInsertTextAfter() throws -> Bool { false }
+  override func canBeEmpty() throws -> Bool { false }
+  override func isInline() throws -> Bool { true }
+  override func extractWithChild(
+    _ child: LexicalNode, _ selection: BaseSelection?, _ destination: String
+  ) throws -> Bool {
+    guard let selection = selection as? RangeSelection else { return false }
+    let anchorNode = try selection.anchor.getNode()
+    let focusNode = try selection.focus.getNode()
+    return try (self.is(anchorNode) || isParentOf(anchorNode))
+      && (self.is(focusNode) || isParentOf(focusNode)) && !selection.getTextContent().isEmpty
+  }
+}
+
+func createTestLinkNode() throws -> TestLinkNode { try TestLinkNode() }
+
 /// `TestElementNode` from the upstream test utils.
 final class TestElementNode: ElementNode {
   override class func config() -> NodeConfig? {
@@ -124,7 +157,7 @@ var defaultTestNodes: [LexicalNodeConfig] {
   [
     .klass(TestElementNode.self), .klass(TestInlineElementNode.self),
     .klass(TestShadowRootNode.self), .klass(TestSegmentedNode.self),
-    .klass(TestDecoratorNode.self),
+    .klass(TestDecoratorNode.self), .klass(TestLinkNode.self),
   ]
 }
 

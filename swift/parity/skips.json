@@ -1,4 +1,68 @@
 {
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a $config that names an ancestor's generated code is refused": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a subclass that declares a property of its own takes the walk": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a subclass that overrides an accessor a field stands in for takes the walk": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a subclass that re-declares a property with a different predicate takes the walk": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a subclass whose tables compile the same way inherits it": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > linebreak": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > paragraph": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > tab": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > text": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated exportJSON > every generated exporter agrees with the schema-driven walk": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated exportJSON > every generated parser agrees with the schema-driven walk": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated exportJSON > the checked-in outputs are what the generator produces; `pnpm run generate-node-json` to fix": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated updateFromJSON > only a class the generator could compile has one": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::the compact form is generated too > every class that has a legacy form has one": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::the synthesized importJSON > follows the node the generated parser returns": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::the synthesized importJSON > state a constructor set is reset from JSON that carries none": {
+    "reason": "deviation",
+    "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
+  },
   "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.createDOM()": {
     "reason": "dom-only",
     "note": "Base LexicalNode.createDOM throws; the Swift reconciler renders to TextKit and has no createDOM."

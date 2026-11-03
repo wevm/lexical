@@ -59,9 +59,21 @@
       private var isRendering = false
       public var fontSize: CGFloat = NSFont.systemFontSize
 
+      /// Kept here because the layout manager refers to it weakly.
+      private let contentStorage: NSTextContentStorage
+
       public init(editor: Editor, frame: NSRect = .zero) throws {
         controller = try TextKitInputController(editor: editor)
-        super.init(frame: frame, textContainer: nil)
+        // `init(frame:textContainer: nil)` leaves the view without a text
+        // system, so the TextKit 2 stack is built here.
+        contentStorage = NSTextContentStorage()
+        let layoutManager = NSTextLayoutManager()
+        contentStorage.addTextLayoutManager(layoutManager)
+        let container = NSTextContainer(
+          size: NSSize(width: frame.width, height: CGFloat.greatestFiniteMagnitude))
+        container.widthTracksTextView = true
+        layoutManager.textContainer = container
+        super.init(frame: frame, textContainer: container)
         isRichText = true
         allowsUndo = false
         controller.onRender = { [weak self] document, range in

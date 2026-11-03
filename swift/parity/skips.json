@@ -1827,18 +1827,6 @@
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf); Swift's traversal return types are fixed by their signatures."
   },
-  "lexical/src/__tests__/unit/LexicalNodeBetween.test.ts::node traversal recognizes a stale target reference": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/__tests__/unit/LexicalNodeBetween.test.ts::node traversal stops at a nested ancestor endpoint (reverse=false)": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/__tests__/unit/LexicalNodeBetween.test.ts::node traversal stops at a nested ancestor endpoint (reverse=true)": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
   "lexical/src/__tests__/unit/LexicalNodeState.test.ts::$setState stores the value as given for every state that is not an arraySetValue > arrayValue, a hand-written parse and an updater keep the exact reference": {
     "reason": "deviation",
     "note": "Checks JS reference identity and an ill-typed value; Swift state values are typed value types."
@@ -3066,38 +3054,6 @@
   "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret in an empty element at NaN stays at its boundary": {
     "reason": "deviation",
     "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
-  },
-  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Adjacent Caret Traversals > $iterSiblings": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Adjacent Caret Traversals > iteration does not include the origin": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Adjacent Caret Traversals > root has no siblings": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Adjacent Caret Traversals > root has paragraph children": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Depth First Caret Traversals > $iterCaretsDepthFirst > via CaretRange": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Depth First Caret Traversals > $iterCaretsDepthFirst > via generator": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Depth First Caret Traversals > $iterNodesDepthFirst > includes only wholly included nodes": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Depth First Caret Traversals > full traversal": {
-    "reason": "out-of-scope-package",
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
   },
   "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::getDOMSlot tests > DOM selection uses getDOMSlot element for element selections": {
     "reason": "dom-only",

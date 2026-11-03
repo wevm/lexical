@@ -54,6 +54,15 @@ open class LexicalNode {
     }
   }
 
+  /// `static clone(node)`: a version of `node` with the same key. The
+  /// default makes one with `init(key:)` and `afterCloneFrom`, as JS
+  /// synthesizes for a node with a `$config`.
+  open class func clone(_ node: LexicalNode) throws -> LexicalNode {
+    let clone = try self.init(key: node.__key)
+    try clone.afterCloneFrom(node)
+    return clone
+  }
+
   /// Copies the state of `prevNode`, the version this node clones (same
   /// key), or the node it copies (a new key). A subclass that stores more
   /// than its schema declares overrides this and calls `super` first.

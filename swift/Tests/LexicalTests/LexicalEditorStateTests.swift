@@ -10,7 +10,7 @@ import Testing
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > isEmpty"))
   func isEmpty() throws {
     let editor = try createTestEditor()
-    try editor.update {
+    try editor.update { () throws in
       let root = try createRootNode()
       #expect(EditorState(NodeMap([("root", root)])).isEmpty())
       // A state with nothing in it at all is emptier still.
@@ -24,7 +24,7 @@ import Testing
     ))
   func constructor() throws {
     let editor = try createTestEditor()
-    try editor.update {
+    try editor.update { () throws in
       let root = try createRootNode()
       let nodeMap = NodeMap([("root", root)])
       let editorState = EditorState(nodeMap)
@@ -42,7 +42,7 @@ import Testing
     let textContent = { try getRoot().getTextContent() }
     // A regular update is processed synchronously but committed
     // asynchronously.
-    try editor.update {
+    try editor.update { () throws in
       try getRoot().append(createParagraphNode().append(createTextNode("foo")))
     }
     #expect(try editor.getEditorState().read(textContent) == "")
@@ -65,7 +65,7 @@ import Testing
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > read()"))
   func read() throws {
     let editor = try createTestEditor()
-    try update(editor) {
+    try update(editor) { () throws in
       let paragraph = try createParagraphNode()
       let text = try createTextNode("foo")
       try paragraph.append(text)
@@ -74,7 +74,7 @@ import Testing
     var root: RootNode!
     var paragraph: ParagraphNode!
     var text: TextNode!
-    try editor.getEditorState().read {
+    try editor.getEditorState().read { () throws in
       root = try getRoot()
       paragraph = try #require(try root.getFirstChild() as? ParagraphNode)
       text = try #require(try paragraph.getFirstChild() as? TextNode)
@@ -116,7 +116,7 @@ import Testing
       "lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > toJSON()"))
   func toJSON() throws {
     let editor = try createTestEditor()
-    try update(editor) {
+    try update(editor) { () throws in
       let paragraph = try createParagraphNode()
       let text = try createTextNode("Hello world")
       try text.select(6, 11)
@@ -137,13 +137,13 @@ import Testing
     ))
   func garbageCollection() throws {
     let editor = try createTestEditor()
-    try update(editor) {
+    try update(editor) { () throws in
       let paragraph = try createParagraphNode()
       try paragraph.append(createTextNode("foo"))
       try getRoot().append(paragraph)
     }
     // Removing the only paragraph collects everything under it.
-    try update(editor) {
+    try update(editor) { () throws in
       try getRoot().getFirstChild()!.remove()
     }
     let nodeMap = editor.getEditorState()._nodeMap

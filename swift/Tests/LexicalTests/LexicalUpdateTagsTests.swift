@@ -10,7 +10,7 @@ import Testing
     ))
   func builtInTags() throws {
     let editor = try createTestEditor()
-    try update(editor) {
+    try update(editor) { () throws in
       let builtInTags = [
         HISTORIC_TAG, HISTORY_PUSH_TAG, HISTORY_MERGE_TAG, PASTE_TAG, CUT_TAG, COLLABORATION_TAG,
         SKIP_DOM_SELECTION_TAG, SKIP_SCROLL_INTO_VIEW_TAG,
@@ -28,9 +28,9 @@ import Testing
     ))
   func addAndHas() throws {
     let editor = try createTestEditor()
-    try update(editor) {
+    try update(editor) { () throws in
       let tag = "test-tag"
-      #expect(try !hasUpdateTag(tag))
+      #expect(try hasUpdateTag(tag) == false)
       try addUpdateTag(tag)
       #expect(try hasUpdateTag(tag))
     }
@@ -42,7 +42,7 @@ import Testing
     ))
   func multiple() throws {
     let editor = try createTestEditor()
-    try update(editor) {
+    try update(editor) { () throws in
       let tags = ["tag1", "tag2", "tag3"]
       for tag in tags {
         try addUpdateTag(tag)
@@ -61,7 +61,7 @@ import Testing
     let editor = try createTestEditor()
     let tag = "test-tag"
     var hasTag = false
-    try editor.update(tag: tag) {
+    try editor.update(tag: tag) { () throws in
       hasTag = try hasUpdateTag(tag)
     }
     drainMicrotasks()
@@ -75,12 +75,12 @@ import Testing
   func cleared() throws {
     let editor = try createTestEditor()
     let tag = HISTORIC_TAG
-    try update(editor) {
+    try update(editor) { () throws in
       try addUpdateTag(tag)
       #expect(try hasUpdateTag(tag))
     }
     var hasTag = false
-    try update(editor) {
+    try update(editor) { () throws in
       hasTag = try hasUpdateTag(tag)
     }
     #expect(!hasTag)
@@ -96,7 +96,7 @@ import Testing
     _ = editor.registerUpdateListener { payload in
       calls.append(payload.tags.array)
     }
-    try editor.update(tag: SKIP_DOM_SELECTION_TAG) {
+    try editor.update(tag: SKIP_DOM_SELECTION_TAG) { () throws in
       try getRoot().append(createParagraphNode())
     }
     drainMicrotasks()

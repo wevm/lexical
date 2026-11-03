@@ -446,6 +446,16 @@ Reversible choices made porting `@lexical/extension` under Q18.
   root. The Swift DOM needs no host window, so `withDOM` from
   `@lexical/headless/dom` is not ported.
 
+## Native surface conventions (decided during M3, for tmm to review)
+
+- **Modules.** `LexicalAppKit` (`LexicalNSTextView`) and `LexicalUIKit`
+  (`LexicalUITextView`) hold the views; `LexicalSwiftUI`'s `LexicalEditor`
+  wraps whichever the platform has. Their sources are wrapped in
+  `#if os(macOS)` / `#if canImport(UIKit)`, so on other platforms they
+  build as empty modules. `LexicalTextKit` is the platform-neutral half
+  (the rendered document, the input controller) and builds and tests on
+  Linux.
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

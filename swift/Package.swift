@@ -12,6 +12,9 @@ let package = Package(
     .library(name: "Lexical", targets: ["Lexical"]),
     .library(name: "LexicalTesting", targets: ["LexicalTesting"]),
     .library(name: "LexicalTextKit", targets: ["LexicalTextKit"]),
+    .library(name: "LexicalAppKit", targets: ["LexicalAppKit"]),
+    .library(name: "LexicalUIKit", targets: ["LexicalUIKit"]),
+    .library(name: "LexicalSwiftUI", targets: ["LexicalSwiftUI"]),
     .library(name: "LexicalExtension", targets: ["LexicalExtension"]),
     .library(name: "LexicalSelection", targets: ["LexicalSelection"]),
     .library(name: "LexicalUtils", targets: ["LexicalUtils"]),
@@ -120,10 +123,26 @@ let package = Package(
         "Lexical", "LexicalExtension", "LexicalHeadless", "LexicalHTML", "LexicalRichText",
         "LexicalTesting",
       ]),
-    // The TextKit 2 text views and the platform-neutral document they show.
+    // The platform-neutral half of the text views: the document they show
+    // and the input controller that turns native input into commands.
     .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
     .testTarget(
       name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalRichText", "LexicalTextKit"]),
+    // The TextKit 2 editor views (Apple-only; empty modules elsewhere).
+    .target(name: "LexicalAppKit", dependencies: ["Lexical", "LexicalTextKit"]),
+    .testTarget(
+      name: "LexicalAppKitTests", dependencies: ["Lexical", "LexicalAppKit", "LexicalTextKit"]),
+    .target(name: "LexicalUIKit", dependencies: ["Lexical", "LexicalTextKit"]),
+    .testTarget(
+      name: "LexicalUIKitTests", dependencies: ["Lexical", "LexicalTextKit", "LexicalUIKit"]),
+    .target(
+      name: "LexicalSwiftUI",
+      dependencies: [
+        "Lexical",
+        .target(name: "LexicalAppKit", condition: .when(platforms: [.macOS])),
+        .target(
+          name: "LexicalUIKit", condition: .when(platforms: [.iOS, .visionOS, .macCatalyst])),
+      ]),
     // Test support: the `.upstream(...)` trait the parity ledger reads.
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
     // Replays packages/lexical-conformance/vectors, which only the monorepo

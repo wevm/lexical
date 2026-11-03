@@ -5,6 +5,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- The editor views moved out of `LexicalTextKit`: `LexicalNSTextView` is in
+  `LexicalAppKit` and `LexicalUITextView` in `LexicalUIKit`. Added
+  `LexicalSwiftUI` with `LexicalEditor`, a SwiftUI view for an editor.
 - Added `TextKitTheme` to `LexicalTextKit`: the native look of each
   `EditorThemeClasses` key (the playground's by default), resolving a text
   node's format, inline style and blocks into `TextKitTextAttributes` and

@@ -73,22 +73,26 @@ public final class TextKitInputController {
   public var onRender: ((TextKitDocument, (location: Int, length: Int)?) -> Void)?
   private var removeListener: (() -> Void)?
 
-  public init(editor: Editor) throws {
+  public init(editor: Editor) {
     self.editor = editor
     editor.selectionMovement = movement
     removeListener = editor.registerUpdateListener { [weak self] _ in
       try self?.render()
     }
-    try editor.update(discrete: true) {
-      let root = try getRoot()
-      if try root.getChildrenSize() == 0 {
-        try root.append(createParagraphNode())
+    do {
+      try editor.update(discrete: true) {
+        let root = try getRoot()
+        if try root.getChildrenSize() == 0 {
+          try root.append(createParagraphNode())
+        }
+        if try getSelection() == nil {
+          _ = try root.selectEnd()
+        }
       }
-      if try getSelection() == nil {
-        _ = try root.selectEnd()
-      }
+      try render()
+    } catch {
+      try? editor._onError(error)
     }
-    try render()
   }
 
   deinit { removeListener?() }

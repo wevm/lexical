@@ -8,7 +8,7 @@ import Testing
 private func makeController() throws -> TextKitInputController {
   let editor = try createEditor(CreateEditorArgs(namespace: "", onError: { throw $0 }))
   registerTextKitSliceEditing(editor)
-  return try TextKitInputController(editor: editor)
+  return TextKitInputController(editor: editor)
 }
 
 private func json(_ controller: TextKitInputController) throws -> String {

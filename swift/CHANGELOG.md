@@ -14,6 +14,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 - Node accessors a schema property reads or writes (`getStyle`, `setIndent`,
   `setTextContent` and the rest) are `open`, and importing JSON goes through
   them, so a subclass that overrides one owns its property as in JS.
+- RangeSelection editing: `insertText`, `insertRawText`, `removeText`,
+  `insertNodes`, `insertParagraph`, `insertLineBreak`, `extract` and
+  `formatText`, with `insertNodes`, `formatText`, `setTextFormat`,
+  `getCharacterOffsets`, `tokenizeRawText` and `generateNodesFromRawText`.
+  Deleting by character, word or line is not ported yet.
 - Caret editing: `removeTextFromCaretRange`, `splitAtPointCaretNext`,
   `insertNodeToNearestRootAtCaret`, `splitTextPointCaret`,
   `splitTextPointCaretSlice`, `getAdjacentSiblingOrParentSiblingCaret` and

@@ -51,6 +51,30 @@ final class BlockDecoratorNode: DecoratorNode {
   override func decorate(_ editor: Editor) throws -> Any? { "block-decorator" }
 }
 
+/// `TestDecoratorNode` from the upstream test utils: inline unless
+/// `setIsInline(false)`.
+final class TestDecoratorNode: DecoratorNode {
+  var __block = false
+  override class func config() -> NodeConfig? {
+    NodeConfig(TestDecoratorNode.self, type: "test_decorator", extends: DecoratorNode.self)
+  }
+  override func afterCloneFrom(_ prevNode: LexicalNode) throws {
+    try super.afterCloneFrom(prevNode)
+    __block = (prevNode as! TestDecoratorNode).__block
+  }
+  override func isInline() throws -> Bool { try !getLatest().__block }
+  @discardableResult
+  func setIsInline(_ inline: Bool) throws -> Self {
+    let writable = try getWritable()
+    writable.__block = !inline
+    return writable
+  }
+  override func getTextContent() throws -> String { "Hello world" }
+  override func decorate(_ editor: Editor) throws -> Any? { "test-decorator" }
+}
+
+func createTestDecoratorNode() throws -> TestDecoratorNode { try TestDecoratorNode() }
+
 /// `TestElementNode` from the upstream test utils.
 final class TestElementNode: ElementNode {
   override class func config() -> NodeConfig? {
@@ -100,6 +124,7 @@ var defaultTestNodes: [LexicalNodeConfig] {
   [
     .klass(TestElementNode.self), .klass(TestInlineElementNode.self),
     .klass(TestShadowRootNode.self), .klass(TestSegmentedNode.self),
+    .klass(TestDecoratorNode.self),
   ]
 }
 

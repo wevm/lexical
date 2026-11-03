@@ -119,6 +119,10 @@ public protocol BaseSelection: AnyObject {
   func clone() -> any BaseSelection
   func getNodes() throws -> [LexicalNode]
   func getTextContent() throws -> String
+  func extract() throws -> [LexicalNode]
+  func insertText(_ text: String) throws
+  func insertRawText(_ text: String) throws
+  func insertNodes(_ nodes: [LexicalNode]) throws
   func `is`(_ selection: (any BaseSelection)?) -> Bool
   func getStartEndPoints() -> (Point, Point)?
   func isCollapsed() -> Bool

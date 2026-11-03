@@ -498,4 +498,50 @@ private func helloWorld() throws -> (TextNode, TextNode, ParagraphNode, Paragrap
           == [afterTextNode.__key])
     }
   }
+
+  /// A block decorator, then `last`, in the root; then select all and
+  /// remove the text.
+  private func selectAllDeleteAfterDecorator(
+    _ last: @escaping () throws -> LexicalNode
+  ) throws
+    -> Editor
+  {
+    let editor = try createTestEditor()
+    try editor.update(discrete: true) {
+      try getRoot().clear().append(createTestDecoratorNode().setIsInline(false), last())
+    }
+    try editor.update(discrete: true) { try selectAll().removeText() }
+    return editor
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a container that may be empty is kept"
+    ))
+  func selectAllDeleteKeepsContainer() throws {
+    let editor = try selectAllDeleteAfterDecorator {
+      try createTestElementNode().append(createParagraphNode().append(createTextNode("inner")))
+    }
+    try editor.read { () throws in
+      let root = try getRoot()
+      #expect(try root.getChildrenSize() == 1)
+      #expect(try root.getFirstChild() is TestElementNode)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a paragraph is kept"
+    ))
+  func selectAllDeleteKeepsParagraph() throws {
+    let editor = try selectAllDeleteAfterDecorator {
+      try createParagraphNode().append(createTextNode("text"))
+    }
+    try editor.read { () throws in
+      let root = try getRoot()
+      #expect(try root.getChildrenSize() == 1)
+      #expect(try root.getFirstChild() is ParagraphNode)
+      #expect(try root.getTextContent() == "")
+    }
+  }
 }

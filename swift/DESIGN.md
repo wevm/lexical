@@ -129,6 +129,10 @@ These are reversible choices made while porting, under Q7 and Q27.
   that package's own behavior (list normalization, table shadow roots,
   `HeadingNode.insertNewAfter`) is skipped as `out-of-scope-package` until the
   package is ported.
+- **Duck-typed JS checks become protocols.** `'__language' in node` (a code
+  block, in `insertNodes`) is `CodeLanguageNode`, and
+  `__isInlineFormattable` is `InlineFormattableNode`, which `TextNode`
+  adopts.
 - **Parameterized upstream tests** become one Swift test with `arguments:`,
   carrying one `.upstream(...)` trait per upstream case.
 

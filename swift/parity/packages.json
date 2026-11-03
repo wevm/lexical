@@ -1,6 +1,6 @@
 {
   "lexical": "enforced",
-  "lexical-extension": "pending",
+  "lexical-extension": "enforced",
   "lexical-rich-text": "enforced",
   "lexical-plain-text": "enforced",
   "lexical-history": "enforced",

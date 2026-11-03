@@ -1224,6 +1224,584 @@
     ],
     "note": "Runs $insertList with the caret in an OverflowNode."
   },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.format.test.ts::block id format > generated ids need crypto.getRandomValues: there is no weaker fallback": {
+    "reason": "deviation",
+    "note": "generateBlockId uses the system CSPRNG (SystemRandomNumberGenerator), which cannot be removed the way a test stubs globalThis.crypto, so there is no missing-crypto error to check."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.format.test.ts::block id format > the documented end-to-end vector": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Loads a bullet list with ListExtension; the vector's list and listitem ids need the list nodes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.perf.test.ts::block handles: 10,000 blocks > every handle while the extension is disabled, and derived ids": {
+    "reason": "deviation",
+    "note": "An opt-in benchmark (BLOCK_ID_PERF=1, skipped upstream by default) comparing wall-clock medians on 10,000 blocks; its bounds are not meaningful in a debug Swift build."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.perf.test.ts::block handles: 10,000 blocks > handles next to the $getBlockById index": {
+    "reason": "deviation",
+    "note": "An opt-in benchmark (BLOCK_ID_PERF=1, skipped upstream by default) comparing wall-clock medians on 10,000 blocks; its bounds are not meaningful in a debug Swift build."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.property.test.ts::block handles: property > one-character typo rate and handle length, 1000-block documents": {
+    "reason": "deviation",
+    "note": "An opt-in measurement that upstream skips unless BLOCK_HANDLE_TYPO_DOCS is set and that only prints rates; the typo-rate bound is checked by the ported handles tests."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.test.ts::$getBlockHandle > null for a node without an id or that is not an identified block": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds bullet lists with ListNode and ListItemNode."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.nestedCopy.test.ts::a list copied into a nested list item (where it nests) keeps no block id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Pastes a list into a nested list item."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.perf.test.ts::BlockIdExtension perf > 10000 blocks: keystroke, Enter, paste and repair overhead": {
+    "reason": "deviation",
+    "note": "An opt-in benchmark (BLOCK_ID_PERF=1, skipped upstream by default) comparing wall-clock medians on 10,000 blocks; its bounds are not meaningful in a debug Swift build."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 1": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 10": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 11": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 12": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 13": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 14": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 15": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 16": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 17": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 18": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 19": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 2": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 20": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 3": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 4": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 5": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 6": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 7": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 8": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 9": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a copy of a list merged with the equal …": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a heading split around a list: the list…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a list lifted out of a link: the items …": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-link"
+    ],
+    "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a new list with an id merged with the l…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a new list without an id merged with th…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > copies of a list, one apart and one on each side of it: the merged list keeps its id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > equal adjacent lists merge: the first k…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > nested lists joined at a seam: the firs…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a copy of a list merged with the equal …": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a heading split around a list: the list…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a list lifted out of a link: the items …": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-link"
+    ],
+    "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a new list with an id merged with the l…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a new list without an id merged with th…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > copies of a list, one apart and one on each side of it: the merged list keeps its id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > equal adjacent lists merge: the first k…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > nested lists joined at a seam: the firs…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a copy of a list merged with the equal …": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a heading split around a list: the list…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a list lifted out of a link: the items …": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-link"
+    ],
+    "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a new list with an id merged with the l…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a new list without an id merged with th…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > copies of a list, one apart and one on each side of it: the merged list keeps its id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > equal adjacent lists merge: the first k…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > nested lists joined at a seam: the firs…": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > block ids first: equal adjacent lists get the ids of the merged document, as without the structure": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > both orders derive the same ids": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > structure first: equal adjacent lists get the ids of the merged document, as without the structure": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: a copy of a list pasted above another list > the list it merges into keeps its id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Depends on ListNode merging adjacent lists."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: assignment > markdown import assigns ids": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-markdown",
+      "lexical-list"
+    ],
+    "note": "Imports markdown with $convertFromMarkdownString into lists."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: copies of lists that merge > copies on both sides of the original, merged over several transform passes: the merged list keeps the id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Depends on ListNode merging adjacent lists."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: copies of lists that merge > pasting copies, one of them right above the original: the merged list keeps the id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Depends on ListNode merging adjacent lists."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: documents stored without ids > nested blocks are named by their path among identified blocks": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-markdown",
+      "lexical-list"
+    ],
+    "note": "Loads a markdown document with a list."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > a block that took the id meanwhile keeps it, wherever the original returns": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table"
+    ],
+    "note": "Nests a table in a table cell."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > the id stays in NodeState but is not indexed, and comes back with the block": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table"
+    ],
+    "note": "Nests a table in a table cell."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: index > nested blocks in lists and tables, with table cells added": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Builds a table and a list and identifies table cells."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > a custom predicate that is not composed from the default: headings at any depth": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table"
+    ],
+    "note": "Nests a heading in a table cell."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > copy and paste of nested list items through the Lexical clipboard": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Copies and pastes list items through the Lexical clipboard."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > cut and paste of nested list items through the Lexical clipboard": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Copies and pastes list items through the Lexical clipboard."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > nested inline decorators get no id; a block decorator in a cell does": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Puts decorators in a list item and a table cell."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: split and merge > Enter at the end of a list item (nested ids)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Splits a list item made by INSERT_UNORDERED_LIST_COMMAND."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: split and merge > Enter at the middle of a list item (nested ids)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Splits a list item made by INSERT_UNORDERED_LIST_COMMAND."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: split and merge > Enter at the start of a list item (nested ids)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Splits a list item made by INSERT_UNORDERED_LIST_COMMAND."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the default predicate > ids stored on the root children are kept; nested blocks get positional ids": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Stores a document with a list and a table."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the default predicate > root children, nested blocks that hold text, nested block decorators": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table",
+      "lexical-list",
+      "lexical-code",
+      "lexical-link"
+    ],
+    "note": "Checks the default predicate on tables, lists, code blocks and links."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a copy of a list whose items got ids alongside it yields to it": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Copies a list whose items have ids."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a document with ids on the root children only, as the initial state": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Stores a document with a list and a table."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a document with ids on the root children only, via setEditorState": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list",
+      "lexical-table"
+    ],
+    "note": "Stores a document with a list and a table."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a list given an id with $setState before it is inserted": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Inserts a list given an id with $setState."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a table given an id with $setState before it is inserted": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table"
+    ],
+    "note": "Inserts a table given an id with $setState."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > setEditorState of a list whose items repeat an id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Copies a list whose items have ids."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: type changes and moves > paragraph to list with $isRootChildBlock keeps the id on the list": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Converts a paragraph to a list with INSERT_UNORDERED_LIST_COMMAND."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: type changes and moves > paragraph to list: the item keeps the id, the list is new": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Converts a paragraph to a list with INSERT_UNORDERED_LIST_COMMAND."
+  },
   "lexical-extension/src/__tests__/unit/DecoratorTextExtension.test.ts::$applyFormatToDom is a compatibility alias for applyFormatToDom": {
     "reason": "deviation",
     "note": "Checks that $applyFormatToDom is an alias of applyFormatToDom; Swift names have no $ prefix (see Port conventions), so the two are one function."
@@ -1990,327 +2568,189 @@
     "reason": "deviation",
     "note": "withDOM installs a happy-dom window for Node. The Swift DOM is built in and needs no host window, so withDOM is not ported (DESIGN.md, Headless)."
   },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Addressing blocks: a selection from or into the replaced block": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > HTML and Configuration": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Handles and collaboration: a block added since whose hash starts the same way": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Handles in HTML": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Headless": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Setup and Addressing blocks": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText edits only what differs": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText edits text in inline elements": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-link"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Edits the text of a LinkNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText is the same in the docs and the tests": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "reason": "deviation",
+    "note": "Compares the TypeScript source of $setBlockText in the docs page, the test utils and @lexical/y; the Swift setBlockText test helper is a port, so there is no shared text to compare."
   },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses a block or inline element that hosts a slot": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-link"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Hosts a slot on a LinkNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses blocks that are not just text": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses special text nodes": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Calls $setBlockText on ListNode blocks."
   },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: text added at a link edge goes outside the link": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-link"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Edits text at the edges of a LinkNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: text added at the edge of a link in a mark goes outside both": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-link",
+      "lexical-mark"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Edits text at the edge of a LinkNode inside a MarkNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Which blocks get ids": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-table"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Builds an editor with TableExtension and a predicate that identifies TableCellNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > a root-only predicate exports no list item ids": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports or exports bullet lists (ListExtension)."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > an imported id is dropped from a block that is not identified": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports or exports bullet lists (ListExtension)."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > export into a document of another realm writes the attribute": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > export: false leaves the export override out of every export session": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "reason": "dom-only",
+    "note": "Exports into the document of an iframe to check the realm; Swift has one DOM model and no realms."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > exports data-block-id on identified blocks only": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > import: false ignores the attribute; export: false omits it": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > imported ids pass through the uniqueness rule": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > invalid imported ids are ignored; valid foreign ids are kept": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports or exports bullet lists (ListExtension)."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > round-trips ids through HTML": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > the released types of export still hold: a boolean, and a Signal<boolean>": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > without it, HTML carries no ids": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports or exports bullet lists (ListExtension)."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > a wrapper id goes only on a block that holds that list alone": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Exports and imports a ListItemNode that only wraps a nested ListNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > export: false writes no wrapper id; import: false reads none": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Exports and imports a ListItemNode that only wraps a nested ListNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > exports its id on the nested list, and round-trips it": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Exports and imports a ListItemNode that only wraps a nested ListNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > handles: true writes no wrapper id": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Exports and imports a ListItemNode that only wraps a nested ListNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > pasted twice, the second copy gets fresh ids, the wrapper items too": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: documents read without ids > every reader exports the same data-block-id for a document stored without ids": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > a handle from exported HTML never names a block added since whose handle would be the same": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Exports and imports a ListItemNode that only wraps a nested ListNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > export: true and export: false are unchanged": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports or exports bullet lists (ListExtension)."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > exports data-block-handle instead of data-block-id": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > import never reads data-block-handle as an id": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > round trip: export handles, edit by handle, resolve": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-extension"
-    ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports or exports bullet lists (ListExtension)."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::HTML without wrapper ids reads the same with an import run inside it": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports nested bullet lists (ListExtension) whose wrapper list items carry data-block-wrapper-id."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::an import run inside another keeps the outer import's waiting wrapper id": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports nested bullet lists (ListExtension) whose wrapper list items carry data-block-wrapper-id."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::an unknown element that hoists the same list again does not make import look at it again": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports nested bullet lists (ListExtension) whose wrapper list items carry data-block-wrapper-id."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::wrapper ids inside many unknown elements are looked at a bounded number of times each": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports nested bullet lists (ListExtension) whose wrapper list items carry data-block-wrapper-id."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::wrapper ids that go on no block do not make import quadratic": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports nested bullet lists (ListExtension) whose wrapper list items carry data-block-wrapper-id."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperResolve.test.ts::a list that grows by one item per element around it is resolved in linear work": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports nested bullet lists (ListExtension) whose wrapper list items carry data-block-wrapper-id."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperResolve.test.ts::late population resolves ids exactly like early population (holder-growth)": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports nested bullet lists (ListExtension) whose wrapper list items carry data-block-wrapper-id."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperResolve.test.ts::late population resolves ids exactly like early population (parent-growth)": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-extension"
+      "lexical-list"
     ],
-    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+    "note": "Imports nested bullet lists (ListExtension) whose wrapper list items carry data-block-wrapper-id."
   },
   "lexical-html/src/__tests__/unit/DOMRenderConditionalOverrides.test.ts::DOMRender conditional overrides > disabledForEditor $decorateDOM recreates to apply and revert decoration": {
     "reason": "dom-only",

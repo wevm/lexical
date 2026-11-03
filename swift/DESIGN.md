@@ -425,6 +425,13 @@ Reversible choices made porting `@lexical/extension` under Q18.
   exist outside a browser, so pasted HTML is parsed as is, and the
   `console.error` of a failed default importer goes to `consoleWarn`.
 
+- **Block ids (`BlockIdExtension`, `BlockIdHTMLExtension`).** Ids,
+  handles and derived ids match JS byte for byte. A Swift `String` holds no
+  lone surrogates or non-string values, `generateBlockId` uses
+  `SystemRandomNumberGenerator` (so there is no missing-`crypto` error), and
+  the frozen-state lookup cache keeps only the last state where JS keeps a
+  `WeakMap`.
+
 - **Headless (`LexicalHeadless`).** JS replaces the DOM-only methods of a
   headless editor with throwing stubs. Swift can't replace a method on an
   instance, and `getRootElement`, `registerRootListener` and the others

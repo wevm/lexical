@@ -196,3 +196,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 - `setState` stores an `arraySetValue` state in its canonical form, and
   `createState(_:schema:)` takes an `unparse`. A text node without NodeState
   no longer merges with a neighbor that has state.
+- Added block ids to `LexicalExtension` (`@experimental`):
+  `BlockIdExtension` (`BlockIdConfig`, `BlockIdOutput`), `blockIdState`,
+  `getBlockId`, `getBlockById`, `getBlockHandle`, `getBlockHandles`,
+  `resolveBlockHandle` (`BlockHandleOptions`, `BlockHandleResult`),
+  `MIN_BLOCK_HANDLE_LENGTH`, `isRootChildBlock`, `defaultIsIdentifiedBlock`
+  and `generateBlockId`. Added `BlockIdHTMLExtension` (`BlockIdHTMLConfig`)
+  and `BLOCK_ID_ATTRIBUTE`, `BLOCK_HANDLE_ATTRIBUTE` and
+  `BLOCK_WRAPPER_ID_ATTRIBUTE` to `LexicalHTML`.

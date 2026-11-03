@@ -47,6 +47,8 @@ package final class ThreadContext {
   package var signalsState: AnyObject?
   /// `withIsApple`: overrides `IS_APPLE` on this thread.
   package var isAppleOverride: Bool?
+  /// The document of `getDocument()`.
+  package lazy var defaultDocument = DOMDocument()
 
   init() {}
 

@@ -4096,41 +4096,6 @@
     "reason": "deviation",
     "note": "Exercises the production arm of devInvariant, which only warns; the port follows the development build, where it throws (see devInvariant in Support/LexicalError.swift)."
   },
-  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > basic": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
-  },
-  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > empty": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
-  },
-  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > multiple": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
-  },
-  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > space separated": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
-  },
-  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > multiple spaces": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
-  },
   "lexical/src/__tests__/unit/LexicalEmptyEditorTyping.test.ts::Typing into a freshly-mounted empty editor reconciles text > beforeinput insertText on a fresh empty editor lands in editor state": {
     "reason": "dom-only",
     "note": "Types through a mounted contenteditable (DOM events and DOM selection) in a rich text editor; native typing is tested in the TextKit layer."
@@ -4358,17 +4323,6 @@
   "lexical/src/__tests__/unit/LexicalListPlugin.test.tsx::@lexical/list tests > Toggle an empty list on/off": {
     "reason": "react-only",
     "note": "React plugin test."
-  },
-  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.createDOM()": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.updateDOM()": {
-    "reason": "dom-only",
-    "note": "Base LexicalNode.updateDOM throws; the Swift reconciler renders to TextKit and has no updateDOM."
   },
   "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() inferred types > GetStaticNodeType / LexicalExportJSON recover the literal node type": {
     "reason": "deviation",
@@ -5729,45 +5683,12 @@
     "reason": "dom-only",
     "note": "indexPath is a DOM tree helper of LexicalDOMSlot."
   },
-  "lexical/src/nodes/__tests__/unit/LexicalLineBreakNode.test.ts::LexicalLineBreakNode tests > LineBreakNode.createDOM()": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalLineBreakNode.test.ts::LexicalLineBreakNode tests > LineBreakNode.updateDOM()": {
-    "reason": "dom-only",
-    "note": "Tests the DOM node the reconciler creates."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.createDOM()": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
   "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.importDOM handles both CSS text-align and legacy align attribute": {
     "reason": "out-of-scope-package",
     "packages": [
       "lexical-html"
     ],
     "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.updateDOM()": {
-    "reason": "dom-only",
-    "note": "Tests the DOM node the reconciler creates."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode.createDOM()": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode.updateDOM()": {
-    "reason": "dom-only",
-    "note": "Tests the DOM node the reconciler creates."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > can paste HTML with tabs and new lines (2)": {
     "reason": "out-of-scope-package",
@@ -5837,194 +5758,6 @@
       "lexical-list"
     ],
     "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > applies styles with direct DOM property updates": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > bold + empty text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > bold text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > capitalize text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code + italic text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code + underline + strikethrough + bold + italic + highlight + uppercase text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code + underline + strikethrough + bold + italic text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code + underline + strikethrough text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > has parent node > no formatting + empty string text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > has parent node > no formatting text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > highlight + italic text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > highlight text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > italic text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > lowercase text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > no formatting text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > strikethrough text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > underline + strikethrough text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > underline text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > uppercase text format type": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > exportDOM() > capitalize format": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > exportDOM() > combined bold and lowercase format": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > exportDOM() > lowercase format": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > exportDOM() > uppercase format": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > change in text": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > different tags": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > no change in tags": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > removing code block": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > updates and removes styles with direct DOM property updates": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNodeDOMTextDiff.test.ts::TextNode DOM text writes > a pure deletion keeps a range after it": {
     "reason": "dom-only",

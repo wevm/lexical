@@ -99,6 +99,10 @@ public struct InitialEditorConfig {
   public var initialEditorState: InitialEditorStateType?
   /// Swift only: build a headless editor (`createHeadlessEditor`).
   public var headless: Bool?
+  /// `html`: per-class HTML export overrides.
+  public var html: HTMLConfig?
+  /// `dom`: how nodes become DOM (`DOMRenderExtension` sets it).
+  public var dom: EditorDOMRenderConfig?
 
   public init(
     namespace: String? = nil, nodes: [LexicalNodeConfig]? = nil,

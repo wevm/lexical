@@ -368,6 +368,34 @@ open class LexicalNode {
   /// NodeState. With `compact`, the properties parsing would restore anyway
   /// are omitted. Override only for output a schema can not describe, and
   /// call `super`.
+  // MARK: View
+
+  /// `createDOM(config, editor)`: the element this node renders as. Must
+  /// be overridden by nodes that render.
+  open func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement {
+    throw LexicalError("createDOM: base method not extended")
+  }
+
+  /// `updateDOM(prevNode, dom, config)`: updates `dom` in place for the
+  /// changes since `prevNode`; returns `true` to have it created anew.
+  open func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws
+    -> Bool
+  {
+    throw LexicalError("updateDOM: base method not extended")
+  }
+
+  /// `getDOMSlot(element)` (`@experimental`): where this node's content is
+  /// in its DOM.
+  open func getDOMSlot(_ element: DOMElement) -> DOMSlot { DOMSlot(element) }
+
+  /// `exportDOM(editor)`: the DOM this node exports to HTML; by default
+  /// its `createDOM`.
+  open func exportDOM(_ editor: Editor) throws -> DOMExportOutput {
+    DOMExportOutput(element: try getEditorDOMRenderConfig(editor).createDOM(self, editor))
+  }
+
   open func exportJSON(_ compact: Bool = false) throws -> JSONObject {
     var json = try exportNodeJSONOnce(self, compact)
     if let state = __state {

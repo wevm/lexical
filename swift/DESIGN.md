@@ -297,6 +297,10 @@ Reversible choices made porting `@lexical/extension` under Q18.
   generate the accepted property table (`CSSProperties.swift`) and the
   `css/values` vectors pin the normalization. Unlike jsdom it does not
   reject values it can't parse; it keeps them with whitespace collapsed.
+  `getDocument()` is one document per thread, as JS has one global
+  `document`. `DOMSlot` is the base slot only: `ElementDOMSlot`'s managed
+  line breaks and decorator anchors belong to the DOM reconciler, which the
+  views replace.
 
 ## Scope of v0.1.0 (Q21)
 

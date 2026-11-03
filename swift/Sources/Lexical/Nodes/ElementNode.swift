@@ -506,6 +506,23 @@ open class ElementNode: LexicalNode, SlotNode {
 
   /// Whether the element's own `textFormat` and `textStyle` are serialized:
   /// only when it has no text to take them from.
+  open override func exportDOM(_ editor: Editor) throws -> DOMExportOutput {
+    let output = try super.exportDOM(editor)
+    if let element = output.element as? DOMElement {
+      let indent = try getIndent()
+      if indent > 0 {
+        // padding-inline-start is not widely supported in email HTML; the
+        // data attribute is the authoritative round-trip signal.
+        element.style.setProperty("padding-inline-start", "\(indent * 40)px")
+        element.setAttribute("data-lexical-indent", String(indent))
+      }
+      if let direction = try getDirection(), !direction.isEmpty {
+        element.dir = direction
+      }
+    }
+    return DOMExportOutput(element: output.element)
+  }
+
   open func shouldSerializeTextStyles() throws -> Bool {
     if try isRootOrShadowRoot(self) {
       return false

@@ -5,6 +5,12 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `createDOM`, `updateDOM`, `getDOMSlot` and `exportDOM` to nodes,
+  with the core nodes' implementations (theme classes, inline styles, the
+  `<b>`/`<i>`/`<s>`/`<u>` export wrappers), `EditorDOMRenderConfig`,
+  `HTMLConfig` export overrides, `getDocument`, `DOMSlot`,
+  `addClassNamesToElement`, `removeClassNamesFromElement`,
+  `setDOMStyleFromCSS` and `setDOMStyleObject`.
 - Added a small DOM to core (`DOMDocument`, `DOMElement`, `DOMText`,
   `DOMComment`, `DOMDocumentFragment`, `DOMTokenList`,
   `CSSStyleDeclaration`) with `innerHTML`/`outerHTML` serialization. Inline

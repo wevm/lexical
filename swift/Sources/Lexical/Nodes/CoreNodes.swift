@@ -16,6 +16,12 @@ public final class RootNode: ElementNode {
     try super.init(key: "root")
   }
 
+  public override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws -> Bool {
+    false
+  }
+
   // `__cachedText` is not carried across a clone: as in JS, a clone starts
   // without it until the reconciler fills it in.
 
@@ -110,6 +116,37 @@ public func isRootNode(_ node: LexicalNode?) -> Bool { node is RootNode }
 open class ParagraphNode: ElementNode {
   open override class func config() -> NodeConfig? {
     NodeConfig(ParagraphNode.self, type: "paragraph", extends: ElementNode.self)
+  }
+
+  open override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement
+  {
+    let dom = getDocument().createElement("p")
+    if let classNames = getCachedClassNameArray(config.theme, "paragraph") {
+      dom.classList.add(contentsOf: classNames)
+    }
+    return dom
+  }
+
+  open override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  )
+    throws -> Bool
+  {
+    false
+  }
+
+  open override func exportDOM(_ editor: Editor) throws -> DOMExportOutput {
+    let output = try super.exportDOM(editor)
+    if let element = output.element as? DOMElement {
+      if try isEmpty() {
+        element.append(getDocument().createElement("br"))
+      }
+      let formatType = try getFormatType()
+      if !formatType.isEmpty {
+        element.style.setProperty("text-align", formatType)
+      }
+    }
+    return DOMExportOutput(element: output.element)
   }
 
   open override func exportJSON(_ compact: Bool = false) throws -> JSONObject {
@@ -217,6 +254,19 @@ open class LineBreakNode: LexicalNode {
 
   open override func getTextContent() throws -> String { "\n" }
 
+  open override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement
+  {
+    getDocument().createElement("br")
+  }
+
+  open override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  )
+    throws -> Bool
+  {
+    false
+  }
+
   open override func isInline() throws -> Bool { true }
 }
 
@@ -287,6 +337,15 @@ open class TabNode: TextNode {
   open override func canInsertTextBefore() throws -> Bool { false }
 
   open override func canInsertTextAfter() throws -> Bool { false }
+
+  open override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement
+  {
+    let dom = try super.createDOM(config, editor)
+    if let classNames = getCachedClassNameArray(config.theme, "tab") {
+      dom.classList.add(contentsOf: classNames)
+    }
+    return dom
+  }
 }
 
 /// `$createTabNode()`.

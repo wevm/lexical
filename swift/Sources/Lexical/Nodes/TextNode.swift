@@ -127,6 +127,104 @@ open class TextNode: LexicalNode {
 
   open func canHaveFormat() -> Bool { true }
 
+  // MARK: View
+
+  open override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement
+  {
+    let format = __format
+    let outerTag = textElementOuterTag(format)
+    let innerTag = textElementInnerTag(format)
+    let dom = getDocument().createElement(outerTag ?? innerTag)
+    var innerDOM = dom
+    if try hasFormat("code") {
+      dom.setAttribute("spellcheck", "false")
+    }
+    if outerTag != nil {
+      innerDOM = getDocument().createElement(innerTag)
+      dom.appendChild(innerDOM)
+    }
+    try createTextInnerDOM(innerDOM, self, innerTag, format, __text, config)
+    if !__style.isEmpty {
+      setDOMStyleFromCSS(dom.style, __style)
+    }
+    return dom
+  }
+
+  open override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  )
+    throws -> Bool
+  {
+    let prevNode = prevNode as! TextNode
+    let nextText = __text
+    let prevFormat = prevNode.__format
+    let nextFormat = __format
+    let prevOuterTag = textElementOuterTag(prevFormat)
+    let nextOuterTag = textElementOuterTag(nextFormat)
+    let prevInnerTag = textElementInnerTag(prevFormat)
+    let nextInnerTag = textElementInnerTag(nextFormat)
+    if (prevOuterTag ?? prevInnerTag) != (nextOuterTag ?? nextInnerTag) {
+      return true
+    }
+    if prevOuterTag == nextOuterTag && prevInnerTag != nextInnerTag {
+      guard let prevInnerDOM = dom.firstChild else {
+        throw LexicalError("updateDOM: prevInnerDOM is null or undefined")
+      }
+      let nextInnerDOM = getDocument().createElement(nextInnerTag)
+      try createTextInnerDOM(nextInnerDOM, self, nextInnerTag, nextFormat, nextText, config)
+      dom.replaceChild(nextInnerDOM, prevInnerDOM)
+      return false
+    }
+    var innerDOM = dom
+    if nextOuterTag != nil, prevOuterTag != nil {
+      guard let first = dom.firstChild as? DOMElement else {
+        throw LexicalError("updateDOM: innerDOM is null or undefined")
+      }
+      innerDOM = first
+    }
+    try setTextNodeDOMText(nextText, innerDOM, self)
+    if let textClassNames = config.theme["text"]?.objectValue, prevFormat != nextFormat {
+      setTextThemeClassNames(nextInnerTag, prevFormat, nextFormat, innerDOM, textClassNames)
+    }
+    let prevStyle = prevNode.__style
+    let nextStyle = __style
+    if prevStyle != nextStyle {
+      setDOMStyleFromCSS(dom.style, nextStyle, prevStyle)
+      removeEmptyDOMAttribute(dom, "style")
+    }
+    return false
+  }
+
+  /// Plain HTML for copy and paste and headless export, which can't rely
+  /// on CSS classes: `white-space: pre-wrap`, text-transform for the case
+  /// formats, and `<b>`, `<i>`, `<s>`, `<u>` wrappers.
+  open override func exportDOM(_ editor: Editor) throws -> DOMExportOutput {
+    let output = try super.exportDOM(editor)
+    guard var element = output.element else {
+      throw LexicalError("Expected TextNode createDOM to always return a HTMLElement")
+    }
+    guard let styled = element as? DOMElement else {
+      throw LexicalError("Expected TextNode createDOM to always return a HTMLElement")
+    }
+    styled.style.setProperty("white-space", "pre-wrap")
+    if try hasFormat("lowercase") {
+      styled.style.setProperty("text-transform", "lowercase")
+    } else if try hasFormat("uppercase") {
+      styled.style.setProperty("text-transform", "uppercase")
+    } else if try hasFormat("capitalize") {
+      styled.style.setProperty("text-transform", "capitalize")
+    }
+    for (format, tag) in [
+      ("bold", "b"), ("italic", "i"), ("strikethrough", "s"), ("underline", "u"),
+    ]
+    where try hasFormat(format) {
+      let wrapper = getDocument().createElement(tag)
+      wrapper.appendChild(element)
+      element = wrapper
+    }
+    return DOMExportOutput(element: element)
+  }
+
   open override func isInline() throws -> Bool { true }
 
   /// Called when the selection lands in this node; a subclass may move it.
@@ -489,5 +587,90 @@ extension String {
     let utf16 = self.utf16
     guard index >= 0, index < utf16.count else { return nil }
     return utf16[utf16.index(utf16.startIndex, offsetBy: index)]
+  }
+}
+
+// MARK: - DOM helpers
+
+private func textElementOuterTag(_ format: Int) -> String? {
+  if format & IS_CODE != 0 { return "code" }
+  if format & IS_HIGHLIGHT != 0 { return "mark" }
+  if format & IS_SUBSCRIPT != 0 { return "sub" }
+  if format & IS_SUPERSCRIPT != 0 { return "sup" }
+  return nil
+}
+
+private func textElementInnerTag(_ format: Int) -> String {
+  if format & IS_BOLD != 0 { return "strong" }
+  if format & IS_ITALIC != 0 { return "em" }
+  return "span"
+}
+
+/// The text formats in the key order of JS `TEXT_TYPE_TO_FORMAT`.
+private let textFormatKeysInOrder = TEXT_TYPE_TO_FORMAT.keys.sorted()
+
+private func setTextThemeClassNames(
+  _ tag: String, _ prevFormat: Int, _ nextFormat: Int, _ dom: DOMElement,
+  _ textClassNames: JSONObject
+) {
+  let classList = dom.classList
+  if let classNames = themeClassNames(textClassNames["base"]) {
+    classList.add(contentsOf: classNames)
+  }
+  // Underline and strikethrough together have their own class, since both
+  // set text-decoration.
+  var hasUnderlineStrikethrough = false
+  let prevUnderlineStrikethrough =
+    prevFormat & IS_UNDERLINE != 0 && prevFormat & IS_STRIKETHROUGH != 0
+  let nextUnderlineStrikethrough =
+    nextFormat & IS_UNDERLINE != 0 && nextFormat & IS_STRIKETHROUGH != 0
+  if let classNames = themeClassNames(textClassNames["underlineStrikethrough"]) {
+    if nextUnderlineStrikethrough {
+      hasUnderlineStrikethrough = true
+      if !prevUnderlineStrikethrough { classList.add(contentsOf: classNames) }
+    } else if prevUnderlineStrikethrough {
+      classList.remove(contentsOf: classNames)
+    }
+  }
+  for key in textFormatKeysInOrder {
+    let flag = TEXT_TYPE_TO_FORMAT[key]!
+    guard let classNames = themeClassNames(textClassNames[key]) else { continue }
+    if nextFormat & flag != 0 {
+      if hasUnderlineStrikethrough && (key == "underline" || key == "strikethrough") {
+        if prevFormat & flag != 0 { classList.remove(contentsOf: classNames) }
+        continue
+      }
+      if prevFormat & flag == 0 || (prevUnderlineStrikethrough && key == "underline")
+        || key == "strikethrough"
+      {
+        classList.add(contentsOf: classNames)
+      }
+    } else if prevFormat & flag != 0 {
+      classList.remove(contentsOf: classNames)
+    }
+  }
+  removeEmptyDOMAttribute(dom, "class")
+}
+
+/// `$setTextContent`: writes the node's text (with the composition suffix
+/// while composing) into the first child of its DOM slot.
+private func setTextNodeDOMText(_ nextText: String, _ dom: DOMElement, _ node: TextNode) throws {
+  let text = try nextText + (node.isComposing() ? COMPOSITION_SUFFIX : "")
+  let editor = try getEditor()
+  let slot = try getEditorDOMRenderConfig(editor).getDOMSlot(node, dom, editor)
+  guard let textChild = slot.getFirstChild() as? DOMText else {
+    try slot.insertChild(getDocument().createTextNode(text))
+    return
+  }
+  if textChild.data != text { textChild.data = text }
+}
+
+private func createTextInnerDOM(
+  _ innerDOM: DOMElement, _ node: TextNode, _ innerTag: String, _ format: Int, _ text: String,
+  _ config: EditorConfig
+) throws {
+  try setTextNodeDOMText(text, innerDOM, node)
+  if let textClassNames = config.theme["text"]?.objectValue {
+    setTextThemeClassNames(innerTag, 0, format, innerDOM, textClassNames)
   }
 }

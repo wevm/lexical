@@ -15,6 +15,8 @@ public final class RegisteredNode {
   public let replace: ((LexicalNode) throws -> LexicalNode)?
   public let replaceWithKlass: LexicalNode.Type?
   package let sharedNodeState: SharedNodeState
+  /// The HTML config's `exportDOM` override for the class.
+  public var exportDOM: ((Editor, LexicalNode) throws -> DOMExportOutput)?
 
   init(
     klass: LexicalNode.Type, transforms: [Transform],
@@ -91,12 +93,17 @@ public struct CreateEditorArgs {
   public var editable: Bool?
   public var theme: EditorThemeClasses?
   public var headless: Bool
+  public var html: HTMLConfig?
+  public var dom: EditorDOMRenderConfig?
 
   public init(
     editorState: EditorState? = nil, namespace: String? = nil, nodes: [LexicalNodeConfig] = [],
     onError: ErrorHandler? = nil, onWarn: ErrorHandler? = nil, parentEditor: Editor? = nil,
-    editable: Bool? = nil, theme: EditorThemeClasses? = nil, headless: Bool = false
+    editable: Bool? = nil, theme: EditorThemeClasses? = nil, headless: Bool = false,
+    html: HTMLConfig? = nil, dom: EditorDOMRenderConfig? = nil
   ) {
+    self.html = html
+    self.dom = dom
     self.editorState = editorState
     self.namespace = namespace
     self.nodes = nodes
@@ -292,10 +299,11 @@ public func createEditor(_ args: CreateEditorArgs = CreateEditorArgs()) throws -
       RegisteredNode(
         klass: klass, transforms: getTransformSetFromKlass(klass), replace: replace,
         replaceWithKlass: replaceWithKlass, sharedNodeState: createSharedNodeState(klass)))
+    registeredNodes.get(type)?.exportDOM = args.html?.export[ObjectIdentifier(klass)]
   }
   let editor = Editor(
     editorState, parentEditor, registeredNodes,
-    EditorConfig(namespace: namespace, theme: theme),
+    EditorConfig(namespace: namespace, theme: theme, dom: args.dom),
     args.onError ?? { _ in },
     args.onWarn ?? { error in throw error },
     isEditable, args)
@@ -321,6 +329,26 @@ func isSubclass(_ klass: LexicalNode.Type, of base: LexicalNode.Type) -> Bool {
 public struct EditorConfig {
   public var namespace: String
   public var theme: EditorThemeClasses
+  /// `dom`: how nodes become DOM; `nil` for `EditorDOMRenderConfig.default`.
+  public var dom: EditorDOMRenderConfig?
+
+  public init(namespace: String, theme: EditorThemeClasses = [:], dom: EditorDOMRenderConfig? = nil)
+  {
+    self.namespace = namespace
+    self.theme = theme
+    self.dom = dom
+  }
+}
+
+/// `HTMLConfig`: per-class overrides of HTML export.
+public struct HTMLConfig {
+  /// `export`: a node class's `exportDOM` replacement.
+  public var export: [ObjectIdentifier: (Editor, LexicalNode) throws -> DOMExportOutput]
+
+  public init(export: [(LexicalNode.Type, (Editor, LexicalNode) throws -> DOMExportOutput)] = []) {
+    self.export = Dictionary(
+      export.map { (ObjectIdentifier($0.0), $0.1) }, uniquingKeysWith: { $1 })
+  }
 }
 
 /// The editor: owns the current EditorState, the registered nodes, and the
@@ -818,6 +846,14 @@ public final class Editor {
 public final class ArtificialNode__DO_NOT_USE: ElementNode {
   public override class func config() -> NodeConfig? {
     NodeConfig(ArtificialNode__DO_NOT_USE.self, type: "artificial", extends: ElementNode.self)
+  }
+
+  public override func createDOM(
+    _ config: EditorConfig, _ editor: Editor? = nil
+  ) throws
+    -> DOMElement
+  {
+    getDocument().createElement("div")
   }
 }
 

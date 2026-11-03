@@ -284,7 +284,8 @@ public final class LexicalBuilder {
     }
     let args = CreateEditorArgs(
       namespace: config.namespace, nodes: config.nodes ?? [], parentEditor: config.parentEditor,
-      editable: config.editable, theme: config.theme, headless: config.headless ?? false)
+      editable: config.editable, theme: config.theme, headless: config.headless ?? false,
+      html: config.html, dom: config.dom)
     return (args, config.onError, config.onWarn)
   }
 }

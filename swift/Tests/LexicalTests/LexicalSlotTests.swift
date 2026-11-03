@@ -93,6 +93,46 @@ func expectThrows(
   }
 }
 
+/// Deletes with `selection`: `removeText()`, or `deleteCharacter`,
+/// `deleteWord` or `deleteLine` backward.
+func deleteAll(_ selection: RangeSelection, _ kind: String) throws {
+  switch kind {
+  case "removeText": try selection.removeText()
+  case "deleteCharacter": try selection.deleteCharacter(true)
+  case "deleteWord": try selection.deleteWord(true)
+  default: try selection.deleteLine(true)
+  }
+}
+
+/// `$createLineSlotHost`: a host paragraph `body` with a paragraph
+/// `Title` as its `title` slot.
+func createLineSlotHost() throws -> (ParagraphNode, ParagraphNode) {
+  let host = try createParagraphNode()
+  try host.append(try createTextNode("body"))
+  try getRoot().append(host)
+  let line = try createParagraphNode()
+  try line.append(try createTextNode("Title"))
+  _ = try setSlot(host, "title", line)
+  return (host, line)
+}
+
+/// `$appendHostWithSlot`: appends `host` with a `title` slot holding `C`.
+func appendHostWithSlot(_ parent: ElementNode, _ host: LexicalNode) throws -> TextNode {
+  let text = try createTextNode("C")
+  try parent.append(host)
+  _ = try setSlot(
+    host, "title", try createTestShadowRootNode().append(try createParagraphNode().append(text)))
+  return text
+}
+
+func editSlot(_ editor: Editor, _ textKey: NodeKey, _ text: String) throws {
+  try editor.update(discrete: true) { _ = try (try node(textKey) as TextNode).setTextContent(text) }
+}
+
+func rootText(_ editor: Editor) throws -> String {
+  try editor.read { try getRoot().getTextContent() }
+}
+
 func node<T: LexicalNode>(_ key: NodeKey, as type: T.Type = T.self) throws -> T {
   try #require(try getNodeByKey(key) as? T)
 }
@@ -1066,6 +1106,992 @@ func node<T: LexicalNode>(_ key: NodeKey, as type: T.Type = T.self) throws -> T 
       let childCaret: ChildCaret = getChildCaret(slot, .next)
       #expect(try childCaret.getParentCaret(.root) == nil)
       #expect(try childCaret.getParentCaret(.shadowRoot) == nil)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSelectionSlotFrame > returns null for a null selection"
+    ))
+  func slotFrameOfNil() throws {
+    let editor = try createSlotEditor()
+    #expect(try editor.read { try getSelectionSlotFrame(nil) } == nil)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSelectionSlotFrame > returns null for a selection outside any slot"
+    ))
+  func slotFrameOutsideSlots() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) {
+      let text = try createTextNode("plain")
+      try getRoot().append(try createParagraphNode().append(text))
+      _ = try text.select(0, 5)
+    }
+    #expect(try editor.read { try getSelectionSlotFrame(try getSelection()) } == nil)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSelectionSlotFrame > returns the slot frame for a RangeSelection inside a slot"
+    ))
+  func slotFrameOfRangeSelection() throws {
+    let editor = try createSlotEditor()
+    var containerKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let container = try slotContainer("inside")
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", container)
+      containerKey = container.getKey()
+      _ = try container.getFirstChildOrThrow().selectStart()
+    }
+    #expect(
+      try editor.read { try getSelectionSlotFrame(try getSelection())?.getKey() } == containerKey)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSelectionSlotFrame > returns the slot frame for a NodeSelection inside a slot"
+    ))
+  func slotFrameOfNodeSelection() throws {
+    let editor = try createSlotEditor()
+    var containerKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let container = try slotContainer("inside")
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", container)
+      containerKey = container.getKey()
+      let nodeSelection = createNodeSelection()
+      nodeSelection.add(try container.getFirstChildOrThrow().getKey())
+      try setSelection(nodeSelection)
+    }
+    #expect(
+      try editor.read { try getSelectionSlotFrame(try getSelection())?.getKey() } == containerKey)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSelectionSlotFrame > returns null for an empty NodeSelection"
+    ))
+  func slotFrameOfEmptyNodeSelection() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) {
+      try getRoot().append(try createParagraphNode())
+      try setSelection(createNodeSelection())
+    }
+    #expect(try editor.read { try getSelectionSlotFrame(try getSelection()) } == nil)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSlotNameWithinHost > returns the slot name for a node sitting in a named slot"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSlotNameWithinHost > disambiguates between multiple slots on the same host"
+    ),
+    arguments: [false, true])
+  func slotNameWithinHost(withBody: Bool) throws {
+    let editor = try createSlotEditor()
+    var keys: (title: NodeKey, body: NodeKey) = ("", "")
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let title = try slotContainer()
+      let body = try slotContainer()
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", title)
+      if withBody {
+        _ = try setSlot(host, "body", body)
+      }
+      keys = (title.getKey(), body.getKey())
+    }
+    try editor.read { () throws in
+      #expect(try getSlotNameWithinHost(try node(keys.title)) == "title")
+      if withBody {
+        #expect(try getSlotNameWithinHost(try node(keys.body)) == "body")
+      }
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSlotNameWithinHost > returns null for a regular child (not a slot value)"
+    ))
+  func slotNameOfRegularChild() throws {
+    let editor = try createSlotEditor()
+    var childKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let child = try createTextNode("plain")
+      try host.append(child)
+      try getRoot().append(host)
+      childKey = child.getKey()
+    }
+    #expect(try editor.read { try getSlotNameWithinHost(try node(childKey) as TextNode) } == nil)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSlotNameWithinHost > returns null for the host itself"
+    ))
+  func slotNameOfHost() throws {
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      _ = try setSlot(host, "title", try slotContainer())
+      try getRoot().append(host)
+      hostKey = host.getKey()
+    }
+    #expect(
+      try editor.read { try getSlotNameWithinHost(try node(hostKey) as ParagraphNode) } == nil)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$getSlotNameWithinHost > returns the immediate slot name when slots are nested"
+    ))
+  func slotNameWhenNested() throws {
+    let editor = try createSlotEditor()
+    var innerSlotKey = ""
+    try editor.update(discrete: true) {
+      let outerHost = try createParagraphNode()
+      let innerHost = try slotContainer()
+      let innerSlot = try slotContainer()
+      try getRoot().append(outerHost)
+      _ = try setSlot(outerHost, "outer", innerHost)
+      _ = try setSlot(innerHost, "inner", innerSlot)
+      innerSlotKey = innerSlot.getKey()
+    }
+    #expect(
+      try editor.read { try getSlotNameWithinHost(try node(innerSlotKey) as TestShadowRootNode) }
+        == "inner")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting a deleteCharacter selection inside a root slot keeps the selection in that slot"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting a deleteWord selection inside a root slot keeps the selection in that slot"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting a deleteLine selection inside a root slot keeps the selection in that slot"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting a removeText selection inside a root slot keeps the selection in that slot"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting a node selection inside a root slot keeps the selection in that slot"
+    ),
+    arguments: ["deleteCharacter", "deleteWord", "deleteLine", "removeText", "node"])
+  func deleteInsideRootSlot(kind: String) throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) { () throws in
+      let root = try getRoot()
+      let slot = try slotContainer("Footnote")
+      _ = try setSlot(root, "footnotes", slot)
+      if kind == "node" {
+        let selection = createNodeSelection()
+        selection.add(try slot.getFirstChildOrThrow().getKey())
+        try setSelection(selection)
+        try selection.deleteNodes()
+      } else {
+        try deleteAll(try selectAll(try slot.selectStart()), kind)
+      }
+      #expect(try getSelectionSlotFrame(try getSelection()) === slot)
+      #expect(try root.getChildrenSize() == 0)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting all children with a deleteCharacter selection restores a paragraph before root slots"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting all children with a deleteWord selection restores a paragraph before root slots"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting all children with a deleteLine selection restores a paragraph before root slots"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting all children with a removeText selection restores a paragraph before root slots"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > deleting all children with a node selection restores a paragraph before root slots"
+    ),
+    arguments: ["deleteCharacter", "deleteWord", "deleteLine", "removeText", "node"])
+  func deleteAllRestoresParagraph(kind: String) throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) { () throws in
+      let root = try getRoot()
+      let paragraph = try createParagraphNode().append(try createTextNode("Body"))
+      try root.append(paragraph)
+      let slot = try slotContainer("Footnote")
+      _ = try setSlot(root, "footnotes", slot)
+      if kind == "node" {
+        let selection = createNodeSelection()
+        selection.add(paragraph.getKey())
+        try setSelection(selection)
+        try selection.deleteNodes()
+      } else {
+        try deleteAll(try selectAll(), kind)
+      }
+      #expect(try root.getChildrenSize() == 1)
+      let replacement = try #require(try root.getFirstChild() as? ParagraphNode)
+      #expect(try replacement.isEmpty())
+      #expect(try getSlot(root, "footnotes") === slot)
+      #expect(try slot.getTextContent() == "Footnote")
+      let selection = try #require(try getSelection() as? RangeSelection)
+      #expect(selection.isCollapsed())
+      #expect(try selection.anchor.getNode() === replacement)
+      try selection.insertText("Replacement")
+      #expect(try replacement.getTextContent() == "Replacement")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > $selectAll does not throw when anchor is the slot value root"
+    ))
+  func selectAllFromSlotRoot() throws {
+    let editor = try createSlotEditor()
+    var slotKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let slot = try slotContainer("Title")
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", slot)
+      slotKey = slot.getKey()
+    }
+    try editor.update(discrete: true) {
+      let selection = createRangeSelection()
+      try selection.anchor.set(slotKey, 0, .element)
+      try selection.focus.set(slotKey, 0, .element)
+      try setSelection(selection)
+    }
+    try editor.update(discrete: true) {
+      _ = try selectAll(try #require(try getSelection() as? RangeSelection))
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > $selectAll does not throw when anchor is the root element"
+    ))
+  func selectAllFromRoot() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) { _ = try selectAll(try getRoot().select(0, 0)) }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > setEditorState latches _slotsUsed when the state contains slots"
+    ))
+  func setEditorStateLatchesSlotsUsed() throws {
+    let editorA = try createSlotEditor()
+    let editorB = try createSlotEditor()
+    try editorA.update(discrete: true) {
+      let host = try createParagraphNode()
+      _ = try setSlot(host, "title", try slotContainer("Hello"))
+      try getRoot().append(host)
+    }
+    #expect(editorA._slotsUsed)
+    try editorB.setEditorState(editorA.getEditorState())
+    #expect(editorB._slotsUsed)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::$selectAll boundary cases > _slotsUsed stays true after the last slot is removed"
+    ))
+  func slotsUsedStaysTrue() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      _ = try setSlot(host, "title", try slotContainer("Hello"))
+      try getRoot().append(host)
+    }
+    #expect(editor._slotsUsed)
+    try editor.update(discrete: true) {
+      if let host = try getRoot().getFirstChild(), isSlotHost(host) {
+        _ = try removeSlot(host, "title")
+      }
+    }
+    #expect(editor._slotsUsed)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: audit hardening (insertNodes, cycles, idempotent setSlot) > insertNodes with the caret on an empty slot value inserts into the slot"
+    ))
+  func insertNodesIntoEmptySlot() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let slotValue = try createTestShadowRootNode()
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", slotValue)
+      try slotValue.select().insertNodes([
+        try createParagraphNode().append(try createTextNode("pasted"))
+      ])
+    }
+    try editor.read { () throws in
+      let host = try #require(try getRoot().getFirstChild() as? ParagraphNode)
+      let slotValue = try #require(try getSlot(host, "title"))
+      #expect(try slotValue.getTextContent() == "pasted")
+      #expect(try host.getChildrenSize() == 0)
+      #expect(try getRoot().getChildrenSize() == 1)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: audit hardening (insertNodes, cycles, idempotent setSlot) > closing a cycle through the children channel throws instead of hanging"
+    ))
+  func cycleThroughChildrenThrows() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) { () throws in
+      let host = try createParagraphNode()
+      try getRoot().append(host)
+      let title = try slotContainer("Title")
+      _ = try setSlot(host, "title", title)
+      expectThrows("cycle") { try title.append(host) }
+      let inner = try #require(try title.getFirstChild() as? ParagraphNode)
+      expectThrows("cycle") { try inner.append(host) }
+      let innerText = try #require(try inner.getFirstChild())
+      expectThrows("cycle") { _ = try innerText.insertBefore(host) }
+      expectThrows("cycle") { _ = try innerText.insertAfter(host) }
+      expectThrows("cycle") { _ = try innerText.replace(host) }
+      #expect(try getSlot(host, "title")?.is(title) == true)
+      #expect(try getSlotHost(title)?.is(host) == true)
+      #expect(try host.getParent() != nil)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: audit hardening (insertNodes, cycles, idempotent setSlot) > re-setting the same node into the same slot is a no-op"
+    ))
+  func resettingSameSlotIsNoOp() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) { () throws in
+      let host = try createParagraphNode()
+      try getRoot().append(host)
+      let title = try slotContainer("Title")
+      _ = try setSlot(host, "title", title)
+      _ = try setSlot(host, "title", title)
+      #expect(try getSlot(host, "title")?.is(title) == true)
+      #expect(try getSlotNames(host) == ["title"])
+      #expect(try getSlotNameWithinHost(title) == "title")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > declared slots set in reverse call order come back in declared order"
+    ))
+  func declaredOrder() throws {
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    try editor.update(discrete: true) {
+      let host = try create(DeclaredHostNode.self)
+      try getRoot().append(host)
+      _ = try setSlot(host, "body", try slotContainer("Body"))
+      _ = try setSlot(host, "title", try slotContainer("Title"))
+      hostKey = host.getKey()
+    }
+    try editor.read { () throws in
+      let host: LexicalNode = try node(hostKey)
+      #expect(try getSlotNames(host) == ["title", "body"])
+      #expect(try host.getTextContent() == "TitleBody")
+      #expect(try host.getTextContentSize() == 9)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > mixed declared and undeclared names sort declared-first, then code-unit"
+    ))
+  func mixedOrder() throws {
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    try editor.update(discrete: true) {
+      let host = try create(DeclaredHostNode.self)
+      try getRoot().append(host)
+      _ = try setSlot(host, "zeta", try slotContainer("Z"))
+      _ = try setSlot(host, "body", try slotContainer("B"))
+      _ = try setSlot(host, "alpha", try slotContainer("A"))
+      _ = try setSlot(host, "title", try slotContainer("T"))
+      hostKey = host.getKey()
+    }
+    try editor.read { () throws in
+      let host: LexicalNode = try node(hostKey)
+      #expect(try getSlotNames(host) == ["title", "body", "alpha", "zeta"])
+      #expect(try host.getTextContent() == "TBAZ")
+      #expect(try host.getTextContentSize() == 4)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > an undeclared host orders slot names in code-unit order"
+    ))
+  func codeUnitOrder() throws {
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      try getRoot().append(host)
+      _ = try setSlot(host, "b", try slotContainer("1"))
+      _ = try setSlot(host, "A", try slotContainer("2"))
+      _ = try setSlot(host, "a", try slotContainer("3"))
+      hostKey = host.getKey()
+    }
+    try editor.read { () throws in
+      let host: LexicalNode = try node(hostKey)
+      #expect(try getSlotNames(host) == ["A", "a", "b"])
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > a subclass redeclaration overrides the inherited order"
+    ))
+  func subclassOrder() throws {
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    try editor.update(discrete: true) {
+      let host = try create(ReorderedHostNode.self)
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", try slotContainer("Title"))
+      _ = try setSlot(host, "body", try slotContainer("Body"))
+      hostKey = host.getKey()
+    }
+    try editor.read { () throws in
+      let host: LexicalNode = try node(hostKey)
+      #expect(try getSlotNames(host) == ["body", "title"])
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > exportJSON emits slots keys in canonical order"
+    ))
+  func exportSlotsInCanonicalOrder() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) {
+      let host = try create(DeclaredHostNode.self)
+      try getRoot().append(host)
+      _ = try setSlot(host, "body", try slotContainer("Body"))
+      _ = try setSlot(host, "alpha", try slotContainer("Alpha"))
+      _ = try setSlot(host, "title", try slotContainer("Title"))
+    }
+    let root = try #require(try editor.getEditorState().toJSON()["root"]?.objectValue)
+    let hostJSON = try #require(root["children"]?.arrayValue?.first?.objectValue)
+    let slots = try #require(hostJSON["$slots"]?.objectValue)
+    #expect(slots.keys == ["title", "body", "alpha"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > a duplicate name in a declaration throws when the rank is first computed"
+    ))
+  func duplicateDeclarationThrows() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) {
+      let host = try create(DupDeclaredHostNode.self)
+      try getRoot().append(host)
+      _ = try setSlot(host, "a", try slotContainer("A"))
+      expectThrows("more than once") { _ = try setSlot(host, "b", try slotContainer("B")) }
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > a reserved name in a declaration throws when the rank is first computed"
+    ))
+  func reservedDeclarationThrows() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) {
+      let host = try create(ReservedDeclaredHostNode.self)
+      try getRoot().append(host)
+      _ = try setSlot(host, "a", try slotContainer("A"))
+      expectThrows("reserved slot name") { _ = try setSlot(host, "b", try slotContainer("B")) }
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: copy-on-write slot map > a host version cloned without slot changes shares the slot map"
+    ))
+  func cloneSharesSlotMap() throws {
+    // SlotMap is a value type, so "shares" is equality here.
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", try slotContainer("Title"))
+      hostKey = host.getKey()
+    }
+    let slotsOf = { () throws -> SlotMap? in
+      try editor.getEditorState().read { (try node(hostKey) as ParagraphNode).__slots }
+    }
+    let mapBefore = try slotsOf()
+    #expect(mapBefore != nil)
+    try editor.update(discrete: true) {
+      _ = try (try node(hostKey) as ParagraphNode).setStyle("color: red")
+    }
+    #expect(try slotsOf() == mapBefore)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: copy-on-write slot map > a slot mutation clones the map once per version and leaves prior versions intact"
+    ))
+  func slotMutationLeavesPriorVersions() throws {
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      try getRoot().append(host)
+      _ = try setSlot(host, "a", try slotContainer("A"))
+      hostKey = host.getKey()
+    }
+    let stateA = editor.getEditorState()
+    let mapA = try stateA.read { (try node(hostKey) as ParagraphNode).__slots }
+    try editor.update(discrete: true) {
+      let host: ParagraphNode = try node(hostKey)
+      _ = try setSlot(host, "b", try slotContainer("B"))
+      _ = try setSlot(host, "c", try slotContainer("C"))
+    }
+    #expect(try stateA.read { try getSlotNames(try node(hostKey) as ParagraphNode) } == ["a"])
+    #expect(try stateA.read { (try node(hostKey) as ParagraphNode).__slots } == mapA)
+    #expect(mapA?.count == 1)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > typing and inline insertNodes land inside the value"
+    ))
+  func typingLandsInsideValue() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    try editor.update(discrete: true) {
+      let (_, line) = try createLineSlotHost()
+      lineKey = line.getKey()
+      let selection = try (try line.getFirstChild() as! TextNode).select(5, 5)
+      try selection.insertText("!")
+      try selection.insertNodes([try createTextNode("?")])
+    }
+    try editor.read { () throws in
+      #expect(try (try node(lineKey) as ParagraphNode).getTextContent() == "Title!?")
+      #expect(try getRoot().getChildrenSize() == 1)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > Enter inside the value is a no-op (single-block scope)"
+    ))
+  func enterInsideValueIsNoOp() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    var hostKey = ""
+    try editor.update(discrete: true) { () throws in
+      let (host, line) = try createLineSlotHost()
+      lineKey = line.getKey()
+      hostKey = host.getKey()
+      #expect(try (try line.getFirstChild() as! TextNode).select(2, 2).insertParagraph() == nil)
+    }
+    try editor.read { () throws in
+      let line: ParagraphNode = try node(lineKey)
+      #expect(try line.getTextContent() == "Title")
+      #expect(try getSlotHost(line)?.getKey() == hostKey)
+      #expect(try getRoot().getChildrenSize() == 1)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > multi-block paste flattens to inline content like an <input>"
+    ))
+  func multiBlockPasteFlattens() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    try editor.update(discrete: true) {
+      let (_, line) = try createLineSlotHost()
+      lineKey = line.getKey()
+      try (try line.getFirstChild() as! TextNode).select(5, 5).insertNodes([
+        try createParagraphNode().append(
+          try createTextNode("A"), try createLineBreakNode(), try createTextNode("B")),
+        try createParagraphNode().append(try createTextNode("C")),
+        try createTestDecoratorNode().setIsInline(false),
+      ])
+    }
+    try editor.read { () throws in
+      #expect(try (try node(lineKey) as ParagraphNode).getTextContent() == "TitleABC")
+      #expect(try getRoot().getChildrenSize() == 1)
+      #expect(try getRoot().getTextContent() == "TitleABCbody")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > paste into an EMPTY block value inserts without seeding a paragraph"
+    ))
+  func pasteIntoEmptyValue() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      try getRoot().append(host)
+      let line = try createParagraphNode()
+      _ = try setSlot(host, "title", line)
+      lineKey = line.getKey()
+      try line.select().insertNodes([try createParagraphNode().append(try createTextNode("pasted"))]
+      )
+    }
+    try editor.read { () throws in
+      let line: ParagraphNode = try node(lineKey)
+      #expect(try line.getTextContent() == "pasted")
+      #expect(try line.getFirstChild() is TextNode)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > repeated linebreaks into a bare block value stay in insertion order (#8897)"
+    ))
+  func repeatedLineBreaksInOrder() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    try editor.update(discrete: true) {
+      let (_, line) = try createLineSlotHost()
+      lineKey = line.getKey()
+      try (try line.getFirstChild() as! TextNode).select(5, 5).insertLineBreak()
+    }
+    try editor.update(discrete: true) {
+      for _ in 0..<3 {
+        let line: ParagraphNode = try node(lineKey)
+        try (try #require(try line.getLastChild())).selectEnd().insertLineBreak()
+      }
+    }
+    try editor.read { () throws in
+      let children = try (try node(lineKey) as ParagraphNode).getChildren()
+      #expect(try children[0].getTextContent() == "Title")
+      #expect(children.filter { $0 is LineBreakNode }.count == 4)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > insertNodes at the end of a bare block value inserts at the end, not the start"
+    ))
+  func insertNodesAtValueEnd() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    try editor.update(discrete: true) { lineKey = try createLineSlotHost().1.getKey() }
+    try editor.update(discrete: true) {
+      let line: ParagraphNode = try node(lineKey)
+      let size = try line.getChildrenSize()
+      try line.select(size, size).insertNodes([try createTextNode("!")])
+    }
+    #expect(
+      try editor.read { try (try node(lineKey) as ParagraphNode).getTextContent() } == "Title!")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > backspace deletes trailing linebreaks in a bare block value one at a time (#8898)"
+    ))
+  func backspaceDeletesLineBreaksOneAtATime() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    try editor.update(discrete: true) {
+      let (_, line) = try createLineSlotHost()
+      lineKey = line.getKey()
+      try (try line.getFirstChild() as! TextNode).select(5, 5).insertLineBreak()
+      try line.getLastChild()!.selectEnd().insertLineBreak()
+    }
+    let lineBreaks = { () throws -> Int in
+      try editor.read {
+        try (try node(lineKey) as ParagraphNode).getChildren().filter { $0 is LineBreakNode }.count
+      }
+    }
+    #expect(try lineBreaks() == 2)
+    for expected in [1, 0] {
+      try editor.update(discrete: true) {
+        try (try node(lineKey) as ParagraphNode).getLastChild()!.selectEnd().deleteCharacter(true)
+      }
+      #expect(try lineBreaks() == expected)
+    }
+    #expect(
+      try editor.read { try (try node(lineKey) as ParagraphNode).getTextContent() } == "Title")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > the boundary still scopes selection and select-all"
+    ))
+  func boundaryScopesSelectAll() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    try editor.update(discrete: true) { () throws in
+      let (_, line) = try createLineSlotHost()
+      lineKey = line.getKey()
+      let text = try line.getFirstChild() as! TextNode
+      #expect(try text.getTopLevelElement()?.is(line) == true)
+      let scoped = try selectAll(try text.select(2, 2))
+      #expect(try scoped.getTextContent() == "Title")
+      #expect(try getSlotFrame(try scoped.anchor.getNode())?.is(line) == true)
+      #expect(try getSlotFrame(try scoped.focus.getNode())?.is(line) == true)
+    }
+    try editor.read { () throws in
+      let line: ParagraphNode = try node(lineKey)
+      #expect(try getSlotFrame(line)?.is(line) == true)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > $getNearestRootOrShadowRoot stops at the slot value"
+    ))
+  func nearestRootStopsAtSlotValue() throws {
+    let editor = try createSlotEditor()
+    try editor.update(discrete: true) { () throws in
+      let (_, line) = try createLineSlotHost()
+      let text = try #require(try line.getFirstChild())
+      #expect(try getNearestRootOrShadowRoot(text).is(line))
+      #expect(try getNearestRootOrShadowRoot(line).is(line))
+      let host2 = try createParagraphNode()
+      try getRoot().append(host2)
+      let container = try slotContainer("inside")
+      _ = try setSlot(host2, "media", container)
+      let innerParagraph = try #require(try container.getFirstChild() as? ParagraphNode)
+      #expect(try getNearestRootOrShadowRoot(innerParagraph).is(container))
+      #expect(try getNearestRootOrShadowRoot(container).is(container))
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: block slot values (virtual shadow root) > backspace at the start of the value stays inside the boundary"
+    ))
+  func backspaceAtValueStart() throws {
+    let editor = try createSlotEditor()
+    var lineKey = ""
+    try editor.update(discrete: true) { lineKey = try createLineSlotHost().1.getKey() }
+    try editor.update(discrete: true) {
+      let line: ParagraphNode = try node(lineKey)
+      try (try line.getFirstChild() as! TextNode).select(0, 0).deleteCharacter(true)
+    }
+    try editor.read { () throws in
+      #expect(try (try node(lineKey) as ParagraphNode).getTextContent() == "Title")
+      #expect(try getRoot().getTextContent() == "Titlebody")
+      #expect(try getRoot().getChildrenSize() == 1)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: hydrate-time normalize (#8712) > a slot value with a raw TextNode child gets a paragraph wrap on setEditorState"
+    ))
+  func hydrateWrapsRawText() throws {
+    let editor = try createSlotEditor()
+    let shadowType = TestShadowRootNode.getType()
+    let serialized = """
+      {"root":{"children":[{"$slots":{"title":{"children":[{"detail":0,"format":0,\
+      "mode":"normal","style":"","text":"raw","type":"text","version":1}],"direction":null,\
+      "format":"","indent":0,"type":"\(shadowType)","version":1}},"children":[],\
+      "direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"",\
+      "type":"paragraph","version":1}],"direction":null,"format":"","indent":0,\
+      "type":"root","version":1}}
+      """
+    try editor.setEditorState(try editor.parseEditorState(serialized))
+    try editor.read { () throws in
+      let host = try #require(try getRoot().getFirstChild() as? ParagraphNode)
+      let slot = try #require(try getSlot(host, "title") as? TestShadowRootNode)
+      let children = try slot.getChildren()
+      #expect(children.count == 1)
+      let firstChild = try #require(children.first as? ParagraphNode)
+      #expect(try firstChild.getTextContent() == "raw")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: typing-path paragraph wrap (#8712) > element-mode caret before a decorator wraps the inserted text in a paragraph"
+    ))
+  func typingBeforeDecoratorWraps() throws {
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    var slotKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let slot = try createTestShadowRootNode()
+      try slot.append(try createTestDecoratorNode().setIsInline(false))
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", slot)
+      hostKey = host.getKey()
+      slotKey = slot.getKey()
+    }
+    _ = hostKey
+    try editor.update(discrete: true) {
+      try (try node(slotKey) as ElementNode).select(0, 0).insertText("typed")
+    }
+    try editor.read { () throws in
+      let children = try (try node(slotKey) as ElementNode).getChildren()
+      let firstChild = try #require(children.first as? ParagraphNode)
+      #expect(try firstChild.getTextContent() == "typed")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: insertNodes redirect termination (#8712) > seeds a paragraph when the slot value starts with a decorator"
+    ))
+  func insertNodesSeedsParagraph() throws {
+    let editor = try createSlotEditor()
+    var hostKey = ""
+    var slotKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let slot = try createTestShadowRootNode()
+      try slot.append(try createTestDecoratorNode().setIsInline(false))
+      try getRoot().append(host)
+      _ = try setSlot(host, "title", slot)
+      hostKey = host.getKey()
+      slotKey = slot.getKey()
+    }
+    try editor.update(discrete: true) {
+      try (try node(slotKey) as ElementNode).select(0, 0).insertNodes([
+        try createTextNode("inserted")
+      ])
+    }
+    try editor.read { () throws in
+      let slot: ElementNode = try node(slotKey)
+      #expect(try slot.getChildren().count >= 2)
+      #expect(try slot.getTextContent().contains("inserted"))
+      let host: ParagraphNode = try node(hostKey)
+      #expect(try getSlot(host, "title")?.is(slot) == true)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: root text after repeated slot edits > an inline decorator host that ends a paragraph of four children"
+    ))
+  func inlineDecoratorHostEndsParagraph() throws {
+    let editor = try createSlotEditor()
+    var textKey = ""
+    try editor.update(discrete: true) {
+      let paragraph = try createParagraphNode().append(
+        try createTextNode("ab"), try createLineBreakNode(), try createTextNode("cd "))
+      try getRoot().append(paragraph)
+      textKey = try appendHostWithSlot(paragraph, try create(SlotTextHostNode.self)).getKey()
+    }
+    for text in ["CD", "CDE", "CDEF"] {
+      try editSlot(editor, textKey, text)
+      #expect(try rootText(editor) == "ab\ncd \(text)")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: root text after repeated slot edits > a block decorator host that is the last of four blocks"
+    ))
+  func blockDecoratorHostLastBlock() throws {
+    let editor = try createSlotEditor()
+    var textKey = ""
+    try editor.update(discrete: true) {
+      let root = try getRoot()
+      for text in ["a", "b", "c"] {
+        try root.append(try createParagraphNode().append(try createTextNode(text)))
+      }
+      textKey = try appendHostWithSlot(
+        root, try create(SlotTextHostNode.self).setIsInline(false)
+      ).getKey()
+    }
+    for text in ["CD", "CDE"] {
+      try editSlot(editor, textKey, text)
+      #expect(try rootText(editor) == "a\n\nb\n\nc\n\n\(text)")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: root text after repeated slot edits > a text appended after an edited decorator host"
+    ))
+  func textAppendedAfterHost() throws {
+    let editor = try createSlotEditor()
+    var keys: (host: NodeKey, text: NodeKey) = ("", "")
+    try editor.update(discrete: true) {
+      let paragraph = try createParagraphNode().append(
+        try createTextNode("ab"), try createLineBreakNode(), try createTextNode("cd "))
+      try getRoot().append(paragraph)
+      let host = try create(SlotTextHostNode.self)
+      keys = (host.getKey(), try appendHostWithSlot(paragraph, host).getKey())
+    }
+    try editSlot(editor, keys.text, "CD")
+    try editor.update(discrete: true) {
+      _ = try getNodeByKey(keys.host)!.insertAfter(try createTextNode(" ef"))
+    }
+    #expect(try rootText(editor) == "ab\ncd CD ef")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: root text after repeated slot edits > a text removed after an edited decorator host"
+    ))
+  func textRemovedAfterHost() throws {
+    let editor = try createSlotEditor()
+    var keys: (after: NodeKey, text: NodeKey) = ("", "")
+    try editor.update(discrete: true) {
+      let paragraph = try createParagraphNode().append(
+        try createTextNode("ab"), try createLineBreakNode(), try createTextNode("cd "))
+      try getRoot().append(paragraph)
+      let text = try appendHostWithSlot(paragraph, try create(SlotTextHostNode.self))
+      let after = try createTextNode(" ef")
+      try paragraph.append(after)
+      keys = (after.getKey(), text.getKey())
+    }
+    try editSlot(editor, keys.text, "CD")
+    #expect(try rootText(editor) == "ab\ncd CD ef")
+    try editor.update(discrete: true) { try getNodeByKey(keys.after)!.remove() }
+    #expect(try rootText(editor) == "ab\ncd CD")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: root text after repeated slot edits > an inline decorator host that ends a paragraph of three children"
+    ),
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: root text after repeated slot edits > an inline element host that ends a paragraph of four children"
+    ),
+    arguments: [false, true])
+  func inlineHostEndsParagraph(elementHost: Bool) throws {
+    let editor = try createSlotEditor()
+    var textKey = ""
+    try editor.update(discrete: true) {
+      let before: [LexicalNode] =
+        elementHost
+        ? [try createTextNode("ab"), try createLineBreakNode(), try createTextNode("cd ")]
+        : [try createTextNode("ab"), try createTextNode("cd ")]
+      let paragraph = try createParagraphNode()
+      for child in before { try paragraph.append(child) }
+      try getRoot().append(paragraph)
+      let host: LexicalNode =
+        elementHost ? try createTestInlineElementNode() : try create(SlotTextHostNode.self)
+      textKey = try appendHostWithSlot(paragraph, host).getKey()
+    }
+    let prefix = elementHost ? "ab\ncd " : "abcd "
+    for text in ["CD", "CDE", "CDEF"] {
+      try editSlot(editor, textKey, text)
+      #expect(try rootText(editor) == prefix + text)
     }
   }
 }

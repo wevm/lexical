@@ -790,5 +790,125 @@
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > updates and removes styles with direct DOM property updates": {
     "reason": "dom-only",
     "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > an empty wrapped child area gets a managed line break": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a slot subtree renders into a keyed container inside the host DOM, slots-first": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a decorator host renders its slot into an editable hidden placeholder": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > editing a decorator-host slot re-reconciles it in place": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > $getSlotContainer resolves a host slot container by key, null when empty": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > an element host renders its slot as a hidden slots-first placeholder": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > mountSlotContainer reveals and re-parents; unmount parks it back hidden": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > mounting in place (target is the host DOM) only reveals the placeholder": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > $getSlotTargetElement attaches and reveals synchronously in the commit": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a slot reconcile does not yank a mounted container back into the host": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a host with only a slot renders the slot and caches its text": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a slots-only empty host gets no terminating line break": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > editing slot content re-reconciles the slot in place (DOM + cache)": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > replacing a slot (same name, new node) swaps the rendered subtree": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a late-added slot renders in canonical position, not insertion order": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing a slot drops its container and its text from the cache": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing the host last child keeps its slot containers in the DOM": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing an element host clears its slot subtree from the DOM map": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing a decorator host clears its slot subtree from the DOM map": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > setSlot rejects a non-host at the type level": {
+    "reason": "deviation",
+    "note": "TypeScript type-level check; Swift's type system enforces it at compile time."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a slot added after initial render renders slots-first in the DOM": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > child DOM index skips prepended slots in a coexistence host": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a childless slot host reports no managed first child": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: slot name with selector metacharacters > reconciling a slot with such a name does not rebuild the host DOM": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: selection resolution onto a slotted decorator > a slotted block decorator resolves like a normal block decorator (no throw, null RangeSelection)": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: cross-host slot move DOM reuse > $removeSlot(A) + $setSlot(B, sameNode) in one update reuses the DOM": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: cross-host slot move DOM reuse > host updateDOM=true preserves slot subtree DOM": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: editable islands > a decorator-host island follows setEditable, re-rendering on toggle": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: slot-name type hints > a host class declared slots are preserved as a literal union": {
+    "reason": "deviation",
+    "note": "TypeScript type-level check; Swift's type system enforces it at compile time."
+  },
+  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: canonical slot order > a late-added declared slot renders in its declared position in the DOM": {
+    "reason": "dom-only",
+    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
   }
 }

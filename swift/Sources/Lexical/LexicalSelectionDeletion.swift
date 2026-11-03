@@ -5,9 +5,19 @@
 // `Selection.modify`, after `$modifySelectionAroundDecoratorsAndBlocks` has
 // handled the moves that cross decorators and blocks. Without a view (a
 // headless editor, and JS under jsdom, which has no `modify`) only that
-// first step runs. The port has no text layout to move through yet, so it
-// always takes that path; `SelectionMovement` is the seam the TextKit views
-// will fill.
+// first step runs. With a view, `Editor.selectionMovement` stands in for
+// `Selection.modify`: it says where the caret lands, and the rest follows
+// `$extendSelectionForDeletion` and `modify`.
+
+/// Where a caret lands when it moves one unit, which only text layout knows
+/// (the DOM's `Selection.modify` in JS).
+public protocol SelectionMovement: AnyObject {
+  /// The point one `granularity` unit before (`isBackward`) or after
+  /// `point`, or `nil` when it can't move.
+  func landedPoint(
+    from point: Point, isBackward: Bool, granularity: SelectionGranularity
+  ) throws -> (NodeKey, Int, PointType)?
+}
 
 /// `'move'` or `'extend'`.
 public enum SelectionAlter: String, Sendable {
@@ -122,8 +132,51 @@ private func extendSelectionForDeletion(
   if try modifySelectionAroundDecoratorsAndBlocks(selection, .extend, isBackward, granularity) {
     return false
   }
-  // JS continues through `Selection.modify`; without text layout the port
-  // stops here, as JS does when the DOM selection has no `modify`.
+  // JS continues through `Selection.modify`; without a view the port stops
+  // here, as JS does when the DOM selection has no `modify`.
+  guard let movement = try getActiveEditor().selectionMovement,
+    let landed = try movement.landedPoint(
+      from: selection.focus, isBackward: isBackward, granularity: granularity)
+  else {
+    return false
+  }
+  let anchor = selection.anchor
+  let anchorNode = try anchor.getNode()
+  let wasCollapsed = selection.isCollapsed()
+  // At the deletion-side edge of an unmergeable text node, extend into the
+  // adjacent text node directly (#7301).
+  if wasCollapsed, granularity == .character, anchor.type == .text,
+    let text = anchorNode as? TextNode, try text.isUnmergeable()
+  {
+    let boundaryOffset = try isBackward ? 0 : text.getTextContentSize()
+    if anchor.offset == boundaryOffset,
+      let sibling = try getSiblingCaret(text, isBackward ? .previous : .next).getNodeAtCaret()
+        as? TextNode
+    {
+      let siblingOffset = try isBackward ? sibling.getTextContentSize() - 1 : 1
+      try selection.focus.set(sibling.getKey(), siblingOffset, .text)
+      selection.dirty = true
+      return false
+    }
+  }
+  // In-node character deletion keeps the focus in the anchor's text node,
+  // clamped to its edge.
+  if wasCollapsed, granularity == .character, anchor.type == .text {
+    let edgeOffset = try isBackward ? 0 : anchorNode.getTextContentSize()
+    let clampedOffset =
+      landed.0 == anchor.key && landed.2 == .text
+      ? landed.1 : anchor.offset != edgeOffset ? edgeOffset : -1
+    if clampedOffset >= 0 {
+      if clampedOffset != anchor.offset {
+        try selection.focus.set(anchor.key, clampedOffset, .text)
+        selection.dirty = true
+      }
+      return false
+    }
+  }
+  // The general path: the range from the anchor to where the caret landed.
+  try selection.focus.set(landed.0, landed.1, landed.2)
+  selection.dirty = true
   return false
 }
 
@@ -276,15 +329,26 @@ private enum MergeState {
 }
 
 extension RangeSelection {
-  /// Moves or extends the selection by `granularity`. Only the moves across
-  /// decorators and blocks are ported; the rest needs text layout.
+  /// Moves or extends the selection by `granularity`: across decorators and
+  /// blocks in the model, and otherwise as `Editor.selectionMovement` says.
   public func modify(
     _ alter: SelectionAlter, _ isBackward: Bool, _ granularity: SelectionGranularity
   ) throws {
     if try modifySelectionAroundDecoratorsAndBlocks(self, alter, isBackward, granularity) {
       return
     }
-    // JS continues through the DOM selection, which the port does not have.
+    // JS continues through the DOM selection; the view's movement stands in.
+    guard let movement = try getActiveEditor().selectionMovement,
+      let landed = try movement.landedPoint(
+        from: focus, isBackward: isBackward, granularity: granularity)
+    else {
+      return
+    }
+    try focus.set(landed.0, landed.1, landed.2)
+    if alter == .move {
+      try anchor.set(landed.0, landed.1, landed.2)
+    }
+    dirty = true
   }
 
   /// Whether a forward delete at `anchor` stops because a shadow root

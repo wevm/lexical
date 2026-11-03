@@ -5,6 +5,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `LexicalTextKit`: a first typeable editor, `LexicalNSTextView` and
+  `LexicalUITextView` on TextKit 2, which turn typing, deletion, Enter and
+  selection changes into commands and show what the model renders.
+  `Editor.selectionMovement` lets a view supply the layout step that
+  `Selection.modify` gives JS, so deletion within text works.
 - `@LexicalNode(type:extends:…)` and `@Field(schema)`: a node class's
   `config()`, with one schema field per `@Field` property and a
   `getX`/`setX` pair for each. Adds a dependency on swift-syntax.

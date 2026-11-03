@@ -309,6 +309,11 @@ public final class Editor {
   public static let version = "lexical-swift@\(lexicalUpstreamVersion)"
 
   package var _headless = false
+  /// Where a caret moves by a character, word or line, which only text
+  /// layout knows: the text view sets it. In JS this is the DOM's
+  /// `Selection.modify`. When `nil`, as headless, moves within text stop
+  /// where JS stops without a DOM.
+  public weak var selectionMovement: (any SelectionMovement)?
   package var _parentEditor: Editor?
   /// The native view the editor renders into; `nil` when headless.
   package var _rootElement: AnyObject?

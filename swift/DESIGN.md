@@ -25,7 +25,21 @@ means updating this file in the same commit.
 - **JS is the reference** (Q5). A difference is a Swift bug unless it's a
   Tier 2 case listed in `parity/deviations.json` with a category:
   `platform-input`, `platform-selection`, `platform-clipboard`,
-  `native-only`, or `webkit-bug` (Q45).
+  `native-only`, or `webkit-bug` (Q45), or the Tier 1 exception below.
+
+### The Tier 1 exception: unpaired surrogates
+
+Settled by tmm after M1. A JS string can hold half of a surrogate pair,
+which an offset inside an emoji leaves behind (`splitText`, `removeText`, a
+selection there). A Swift `String` cannot: it stores Unicode scalars, so each
+lone half becomes U+FFFD. U+FFFD is also one UTF-16 unit, so lengths and
+offsets still agree with JS; only the text differs, and two halves merged
+back stay two U+FFFD instead of re-forming the character. This is the one
+allowed Tier 1 difference. Closing it would mean storing text as UTF-16
+arrays under the String API, a cost on every text API for a state no real
+editing produces (native input never splits a pair). Upstream tests or
+vectors that depend on a lone surrogate are skipped as `deviation`, with a
+note pointing here; fuzz vectors keep offsets off pair interiors.
 
 ## Conformance tooling
 
@@ -155,13 +169,13 @@ These are reversible choices made while porting, under Q7 and Q27.
   adopts.
 - **Parameterized upstream tests** become one Swift test with `arguments:`,
   carrying one `.upstream(...)` trait per upstream case.
-- **Unpaired surrogates.** A JS string can hold half of a surrogate pair,
-  which an offset inside an emoji leaves behind (`splitText`, `removeText`,
-  a selection there). A Swift `String` cannot, so each half becomes U+FFFD,
-  which is also one UTF-16 unit, so lengths and offsets still agree with JS.
-  The text differs, and two halves merged back stay two U+FFFD. Fuzz vectors
-  keep offsets off pair interiors. Storing text as UTF-16 arrays would close
-  the gap at the cost of every text API.
+- **Unpaired surrogates** become U+FFFD; settled as the Tier 1 exception
+  (see Parity).
+- **GenMap is not ported** (settled by tmm after M1). JS keeps the node map
+  in a generational `GenMap`, so cloning a large state is O(1) with copy on
+  first write; the Swift node map is a `JSMap` that copies on clone. Behavior
+  is the same, so the GenMap tests are deviations. Revisit only if the M4
+  benchmarks (5,000 paragraphs) show the node-map copy is too slow.
 - **Expectations that come from the DOM.** Upstream unit tests mount a
   `contenteditable` root, so some expected values only hold after the
   reconciler or a DOM selection round trip has run (`RootNode.__cachedText`

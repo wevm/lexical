@@ -321,300 +321,596 @@
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop across editors > cancelled cross-editor drag leaves both editors untouched": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop across editors > inserts in the destination and dispatches deleteByDrag at the source root": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop beside DOM the editor renders > drops before the decorator at the DOM point before it": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop beside DOM the editor renders > drops before the first child of an element at the DOM point after its marker": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > handles a backward (right-to-left) source selection": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > keeps the dragged text when dropped on the end edge of the source range": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > moves a selected word earlier within the same TextNode": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > moves a selected word later within the same TextNode": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > moves a selection across TextNodes in the same block": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > no-op when drop is inside a multi-node source range": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > no-op when the drop point is inside the source range": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > preserves DecoratorNodes in the source when moved to a new location": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > returns false for an external drag (no marker), letting the browser handle it": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > returns false when caretFromPoint cannot resolve a location": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a decorator in a multi-node range at the adjacent end edge": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a paragraph destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a root destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a text destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at element end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at element start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at next start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at previous end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at text end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at text middle": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at text start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps nested inline wrappers unchanged at element end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps nested inline wrappers unchanged at element start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps nested inline wrappers unchanged at next start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps nested inline wrappers unchanged at previous end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a decorator in a multi-node range at the adjacent end edge": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a paragraph destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a root destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a text destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at element end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at element start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at next start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at previous end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at text end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at text middle": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at text start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps nested inline wrappers unchanged at element end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps nested inline wrappers unchanged at element start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps nested inline wrappers unchanged at next start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps nested inline wrappers unchanged at previous end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a decorator in a multi-node range at the adjacent end edge": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a paragraph destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a root destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a text destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at element end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at element start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at next start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at previous end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at text end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at text middle": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at text start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps nested inline wrappers unchanged at element end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps nested inline wrappers unchanged at element start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps nested inline wrappers unchanged at next start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps nested inline wrappers unchanged at previous end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a decorator in a multi-node range at the adjacent end edge": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a paragraph destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a root destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a text destination after a cross-paragraph deletion": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at element end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at element start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at next start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at previous end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at text end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at text middle": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at text start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps nested inline wrappers unchanged at element end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps nested inline wrappers unchanged at element start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps nested inline wrappers unchanged at next start": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps nested inline wrappers unchanged at previous end": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text"
+    ],
+    "note": "Tests $handleRichTextDrop/$handlePlainTextDrop of @lexical/clipboard with a rich-text editor; the DOM drop point is mocked, so the model half ports with @lexical/clipboard, the view resolving the point."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > a change in an update is seen by the next serialization in it": {
     "reason": "out-of-scope-package",
@@ -2141,12 +2437,18 @@
     "note": "Asserts TypeScript payload types; Swift's generic LexicalCommand<P> checks them at compile time."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > html config > should override export output function": {
-    "reason": "dom-only",
-    "note": "Exercises the html export and import config, which is DOM serialization."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > html config > should override import conversion function": {
-    "reason": "dom-only",
-    "note": "Exercises the html export and import config, which is DOM serialization."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > recovers from reconciler failure and trigger proper prev editor state": {
     "reason": "dom-only",
@@ -2181,8 +2483,11 @@
     "note": "Exercises setRootElement with DOM elements and documents."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > should call importDOM methods only once": {
-    "reason": "dom-only",
-    "note": "Asserts how often the static importDOM is read; the views own DOM import."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms do not discard unintentional dirtyElements": {
     "reason": "out-of-scope-package",
@@ -2200,24 +2505,39 @@
     "note": "Exercises the production arm of devInvariant, which only warns; the port follows the development build, where it throws (see devInvariant in Support/LexicalError.swift)."
   },
   "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > basic": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
   },
   "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > empty": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
   },
   "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > multiple": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
   },
   "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > space separated": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
   },
   "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > multiple spaces": {
-    "reason": "dom-only",
-    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "addClassNamesToElement/removeClassNamesFromElement act on DOM elements; they port onto the Swift DOM abstraction with @lexical/html."
   },
   "lexical/src/__tests__/unit/LexicalEmptyEditorTyping.test.ts::Typing into a freshly-mounted empty editor reconciles text > beforeinput insertText on a fresh empty editor lands in editor state": {
     "reason": "dom-only",
@@ -2290,51 +2610,51 @@
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > clear resets all state": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > clone shares state until first write": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > compact folds nursery into old and resets nursery": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > delete then resurrect preserves size and value": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > iteration skips tombstoned keys": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > iteration yields entries in nursery-overrides-old order": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > size tracks set/delete correctly across clone boundaries": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > write to a clone isolates that clone from the original": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > write to the original after clone isolates the original": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > GenMap source returns a clone (O(1) path)": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > plain Map at or above threshold returns a GenMap snapshot": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > plain Map below threshold returns a fresh plain Map": {
     "reason": "deviation",
-    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior."
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). The Swift node map is a JSMap that copies on clone; a GenMap port is a performance item, not behavior. Settled by tmm: see swift/DESIGN.md, Port conventions, GenMap."
   },
   "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a $config that names an ancestor's generated code is refused": {
     "reason": "deviation",
@@ -2505,8 +2825,11 @@
     "note": "React plugin test."
   },
   "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.createDOM()": {
-    "reason": "dom-only",
-    "note": "Base LexicalNode.createDOM throws; the Swift reconciler renders to TextKit and has no createDOM."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.updateDOM()": {
     "reason": "dom-only",
@@ -3061,10 +3384,6 @@
     "reason": "dom-only",
     "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
   },
-  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a host with only a slot renders the slot and caches its text": {
-    "reason": "dom-only",
-    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
-  },
   "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a late-added slot renders in canonical position, not insertion order": {
     "reason": "dom-only",
     "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
@@ -3110,22 +3429,6 @@
     "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
   },
   "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > mounting in place (target is the host DOM) only reveals the placeholder": {
-    "reason": "dom-only",
-    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
-  },
-  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing a decorator host clears its slot subtree from the DOM map": {
-    "reason": "dom-only",
-    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
-  },
-  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing a slot drops its container and its text from the cache": {
-    "reason": "dom-only",
-    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
-  },
-  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing an element host clears its slot subtree from the DOM map": {
-    "reason": "dom-only",
-    "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
-  },
-  "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing the host last child keeps its slot containers in the DOM": {
     "reason": "dom-only",
     "note": "Slot DOM rendering and reconciliation; ports with the TextKit reconciler."
   },
@@ -3928,28 +4231,40 @@
     "note": "indexPath is a DOM tree helper of LexicalDOMSlot."
   },
   "lexical/src/nodes/__tests__/unit/LexicalLineBreakNode.test.ts::LexicalLineBreakNode tests > LineBreakNode.createDOM()": {
-    "reason": "dom-only",
-    "note": "Tests the DOM node the reconciler creates."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalLineBreakNode.test.ts::LexicalLineBreakNode tests > LineBreakNode.updateDOM()": {
     "reason": "dom-only",
     "note": "Tests the DOM node the reconciler creates."
   },
   "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.createDOM()": {
-    "reason": "dom-only",
-    "note": "Tests the DOM node the reconciler creates."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.importDOM handles both CSS text-align and legacy align attribute": {
-    "reason": "dom-only",
-    "note": "Tests importDOM of a <p> element; paragraph HTML import is ported with @lexical/html."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.updateDOM()": {
     "reason": "dom-only",
     "note": "Tests the DOM node the reconciler creates."
   },
   "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode.createDOM()": {
-    "reason": "dom-only",
-    "note": "Tests the DOM node the reconciler creates."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode.updateDOM()": {
     "reason": "dom-only",
@@ -4025,100 +4340,172 @@
     "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > applies styles with direct DOM property updates": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > bold + empty text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > bold text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > capitalize text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code + italic text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code + underline + strikethrough + bold + italic + highlight + uppercase text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code + underline + strikethrough + bold + italic text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code + underline + strikethrough text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > code text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > has parent node > no formatting + empty string text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > has parent node > no formatting text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > highlight + italic text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > highlight text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > italic text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > lowercase text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > no formatting text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > strikethrough text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > underline + strikethrough text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > underline text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > uppercase text format type": {
-    "reason": "dom-only",
-    "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > exportDOM() > capitalize format": {
-    "reason": "dom-only",
-    "note": "Asserts TextNode.exportDOM HTML. Ports with HTML export (@lexical/html)."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > exportDOM() > combined bold and lowercase format": {
-    "reason": "dom-only",
-    "note": "Asserts TextNode.exportDOM HTML. Ports with HTML export (@lexical/html)."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > exportDOM() > lowercase format": {
-    "reason": "dom-only",
-    "note": "Asserts TextNode.exportDOM HTML. Ports with HTML export (@lexical/html)."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > exportDOM() > uppercase format": {
-    "reason": "dom-only",
-    "note": "Asserts TextNode.exportDOM HTML. Ports with HTML export (@lexical/html)."
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
+    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > change in text": {
     "reason": "dom-only",

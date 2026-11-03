@@ -2095,3 +2095,140 @@ func node<T: LexicalNode>(_ key: NodeKey, as type: T.Type = T.self) throws -> T 
     }
   }
 }
+
+/// The slot tests of LexicalSlot.test.ts that assert the reconciled DOM,
+/// reworked to assert what the model reconciler keeps: the key map
+/// (`getElementByKey`) and the root's cached text.
+@Suite struct LexicalSlotReconcilerTests {
+  /// `createSlotEditor()`, mounted so commits run the reconciler.
+  func createMountedSlotEditor() throws -> Editor {
+    let editor = try createSlotEditor()
+    try editor.setRootElement(TestRootElement())
+    return editor
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > a host with only a slot renders the slot and caches its text"
+    ))
+  func hostWithOnlySlotCachesText() throws {
+    let editor = try createMountedSlotEditor()
+    var titleKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let title = try slotContainer("Title")
+      try getRoot().append(host)
+      try setSlot(host, "title", title)
+      titleKey = title.getKey()
+    }
+    #expect(editor._keyToDOMMap.get(titleKey) != nil)
+    try editor.read { () throws in
+      #expect(try getRoot().getFirstChildOrThrow().getTextContent() == "Title")
+      // The childless host still contributes its slot text to the cache.
+      #expect(try getRoot().getTextContent() == "Title")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing a slot drops its container and its text from the cache"
+    ))
+  func removingSlotDropsItsText() throws {
+    let editor = try createMountedSlotEditor()
+    var hostKey = ""
+    var titleKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let title = try slotContainer("Title")
+      let body = try createParagraphNode().append(try createTextNode("Body"))
+      try getRoot().append(host)
+      try host.append(body)
+      try setSlot(host, "title", title)
+      hostKey = host.getKey()
+      titleKey = title.getKey()
+    }
+    try editor.update(discrete: true) {
+      _ = try removeSlot(try #require(try getNodeByKey(hostKey)), "title")
+    }
+    #expect(editor._keyToDOMMap.get(titleKey) == nil)
+    try editor.read { () throws in
+      #expect(try #require(try getNodeByKey(hostKey)).getTextContent() == "Body")
+      #expect(try getRoot().getTextContent() == "Body")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing the host last child keeps its slot containers in the DOM"
+    ))
+  func removingLastChildKeepsSlot() throws {
+    let editor = try createMountedSlotEditor()
+    var childKey = ""
+    var hostKey = ""
+    var titleKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let child = try createTextNode("A")
+      try host.append(child)
+      let title = try slotContainer("TT")
+      try setSlot(host, "title", title)
+      try getRoot().append(host)
+      childKey = child.getKey()
+      hostKey = host.getKey()
+      titleKey = title.getKey()
+    }
+    try editor.update(discrete: true) { try #require(try getNodeByKey(childKey)).remove() }
+    try editor.read { () throws in
+      let host = try #require(try getNodeByKey(hostKey))
+      #expect(try getSlotNames(host) == ["title"])
+      #expect(try host.getTextContent() == "TT")
+      #expect(try getRoot().getTextContent() == "TT")
+    }
+    #expect(editor._keyToDOMMap.get(titleKey) != nil)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing an element host clears its slot subtree from the DOM map"
+    ))
+  func removingElementHostClearsSlotSubtree() throws {
+    let editor = try createMountedSlotEditor()
+    var hostKey = ""
+    var slotKey = ""
+    var innerKey = ""
+    try editor.update(discrete: true) {
+      let host = try createParagraphNode()
+      let slot = try slotContainer("SLOTTEXT")
+      try getRoot().append(host)
+      try setSlot(host, "title", slot)
+      hostKey = host.getKey()
+      slotKey = slot.getKey()
+      innerKey = try slot.getFirstChildOrThrow().getKey()
+    }
+    #expect(editor._keyToDOMMap.get(slotKey) != nil)
+    try editor.update(discrete: true) { try #require(try getNodeByKey(hostKey)).remove() }
+    #expect(editor._keyToDOMMap.get(slotKey) == nil)
+    #expect(editor._keyToDOMMap.get(innerKey) == nil)
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSlot.test.ts::named-slots: core foundation > removing a decorator host clears its slot subtree from the DOM map"
+    ))
+  func removingDecoratorHostClearsSlotSubtree() throws {
+    let editor = try createMountedSlotEditor()
+    var hostKey = ""
+    var slotKey = ""
+    try editor.update(discrete: true) {
+      let host = try createTestDecoratorNode().setIsInline(false)
+      let slot = try slotContainer("SLOTTEXT")
+      try getRoot().append(host)
+      try setSlot(host, "media", slot)
+      hostKey = host.getKey()
+      slotKey = slot.getKey()
+    }
+    #expect(editor._keyToDOMMap.get(slotKey) != nil)
+    try editor.update(discrete: true) { try #require(try getNodeByKey(hostKey)).remove() }
+    #expect(editor._keyToDOMMap.get(slotKey) == nil)
+  }
+}

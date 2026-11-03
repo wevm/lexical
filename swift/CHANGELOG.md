@@ -5,6 +5,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `TextKitInputController.setSelectedRange` keeps the selection's anchor
+  when the new range still ends at it, so a selection extended backward
+  (Shift-Left) is backward in the model, as in a browser.
 - DecoratorNodes' SwiftUI views now show in the views (they rendered as
   file icons), and a view can be created for an editor that already has
   content, such as `LexicalEditor` for a loaded document (it crashed).

@@ -14,6 +14,8 @@ export default defineConfig({
   ssr: {resolve: {conditions: ['source']}},
   test: {
     environment: 'node',
+    // Recorded in WebKit by vitest.webkit.config.mts.
+    exclude: ['src/__tests__/webkit/**'],
     include: ['src/**/*.test.ts'],
     name: 'lexical-conformance',
   },

@@ -161,10 +161,18 @@ public final class TextKitInputController {
   /// half of JS `onSelectionChange`, which selects the points at those
   /// locations and gives a caret the format and style of where it is.
   public func setSelectedRange(location: Int, length: Int) throws {
+    // A view's range has no direction. A selection that still ends where
+    // the model's anchor was is taken to extend from it, as a shift-arrow
+    // does, so it is backward when that anchor is its end.
+    let end = location + length
+    let previousAnchor = try editor.read(.latest) {
+      (try getSelection() as? RangeSelection).flatMap { document.location(for: $0.anchor) }
+    }
+    let isBackward = length > 0 && previousAnchor == end
     // Mapped before the update, so the reconciler's document is not shared
     // (and copied) while the commit edits it.
-    let anchor = document.point(at: location)
-    let focus = document.point(at: location + length)
+    let anchor = document.point(at: isBackward ? end : location)
+    let focus = document.point(at: isBackward ? location : end)
     try run { [self] in
       try selectPoints(anchor, focus)
       guard let selection = try getSelection() as? RangeSelection else { return }

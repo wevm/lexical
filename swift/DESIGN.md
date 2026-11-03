@@ -576,6 +576,31 @@ Reversible choices made porting `@lexical/extension` under Q18.
   views get that from `UIFocusSystem`, the key view loop and
   `accessibilityViewIsModal`, so they are not ported (their tests are
   `dom-only`).
+- **Tier 2 scenarios** (Q16, Q35). `packages/lexical-conformance/src/scenarios.ts`
+  translates upstream Playwright specs into key presses written as on a Mac,
+  keeping the specs' names. `src/__tests__/webkit/scenarios.test.ts` replays
+  them in Playwright's WebKit (`pnpm run generate-scenarios`) and records the
+  state and selection, with nodes as child-index paths, after every step into
+  `vectors/scenarios/*.json`; CI fails when they are stale. Decisions:
+  - The editor is built like the native views' (`RichTextExtension` or
+    `PlainTextExtension` with `HistoryExtension`), not the playground, whose
+    other plugins (markdown shortcuts, autolink, emoji, …) would change what
+    a key does. It starts with one empty, selected paragraph, and history's
+    clock is fixed, so merging doesn't depend on timing.
+  - Recording runs on Linux, where WebKit reports a Mac user agent but the
+    host's `navigator.platform`; a setup file makes it `MacIntel`, so
+    `IS_APPLE` holds. Its key bindings are GTK's, so Option and Command
+    caret moves are pressed as Control-arrow and Home/End there; every other
+    chord goes through as written.
+  - `Tests/LexicalTextKitTests/ScenarioTests.swift` replays each step through
+    `TextKitInputController` as an `NSTextView` sends it: `keyDown` first,
+    then, for a key no handler prevented, the Cocoa standard key binding
+    (text, the delete and newline selectors, caret moves over the rendered
+    text). A scenario listed under `scenarios` in `parity/deviations.json`
+    is a known issue, and the runner fails when it stops differing.
+  - A view's selected range has no direction, so `setSelectedRange` keeps the
+    model's anchor when the new range still ends there (a shift-arrow
+    extending backward), and otherwise selects forward.
 - **Tier 2 differences** are listed in `parity/deviations.json`.
 
 ## Scope of v0.1.0 (Q21)

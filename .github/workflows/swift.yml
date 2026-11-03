@@ -37,6 +37,11 @@ jobs:
       # Fails when the checked-in vectors no longer match the JS behavior.
       - name: Check vectors are current
         run: pnpm --filter lexical-conformance run test
+      # The Tier 2 scenarios are recorded in WebKit; fails when they are stale.
+      - name: Install WebKit
+        run: pnpm exec playwright install --with-deps webkit
+      - name: Check scenarios are current
+        run: pnpm --filter lexical-conformance run scenarios
       # Reruns the upstream unit tests of the in-scope packages: fails when
       # swift/parity/upstream-tests.json is stale, when a port or skip names
       # an unknown test, or when an enforced package has unported tests.

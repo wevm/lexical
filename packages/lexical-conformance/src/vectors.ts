@@ -6,25 +6,15 @@
  *
  */
 import {readFileSync, writeFileSync} from 'node:fs';
-import {fileURLToPath} from 'node:url';
 import {expect} from 'vitest';
 
-/**
- * Bumped when the shape of every vector file changes. Each file also carries
- * its own `kind`, so readers can reject vectors they don't understand.
- */
-export const VECTOR_FORMAT_VERSION = 1;
+import {updateVectors, vectorFileText, vectorsDir} from './vectorFile';
 
-const vectorsDir = fileURLToPath(new URL('../vectors/', import.meta.url));
-
-export const updateVectors = process.env.UPDATE_VECTORS === '1';
-
-export type VectorFile<T> = {
-  formatVersion: number;
-  kind: string;
-  description: string;
-  cases: T[];
-};
+export {
+  updateVectors,
+  VECTOR_FORMAT_VERSION,
+  type VectorFile,
+} from './vectorFile';
 
 /**
  * Writes `vectors/<name>.json` when `UPDATE_VECTORS=1`, otherwise checks that
@@ -38,18 +28,7 @@ export function emitVectors<T>(
   description: string,
   cases: T[],
 ): void {
-  const file: VectorFile<T> = {
-    cases,
-    description,
-    formatVersion: VECTOR_FORMAT_VERSION,
-    kind,
-  };
-  // One case per line keeps diffs of large files readable.
-  const {cases: _, ...head} = file;
-  const text =
-    `${JSON.stringify(head).slice(0, -1)},"cases":[\n` +
-    cases.map(c => JSON.stringify(c)).join(',\n') +
-    '\n]}\n';
+  const text = vectorFileText(kind, description, cases);
   const path = vectorsDir + name + '.json';
   if (updateVectors) {
     writeFileSync(path, text);

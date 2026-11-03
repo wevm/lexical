@@ -56,3 +56,7 @@ PATH="${PNPM_HOME:-$HOME/.local/share/pnpm}/bin:$PATH" \
 
 echo '==> Installing workspace dependencies from the lockfile'
 pnpm install --frozen-lockfile
+
+echo '==> Installing WebKit, which records the Tier 2 scenarios'
+sudo -E env "PATH=$PATH" pnpm exec playwright install-deps webkit
+pnpm exec playwright install webkit

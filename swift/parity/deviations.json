@@ -34,5 +34,12 @@
   "native/drag-move-between-editors": {
     "category": "platform-clipboard",
     "description": "A drag moved into another editor is removed from the source by the source view when its drag session ends as a move (deleteByDrag there), where JS has the drop side find the source editor's root in the shared DOM."
+  },
+  "native/caret-format-at-run-boundary": {
+    "category": "platform-selection",
+    "description": "A caret moved onto the boundary of two text nodes with different formats takes the format of the node before it, as Cocoa's typing attributes come from the preceding character. WebKit keeps its DOM caret in the node the arrow key came from, so moving left into the start of bold text leaves a bold caret in JS. The model point is the same; only the caret's format differs.",
+    "scenarios": [
+      "TextEntry > Can insert a paragraph between two text nodes (rich)"
+    ]
   }
 }

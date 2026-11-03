@@ -701,12 +701,24 @@ importers:
 
   packages/lexical-conformance:
     devDependencies:
+      '@lexical/extension':
+        specifier: workspace:*
+        version: link:../lexical-extension
       '@lexical/headless':
         specifier: workspace:*
         version: link:../lexical-headless
+      '@lexical/history':
+        specifier: workspace:*
+        version: link:../lexical-history
       '@lexical/html':
         specifier: workspace:*
         version: link:../lexical-html
+      '@lexical/plain-text':
+        specifier: workspace:*
+        version: link:../lexical-plain-text
+      '@lexical/rich-text':
+        specifier: workspace:*
+        version: link:../lexical-rich-text
       entities:
         specifier: 2.2.0
         version: 2.2.0

@@ -7,14 +7,20 @@
   "scripts": {
     "test": "vitest run",
     "generate": "UPDATE_VECTORS=1 vitest run",
+    "scenarios": "vitest run --config vitest.webkit.config.mts",
+    "generate-scenarios": "UPDATE_VECTORS=1 vitest run --config vitest.webkit.config.mts",
     "ledger": "node scripts/ledger.mjs",
     "check-ledger": "node scripts/ledger.mjs --check",
     "css-properties": "node scripts/css-properties.mjs",
     "html-entities": "node scripts/html-entities.mjs"
   },
   "devDependencies": {
+    "@lexical/extension": "workspace:*",
     "@lexical/headless": "workspace:*",
+    "@lexical/history": "workspace:*",
     "@lexical/html": "workspace:*",
+    "@lexical/plain-text": "workspace:*",
+    "@lexical/rich-text": "workspace:*",
     "entities": "2.2.0",
     "lexical": "workspace:*"
   }

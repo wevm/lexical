@@ -1,4 +1,704 @@
 {
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a heading": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a list item": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a quote": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in the middle of a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Shift+Enter": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > pasting a block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > pasting inline content": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > the armed format reaches the text typed after Enter": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: CodeHub": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: GitHub / Gist": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Multiline <code>": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Multiline <code> with nested <br>": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Multiple text formats": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Postman IDE": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Quip": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Single line <code>": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Slack message": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Subscript and Superscript": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Title from Google Docs": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Title from Google Docs Wrapped in Paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: VS Code": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: WebStorm / Idea": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/DerivedTextFields.test.ts::derived textFormat and textStyle of an element > a full reconcile changes no element that the update did not change": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/DerivedTextFields.test.ts::derived textFormat and textStyle of an element > a full reconcile with an edit derives them for the element it changes only": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/DerivedTextFields.test.ts::derived textFormat and textStyle of an element > an element whose first text changes takes its format and style": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: Ghostty terminal paste with inline divs": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: a paragraph element": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: a single div": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: div with display:inline should not insert linebreaks": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: github checklist": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: google doc checklist": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: google doc list with right alignment": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: joplin checklist": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: multiple nested spans and divs": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: nested div in a span": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: nested span in a div": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: pasting inheritance": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: plain DOM text node": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > iOS fix: Word predictions should be handled as plain text to maintain selection formatting": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop across editors > cancelled cross-editor drag leaves both editors untouched": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop across editors > inserts in the destination and dispatches deleteByDrag at the source root": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop beside DOM the editor renders > drops before the decorator at the DOM point before it": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop beside DOM the editor renders > drops before the first child of an element at the DOM point after its marker": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > handles a backward (right-to-left) source selection": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > keeps the dragged text when dropped on the end edge of the source range": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > moves a selected word earlier within the same TextNode": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > moves a selected word later within the same TextNode": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > moves a selection across TextNodes in the same block": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > no-op when drop is inside a multi-node source range": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > no-op when the drop point is inside the source range": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > preserves DecoratorNodes in the source when moved to a new location": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > returns false for an external drag (no marker), letting the browser handle it": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleTextDrop > returns false when caretFromPoint cannot resolve a location": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a decorator in a multi-node range at the adjacent end edge": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a paragraph destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a root destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a text destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at element end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at element start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at next start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at previous end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at text end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at text middle": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps a token unchanged at text start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps nested inline wrappers unchanged at element end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps nested inline wrappers unchanged at element start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps nested inline wrappers unchanged at next start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=false > keeps nested inline wrappers unchanged at previous end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a decorator in a multi-node range at the adjacent end edge": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a paragraph destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a root destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a text destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at element end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at element start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at next start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at previous end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at text end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at text middle": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps a token unchanged at text start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps nested inline wrappers unchanged at element end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps nested inline wrappers unchanged at element start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps nested inline wrappers unchanged at next start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::plain text drop boundaries > backward=true > keeps nested inline wrappers unchanged at previous end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a decorator in a multi-node range at the adjacent end edge": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a paragraph destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a root destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a text destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at element end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at element start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at next start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at previous end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at text end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at text middle": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps a token unchanged at text start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps nested inline wrappers unchanged at element end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps nested inline wrappers unchanged at element start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps nested inline wrappers unchanged at next start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=false > keeps nested inline wrappers unchanged at previous end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a decorator in a multi-node range at the adjacent end edge": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a paragraph destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a root destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a text destination after a cross-paragraph deletion": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at element end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at element start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at next start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at previous end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at text end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at text middle": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps a token unchanged at text start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps nested inline wrappers unchanged at element end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps nested inline wrappers unchanged at element start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps nested inline wrappers unchanged at next start": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::rich text drop boundaries > backward=true > keeps nested inline wrappers unchanged at previous end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > a change in an update is seen by the next serialization in it": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > a clone that reads JSON before the change it is made for does not keep what the change replaces": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > stays linear in the depth when each carries text fields, in a committed state": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > stays linear in the depth when each carries text fields, in a copy after a change in the same update": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > stays linear in the depth when each carries text fields, in an update": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of a block > are omitted when it holds text of its own, as before": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of a block > are persisted when its text is all inside inline elements, as before": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of an inline element > a stored value is read and no longer written once it has text inside": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of an inline element > are omitted when it holds text of its own, as before": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of an inline element > are omitted when its text sits in an inline element inside it": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of an inline element > are persisted when it holds no text at any depth, as before": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > cancels the mousedown on SVG artwork": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > cancels the mousedown on a disabled control": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > cancels the mousedown so no keyboard opens": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > does not blur an editor that the user focused": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > focuses an unfocused editor without a keyboard or a scroll": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > keeps the default for a captured widget outside a decorator": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > keeps the default for a closed shadow host with a tabindex": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > keeps the default for a trackpad or mouse press": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > keeps the default for embeds and media controls": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > keeps the default for interactive elements inside the decorator": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > keeps the default for text": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > keeps the quiet focus through a scroll": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > leaves an editor that already has focus alone": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > looks through an open shadow root": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > puts the root's inputmode back on the next tap on text": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > reads the pointer type even when a decorator stops pointerdown": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > removes inputmode when the editor loses focus": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > removes inputmode when the editor loses focus while read-only": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > removes inputmode when the root element is replaced": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on text after a NodeSelection on iOS > keeps the caret the tap placed": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on text after a NodeSelection on iOS > leaves an iPadOS trackpad click to selectionchange": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosEnterAcceptanceBoundary.test.ts::iOS Enter accepting a text replacement > is unchanged when the paragraph is the last block": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosEnterAcceptanceBoundary.test.ts::iOS Enter accepting a text replacement > leaves the caret in the new paragraph when a block already follows": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosKeyboardSuggestions.test.ts::iOS keyboard suggestion-bar fix — KEY_BACKSPACE_COMMAND pass-through > KEY_BACKSPACE_COMMAND does not preventDefault regardless of the language locale": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosKeyboardSuggestions.test.ts::iOS keyboard suggestion-bar fix — KEY_BACKSPACE_COMMAND pass-through > KEY_BACKSPACE_COMMAND returns false and does not call event.preventDefault() on iOS": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosKeyboardSuggestions.test.ts::iOS keyboard suggestion-bar fix — KEY_BACKSPACE_COMMAND pass-through > cursor at start of text does not delete (nothing to delete)": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosKeyboardSuggestions.test.ts::iOS keyboard suggestion-bar fix — KEY_BACKSPACE_COMMAND pass-through > deleteContentBackward beforeinput with collapsed targetRange deletes one character": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosKeyboardSuggestions.test.ts::iOS keyboard suggestion-bar fix — KEY_BACKSPACE_COMMAND pass-through > repeated beforeinput deleteContentBackward events delete characters one by one": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosKeyboardSuggestions.test.ts::iOS keyboard suggestion-bar fix — KEY_BACKSPACE_COMMAND pass-through > returns false when there is no selection": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > clears Enter intent on blur while read-only": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > clears explicit Shift on blur": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > clears explicit Shift on blur while read-only": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > clears explicit Shift on keydown CapsLock with shiftKey=true": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > clears explicit Shift on keydown a with shiftKey=false": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > clears explicit Shift on keyup A with shiftKey=false": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > clears explicit Shift on keyup Shift with shiftKey=false": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > consumes Enter intent when the browser reports insertLineBreak": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > does not retain Enter intent when a command prevents its default": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > does not retain Shift after replacing the root element": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > does not retain line-break intent after handling Control+O": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > does not share explicit Shift between editors": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > exits an empty list item with auto-shift active (#4266)": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > inserts a line break at offset 0 after an explicit Shift keydown": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > inserts a line break at offset 10 after an explicit Shift keydown": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > inserts a line break at offset 5 after an explicit Shift keydown": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > inserts a paragraph before a heading with auto-shift active (#4335)": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > inserts a paragraph for unshifted Enter": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > inserts another paragraph when iOS auto-shifts after Enter": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > remembers Enter intent if Shift is released before beforeinput": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/IosShiftEnter.test.ts::iOS line breaks and auto-capitalization > supports repeated Enter while explicit Shift remains active": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
   "lexical/src/__tests__/unit/Issue5307Repro.test.ts::Issue 5307: empty class attribute > clearing the last text format removes the class attribute": {
     "reason": "dom-only",
     "note": "Asserts that empty class/style attributes are dropped from the reconciled DOM."
@@ -14,6 +714,734 @@
   "lexical/src/__tests__/unit/Issue5307Repro.test.ts::Issue 5307: empty style attribute > clearing an element indent removes the style attribute": {
     "reason": "dom-only",
     "note": "Asserts that empty class/style attributes are dropped from the reconciled DOM."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > a partial delete that only empties the first block is unaffected (isBackward: false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > a partial delete that only empties the first block is unaffected (isBackward: true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > a select-all scoped to a slot only clears the slot": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > a deeply nested list unwraps every level": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > a nest with no plain sibling item": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > heading as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > list followed by a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > nested list": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > paragraph as the first block is left as a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > quote as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > a deeply nested list unwraps every level": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > a nest with no plain sibling item": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > heading as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > list followed by a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > nested list": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > paragraph as the first block is left as a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > quote as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteLine (isBackward: false) > heading as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteLine (isBackward: false) > quote as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteLine (isBackward: true) > heading as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteLine (isBackward: true) > quote as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > a deeply nested list unwraps every level": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > a nest with no plain sibling item": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > heading as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > list followed by a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > nested list": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > paragraph as the first block is left as a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > quote as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > a deeply nested list unwraps every level": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > a nest with no plain sibling item": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > heading as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > list followed by a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > nested list": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > paragraph as the first block is left as a paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > quote as the only block": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a code block (isBackward: false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a code block (isBackward: true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a quote wrapping a list (isBackward: false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a quote wrapping a list (isBackward: true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a slot host, slots and all (isBackward: false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a slot host, slots and all (isBackward: true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a third-party block node (isBackward: false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a third-party block node (isBackward: true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > replacing all text in a lone non-paragraph block keeps its type": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > an inline node inserted at the caret goes inside the node": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > control: a splittable inline ElementNode is still split": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > pasted text is inserted at the caret inside the node": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7729Repro.test.ts::Issue #7729: paragraph indent round-trip via data-lexical-indent > data-lexical-indent wins over a calc(...) padding-inline-start": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7729Repro.test.ts::Issue #7729: paragraph indent round-trip via data-lexical-indent > data-lexical-indent wins over a non-40-multiple padding-inline-start": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7729Repro.test.ts::Issue #7729: paragraph indent round-trip via data-lexical-indent > exportDOM emits data-lexical-indent and importDOM round-trips": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7729Repro.test.ts::Issue #7729: paragraph indent round-trip via data-lexical-indent > falls back to padding heuristic when data-lexical-indent is absent": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > a non-idempotent transform stabilises in two passes on a parsed state": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > setEditorState completes within bound on a 1000-paragraph parsed state": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > setEditorState consumes the `_parsed` flag so re-applying the resulting state does not re-trigger transforms": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > text-node transform fires for a JSON state passed to setEditorState": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > text-node transform fires for a cloned parsed state (the documented no-focus form)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > a paragraph with no block-level state of its own still copies as inline content": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > copy a centered paragraph and paste it into an empty paragraph": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > copying a whole aligned paragraph keeps the alignment in the HTML clipboard payload": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > copying a whole aligned paragraph keeps the alignment in the Lexical clipboard payload": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > copying part of a paragraph still yields inline content only": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > pasting a whole-line copy into the middle of another line still merges inline": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8563Repro.test.ts::Issue #8563: full reconcile with same-size child key swap > undo (setEditorState) does not crash when a child is replaced by a different-key child of equal count": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteCharacter backward from empty ListItem should not remove the preceding decorator": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine backward from empty ListItem preceded by empty paragraph merges them": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine backward from empty ListItem preceded by non-empty paragraph should work normally": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine backward from empty ListItem with prece… should not remove the decorator": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine backward from empty paragraph with prec… should not remove the decorator": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine forward from empty ListItem with follow… should not remove the decorator": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste flattens non-inline nodes inside an inline-only element (#8724) > drops a block-only paste with no inline form": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste flattens non-inline nodes inside an inline-only element (#8724) > keeps the inline content of a block paste": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization does not regress lists (#8724) > block node at an element point on a list item holding a nested list does not crash": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization does not regress lists (#8724) > block node pasted in a list item text splits the list (unchanged CASE 3)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization of non-inline nodes (#8713, #8724) > block node at a block cursor inside an inline-only element splits up to the root": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization of non-inline nodes (#8713, #8724) > block node at a block cursor inside an inline-only element splits up to the shadow root": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization of non-inline nodes (#8713, #8724) > still inserts a block node directly at a block cursor on a shadow root (#8708)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > HR + collapsible only: select-all delete leaves at least one child": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > NodeSelection.deleteNodes leaves at least one root child": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > deleteCharacter with select-all cleans up trailing shadow root": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > heading first child + backward deleteCharacter: reproduces issue author scenario": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > leaves one empty paragraph when document ends with a shadow root": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > leaves one empty paragraph with multi-child shadow root (columns)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > leaves one empty paragraph with nested shadow roots": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > paragraph first child + backward deleteCharacter: simple case": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > partial deletion within shadow root preserves structure": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > preserves content after shadow root when shadow root is in the middle": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > select-all + forward deleteCharacter leaves at least one child": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > select-all + removeText leaves at least one child": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > shadow root only (no paragraph): select-all + backward deleteCharacter leaves at least one child": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > shadow root only (no paragraph): select-all + removeText leaves at least one child": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a DOM selection landing outside the anchors still resolves to the full range": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a copy of an anchor leaves one anchor, on its edge": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a decorator on both edges gets both anchors": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a document with no decorators gets no anchors": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a leading block decorator gets a boundary anchor in front of it": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a single block decorator gets both anchors": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a trailing block decorator gets a boundary anchor after it": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor moved into a paragraph leaves one anchor, on its edge": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor moved into a text node leaves one anchor, on its edge": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor moved to the end of its element leaves one anchor, on its edge": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor removed before its decorator goes back on its edge": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor removed before the block cursor goes back on its edge": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an inline boundary decorator keeps its own linebreak hack instead": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > anchors are dropped when the boundary decorator is removed": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > anchors are dropped when the boundary decorator moves inward": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > anchors do not shift the child offsets $selectAll resolves to": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > interior block decorators get no anchor (browsers paint those)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > the DOM selection lands on the boundary side of each anchor": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > Backspace after the last shadow root deletes it": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > Backspace in an empty block after a shadow root removes the block, not the shadow root": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > Enter over all of a shadow root splits an empty paragraph (element points)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > Enter over all of a shadow root splits an empty paragraph (text points)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > a paragraph does not need a block cursor beside it": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deletes the adjacent decorator (isBackward: false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deletes the adjacent decorator (isBackward: true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deletes the adjacent shadowRoot (isBackward: false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deletes the adjacent shadowRoot (isBackward: true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deleting the only block inside a shadow root keeps it editable": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deleting the only decorator leaves the root editable": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deleting the only shadowRoot leaves the root editable": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/KeyDownOutsideEditor.test.ts::ArrowDown pressed outside the editor acts at its selection": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/KeyDownOutsideEditor.test.ts::Control+B pressed outside the editor acts at its selection": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/KeyDownOutsideEditor.test.ts::Enter pressed outside the editor acts at its selection": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/KeyDownOutsideEditor.test.ts::Meta+B pressed outside the editor acts at its selection": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalAndroidChromeComposition.test.ts::Android Chrome composition — format mismatch ZWSP skip > compositionStart with element anchor still dispatches CONTROLLED_TEXT_INSERTION": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalAndroidChromeComposition.test.ts::Android Chrome composition — format mismatch ZWSP skip > compositionStart with format mismatch skips CONTROLLED_TEXT_INSERTION": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalBeforeInputDeleteForward.test.ts::deleteContentForward from 0 to 2 with the caret beside a slot deletes [ 'line', 0, 2 ]": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalBeforeInputDeleteForward.test.ts::deleteContentForward from 0 to 2 with the caret in a slot deletes [ 'character', 2, 2 ]": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalBeforeInputDeleteForward.test.ts::deleteContentForward from 0 to 2 with the caret no slots deletes [ 'line', 0, 2 ]": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalBeforeInputDeleteForward.test.ts::deleteContentForward from 2 to 3 with the caret in a slot deletes [ 'line', 2, 3 ]": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalBeforeInputDeleteForward.test.ts::deleteContentForward from 2 to 3 with the caret no slots deletes [ 'line', 2, 3 ]": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::isDOMCapturingSelection (Issue #8584) > DecoratorNode subtree still returns true (BC preserved)": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::isDOMCapturingSelection (Issue #8584) > captureSelection-marked DOM returns true": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::isDOMCapturingSelection (Issue #8584) > descendant of captureSelection-marked DOM returns true": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::isDOMCapturingSelection (Issue #8584) > editor root element returns false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::isDOMCapturingSelection (Issue #8584) > plain DOM outside the editor returns false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::isDOMCapturingSelection (Issue #8584) > unmanaged-only DOM (no captureSelection) is not captured": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::isDOMCapturingSelection (Issue #8584) > walk aborts at a Lexical-node DOM — ancestor capture above editor does not leak in": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::setDOMUnmanaged options (Issue #8584) > captureSelection: false clears an existing flag": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::setDOMUnmanaged options (Issue #8584) > captureSelection: false equivalent to default": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::setDOMUnmanaged options (Issue #8584) > captureSelection: true marks both unmanaged and capturing": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::setDOMUnmanaged options (Issue #8584) > default options: marks unmanaged, leaves captureSelection off": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::setDOMUnmanaged options (Issue #8584) > descendant cannot opt out when ancestor is captured (walk)": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMCapturedSelection.test.ts::setDOMUnmanaged options (Issue #8584) > unmarked DOM is neither unmanaged nor capturing": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot block cursor handling > inserting a child at offset 0 while the block cursor is showing displays the child (#8561)": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot block cursor handling > renders the block cursor inside the slot content element, not the keyed wrapper": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > constructor accepts before and after": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > constructor defaults before/after to null": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChild ignores a non-head block cursor": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChild returns null for empty element": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChild returns null when only slot.before is present": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChild skips a head block cursor (no slot.after)": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChild skips a head block cursor after slot.after": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChild skips past slot.after sibling": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChildOffset counts DOM siblings up to and including after": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChildOffset counts a head block cursor (no slot.after)": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChildOffset counts slot.after and a head block cursor": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChildOffset is 0 for an empty element with only slot.before": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChildOffset is 0 with no after": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > getFirstChildOffset stops at slot.before when there are no children": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > insertChild appends when before is null": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > insertChild inserts before the slot.before node": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > setManagedLineBreak ignores slot containers before the managed range": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > withAfter returns a new slot, preserves before and element": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > withBefore returns a new slot, preserves after and element": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > withElement preserves before / after on the new element": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot class > withElement returns same instance when element is unchanged": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: a removed trailing decoration > a block cursor after the last block decorator does not throw if the decoration was removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: a removed trailing decoration > a leading decorator anchor removed with the decoration is rebuilt": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: a removed trailing decoration > a managed line break removed with the decoration is rebuilt": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: a removed trailing decoration > a trailing decorator anchor removed with the decoration is rebuilt": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: leading decoration (slot.after) > a decorator anchor removed before its decorator goes back after the decoration": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: leading decoration (slot.after) > appending children keeps the leading decoration first": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: leading decoration (slot.after) > clearing children removes lexical content but keeps decoration": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: leading decoration (slot.after) > decoration sits in DOM before lexical children": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: leading decoration (slot.after) > resolveChildIndex maps DOM offset to lexical index using firstChildOffset": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: leading decoration (slot.after) > resolveChildIndex skips a block cursor interleaved between children": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: trailing decoration (slot.before) > a block cursor after the last block decorator stays before the decoration": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: trailing decoration (slot.before) > appending children keeps the trailing decoration last": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: trailing decoration (slot.before) > clearing children removes lexical content but keeps decoration": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: trailing decoration (slot.before) > decoration sits in DOM after lexical children": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalDOMSlot.test.tsx::ElementDOMSlot integration: trailing decoration (slot.before) > moving an existing child to the end preserves the trailing decoration": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > Should be able to handle a change in root element": {
     "reason": "react-only",
@@ -86,6 +1514,82 @@
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms do not discard unintentional dirtyElements": {
     "reason": "out-of-scope-package",
     "note": "Needs @lexical/list (ListNode normalization); port with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalEditorEmptyState.test.ts::setEditorState with an empty editor state (production arm) > leaves a non-empty editor state untouched": {
+    "reason": "deviation",
+    "note": "Exercises the production arm of devInvariant, which only warns; the port follows the development build, where it throws (see devInvariant in Support/LexicalError.swift)."
+  },
+  "lexical/src/__tests__/unit/LexicalEditorEmptyState.test.ts::setEditorState with an empty editor state (production arm) > recovers to an empty paragraph rather than leaving the root childless": {
+    "reason": "deviation",
+    "note": "Exercises the production arm of devInvariant, which only warns; the port follows the development build, where it throws (see devInvariant in Support/LexicalError.swift)."
+  },
+  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > basic": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > empty": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > multiple": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > addClassNamesToElement() and removeClassNamesFromElement() > space separated": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalElementHelpers.test.ts::LexicalElementHelpers tests > multiple spaces": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalEmptyEditorTyping.test.ts::Typing into a freshly-mounted empty editor reconciles text > beforeinput insertText on a fresh empty editor lands in editor state": {
+    "reason": "dom-only",
+    "note": "Types through a mounted contenteditable (DOM events and DOM selection) in a rich text editor; native typing is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalEmptyEditorTyping.test.ts::Typing into a freshly-mounted empty editor reconciles text > typing eleven words into a fresh empty editor reconciles all of them": {
+    "reason": "dom-only",
+    "note": "Types through a mounted contenteditable (DOM events and DOM selection) in a rich text editor; native typing is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalEventsKeyDown.test.ts::$handleKeyDown dispatch parity (IS_APPLE=false) > dispatches the same commands as the legacy predicate chain": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalEventsKeyDownApple.test.ts::$handleKeyDown dispatch parity (IS_APPLE=true) > dispatches the same commands as the legacy predicate chain": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::declarePeerDependency > validates the type argument": {
+    "reason": "out-of-scope-package",
+    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
+  },
+  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > can define an extension without config": {
+    "reason": "out-of-scope-package",
+    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
+  },
+  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > does not change identity": {
+    "reason": "out-of-scope-package",
+    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
+  },
+  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the correct init type": {
+    "reason": "out-of-scope-package",
+    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
+  },
+  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (base case)": {
+    "reason": "out-of-scope-package",
+    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
+  },
+  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (config inference)": {
+    "reason": "out-of-scope-package",
+    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
+  },
+  "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (output inference)": {
+    "reason": "out-of-scope-package",
+    "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
+  },
+  "lexical/src/__tests__/unit/LexicalFirefoxCompositionEndTag.test.ts::Firefox composition-end tag forwarding > onInput emits COMPOSITION_END_TAG after a deferred compositionend": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
   },
   "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > clear resets all state": {
     "reason": "deviation",
@@ -199,6 +1703,102 @@
     "reason": "deviation",
     "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS."
   },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::Android Chrome: insertText after a handled selection command > Backspace": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::Android Chrome: insertText after a handled selection command > select-all": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::Windows/Linux Chrome: insertText after a handled selection command > Backspace": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::Windows/Linux Chrome: insertText after a handled selection command > select-all": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::iOS WebKit: insertText after a handled selection command > Backspace": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::iOS WebKit: insertText after a handled selection command > select-all": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::iPadOS Chromium profile: insertText after a handled selection command > Backspace": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::iPadOS Chromium profile: insertText after a handled selection command > select-all": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::macOS Chrome: insertText after a handled selection command > Backspace": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::macOS Chrome: insertText after a handled selection command > select-all": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::macOS Firefox: insertText after a handled selection command > Backspace": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::macOS Firefox: insertText after a handled selection command > select-all": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::macOS Safari: insertText after a handled selection command > Backspace": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::macOS Safari: insertText after a handled selection command > select-all": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalInsertParagraphEndpointRepair.test.ts::insertParagraph over a range from an empty paragraph into styled text (backward=false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalInsertParagraphEndpointRepair.test.ts::insertParagraph over a range from an empty paragraph into styled text (backward=true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalIosKoreanIME.test.ts::iOS 10-key Korean IME — deleteContentBackward with targetRange > applyDOMRange + removeText leaves only the assembled syllables": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalIosKoreanIME.test.ts::iOS 10-key Korean IME — deleteContentBackward with targetRange > applyDOMRange handles a targetRange that straddles two adjacent text nodes": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalIosKoreanIME.test.ts::iOS 10-key Korean IME — deleteContentBackward with targetRange > applyDOMRange resolves a range over in-progress Korean jamo": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalIosKoreanIME.test.ts::iOS 10-key Korean IME — deleteContentBackward with targetRange > applyDOMRange with collapsed targetRange leaves selection collapsed — iOS fast path is skipped": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalIosKoreanIME.test.ts::iOS 10-key Korean IME — deleteContentBackward with targetRange > deleteContentBackward with non-collapsed targetRange deletes the targetRange text": {
+    "reason": "dom-only",
+    "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
+  },
+  "lexical/src/__tests__/unit/LexicalListPlugin.test.tsx::@lexical/list tests > $setBlocksType does not cause invalid ListItemNode children - regression #7036": {
+    "reason": "react-only",
+    "note": "React plugin test."
+  },
+  "lexical/src/__tests__/unit/LexicalListPlugin.test.tsx::@lexical/list tests > Can create a list and indent/outdent it": {
+    "reason": "react-only",
+    "note": "React plugin test."
+  },
+  "lexical/src/__tests__/unit/LexicalListPlugin.test.tsx::@lexical/list tests > Toggle an empty list on/off": {
+    "reason": "react-only",
+    "note": "React plugin test."
+  },
   "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.createDOM()": {
     "reason": "dom-only",
     "note": "Base LexicalNode.createDOM throws; the Swift reconciler renders to TextKit and has no createDOM."
@@ -219,6 +1819,18 @@
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf); Swift's traversal return types are fixed by their signatures."
   },
+  "lexical/src/__tests__/unit/LexicalNodeBetween.test.ts::node traversal recognizes a stale target reference": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalNodeBetween.test.ts::node traversal stops at a nested ancestor endpoint (reverse=false)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalNodeBetween.test.ts::node traversal stops at a nested ancestor endpoint (reverse=true)": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
   "lexical/src/__tests__/unit/LexicalNodeState.test.ts::$setState stores the value as given for every state that is not an arraySetValue > arrayValue, a hand-written parse and an updater keep the exact reference": {
     "reason": "deviation",
     "note": "Checks JS reference identity and an ill-typed value; Swift state values are typed value types."
@@ -226,6 +1838,74 @@
   "lexical/src/__tests__/unit/LexicalNodeState.test.ts::LexicalNode state > __state is not an enumerable property": {
     "reason": "deviation",
     "note": "JS property enumerability; Swift nodes have no enumerable properties."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a blur event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a click event dispatches its command, also while read-only: true": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a copy event dispatches its command, also while read-only: true": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a copy event in a nested root element reaches only the nested editor": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a cut event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a dragend event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a dragover event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a dragstart event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a drop event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a focus event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a keydown event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a keydown event in a nested root element reaches only the nested editor": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootEventDispatch.test.ts::a paste event dispatches its command, also while read-only: false": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalRootSelectionPhantomParagraph.test.ts::Typing at root + last-offset selection (no phantom paragraph) > empty root still creates a new paragraph for the typed text": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalRootSelectionPhantomParagraph.test.ts::Typing at root + last-offset selection (no phantom paragraph) > falls back to a new paragraph when the trailing child is a DecoratorNode": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalRootSelectionPhantomParagraph.test.ts::Typing at root + last-offset selection (no phantom paragraph) > reuses an empty trailing paragraph inside a shadow root": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalRootSelectionPhantomParagraph.test.ts::Typing at root + last-offset selection (no phantom paragraph) > reuses an empty trailing paragraph instead of appending a new one": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::a compact document relaxes at every depth > a child property is unknown until it is narrowed": {
     "reason": "deviation",
@@ -479,6 +2159,34 @@
     "reason": "out-of-scope-package",
     "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
   },
+  "lexical/src/__tests__/unit/LexicalSelectionChangeRefCount.test.ts::selectionchange listener reference counting > adds the listener once for multiple editors and removes it after the last detaches": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionChangeRefCount.test.ts::selectionchange listener reference counting > re-adds the listener when an editor mounts again after the document went idle": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > DOM caret directly on a bare <br> at offset 0 resolves to \"after\" the LineBreakNode": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/html; ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > DOM caret inside the wrap <span> at offset 0 (before the inner <br>) resolves to \"before\" the LineBreakNode": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/html; ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > DOM caret inside the wrap <span> at offset 1 (after the inner <br>) resolves to \"after\" the LineBreakNode": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/html; ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > a caret just before the wrapped line break is scrolled into view by the inner <br>, not the wrapper": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/html; ports with that package."
+  },
+  "lexical/src/__tests__/unit/LexicalSerialization.test.ts::LexicalSerialization tests > serializes and deserializes from JSON": {
+    "reason": "out-of-scope-package",
+    "note": "Round-trips list, table, code, link and rich-text nodes; ports with those packages."
+  },
   "lexical/src/__tests__/unit/LexicalSerializationContext.test.ts::$withCompactExport refuses an asynchronous callback > at the call site, and at runtime for an untyped caller": {
     "reason": "deviation",
     "note": "Tests rejecting an async/thenable callback; Swift's withCompactExport takes a synchronous closure, so the compiler rejects an async one."
@@ -634,6 +2342,78 @@
   "lexical/src/__tests__/unit/LexicalSlotSelection.test.ts::named-slots: selection containment (slot isolation) > anchor in the body, focus dragged into a slot of the host containing it, clamps focus to the start of the host": {
     "reason": "dom-only",
     "note": "Drives a DOM selection through the mounted editor; the TextKit views own native selection."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > a delete across nodes: a splice of each end, the node between deleted, and the merge": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > a splice, with its offset, what it deletes and inserts, and the text before": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > a split, with where each part starts, and setTextContent": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > chained across the updates of one commit": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > a move of all of a node: the move, then its removal": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > a move of the start of a node to the end of the one before it": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > a retype: a node replaced by one of another kind with its text": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > an error in the calls reaches onError as it is, and the update is discarded": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > calls that record other entries stay as recorded: a split, a move inside": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > no retype for other text, or other than right after the replace": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > nothing recorded, and the same calls made, without recording": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > text sets that are not that move stay as recorded": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > nodes inserted and removed, where: a node swapped for another, a node the selection deletes": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > not made, and the same edits made, while the editor does not record text edits": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > the two recordings are independent: moves, text edits, both, neither": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > typing and deleting through the selection, as splices": {
+    "reason": "out-of-scope-package",
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextSplitRecord.test.ts::the split record > is not made while the editor does not record text edits": {
+    "reason": "out-of-scope-package",
+    "note": "Text-split records (_recordTextEdits, EditorState#_splitNodes) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical/src/__tests__/unit/LexicalTextSplitRecord.test.ts::the split record > names the node each part was split from and its offset": {
+    "reason": "out-of-scope-package",
+    "note": "Text-split records (_recordTextEdits, EditorState#_splitNodes) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns globalThis.document when called with no active editor": {
     "reason": "dom-only",
@@ -819,6 +2599,238 @@
     "reason": "dom-only",
     "note": "Shadow DOM traversal has no native equivalent."
   },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > after the line break of a paragraph ending with a LineBreakNode, when its text is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > after the line break of a paragraph ending with a LineBreakNode, when the line break is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > after the line break of a paragraph ending with an inline decorator, when its text is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > after the line break of a paragraph ending with an inline decorator, when the line break is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > after the line break of a paragraph ending with nothing (an empty paragraph), when the line break is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > at the end of a paragraph without a line break, when a middle child is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > at the head of a paragraph, when its decorator is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > at the head of a paragraph, when its line break is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > at the head of an empty paragraph, when its line break is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > at the head of an empty paragraph, when the extension swaps it": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > before the line break of a paragraph ending with a LineBreakNode, when the extension swaps it": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > before the line break of a paragraph ending with an inline decorator, when the extension swaps it": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::DOM an extension adds with setDOMUnmanaged keeps its place > between two children, when the child after it is removed": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a DOM change recorded before a commit runs > adding a text node between two children inside a discrete update, then removing a child": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a DOM change recorded before a commit runs > adding an element at the head inside a discrete update, then removing a child": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a DOM change recorded before a commit runs > adding an element between two children inside a discrete update, then removing a child": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a DOM change recorded before a commit runs > changing text inside an update that fails": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > a later edit at the end of the paragraph still renders": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > adding a keyless <br> right after the line break": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > moving the decorator to the start of the paragraph": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > moving the line break into the decorator's DOM": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > moving the line break to the start of the paragraph": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > removing every child in one record": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > removing the decorator alone": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > removing the decorator, then the line break": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > removing the line break alone": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with an inline decorator > removing the line break, then the decorator in a later record": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph ending with text and an inline decorator after a kept prefix > removing the text, the last decorator and the line break": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph with a LineBreakNode > removing a keyed line break between two texts": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph with a LineBreakNode > removing the keyed line break alone at the end": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph with a LineBreakNode > removing the keyed line break, then the managed one": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::a paragraph with a LineBreakNode > removing the managed line break, then the keyed one in a later record": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose DOM slot keeps a header before its children and a footer after them > removing the header and the text of a block holding a text node": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose DOM slot keeps a header before its children and a footer after them > removing the header and the text of a block holding a text node and an inline decorator": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose DOM slot keeps a marker after its children > removing every child and the marker in one record, then an edit": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose DOM slot keeps a marker after its children > removing every child before its trailing decorator anchor": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose DOM slot keeps a marker after its children > removing the first child before a trailing block decorator": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose DOM slot keeps a marker after its children > removing the last text child": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose DOM slot keeps a marker after its children > removing the trailing inline decorator alone": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose DOM slot keeps a marker after its children > removing the trailing inline decorator and the line break": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an element whose children live in an inner element > removing the trailing inline decorator and the line break": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::an empty paragraph > removing its line break": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::moving a block's managed line break right after another block's > from a paragraph ending with a LineBreakNode": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::moving a block's managed line break right after another block's > from a paragraph ending with an inline decorator": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::moving a block's managed line break right after another block's > from a paragraph ending with nothing (an empty paragraph)": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::moving a block's managed line break right after another block's > into an empty paragraph": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::stale keyed DOM put back by an edit > the DOM a text node had before it was rendered anew": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::stale keyed DOM put back by an edit > the DOM of a removed decorator": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::the root ending with a block decorator > moving the paragraph after the trailing decorator anchor": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::the root ending with a block decorator > removing the block decorator": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::the root ending with a block decorator > removing the paragraph and the block decorator": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ManagedLineBreakObservedRemoval.test.ts::the root ending with a block decorator > removing the trailing decorator anchor alone": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/MouseClickWithoutLayout.test.ts::a mouse click released after its selectionchange in a document without hit testing selects where the DOM selection is": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/MouseClickWithoutLayout.test.ts::a mouse click released before its selectionchange in a document without hit testing selects where the DOM selection is": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/ParagraphCollapseAtStart.test.ts::ParagraphNode.collapseAtStart > control: a blank first paragraph is still collapsed away": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/ParagraphCollapseAtStart.test.ts::ParagraphNode.collapseAtStart > control: an empty first paragraph is still collapsed away": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/ParagraphCollapseAtStart.test.ts::ParagraphNode.collapseAtStart > keeps a first paragraph whose content follows a blank text node": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
+  "lexical/src/__tests__/unit/ParagraphCollapseAtStart.test.ts::ParagraphNode.collapseAtStart > keeps a first paragraph whose only other child is a line break": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
+  },
   "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns false for Macintosh user agent without multi-touch": {
     "reason": "dom-only",
     "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
@@ -846,6 +2858,58 @@
   "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns true for iPhone user agent": {
     "reason": "dom-only",
     "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
+  },
+  "lexical/src/__tests__/unit/registerEventListener.test.ts::registerEventListener > adds the listener and dispatches events to it": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/registerEventListener.test.ts::registerEventListener > forwards the capture option to addEventListener and removeEventListener": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/registerEventListener.test.ts::registerEventListener > returns a dispose function that removes the listener": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/registerEventListeners.test.ts::registerEventListeners > forwards the shared options to add and removeEventListener": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/registerEventListeners.test.ts::registerEventListeners > registers every listener in the map": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/registerEventListeners.test.ts::registerEventListeners > returns a dispose function that removes every listener": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > applies CSS text without cssText": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > applies direct style objects": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > drops comments and respects quotes and parentheses": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > parses CSS text into a style object": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > parses values with comments, semicolons and colons inside quotes and parentheses": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > replaces previous inline styles when CSS text changes": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/__tests__/unit/setDOMStyle.test.ts::setDOMStyle > returns a fresh style object for each parse": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > multiple blocks > remove range between list and nested list": {
     "reason": "out-of-scope-package",
@@ -902,6 +2966,38 @@
   "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret in an empty element at NaN stays at its boundary": {
     "reason": "deviation",
     "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
+  },
+  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Adjacent Caret Traversals > $iterSiblings": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Adjacent Caret Traversals > iteration does not include the origin": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Adjacent Caret Traversals > root has no siblings": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Adjacent Caret Traversals > root has paragraph children": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Depth First Caret Traversals > $iterCaretsDepthFirst > via CaretRange": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Depth First Caret Traversals > $iterCaretsDepthFirst > via generator": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Depth First Caret Traversals > $iterNodesDepthFirst > includes only wholly included nodes": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
+  },
+  "lexical/src/caret/__tests__/unit/docs-traversals.test.ts::traversals.md > Traversal Strategies > Depth First Caret Traversals > full traversal": {
+    "reason": "out-of-scope-package",
+    "note": "Needs @lexical/link (LinkNode); ports with that package."
   },
   "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::getDOMSlot tests > DOM selection uses getDOMSlot element for element selections": {
     "reason": "dom-only",
@@ -1106,5 +3202,25 @@
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > updates and removes styles with direct DOM property updates": {
     "reason": "dom-only",
     "note": "Asserts the DOM that createDOM/updateDOM produce. The TextKit reconciler maps formats to text attributes instead; ports with the reconciler's attribute tests."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTextNodeDOMTextDiff.test.ts::TextNode DOM text writes > a pure deletion keeps a range after it": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTextNodeDOMTextDiff.test.ts::TextNode DOM text writes > replaces the whole DOM text in other engines, such as WebKit": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTextNodeDOMTextDiff.test.ts::TextNode DOM text writes > rewrites only the changed part during composition in any engine": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTextNodeDOMTextDiff.test.ts::TextNode DOM text writes > rewrites only the changed part of the DOM text when IS_CHROME": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTextNodeDOMTextDiff.test.ts::TextNode DOM text writes > rewrites only the changed part of the DOM text when IS_FIREFOX": {
+    "reason": "dom-only",
+    "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
   }
 }

@@ -405,7 +405,7 @@ func triggerEditableListeners(_ editor: Editor, _ editable: Bool) throws {
 /// it has been unregistered since.
 package func triggerListeners<L>(
   _ listenerMap: ListenerMap<L>, _ editor: Editor, _ isCurrentlyEnqueuingUpdates: Bool,
-  _ call: (L) throws -> Void
+  _ call: (L) throws -> ListenerCleanup?
 ) throws {
   let previouslyUpdating = editor._updating
   editor._updating = isCurrentlyEnqueuingUpdates
@@ -416,9 +416,11 @@ package func triggerListeners<L>(
       entry.unregister = nil
       unregister()
     }
-    try call(entry.listener)
-    if !listenerMap.entries.has(id) {
-      continue
+    let nextUnregister = try call(entry.listener)
+    if listenerMap.entries.has(id) {
+      entry.unregister = nextUnregister
+    } else {
+      nextUnregister?()
     }
   }
 }

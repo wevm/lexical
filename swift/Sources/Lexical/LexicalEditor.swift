@@ -163,6 +163,9 @@ public typealias UpdateListener = (UpdateListenerPayload) throws -> Void
 public typealias TextContentListener = (String) throws -> Void
 public typealias EditableListener = (Bool) throws -> Void
 public typealias DecoratorListener = ([NodeKey: Any]) throws -> Void
+/// A clean-up a listener may return: it runs before the listener's next
+/// call, or when the listener is unregistered.
+public typealias ListenerCleanup = () -> Void
 /// A root element that reports whether it is attached, as a DOM element's
 /// `isConnected` does (for a view: whether it is in a window). A root that
 /// does not conform counts as connected.
@@ -341,10 +344,12 @@ public final class Editor {
   package var _updates: [QueuedUpdate] = []
   package var _updating = false
   package var _cascadeCount = 0
-  package let _updateListeners = ListenerMap<UpdateListener>()
-  package let _textContentListeners = ListenerMap<TextContentListener>()
-  package let _editableListeners = ListenerMap<EditableListener>()
-  package let _decoratorListeners = ListenerMap<DecoratorListener>()
+  package let _updateListeners = ListenerMap<
+    (UpdateListenerPayload) throws -> ListenerCleanup?
+  >()
+  package let _textContentListeners = ListenerMap<(String) throws -> ListenerCleanup?>()
+  package let _editableListeners = ListenerMap<(Bool) throws -> ListenerCleanup?>()
+  package let _decoratorListeners = ListenerMap<([NodeKey: Any]) throws -> ListenerCleanup?>()
   package let _rootListeners = ListenerMap<RootListener>()
   package let _mutationListeners = JSMap<
     ObjectIdentifier, (MutationListener, JSSet<ObjectIdentifier>)
@@ -395,18 +400,50 @@ public final class Editor {
 
   public func isComposing() -> Bool { _compositionKey != nil }
 
+  // Each listener may return a clean-up, as in JS, where a listener that
+  // returns a function has it called before its next call or on teardown.
+  // A listener returning `Void` takes the first overload; one that returns
+  // a clean-up spells its return type (`{ _ -> ListenerCleanup? in ... }`).
+
   @discardableResult
   public func registerUpdateListener(_ listener: @escaping UpdateListener) -> () -> Void {
+    _updateListeners.register {
+      try listener($0); return nil
+    }
+  }
+
+  @_disfavoredOverload @discardableResult
+  public func registerUpdateListener(
+    _ listener: @escaping (UpdateListenerPayload) throws -> ListenerCleanup?
+  ) -> () -> Void {
     _updateListeners.register(listener)
   }
 
   @discardableResult
   public func registerEditableListener(_ listener: @escaping EditableListener) -> () -> Void {
+    _editableListeners.register {
+      try listener($0); return nil
+    }
+  }
+
+  @_disfavoredOverload @discardableResult
+  public func registerEditableListener(
+    _ listener: @escaping (Bool) throws -> ListenerCleanup?
+  ) -> () -> Void {
     _editableListeners.register(listener)
   }
 
   @discardableResult
   public func registerDecoratorListener(_ listener: @escaping DecoratorListener) -> () -> Void {
+    _decoratorListeners.register {
+      try listener($0); return nil
+    }
+  }
+
+  @_disfavoredOverload @discardableResult
+  public func registerDecoratorListener(
+    _ listener: @escaping ([NodeKey: Any]) throws -> ListenerCleanup?
+  ) -> () -> Void {
     _decoratorListeners.register(listener)
   }
 
@@ -416,6 +453,15 @@ public final class Editor {
   )
     -> () -> Void
   {
+    _textContentListeners.register {
+      try listener($0); return nil
+    }
+  }
+
+  @_disfavoredOverload @discardableResult
+  public func registerTextContentListener(
+    _ listener: @escaping (String) throws -> ListenerCleanup?
+  ) -> () -> Void {
     _textContentListeners.register(listener)
   }
 

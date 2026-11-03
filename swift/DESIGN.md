@@ -180,6 +180,14 @@ These are reversible choices made while porting, under Q7 and Q27.
   `isConnected` (a view: whether it is in a window), and any other root
   counts as connected. The TextKit views will call it when the incremental
   reconciler lands.
+- **Listener clean-ups.** In JS any update, editable, decorator or text
+  content listener that returns a function has it called before its next
+  call and on teardown. Swift keeps the `Void` listener types and adds an
+  `@_disfavoredOverload` of each `register…Listener` taking a closure that
+  returns `ListenerCleanup?`. Plain closures resolve to the `Void` form; a
+  closure that returns a clean-up spells its type
+  (`{ _ -> ListenerCleanup? in … }`). Two unlabeled overloads that differ
+  only by return type are otherwise ambiguous for multi-statement closures.
 
 ## Scope of v0.1.0 (Q21)
 

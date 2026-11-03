@@ -5,6 +5,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Update, editable, decorator and text content listeners may return a
+  `ListenerCleanup`, called before their next call and when they are
+  unregistered, as in JS (`{ _ -> ListenerCleanup? in … }`).
 - Added `createRefCountedRegistry(_:)`: registrations reference counted by
   key, activated on the first and torn down after the last release.
 - Added `LexicalWarning`, an `Error` with a namespaced `code` and optional

@@ -26,7 +26,10 @@ ported, with `@Test(.upstream("<id>"))` (ids are in
 ledger reads only literals), or listed in `parity/skips.json` with a reason:
 `dom-only`, `react-only`, `out-of-scope-package`, `covered-by-vector`, or
 `deviation`. A package is marked `"enforced"` once it is ported; CI then fails
-on anything neither ported nor skipped. Most `dom-only` tests should be ported
+on anything neither ported nor skipped. An `out-of-scope-package` skip lists
+the directory names of the packages it needs in `packages`; once all of them
+are enforced, the ledger fails until the test is ported with them. Most
+`dom-only` tests should be ported
 in a reworked form that asserts the model state or `exportDOM` output.
 
 ## Vectors

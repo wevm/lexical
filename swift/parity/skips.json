@@ -1,106 +1,207 @@
 {
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a heading": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a list item": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in a quote": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Enter in the middle of a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > Shift+Enter": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > pasting a block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > pasting inline content": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/ArmedFormatSurvivesEdits.test.ts::a format armed on a collapsed caret survives an edit > the armed format reaches the text typed after Enter": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: CodeHub": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: GitHub / Gist": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Multiline <code>": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Multiline <code> with nested <br>": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Multiple text formats": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Postman IDE": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Quip": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Single line <code>": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Slack message": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Subscript and Superscript": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Title from Google Docs": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: Title from Google Docs Wrapped in Paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: VS Code": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/CodeBlock.test.ts::CodeBlock tests > Code block html paste: WebStorm / Idea": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/DerivedTextFields.test.ts::derived textFormat and textStyle of an element > a full reconcile changes no element that the update did not change": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/DerivedTextFields.test.ts::derived textFormat and textStyle of an element > a full reconcile with an edit derives them for the element it changes only": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/DerivedTextFields.test.ts::derived textFormat and textStyle of an element > an element whose first text changes takes its format and style": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/FastPathCrossParent.test.ts::fast path differential fuzz — cross-parent moves > fast path matches the general walk across cross-parent moves": {
@@ -109,58 +210,114 @@
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: Ghostty terminal paste with inline divs": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: a paragraph element": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: a single div": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: div with display:inline should not insert linebreaks": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: github checklist": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: google doc checklist": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: google doc list with right alignment": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: joplin checklist": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: multiple nested spans and divs": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: nested div in a span": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: nested span in a div": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: pasting inheritance": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > HTML copy paste: plain DOM text node": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HTMLCopyAndPaste.test.ts::HTMLCopyAndPaste tests > iOS fix: Word predictions should be handled as plain text to maintain selection formatting": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-selection"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop across editors > cancelled cross-editor drag leaves both editors untouched": {
@@ -461,46 +618,79 @@
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > a change in an update is seen by the next serialization in it": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > a clone that reads JSON before the change it is made for does not keep what the change replaces": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > stays linear in the depth when each carries text fields, in a committed state": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > stays linear in the depth when each carries text fields, in a copy after a change in the same update": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > stays linear in the depth when each carries text fields, in an update": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of a block > are omitted when it holds text of its own, as before": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of a block > are persisted when its text is all inside inline elements, as before": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of an inline element > a stored value is read and no longer written once it has text inside": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of an inline element > are omitted when it holds text of its own, as before": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of an inline element > are omitted when its text sits in an inline element inside it": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::textFormat and textStyle of an inline element > are persisted when it holds no text at any depth, as before": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/IosDecoratorTap.test.ts::a tap on a decorator on iOS > cancels the mousedown on SVG artwork": {
@@ -721,482 +911,957 @@
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > a partial delete that only empties the first block is unaffected (isBackward: false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > a partial delete that only empties the first block is unaffected (isBackward: true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > a select-all scoped to a slot only clears the slot": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > a deeply nested list unwraps every level": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > a nest with no plain sibling item": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > heading as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > list followed by a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > nested list": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > paragraph as the first block is left as a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: false > quote as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > a deeply nested list unwraps every level": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > a nest with no plain sibling item": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > heading as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > list followed by a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > nested list": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > paragraph as the first block is left as a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteCharacter > isBackward: true > quote as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteLine (isBackward: false) > heading as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteLine (isBackward: false) > quote as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteLine (isBackward: true) > heading as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteLine (isBackward: true) > quote as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > a deeply nested list unwraps every level": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > a nest with no plain sibling item": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > heading as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > list followed by a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > nested list": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > paragraph as the first block is left as a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: false > quote as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > a deeply nested list unwraps every level": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > a nest with no plain sibling item": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > heading as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > list followed by a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > nested list": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > paragraph as the first block is left as a paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > deleteWord > isBackward: true > quote as the only block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a code block (isBackward: false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a code block (isBackward: true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a quote wrapping a list (isBackward: false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a quote wrapping a list (isBackward: true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a slot host, slots and all (isBackward: false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a slot host, slots and all (isBackward: true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a third-party block node (isBackward: false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > removes whatever block types the document holds > a third-party block node (isBackward: true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue5835Repro.test.ts::select-all + delete collapses to an empty paragraph (#5835) > replacing all text in a lone non-paragraph block keeps its type": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code"
+    ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > an inline node inserted at the caret goes inside the node": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard",
+      "lexical-link"
+    ],
     "note": "Needs @lexical/link (LinkNode); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > control: a splittable inline ElementNode is still split": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard",
+      "lexical-link"
+    ],
     "note": "Needs @lexical/link (LinkNode); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > pasted text is inserted at the caret inside the node": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard",
+      "lexical-link"
+    ],
     "note": "Needs @lexical/link (LinkNode); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7729Repro.test.ts::Issue #7729: paragraph indent round-trip via data-lexical-indent > data-lexical-indent wins over a calc(...) padding-inline-start": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard",
+      "lexical-html"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7729Repro.test.ts::Issue #7729: paragraph indent round-trip via data-lexical-indent > data-lexical-indent wins over a non-40-multiple padding-inline-start": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard",
+      "lexical-html"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7729Repro.test.ts::Issue #7729: paragraph indent round-trip via data-lexical-indent > exportDOM emits data-lexical-indent and importDOM round-trips": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard",
+      "lexical-html"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7729Repro.test.ts::Issue #7729: paragraph indent round-trip via data-lexical-indent > falls back to padding heuristic when data-lexical-indent is absent": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-clipboard",
+      "lexical-html"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > a non-idempotent transform stabilises in two passes on a parsed state": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > setEditorState completes within bound on a 1000-paragraph parsed state": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > setEditorState consumes the `_parsed` flag so re-applying the resulting state does not re-trigger transforms": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > text-node transform fires for a JSON state passed to setEditorState": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue7876Repro.test.ts::Issue #7876: setEditorState triggers transforms on parsed state > text-node transform fires for a cloned parsed state (the documented no-focus form)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > a paragraph with no block-level state of its own still copies as inline content": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > copy a centered paragraph and paste it into an empty paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > copying a whole aligned paragraph keeps the alignment in the HTML clipboard payload": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > copying a whole aligned paragraph keeps the alignment in the Lexical clipboard payload": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > copying part of a paragraph still yields inline content only": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8101Repro.test.ts::Text alignment is lost on copy-paste (#8101) > pasting a whole-line copy into the middle of another line still merges inline": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
     "note": "Needs @lexical/clipboard (copy and paste); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8563Repro.test.ts::Issue #8563: full reconcile with same-size child key swap > undo (setEditorState) does not crash when a child is replaced by a different-key child of equal count": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteCharacter backward from empty ListItem should not remove the preceding decorator": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine backward from empty ListItem preceded by empty paragraph merges them": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine backward from empty ListItem preceded by non-empty paragraph should work normally": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine backward from empty ListItem with prece… should not remove the decorator": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine backward from empty paragraph with prec… should not remove the decorator": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8722Repro.test.ts::DELETE_LINE_COMMAND on empty ListItem with preceding decorator (#8722) > deleteLine forward from empty ListItem with follow… should not remove the decorator": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste flattens non-inline nodes inside an inline-only element (#8724) > drops a block-only paste with no inline form": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste flattens non-inline nodes inside an inline-only element (#8724) > keeps the inline content of a block paste": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization does not regress lists (#8724) > block node at an element point on a list item holding a nested list does not crash": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization does not regress lists (#8724) > block node pasted in a list item text splits the list (unchanged CASE 3)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization of non-inline nodes (#8713, #8724) > block node at a block cursor inside an inline-only element splits up to the root": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization of non-inline nodes (#8713, #8724) > block node at a block cursor inside an inline-only element splits up to the shadow root": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8724Repro.test.ts::Paste normalization of non-inline nodes (#8713, #8724) > still inserts a block node directly at a block cursor on a shadow root (#8708)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list and @lexical/rich-text; ports with those packages."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > HR + collapsible only: select-all delete leaves at least one child": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > NodeSelection.deleteNodes leaves at least one root child": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > deleteCharacter with select-all cleans up trailing shadow root": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > heading first child + backward deleteCharacter: reproduces issue author scenario": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > leaves one empty paragraph when document ends with a shadow root": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > leaves one empty paragraph with multi-child shadow root (columns)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > leaves one empty paragraph with nested shadow roots": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > paragraph first child + backward deleteCharacter: simple case": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > partial deletion within shadow root preserves structure": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > preserves content after shadow root when shadow root is in the middle": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > select-all + forward deleteCharacter leaves at least one child": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > select-all + removeText leaves at least one child": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > shadow root only (no paragraph): select-all + backward deleteCharacter leaves at least one child": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8745Repro.test.ts::Select-all + delete with trailing shadow root (#8745) > shadow root only (no paragraph): select-all + removeText leaves at least one child": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a DOM selection landing outside the anchors still resolves to the full range": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a copy of an anchor leaves one anchor, on its edge": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a decorator on both edges gets both anchors": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a document with no decorators gets no anchors": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a leading block decorator gets a boundary anchor in front of it": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a single block decorator gets both anchors": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a trailing block decorator gets a boundary anchor after it": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor moved into a paragraph leaves one anchor, on its edge": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor moved into a text node leaves one anchor, on its edge": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor moved to the end of its element leaves one anchor, on its edge": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor removed before its decorator goes back on its edge": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an anchor removed before the block cursor goes back on its edge": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > an inline boundary decorator keeps its own linebreak hack instead": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > anchors are dropped when the boundary decorator is removed": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > anchors are dropped when the boundary decorator moves inward": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > anchors do not shift the child offsets $selectAll resolves to": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > interior block decorators get no anchor (browsers paint those)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > the DOM selection lands on the boundary side of each anchor": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > Backspace after the last shadow root deletes it": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > Backspace in an empty block after a shadow root removes the block, not the shadow root": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > Enter over all of a shadow root splits an empty paragraph (element points)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > Enter over all of a shadow root splits an empty paragraph (text points)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > a paragraph does not need a block cursor beside it": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deletes the adjacent decorator (isBackward: false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deletes the adjacent decorator (isBackward: true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deletes the adjacent shadowRoot (isBackward: false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deletes the adjacent shadowRoot (isBackward: true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deleting the only block inside a shadow root keeps it editable": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deleting the only decorator leaves the root editable": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/Issue8939Repro.test.ts::block cursor deletion beside an ElementNode (#8939) > deleting the only shadowRoot leaves the root editable": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/KeyDownOutsideEditor.test.ts::ArrowDown pressed outside the editor acts at its selection": {
@@ -1521,6 +2186,9 @@
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms do not discard unintentional dirtyElements": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "Needs @lexical/list (ListNode normalization); port with that package."
   },
   "lexical/src/__tests__/unit/LexicalEditorEmptyState.test.ts::setEditorState with an empty editor state (production arm) > leaves a non-empty editor state untouched": {
@@ -1569,30 +2237,51 @@
   },
   "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::declarePeerDependency > validates the type argument": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
     "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
   },
   "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > can define an extension without config": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
     "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
   },
   "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > does not change identity": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
     "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
   },
   "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the correct init type": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
     "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
   },
   "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (base case)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
     "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
   },
   "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (config inference)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
     "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
   },
   "lexical/src/__tests__/unit/LexicalExtensionCore.test.ts::defineExtension > infers the expected type (output inference)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
     "note": "defineExtension and declarePeerDependency belong to the extension system (@lexical/extension), which ports with that package; most cases are TypeScript type-level assertions."
   },
   "lexical/src/__tests__/unit/LexicalFirefoxCompositionEndTag.test.ts::Firefox composition-end tag forwarding > onInput emits COMPOSITION_END_TAG after a deferred compositionend": {
@@ -1769,10 +2458,18 @@
   },
   "lexical/src/__tests__/unit/LexicalInsertParagraphEndpointRepair.test.ts::insertParagraph over a range from an empty paragraph into styled text (backward=false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-link"
+    ],
     "note": "Needs @lexical/link (LinkNode); ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalInsertParagraphEndpointRepair.test.ts::insertParagraph over a range from an empty paragraph into styled text (backward=true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-link"
+    ],
     "note": "Needs @lexical/link (LinkNode); ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalIosKoreanIME.test.ts::iOS 10-key Korean IME — deleteContentBackward with targetRange > applyDOMRange + removeText leaves only the assembled syllables": {
@@ -1981,18 +2678,30 @@
   },
   "lexical/src/__tests__/unit/LexicalRootSelectionPhantomParagraph.test.ts::Typing at root + last-offset selection (no phantom paragraph) > empty root still creates a new paragraph for the typed text": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalRootSelectionPhantomParagraph.test.ts::Typing at root + last-offset selection (no phantom paragraph) > falls back to a new paragraph when the trailing child is a DecoratorNode": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalRootSelectionPhantomParagraph.test.ts::Typing at root + last-offset selection (no phantom paragraph) > reuses an empty trailing paragraph inside a shadow root": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalRootSelectionPhantomParagraph.test.ts::Typing at root + last-offset selection (no phantom paragraph) > reuses an empty trailing paragraph instead of appending a new one": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::a compact document relaxes at every depth > a child property is unknown until it is narrowed": {
@@ -2205,22 +2914,40 @@
   },
   "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list at the end of a paragraph leaves no empty paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
   },
   "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list at the start of a paragraph keeps the paragraph after it": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
   },
   "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list in the middle of a paragraph keeps the trailing text": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list"
+    ],
     "note": "@lexical/list: pastes a ListNode, whose normalization comes with @lexical/list. Port with @lexical/list."
   },
   "lexical/src/__tests__/unit/LexicalSelectionCaretSlices.test.ts::selection text slices > styling retains the selected prefix at an element start (backward=false)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-selection"
+    ],
     "note": "Uses $patchStyleText from @lexical/selection; port with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionCaretSlices.test.ts::selection text slices > styling retains the selected prefix at an element start (backward=true)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-selection"
+    ],
     "note": "Uses $patchStyleText from @lexical/selection; port with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > a dropped no-op update does not suppress the next notification": {
@@ -2233,18 +2960,30 @@
   },
   "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with $onUpdate callbacks": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-history"
+    ],
     "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with none callbacks": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-history"
+    ],
     "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with onUpdate callbacks": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-history"
+    ],
     "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionChangeCommand.test.ts::SELECTION_CHANGE_COMMAND > preserves typing undo merging with selection listener callbacks": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-history"
+    ],
     "note": "Needs @lexical/history (HistoryExtension, UNDO_COMMAND); port with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionChangeRefCount.test.ts::selectionchange listener reference counting > adds the listener once for multiple editors and removes it after the last detaches": {
@@ -2257,22 +2996,41 @@
   },
   "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > DOM caret directly on a bare <br> at offset 0 resolves to \"after\" the LineBreakNode": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
     "note": "Needs @lexical/html; ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > DOM caret inside the wrap <span> at offset 0 (before the inner <br>) resolves to \"before\" the LineBreakNode": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
     "note": "Needs @lexical/html; ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > DOM caret inside the wrap <span> at offset 1 (after the inner <br>) resolves to \"after\" the LineBreakNode": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
     "note": "Needs @lexical/html; ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > a caret just before the wrapped line break is scrolled into view by the inner <br>, not the wrapper": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-html"
+    ],
     "note": "Needs @lexical/html; ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalSerialization.test.ts::LexicalSerialization tests > serializes and deserializes from JSON": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text",
+      "lexical-list",
+      "lexical-code",
+      "lexical-link",
+      "lexical-table"
+    ],
     "note": "Round-trips list, table, code, link and rich-text nodes; ports with those packages."
   },
   "lexical/src/__tests__/unit/LexicalSerializationContext.test.ts::$withCompactExport refuses an asynchronous callback > at the call site, and at runtime for an untyped caller": {
@@ -2433,74 +3191,128 @@
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > a delete across nodes: a splice of each end, the node between deleted, and the merge": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > a splice, with its offset, what it deletes and inserts, and the text before": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > a split, with where each part starts, and setTextContent": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > chained across the updates of one commit": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > a move of all of a node: the move, then its removal": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > a move of the start of a node to the end of the one before it": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > a retype: a node replaced by one of another kind with its text": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > an error in the calls reaches onError as it is, and the update is discarded": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > calls that record other entries stay as recorded: a split, a move inside": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > no retype for other text, or other than right after the replace": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > nothing recorded, and the same calls made, without recording": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > moves and retypes, where the code that makes them says so > text sets that are not that move stay as recorded": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > nodes inserted and removed, where: a node swapped for another, a node the selection deletes": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > not made, and the same edits made, while the editor does not record text edits": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > the two recordings are independent: moves, text edits, both, neither": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextEditRecord.test.ts::the record of text edits > typing and deleting through the selection, as splices": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextSplitRecord.test.ts::the split record > is not made while the editor does not record text edits": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-split records (_recordTextEdits, EditorState#_splitNodes) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalTextSplitRecord.test.ts::the split record > names the node each part was split from and its offset": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
     "note": "Text-split records (_recordTextEdits, EditorState#_splitNodes) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
   },
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns globalThis.document when called with no active editor": {
@@ -2905,18 +3717,30 @@
   },
   "lexical/src/__tests__/unit/ParagraphCollapseAtStart.test.ts::ParagraphNode.collapseAtStart > control: a blank first paragraph is still collapsed away": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/ParagraphCollapseAtStart.test.ts::ParagraphNode.collapseAtStart > control: an empty first paragraph is still collapsed away": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/ParagraphCollapseAtStart.test.ts::ParagraphNode.collapseAtStart > keeps a first paragraph whose content follows a blank text node": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/ParagraphCollapseAtStart.test.ts::ParagraphNode.collapseAtStart > keeps a first paragraph whose only other child is a line break": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "Needs @lexical/rich-text (headings, quotes or its commands); ports with that package."
   },
   "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns false for Macintosh user agent without multi-touch": {
@@ -3001,34 +3825,58 @@
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > multiple blocks > remove range between list and nested list": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported File e2e tests > $selectAll() with nesting and a trailing decorator": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported Headings e2e tests > Pressing return in the middle of a heading creates a new heading below": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-rich-text"
+    ],
     "note": "@lexical/rich-text: depends on HeadingNode.insertNewAfter. Port with @lexical/rich-text."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported Table e2e tests > Can delete all with range selection anchored in table": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table"
+    ],
     "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a list is replaced with an empty paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a table is replaced with an empty paragraph": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table"
+    ],
     "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > an inline insert after the list deletion does not throw": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > an inline insert after the table deletion does not land in a table": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table"
+    ],
     "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
   },
   "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret at 0.5 preserves clamping and direction": {
@@ -3109,38 +3957,71 @@
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > can paste HTML with tabs and new lines (2)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text",
+      "lexical-plain-text"
+    ],
     "note": "Uses @lexical/clipboard paste; port with LexicalClipboard."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > can paste plain text with tabs and newlines in plain text": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text",
+      "lexical-plain-text"
+    ],
     "note": "Uses @lexical/clipboard paste; port with LexicalClipboard."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > can paste plain text with tabs and newlines in rich text": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard",
+      "lexical-rich-text",
+      "lexical-plain-text"
+    ],
     "note": "Uses @lexical/clipboard paste; port with LexicalClipboard."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element indents when selection at the start of the block": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (1)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (2)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (3)": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > elements indent when selection spans across multiple blocks": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > elements tabs when selection is not at the start and overlaps another tab": {
     "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
     "note": "Uses registerRichText and registerTabIndentation (and @lexical/list); port with LexicalRichText."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > createDOM() > applies styles with direct DOM property updates": {

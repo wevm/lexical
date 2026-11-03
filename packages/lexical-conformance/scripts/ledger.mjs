@@ -147,6 +147,19 @@ function check() {
     if (ported.has(id)) {
       errors.push(`skips.json: ${JSON.stringify(id)} is also ported`);
     }
+    // An out-of-scope-package skip names the packages it needs; once they
+    // are all enforced, it must be ported with them.
+    if (skip.reason === 'out-of-scope-package') {
+      if (!Array.isArray(skip.packages) || skip.packages.length === 0) {
+        errors.push(
+          `skips.json: ${JSON.stringify(id)} must list the packages it needs`,
+        );
+      } else if (skip.packages.every(name => packages[name] === 'enforced')) {
+        errors.push(
+          `skips.json: ${JSON.stringify(id)} needs only enforced packages (${skip.packages.join(', ')}); port it`,
+        );
+      }
+    }
   }
   const rows = [];
   for (const [name, ids] of Object.entries(upstream.packages)) {

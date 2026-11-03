@@ -36,3 +36,22 @@ package func devInvariant(
     throw LexicalError(message())
   }
 }
+
+/// `LexicalWarning`: a warning passed to `onWarn`, with a code namespaced by
+/// the package that reports it and optional details for programs (the
+/// message is for people and may change).
+public struct LexicalWarning: Error, CustomStringConvertible, Equatable, Sendable {
+  public let name = "LexicalWarning"
+  public let code: String
+  public let message: String
+  public let data: JSONValue?
+
+  public init(_ code: String, _ message: String, data: JSONValue? = nil) {
+    self.code = code
+    self.message = message
+    self.data = data
+  }
+
+  /// `String(warning)`: `LexicalWarning: <message>`.
+  public var description: String { "\(name): \(message)" }
+}

@@ -1,4 +1,20 @@
 {
+  "lexical/src/__tests__/unit/Issue5307Repro.test.ts::Issue 5307: empty class attribute > clearing the last text format removes the class attribute": {
+    "reason": "dom-only",
+    "note": "Asserts that empty class/style attributes are dropped from the reconciled DOM."
+  },
+  "lexical/src/__tests__/unit/Issue5307Repro.test.ts::Issue 5307: empty style attribute > clearing a text style removes the style attribute": {
+    "reason": "dom-only",
+    "note": "Asserts that empty class/style attributes are dropped from the reconciled DOM."
+  },
+  "lexical/src/__tests__/unit/Issue5307Repro.test.ts::Issue 5307: empty style attribute > clearing an element format removes the style attribute": {
+    "reason": "dom-only",
+    "note": "Asserts that empty class/style attributes are dropped from the reconciled DOM."
+  },
+  "lexical/src/__tests__/unit/Issue5307Repro.test.ts::Issue 5307: empty style attribute > clearing an element indent removes the style attribute": {
+    "reason": "dom-only",
+    "note": "Asserts that empty class/style attributes are dropped from the reconciled DOM."
+  },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > Should be able to handle a change in root element": {
     "reason": "react-only",
     "note": "Swaps the root element through React re-renders; setRootElement itself is covered by the pendingEditor and #7360 tests."

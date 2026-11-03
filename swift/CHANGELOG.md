@@ -5,6 +5,8 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `LexicalWarning`, an `Error` with a namespaced `code` and optional
+  `data`, for `onWarn`.
 - Added `mergeRegister(_:)`, which `lexical` exports: one clean-up that runs
   the given clean-ups in reverse order, once.
 - Added `Editor.setRootElement(_:)` and `registerRootListener(_:)`. The root

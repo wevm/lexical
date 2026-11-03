@@ -19,6 +19,30 @@
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf); Swift's traversal return types are fixed by their signatures."
   },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a compact document relaxes at every depth > a child property is unknown until it is narrowed": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions on serialized-node types; Swift's JSONObject is not refined per node."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a compact document relaxes at every depth > a nested element carries its own children": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions on serialized-node types; Swift's JSONObject is not refined per node."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a compact document relaxes at every depth > and a declared interface reaches the parse entry point": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions on serialized-node types; Swift's JSONObject is not refined per node."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a compact document relaxes at every depth > and the whole document does": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions on serialized-node types; Swift's JSONObject is not refined per node."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a declaration means what it says > a default a caller owns is not frozen": {
+    "reason": "deviation",
+    "note": "JS freezing of caller-owned defaults; Swift JSON values are immutable value types."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a declaration means what it says > a union names nothing, so no member can overrule another": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::a default is metadata, so nothing hands out a mutable one > a comparator is called with no receiver, and its type says so": {
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
@@ -78,6 +102,66 @@
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::a schema tracks what it accepts, not only what it parses to > a node schema keeps the input of the fields it was given": {
     "reason": "deviation",
     "note": "TypeScript type-level assertions (expectTypeOf/@ts-expect-error); Swift's JSON types are not refined per schema."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a strict match never claims what the schema itself declines > and a schema carrying no meta is asked, not walked": {
+    "reason": "deviation",
+    "note": "A JS hand-rolled schema may lack meta; a Swift SerializationSchema always has a SchemaMeta."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union compares by content, not by a member’s comparator > a value with its own prototype compares by identity": {
+    "reason": "deviation",
+    "note": "Compares JS Map instances by identity; a Swift schema's domain is JSON, which has no prototypes."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > a lookup table replaces the field check for its own direction only": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > a value table declares that the two forms differ": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > a wrapper refuses a schema that already declares accessors": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > each value table is declared only on the direction that reads it": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema checks a field in the direction it is used": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema checks a schema the node’s own $config consumes": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema checks the accessors a field leaves to convention": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema refuses a node it cannot check": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema rejects a name the node does not have": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema rejects a name used in the wrong position": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema rejects a setter that needs more than the parsed value": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema rejects a setter whose return the walk cannot follow": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a union member knows its own domain > nodeSchema rejects a type the node member cannot hold": {
+    "reason": "deviation",
+    "note": "Checks JS nodeSchema's TypeScript-level and reflective accessor naming (field, getter, setter, when, value tables); in Swift a SchemaField carries typed get/set closures or a key path, which the compiler checks."
   },
   "lexical/src/__tests__/unit/LexicalSchema.test.ts::defaults and untrusted input > a union names its accessors on the union, not on a member": {
     "reason": "deviation",

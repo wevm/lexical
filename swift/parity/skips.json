@@ -1,1 +1,22 @@
-{}
+{
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.createDOM()": {
+    "reason": "dom-only",
+    "note": "Base LexicalNode.createDOM throws; the Swift reconciler renders to TextKit and has no createDOM."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.updateDOM()": {
+    "reason": "dom-only",
+    "note": "Base LexicalNode.updateDOM throws; the Swift reconciler renders to TextKit and has no updateDOM."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() inferred types > GetStaticNodeType / LexicalExportJSON recover the literal node type": {
+    "reason": "deviation",
+    "note": "TypeScript type-level inference (expectTypeOf); Swift's node types are nominal and checked by the compiler."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() without registration > synthesized getType() inherited as an own static on a subclass does not recurse (#8867 follow-up)": {
+    "reason": "deviation",
+    "note": "Regression for JS statics copied onto a subclass by compiled class output; Swift class methods dispatch per class and getType is never synthesized."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() without registration > traversal methods require guards to narrow base node types": {
+    "reason": "deviation",
+    "note": "TypeScript type-level assertions (expectTypeOf); Swift's traversal return types are fixed by their signatures."
+  }
+}

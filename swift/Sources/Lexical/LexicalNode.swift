@@ -58,6 +58,8 @@ open class LexicalNode {
   /// default makes one with `init(key:)` and `afterCloneFrom`, as JS
   /// synthesizes for a node with a `$config`.
   open class func clone(_ node: LexicalNode) throws -> LexicalNode {
+    // JS synthesizes `clone` only for a class whose `$config` has a type.
+    try invariant(!getType().isEmpty, "LexicalNode: Node \(self) does not implement .clone().")
     let clone = try self.init(key: node.__key)
     try clone.afterCloneFrom(node)
     return clone

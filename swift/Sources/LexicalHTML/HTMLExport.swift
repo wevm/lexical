@@ -12,7 +12,11 @@ public func generateHtmlFromNodes(
 ) throws
   -> String
 {
-  try generateDOMFromNodes(getDocument().createElement("div"), selection, editor).innerHTML
+  // BC: a legacy `editorState.read(cb)` scope has no active editor; establish
+  // one, as JS does since #8589.
+  try assumeActiveEditor(editor)
+  return try generateDOMFromNodes(getDocument().createElement("div"), selection, editor)
+    .innerHTML
 }
 
 /// `$generateDOMFromNodes(container, selection, editor)` (`@experimental`):

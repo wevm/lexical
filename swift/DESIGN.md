@@ -350,6 +350,14 @@ Reversible choices made porting `@lexical/extension` under Q18.
   reads the node it is called on. `SET_TEXT_FORMAT_COMMAND` carries
   ordered pairs, as a JS object keeps its keys in order.
 
+- **Headless (`LexicalHeadless`).** JS replaces the DOM-only methods of a
+  headless editor with throwing stubs. Swift can't replace a method on an
+  instance, and `getRootElement`, `registerRootListener` and the others
+  don't throw, so a headless editor refuses only `setRootElement` (through
+  a guard the editor runs first); the rest behave as on an editor with no
+  root. The Swift DOM needs no host window, so `withDOM` from
+  `@lexical/headless/dom` is not ported.
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

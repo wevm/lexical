@@ -315,6 +315,344 @@
     "reason": "dom-only",
     "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
   },
+  "lexical-headless/src/__tests__/unit/LexicalHeadlessEditor.test.ts::LexicalHeadlessEditor > should be headless environment": {
+    "reason": "deviation",
+    "note": "Checks that no window, document or navigator global exists. Swift has no such globals, and its DOM needs no host (DESIGN.md, Headless)."
+  },
+  "lexical-headless/src/__tests__/unit/LexicalHeadlessEditor.test.ts::LexicalHeadlessEditor > throws from DOM-only methods": {
+    "reason": "deviation",
+    "note": "JS replaces getRootElement and registerRootListener with throwing stubs. In Swift those methods can't throw, so a headless editor only refuses setRootElement; the others behave as on an editor with no root (DESIGN.md, Headless)."
+  },
+  "lexical-headless/src/__tests__/unit/LexicalHeadlessEditor.test.ts::LexicalHeadlessEditor > withDOM > can generate html withDOM": {
+    "reason": "deviation",
+    "note": "withDOM installs a happy-dom window for Node. The Swift DOM is built in and needs no host window, so withDOM is not ported (DESIGN.md, Headless)."
+  },
+  "lexical-headless/src/__tests__/unit/LexicalHeadlessEditor.test.ts::LexicalHeadlessEditor > withDOM > uses happy-dom from node": {
+    "reason": "deviation",
+    "note": "withDOM installs a happy-dom window for Node. The Swift DOM is built in and needs no host window, so withDOM is not ported (DESIGN.md, Headless)."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Addressing blocks: a selection from or into the replaced block": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > HTML and Configuration": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Handles and collaboration: a block added since whose hash starts the same way": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Handles in HTML": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Headless": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Setup and Addressing blocks": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText edits only what differs": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText edits text in inline elements": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText is the same in the docs and the tests": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses a block or inline element that hosts a slot": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses blocks that are not just text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses special text nodes": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: text added at a link edge goes outside the link": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: text added at the edge of a link in a mark goes outside both": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Which blocks get ids": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > a root-only predicate exports no list item ids": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > an imported id is dropped from a block that is not identified": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > export into a document of another realm writes the attribute": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > export: false leaves the export override out of every export session": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > exports data-block-id on identified blocks only": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > import: false ignores the attribute; export: false omits it": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > imported ids pass through the uniqueness rule": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > invalid imported ids are ignored; valid foreign ids are kept": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > round-trips ids through HTML": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > the released types of export still hold: a boolean, and a Signal<boolean>": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > without it, HTML carries no ids": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > a wrapper id goes only on a block that holds that list alone": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > export: false writes no wrapper id; import: false reads none": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > exports its id on the nested list, and round-trips it": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > handles: true writes no wrapper id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > pasted twice, the second copy gets fresh ids, the wrapper items too": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: documents read without ids > every reader exports the same data-block-id for a document stored without ids": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > a handle from exported HTML never names a block added since whose handle would be the same": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > export: true and export: false are unchanged": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > exports data-block-handle instead of data-block-id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > import never reads data-block-handle as an id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > round trip: export handles, edit by handle, resolve": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::HTML without wrapper ids reads the same with an import run inside it": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::an import run inside another keeps the outer import's waiting wrapper id": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::an unknown element that hoists the same list again does not make import look at it again": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::wrapper ids inside many unknown elements are looked at a bounded number of times each": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::wrapper ids that go on no block do not make import quadratic": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperResolve.test.ts::a list that grows by one item per element around it is resolved in linear work": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperResolve.test.ts::late population resolves ids exactly like early population (holder-growth)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
+  "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperResolve.test.ts::late population resolves ids exactly like early population (parent-growth)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-extension"
+    ],
+    "note": "Needs BlockIdExtension from @lexical/extension, which is not ported yet."
+  },
   "lexical-html/src/__tests__/unit/DOMRenderConditionalOverrides.test.ts::DOMRender conditional overrides > disabledForEditor $decorateDOM recreates to apply and revert decoration": {
     "reason": "dom-only",
     "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, querySelector); the native views replace the DOM reconciler."
@@ -359,6 +697,41 @@
     "reason": "dom-only",
     "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
   },
+  "lexical-html/src/__tests__/unit/LexicalHtml.test.ts::HTML > $generateNodesFromDOM: CSS class style inlining > HTML with <style> tags inlines styles by class": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
+    "note": "Inserts the imported nodes with @lexical/clipboard's $insertGeneratedNodes; port with lexical-clipboard."
+  },
+  "lexical-html/src/__tests__/unit/LexicalHtml.test.ts::HTML > $generateNodesFromDOM: CSS class style inlining > HTML without <style> tags works as before": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-clipboard"
+    ],
+    "note": "Inserts the imported nodes with @lexical/clipboard's $insertGeneratedNodes; port with lexical-clipboard."
+  },
+  "lexical-html/src/__tests__/unit/LexicalHtml.test.ts::HTML > [Lexical -> HTML]: Nested ordered list numbering (Regression #7207)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds and imports @lexical/list nodes; port with lexical-list."
+  },
+  "lexical-html/src/__tests__/unit/LexicalHtml.test.ts::HTML > importDOM preserves dir attribute > list with dir=\"rtl\"": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-list"
+    ],
+    "note": "Builds and imports @lexical/list nodes; port with lexical-list."
+  },
+  "lexical-html/src/__tests__/unit/LineBreakRoundTrip.test.ts::trailing LineBreakNode survives an HTML round trip > a line break trailing an inline element exports unchanged": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-link"
+    ],
+    "note": "Builds a LinkNode; @lexical/link is not ported yet."
+  },
   "lexical-html/src/__tests__/unit/compileDOMRenderConfigOverrides.test.ts::precompileDOMRenderConfigOverrides > precompiles with only type overrides": {
     "reason": "deviation",
     "note": "Asserts the precompiled override table by JS function identity (toEqual on the internal PreEditorDOMRenderConfig); Swift closures have no identity and the table is private. The ordering it pins is checked through behavior by the DOMRenderExtension type merge and decorateDOM order tests."
@@ -366,6 +739,62 @@
   "lexical-html/src/__tests__/unit/compileDOMRenderConfigOverrides.test.ts::precompileDOMRenderConfigOverrides > precompiles with wildcards, predicates, and type overrides": {
     "reason": "deviation",
     "note": "Asserts the precompiled override table by JS function identity (toEqual on the internal PreEditorDOMRenderConfig); Swift closures have no identity and the table is private. The ordering it pins is checked through behavior by the DOMRenderExtension type merge and decorateDOM order tests."
+  },
+  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > announces every heading level as it is created": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-a11y"
+    ],
+    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
+  },
+  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > announces the level a heading had when it is removed": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-a11y"
+    ],
+    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
+  },
+  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > announces the new level when a heading changes level": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-a11y"
+    ],
+    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
+  },
+  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > does not announce while disabled, and resumes when re-enabled": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-a11y"
+    ],
+    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
+  },
+  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > leaves a plain text editor alone": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-a11y"
+    ],
+    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
+  },
+  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > reflects message signal changes at runtime": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-a11y"
+    ],
+    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
+  },
+  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > respects message overrides from configExtension": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-a11y"
+    ],
+    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
+  },
+  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > stays silent while editing inside a heading": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-a11y"
+    ],
+    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
   },
   "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > list with an empty item: cross-block me…": {
     "reason": "out-of-scope-package",
@@ -906,75 +1335,21 @@
     ],
     "note": "Tests $rootTextContent and $isRootTextContentEmpty from @lexical/text; ports with that package."
   },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the beginning of paragraph": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the end of paragraph": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the end of paragraph that is followed by another block": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
   "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the end of the last nested list item": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-html"
+      "lexical-html",
+      "lexical-list"
     ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert into empty paragraph": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
   },
   "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert into nested list items": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-html"
+      "lexical-html",
+      "lexical-list"
     ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert into paragraph in between two text nodes": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert with selection on root child": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert with selection on root end": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert with selection on root start": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
   },
   "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRootAtCaret.test.ts::$insertNodeToNearestRootAtCaret edge cases > ParagraphNode with first > caret on root (next)": {
     "reason": "out-of-scope-package",
@@ -1595,51 +1970,26 @@
   "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split list items before the first text node": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-html"
+      "lexical-html",
+      "lexical-list"
     ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
   },
   "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split list items between two text nodes": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-html"
+      "lexical-html",
+      "lexical-list"
     ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
   },
   "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split nested list items": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-html"
+      "lexical-html",
+      "lexical-list"
     ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split paragraph after the last text node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split paragraph before the first text node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split paragraph in between two text nodes": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > throws when splitting root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Builds its documents with $generateNodesFromDOM and checks $generateHtmlFromNodes; ports with @lexical/html."
+    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
   },
   "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > calls onReposition for a range selection": {
     "reason": "dom-only",
@@ -4118,20 +4468,6 @@
     "reason": "deviation",
     "note": "Asserts TypeScript payload types; Swift's generic LexicalCommand<P> checks them at compile time."
   },
-  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > html config > should override export output function": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
-  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > html config > should override import conversion function": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
-  },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > recovers from reconciler failure and trigger proper prev editor state": {
     "reason": "dom-only",
     "note": "Makes ParagraphNode.updateDOM throw to force the recovery path; Swift nodes have no updateDOM. The recovery itself (onError, then a full reconcile) is ported in commitPendingUpdatesImpl."
@@ -4165,11 +4501,8 @@
     "note": "Exercises setRootElement with DOM elements and documents."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > should call importDOM methods only once": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
+    "reason": "deviation",
+    "note": "Spies on the static ParagraphNode.importDOM and expects one call when a subclass inherits it. JS skips a class whose importDOM is the same function as one already handled; Swift cannot tell whether a class method is inherited, so the conversion cache calls importDOM once per registered class (see LexicalNode.conversionCache). The repeated conversion is equal-priority and identical, so import results are the same."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms do not discard unintentional dirtyElements": {
     "reason": "out-of-scope-package",
@@ -4897,32 +5230,20 @@
     "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
   },
   "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > DOM caret directly on a bare <br> at offset 0 resolves to \"after\" the LineBreakNode": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Needs @lexical/html; ports with that package."
+    "reason": "dom-only",
+    "note": "Resolves a RangeSelection from a DOM Range ($internalCreateRangeSelection) on the keyed DOM of a LineBreakNode; the Swift reconciler builds no keyed DOM, and native carets map through TextKit."
   },
   "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > DOM caret inside the wrap <span> at offset 0 (before the inner <br>) resolves to \"before\" the LineBreakNode": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Needs @lexical/html; ports with that package."
+    "reason": "dom-only",
+    "note": "Resolves a RangeSelection from a DOM Range ($internalCreateRangeSelection) on the keyed DOM of a LineBreakNode; the Swift reconciler builds no keyed DOM, and native carets map through TextKit."
   },
   "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > DOM caret inside the wrap <span> at offset 1 (after the inner <br>) resolves to \"after\" the LineBreakNode": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Needs @lexical/html; ports with that package."
+    "reason": "dom-only",
+    "note": "Resolves a RangeSelection from a DOM Range ($internalCreateRangeSelection) on the keyed DOM of a LineBreakNode; the Swift reconciler builds no keyed DOM, and native carets map through TextKit."
   },
   "lexical/src/__tests__/unit/LexicalSelectionResolveLeafPosition.test.ts::Selection resolution for leaf nodes (resolveLeafPosition) > wrap pattern via DOMRenderExtension override > a caret just before the wrapped line break is scrolled into view by the inner <br>, not the wrapper": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Needs @lexical/html; ports with that package."
+    "reason": "dom-only",
+    "note": "DOM scrolling of the caret rect (mocked getBoundingClientRect and scrollLeft on the reconciled DOM); the native views scroll through TextKit."
   },
   "lexical/src/__tests__/unit/LexicalSerialization.test.ts::LexicalSerialization tests > serializes and deserializes from JSON": {
     "reason": "out-of-scope-package",
@@ -5772,13 +6093,6 @@
   "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::indexPath > only child": {
     "reason": "dom-only",
     "note": "indexPath is a DOM tree helper of LexicalDOMSlot."
-  },
-  "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.importDOM handles both CSS text-align and legacy align attribute": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html"
-    ],
-    "note": "Asserts the DOM a node builds for HTML export (createDOM/exportDOM/importDOM). Ports with the Swift DOM abstraction in @lexical/html, which builds export DOM the same way."
   },
   "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > can paste HTML with tabs and new lines (2)": {
     "reason": "out-of-scope-package",

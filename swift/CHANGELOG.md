@@ -5,6 +5,12 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `LexicalHeadless`: `createHeadlessEditor` and `HeadlessExtension`,
+  which mark the editor headless and refuse a root element.
+- `generateHtmlFromNodes` now works inside a legacy
+  `editor.getEditorState().read { }` with no active editor, as in JS.
+- The legacy `generateNodesFromDOM` now inlines `<style>` sheet rules into
+  matching elements' styles before converting, as in JS.
 - `RichTextExtension` now registers `CoreImportExtension` and
   `RichTextImportRules` (headings, quotes, the Google Docs title), and
   `ShadowRootQuoteRule` is available to import shadow root quotes.

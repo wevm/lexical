@@ -17,6 +17,7 @@ let package = Package(
     .library(name: "LexicalUtils", targets: ["LexicalUtils"]),
     .library(name: "LexicalHTML", targets: ["LexicalHTML"]),
     .library(name: "LexicalRichText", targets: ["LexicalRichText"]),
+    .library(name: "LexicalHeadless", targets: ["LexicalHeadless"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -52,14 +53,17 @@ let package = Package(
     .testTarget(
       name: "LexicalUtilsTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalSelection", "LexicalUtils", "LexicalTesting",
+        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalSelection", "LexicalUtils",
+        "LexicalTesting",
       ]),
     // @lexical/html: HTML export and import over the DOM in core.
     .target(
       name: "LexicalHTML", dependencies: ["Lexical", "LexicalExtension", "LexicalSelection"]),
     .testTarget(
       name: "LexicalHTMLTests",
-      dependencies: ["Lexical", "LexicalExtension", "LexicalHTML", "LexicalTesting"]),
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalRichText", "LexicalTesting",
+      ]),
     // @lexical/rich-text: headings, quotes and the rich text commands.
     .target(
       name: "LexicalRichText",
@@ -71,6 +75,14 @@ let package = Package(
       dependencies: [
         "Lexical", "LexicalExtension", "LexicalHTML", "LexicalRichText", "LexicalTesting",
       ]),
+    // @lexical/headless: an editor that never attaches to a view.
+    .target(name: "LexicalHeadless", dependencies: ["Lexical"]),
+    .testTarget(
+      name: "LexicalHeadlessTests",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalHeadless", "LexicalHTML", "LexicalRichText",
+        "LexicalTesting",
+      ]),
     // The TextKit 2 text views and the platform-neutral document they show.
     .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
     .testTarget(name: "LexicalTextKitTests", dependencies: ["Lexical", "LexicalTextKit"]),
@@ -81,7 +93,7 @@ let package = Package(
     .testTarget(
       name: "ConformanceTests", dependencies: ["Lexical", "LexicalHTML", "LexicalTesting"]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
-    .testTarget(name: "LexicalTests", dependencies: ["Lexical", "LexicalTesting"]),
+    .testTarget(name: "LexicalTests", dependencies: ["Lexical", "LexicalHTML", "LexicalTesting"]),
   ],
   swiftLanguageModes: [.v6]
 )

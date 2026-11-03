@@ -371,6 +371,9 @@ public final class Editor {
   public static let version = "lexical-swift@\(lexicalUpstreamVersion)"
 
   package var _headless = false
+  /// Runs before `setRootElement`; `@lexical/headless` refuses a root with
+  /// it, where JS replaces the method on the instance.
+  package var _setRootElementGuard: ((AnyObject?) throws -> Void)?
   /// Where a caret moves by a character, word or line, which only text
   /// layout knows: the text view sets it. In JS this is the DOM's
   /// `Selection.modify`. When `nil`, as headless, moves within text stop
@@ -680,6 +683,7 @@ public final class Editor {
   /// pending state (or the current one) is committed again, keeping queued
   /// updates and their tags; root listeners then run.
   public func setRootElement(_ nextRootElement: AnyObject?) throws {
+    try _setRootElementGuard?(nextRootElement)
     let prevRootElement = _rootElement
     if nextRootElement === prevRootElement {
       return

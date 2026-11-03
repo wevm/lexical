@@ -10,6 +10,7 @@ private let ignoreTags: Set<String> = ["STYLE", "SCRIPT"]
 /// `$generateNodesFromDOM(editor, dom)`: the Lexical nodes for a parsed
 /// document's body, or for a node's children. Call it inside an update.
 public func generateNodesFromDOM(_ editor: Editor, _ dom: DOMNode) throws -> [LexicalNode] {
+  inlineStylesFromStyleSheetsDOM(dom)
   let elements = (dom as? DOMDocument)?.body?.childNodes ?? dom.childNodes
   var lexicalNodes: [LexicalNode] = []
   var allArtificialNodes: [ArtificialNode__DO_NOT_USE] = []

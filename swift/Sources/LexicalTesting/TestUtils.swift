@@ -58,7 +58,29 @@ public final class TestDecoratorNode: DecoratorNode {
     writable.__block = !inline
     return writable
   }
+  public override class func importDOM() -> DOMConversionMap? {
+    [
+      "test-decorator": { _ in
+        DOMConversion { _ in DOMConversionOutput(node: try createTestDecoratorNode()) }
+      }
+    ]
+  }
+  public override func exportDOM(_ editor: Editor) throws -> DOMExportOutput {
+    DOMExportOutput(element: getDocument().createElement("test-decorator"))
+  }
   public override func getTextContent() throws -> String { "Hello world" }
+  public override func createDOM(
+    _ config: EditorConfig, _ editor: Editor? = nil
+  ) throws
+    -> DOMElement
+  {
+    getDocument().createElement(__block ? "div" : "span")
+  }
+  public override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws -> Bool {
+    __block != (prevNode as! TestDecoratorNode).__block
+  }
   public override func decorate(_ editor: Editor) throws -> Any? { "test-decorator" }
 }
 

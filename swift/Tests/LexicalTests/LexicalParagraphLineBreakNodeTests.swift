@@ -3,8 +3,8 @@ import LexicalTesting
 import Testing
 
 // Ports of nodes/__tests__/unit/LexicalParagraphNode.test.ts and
-// LexicalLineBreakNode.test.ts, except createDOM, updateDOM and importDOM,
-// which are dom-only. The reconciled HTML upstream compares is the document
+// LexicalLineBreakNode.test.ts, except createDOM and updateDOM, which are
+// dom-only. The reconciled HTML upstream compares is the document
 // `shape` here. upstream's insertNewAfter test compares the HTML inside the
 // update, before the new paragraph is reconciled, so only the model checks
 // are ported.
@@ -84,6 +84,62 @@ import Testing
       #expect(isParagraphNode(try ParagraphNode()))
     }
   }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalParagraphNode.test.ts::LexicalParagraphNode tests > ParagraphNode.importDOM handles both CSS text-align and legacy align attribute"
+    ))
+  func importDOMAlign() throws {
+    let editor = try createTestEditor()
+    defer { editor.dispose() }
+    // Drive the editor's registered conversion cache instead of reaching
+    // into ParagraphNode.importDOM() directly.
+    func expectParagraphNode(_ element: DOMElement) throws -> ParagraphNode {
+      let nodes = try #require(try runDOMConversion(editor, element)).node
+      #expect(nodes.count == 1, "Expected a single node")
+      return try #require(nodes.first as? ParagraphNode, "Expected node to be a ParagraphNode")
+    }
+    try update(editor) { () throws in
+      // Case 1: Legacy <p align="right">
+      let pAlign = getDocument().createElement("p")
+      pAlign.setAttribute("align", "right")
+      #expect(try expectParagraphNode(pAlign).getFormatType() == "right")
+
+      // Case 2: Modern <p style="text-align: center">
+      let pStyle = getDocument().createElement("p")
+      pStyle.style["text-align"] = "center"
+      #expect(try expectParagraphNode(pStyle).getFormatType() == "center")
+
+      // Case 3: CSS takes priority over the attribute.
+      let pConflict = getDocument().createElement("p")
+      pConflict.setAttribute("align", "right")
+      pConflict.style["text-align"] = "left"
+      #expect(try expectParagraphNode(pConflict).getFormatType() == "left")
+
+      // Case 4: An invalid align attribute is ignored.
+      let pInvalid = getDocument().createElement("p")
+      pInvalid.setAttribute("align", "super-weird-stuff")
+      #expect(try expectParagraphNode(pInvalid).getFormatType() == "")
+    }
+  }
+}
+
+/// `$runDOMConversion(editor, element)` from the upstream test utils: runs
+/// the highest-priority conversion the editor caches for `element`'s tag.
+private func runDOMConversion(
+  _ editor: Editor, _ element: DOMElement
+) throws
+  -> DOMConversionOutput?
+{
+  var match: DOMConversion? = nil
+  for conversion in editor._htmlConversions[element.tagName.lowercased()] ?? [] {
+    if let candidate = try conversion(element),
+      match == nil || match!.priority <= candidate.priority
+    {
+      match = candidate
+    }
+  }
+  return try match.flatMap { try $0.conversion(element) }
 }
 
 @Suite struct LexicalLineBreakNodeTests {

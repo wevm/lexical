@@ -156,3 +156,8 @@ test('css/values', () => {
     cases,
   );
 });
+
+type Case = {
+  css: string;
+  cssText: string;
+};

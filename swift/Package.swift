@@ -24,6 +24,7 @@ let package = Package(
     .library(name: "LexicalHistory", targets: ["LexicalHistory"]),
     .library(name: "LexicalHeadless", targets: ["LexicalHeadless"]),
     .library(name: "LexicalPlainText", targets: ["LexicalPlainText"]),
+    .library(name: "LexicalA11y", targets: ["LexicalA11y"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -80,13 +81,22 @@ let package = Package(
     .target(
       name: "LexicalRichText",
       dependencies: [
-        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalSelection",
-        "LexicalUtils",
+        "Lexical", "LexicalA11y", "LexicalClipboard", "LexicalExtension", "LexicalHTML",
+        "LexicalSelection", "LexicalUtils",
       ]),
     .testTarget(
       name: "LexicalRichTextTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalRichText", "LexicalTesting",
+        "Lexical", "LexicalA11y", "LexicalExtension", "LexicalHTML", "LexicalPlainText",
+        "LexicalRichText", "LexicalTesting",
+      ]),
+    // @lexical/a11y: the live region and the announcers.
+    .target(name: "LexicalA11y", dependencies: ["Lexical", "LexicalExtension"]),
+    .testTarget(
+      name: "LexicalA11yTests",
+      dependencies: [
+        "Lexical", "LexicalA11y", "LexicalExtension", "LexicalHistory", "LexicalRichText",
+        "LexicalTesting",
       ]),
     // @lexical/clipboard: copy and paste in the Lexical, HTML and plain text
     // formats.

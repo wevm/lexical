@@ -2825,62 +2825,6 @@
     "reason": "deviation",
     "note": "Asserts the precompiled override table by JS function identity (toEqual on the internal PreEditorDOMRenderConfig); Swift closures have no identity and the table is private. The ordering it pins is checked through behavior by the DOMRenderExtension type merge and decorateDOM order tests."
   },
-  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > announces every heading level as it is created": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-a11y"
-    ],
-    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
-  },
-  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > announces the level a heading had when it is removed": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-a11y"
-    ],
-    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
-  },
-  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > announces the new level when a heading changes level": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-a11y"
-    ],
-    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
-  },
-  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > does not announce while disabled, and resumes when re-enabled": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-a11y"
-    ],
-    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
-  },
-  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > leaves a plain text editor alone": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-a11y"
-    ],
-    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
-  },
-  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > reflects message signal changes at runtime": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-a11y"
-    ],
-    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
-  },
-  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > respects message overrides from configExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-a11y"
-    ],
-    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
-  },
-  "lexical-rich-text/src/__tests__/unit/HeadingAnnounceExtension.test.ts::HeadingAnnounceExtension > stays silent while editing inside a heading": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-a11y"
-    ],
-    "note": "Announces heading changes through @lexical/a11y's AriaLiveRegionExtension, which reads an aria-live element mounted next to the root; @lexical/a11y ports with the M4 accessibility work (VoiceOver announcements)."
-  },
   "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > list with an empty item: cross-block me…": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -16907,5 +16851,121 @@
   "lexical/src/nodes/__tests__/unit/LexicalTextNodeDOMTextDiff.test.ts::TextNode DOM text writes > rewrites only the changed part of the DOM text when IS_FIREFOX": {
     "reason": "dom-only",
     "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
+  },
+  "lexical-a11y/src/__tests__/unit/AriaLiveRegionExtension.test.ts::AriaLiveRegionExtension > mounts the region in the editor root element document (e.g. an iframe)": {
+    "reason": "dom-only",
+    "note": "Checks that the region is created in the root element's own document (an iframe), not the top-level one. A Swift root has no document; the region mounts on the root itself when it is a LiveRegionHost, which the other AriaLiveRegionExtension tests cover."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusManagerExtension.shadow.test.ts::FocusManagerExtension (shadow DOM) > Alt+F10 focuses the first item of a shadow-hosted toolbar": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusManagerExtension.shadow.test.ts::FocusManagerExtension (shadow DOM) > Escape from a descendant of a shadow-hosted toolbar item returns focus to the editor root": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusManagerExtension.test.ts::FocusManagerExtension > no registered toolbar leaves Alt+F10 a no-op (no focus move)": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusManagerExtension.test.ts::FocusManagerExtension > Alt+F10 focuses the toolbar first item when toolbar is registered": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusManagerExtension.test.ts::FocusManagerExtension > Escape on the toolbar returns focus to the editor root": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusManagerExtension.test.ts::FocusManagerExtension > deactivates when the registration is disposed": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.shadow.test.ts::FocusTrapExtension (shadow DOM) > initial focus lands on the first focusable inside the shadow root": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.shadow.test.ts::FocusTrapExtension (shadow DOM) > Tab cycles to the next focusable across the shadow boundary": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.shadow.test.ts::FocusTrapExtension (shadow DOM) > Shift+Tab from the first item wraps to the last across the shadow boundary": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.shadow.test.ts::FocusTrapExtension (shadow DOM) > focus is restored to the previously-focused element inside the shadow root on deactivate": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.shadow.test.ts::FocusTrapExtension (shadow DOM) > focusin from outside the shadow host is pulled back inside the container": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.shadow.test.ts::FocusTrapExtension (shadow DOM) > focusin retargeted to a foreign shadow host is resolved via composedPath and pulled back": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.test.ts::FocusTrapExtension > no registered container keeps the trap inert": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.test.ts::FocusTrapExtension > activates when a container is registered": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.test.ts::FocusTrapExtension > initialFocus=\"container\" lands focus on the container itself": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.test.ts::FocusTrapExtension > deactivates when the registration is disposed": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.test.ts::FocusTrapExtension > reference counting keeps the trap active until the last disposer runs": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/FocusTrapExtension.test.ts::FocusTrapExtension > Tab inside the container cycles to the next focusable": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.shadow.test.ts::RovingTabIndexExtension (shadow DOM) > applies the roving tabindex pattern to items inside a shadow root": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.shadow.test.ts::RovingTabIndexExtension (shadow DOM) > ArrowRight moves focus to the next item across the shadow boundary": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.shadow.test.ts::RovingTabIndexExtension (shadow DOM) > ArrowLeft from the first item wraps to the last across the shadow boundary": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.shadow.test.ts::RovingTabIndexExtension (shadow DOM) > End jumps to the last item across the shadow boundary": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.test.ts::RovingTabIndexExtension > no registered container leaves item tab indices untouched": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.test.ts::RovingTabIndexExtension > applies tabindex=0 on the first item and -1 on the rest when container is registered": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.test.ts::RovingTabIndexExtension > disposing the registration restores the natural tab order": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.test.ts::RovingTabIndexExtension > ArrowRight moves focus to the next button (horizontal default)": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.test.ts::RovingTabIndexExtension > Home jumps to the first item from the middle": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.test.ts::RovingTabIndexExtension > vertical orientation responds to ArrowDown, not ArrowRight": {
+    "reason": "dom-only",
+    "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
   }
 }

@@ -43,6 +43,7 @@ func mergeEscapeFormatTriggers(
 public let RichTextExtension = defineExtension(
   name: "@lexical/rich-text", config: RichTextConfig(), conflictsWith: ["@lexical/plain-text"],
   dependencies: [
+    HeadingAnnounceExtension,
     NormalizeInlineElementsExtension,
     // DOMImportExtension support for the nodes registered here.
     CoreImportExtension,

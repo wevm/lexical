@@ -10,6 +10,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
   content, such as `LexicalEditor` for a loaded document (it crashed).
   `TextKitInputController.renderAll(replacing:)` takes the length of the
   text the view shows.
+- New `LexicalA11y` module: `AriaLiveRegionExtension` (a `LiveRegion` on a
+  `LiveRegionHost` root or `owner`), `HistoryAnnounceExtension` and
+  `EditorModeAnnounceExtension`. `RichTextExtension` now includes
+  `HeadingAnnounceExtension`, which announces a block becoming a heading or
+  ceasing to be one. `RootElementExtension` is added to `LexicalExtension`.
 - The editor views are driven by the editor's extensions (`RichTextExtension`,
   `PlainTextExtension`, `HistoryExtension`, ...) instead of their own
   editing commands: key presses dispatch `KEY_DOWN_COMMAND`, text input and

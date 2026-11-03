@@ -561,6 +561,21 @@ Reversible choices made porting `@lexical/extension` under Q18.
   listens for renders, then renders the document in full, replacing its
   own (empty) text. A view can so be created for an editor that already
   has content, as `LexicalEditor` is in SwiftUI.
+- **Accessibility.** `LexicalA11y` ports `@lexical/a11y`'s announcers.
+  `AriaLiveRegionExtension` keeps JS's signals and its `announce` sink; the
+  region is a `LiveRegion` (role `status`, atomic, a politeness and the
+  last `textContent`) mounted on a `LiveRegionHost`: the configured `owner`,
+  else the root element when it conforms. JS mounts a hidden
+  `div[aria-live]` in the root's document; a root with no host has no
+  region, and announcements are dropped, as before JS mounts one. A view
+  that hosts it speaks each new text as an accessibility announcement, at
+  high priority when `assertive`, without the U+200B that marks a repeat.
+  `HistoryAnnounceExtension`, `EditorModeAnnounceExtension` and rich text's
+  `HeadingAnnounceExtension` are ported as they are. The focus trap, roving
+  tabindex and focus manager move DOM focus between HTML elements; native
+  views get that from `UIFocusSystem`, the key view loop and
+  `accessibilityViewIsModal`, so they are not ported (their tests are
+  `dom-only`).
 - **Tier 2 differences** are listed in `parity/deviations.json`.
 
 ## Scope of v0.1.0 (Q21)

@@ -855,3 +855,19 @@ public func getRegisteredSubtypeMap(_ nodes: [LexicalNode.Type]) -> JSMap<String
   }
   return subtypes
 }
+
+/// `mergeRegister`: one clean-up that calls each of `funcs` in reverse
+/// order, once; later calls do nothing.
+public func mergeRegister(_ funcs: [() -> Void]) -> () -> Void {
+  var funcs = funcs
+  return {
+    for fn in funcs.reversed() {
+      fn()
+    }
+    funcs = []
+  }
+}
+
+public func mergeRegister(_ funcs: (() -> Void)...) -> () -> Void {
+  mergeRegister(funcs)
+}

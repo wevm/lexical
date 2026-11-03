@@ -39,6 +39,8 @@
     /// UITextInput (the Korean keyboard merges jamo into a syllable that
     /// way), oldest first: the range each replaced and its text.
     private var foreignEdits: [(range: NSRange, text: String)] = []
+    /// Set while a shifted hardware key the text view handles is pressed.
+    private var isExtendingSelection = false
 
     public init(editor: Editor, frame: CGRect = .zero) {
       controller = TextKitInputController(editor: editor)
@@ -264,7 +266,13 @@
         }
         if !handled { unhandled.insert(press) }
       }
-      if !unhandled.isEmpty { super.pressesBegan(unhandled, with: event) }
+      if !unhandled.isEmpty {
+        // A shifted key the text view handles (a shift-arrow) extends the
+        // selection from the model's anchor.
+        isExtendingSelection = unhandled.contains { $0.key?.modifierFlags.contains(.shift) == true }
+        defer { isExtendingSelection = false }
+        super.pressesBegan(unhandled, with: event)
+      }
     }
 
     // MARK: Text input
@@ -384,7 +392,10 @@
       {
         return
       }
-      perform { try controller.setSelectedRange(location: range.location, length: range.length) }
+      perform {
+        try controller.setSelectedRange(
+          location: range.location, length: range.length, keepsAnchor: isExtendingSelection)
+      }
     }
 
     // MARK: Focus

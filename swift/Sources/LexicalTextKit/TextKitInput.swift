@@ -160,14 +160,19 @@ public final class TextKitInputController {
   /// The view's selection changed (a click, a tap, an arrow key): the model
   /// half of JS `onSelectionChange`, which selects the points at those
   /// locations and gives a caret the format and style of where it is.
-  public func setSelectedRange(location: Int, length: Int) throws {
+  /// `keepsAnchor` is whether the change extends the selection (a
+  /// shift-arrow); a view passes `false` for a selection made another way,
+  /// such as by a program or a click, which is forward.
+  public func setSelectedRange(location: Int, length: Int, keepsAnchor: Bool = true) throws {
     // A view's range has no direction. A selection that still ends where
     // the model's anchor was is taken to extend from it, as a shift-arrow
     // does, so it is backward when that anchor is its end.
     let end = location + length
-    let previousAnchor = try editor.read(.latest) {
-      (try getSelection() as? RangeSelection).flatMap { document.location(for: $0.anchor) }
-    }
+    let previousAnchor =
+      keepsAnchor
+      ? try editor.read(.latest) {
+        (try getSelection() as? RangeSelection).flatMap { document.location(for: $0.anchor) }
+      } : nil
     let isBackward = length > 0 && previousAnchor == end
     // Mapped before the update, so the reconciler's document is not shared
     // (and copied) while the commit edits it.

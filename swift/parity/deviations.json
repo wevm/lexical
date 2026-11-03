@@ -49,5 +49,9 @@
     "scenarios": [
       "TextFormatting > Can insert range of formatted text and select part and replace with character (rich)"
     ]
+  },
+  "native/drag-selection-forward": {
+    "category": "platform-input",
+    "description": "A selection made by dragging, tapping, clicking or a program is forward in the model, since a native view's selected range has no direction; only a shift-arrow (a shifted key the text view handles) extends backward from the model's anchor. WebKit makes a right-to-left drag a backward selection."
   }
 }

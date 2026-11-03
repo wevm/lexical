@@ -32,6 +32,8 @@
     /// Set while a drag that started here is dropped back here.
     private var isDropFromSelf = false
     let decorators = DecoratorAttachments()
+    /// Set while a shifted key the text view handles is pressed.
+    private var isExtendingSelection = false
     /// The editor's live region, while this view hosts it
     /// (`AriaLiveRegionExtension`); its announcements are spoken.
     public internal(set) var liveRegion: LiveRegion?
@@ -208,6 +210,10 @@
     // MARK: Keys
 
     public override func keyDown(with event: NSEvent) {
+      // A shifted key the text view handles (a shift-arrow) extends the
+      // selection from the model's anchor.
+      isExtendingSelection = event.modifierFlags.contains(.shift)
+      defer { isExtendingSelection = false }
       if event === keyEquivalentEvent {
         keyEquivalentEvent = nil
         super.keyDown(with: event)
@@ -374,7 +380,12 @@
       {
         return
       }
-      perform { try controller.setSelectedRange(location: range.location, length: range.length) }
+      // Only a shift-arrow (or another shifted key) extends from the model's
+      // anchor; a click, a drag or a program selects forward.
+      perform {
+        try controller.setSelectedRange(
+          location: range.location, length: range.length, keepsAnchor: isExtendingSelection)
+      }
     }
 
     public override func mouseDown(with event: NSEvent) {

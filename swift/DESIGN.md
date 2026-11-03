@@ -613,7 +613,12 @@ Reversible choices made porting `@lexical/extension` under Q18.
     is a known issue, and the runner fails when it stops differing.
   - A view's selected range has no direction, so `setSelectedRange` keeps the
     model's anchor when the new range still ends there (a shift-arrow
-    extending backward), and otherwise selects forward.
+    extending backward), and otherwise selects forward. The views ask for
+    that only while a shifted key they pass to the text view is pressed
+    (`keepsAnchor`); a click, a drag, a tap or a program selects forward, as
+    a program's range would otherwise turn backward whenever it ends at the
+    caret. A drag from right to left is so forward, where WebKit's is
+    backward.
 - **Live region.** The views are `LiveRegionHost`s: each new
   `textContent` (without the U+200B that marks a repeat) is posted as an
   announcement, `UIAccessibility.post(notification: .announcement, ...)`

@@ -162,6 +162,26 @@
       _ = window
     }
 
+    @Test func shiftArrowsExtendBackwardAndProgramsSelectForward() throws {
+      let (view, window) = try makeView()
+      insert(view, "abc")
+      func selection() throws -> (anchor: Int, focus: Int) {
+        try view.editor.read {
+          let selection = try #require(try getSelection() as? RangeSelection)
+          return (selection.anchor.offset, selection.focus.offset)
+        }
+      }
+      view.keyDown(with: key("\u{F702}", 123, [.shift, .function, .numericPad]))
+      #expect(view.selectedRange() == NSRange(location: 2, length: 1))
+      #expect(try selection() == (3, 2))
+      // A program's range has no direction: forward, though it ends at the
+      // anchor.
+      view.setSelectedRange(NSRange(location: 3, length: 0))
+      view.setSelectedRange(NSRange(location: 1, length: 2))
+      #expect(try selection() == (1, 3))
+      _ = window
+    }
+
     @Test func composesMarkedTextThroughTheModel() throws {
       let (view, window) = try makeView()
       insert(view, "a")

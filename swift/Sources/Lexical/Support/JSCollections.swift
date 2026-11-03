@@ -11,6 +11,9 @@ public final class JSMap<Key: Hashable, Value> {
   private var index: [Key: Int] = [:]
   private var tombstones = 0
   fileprivate var openIterators = 0
+  /// Set on a committed node map, which JS's dev build freezes
+  /// (`handleDEVOnlyPendingUpdateGuarantees`); the node map writers check it.
+  package var _frozen = false
 
   public init() {}
 

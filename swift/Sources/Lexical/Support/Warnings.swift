@@ -29,3 +29,27 @@ public func withWarningHandler<T>(
   defer { context.warningHandler = previous }
   return try body()
 }
+
+/// An error thrown out of a microtask, which JS leaves uncaught (an unhandled
+/// exception). Written to standard error unless a handler is installed with
+/// `withUncaughtErrorHandler`.
+package func reportUncaughtError(_ error: any Error) {
+  if let handler = ThreadContext.current.uncaughtErrorHandler {
+    handler(error)
+  } else {
+    let line = Array("lexical: uncaught error: \(error)\n".utf8)
+    _ = line.withUnsafeBytes { write(2, $0.baseAddress, $0.count) }
+  }
+}
+
+/// Runs `body` with `handler` receiving the errors that microtasks throw,
+/// which JS would leave uncaught, on this thread.
+public func withUncaughtErrorHandler<T>(
+  _ handler: @escaping (any Error) -> Void, _ body: () throws -> T
+) rethrows -> T {
+  let context = ThreadContext.current
+  let previous = context.uncaughtErrorHandler
+  context.uncaughtErrorHandler = handler
+  defer { context.uncaughtErrorHandler = previous }
+  return try body()
+}

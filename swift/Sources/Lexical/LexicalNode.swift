@@ -344,6 +344,7 @@ open class LexicalNode {
       throw LexicalError(staleNodeMessage(key, __type))
     }
     let mutableNode = try cloneWithProperties(latestNode)
+    try errorOnFrozenNodeMap(nodeMap, "set")
     cloneNotNeeded.set(key, mutableNode)
     nodeMap.set(key, mutableNode)
     try internalMarkNodeAsDirty(mutableNode)

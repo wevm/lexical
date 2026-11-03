@@ -101,6 +101,7 @@ package func setNodeKey(_ node: LexicalNode, _ existingKey: NodeKey?) throws {
   let editor = try getActiveEditor()
   let editorState = try getActiveEditorState()
   let key = generateRandomKey()
+  try errorOnFrozenNodeMap(editorState._nodeMap, "set")
   editorState._nodeMap.set(key, node)
   // TODO Split this function into leaf/element
   if node is ElementNode {

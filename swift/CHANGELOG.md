@@ -5,6 +5,14 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `LexicalNSTextView` now builds its TextKit 2 stack itself; it had no text
+  system, so it showed nothing.
+- A committed state's node map is frozen as in JS's dev build: writing to it
+  (for example after an `editor.read()` committed mid-update) throws.
+  `drainMicrotasks()` also runs `setTimeout(0)` work, so the update-cascade
+  guard fires as in JS. Errors from a queued commit go to
+  `withUncaughtErrorHandler(_:_:)` (standard error by default) instead of
+  `onError`, and an update started from a read-only context warns.
 - An update that `onError` starts while handling a failed update is now
   queued until the failed update is cleaned up, as in JS, instead of running
   at once.

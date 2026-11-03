@@ -35,8 +35,12 @@ package final class ThreadContext {
   package var textEditSuspended: NodeKey?
   // `console.warn` (see Warnings.swift).
   package var warningHandler: ((String) -> Void)?
+  /// `withUncaughtErrorHandler`.
+  package var uncaughtErrorHandler: ((any Error) -> Void)?
   // The microtask queue (see Microtasks.swift).
   package var microtasks: [() -> Void] = []
+  /// `setTimeout(fn, 0)` tasks, run by `drainMicrotasks` after the microtasks.
+  package var macrotasks: [() -> Void] = []
   package var drainingMicrotasks = false
 
   init() {}

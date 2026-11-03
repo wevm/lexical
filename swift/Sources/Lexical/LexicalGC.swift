@@ -115,6 +115,7 @@ package func garbageCollectDetachedNodes(
   let editor = try getActiveEditor()
   let cloneNotNeeded = editor._cloneNotNeeded
   for nodeKey in nodeMapDelete {
+    try errorOnFrozenNodeMap(nodeMap, "delete")
     nodeMap.delete(nodeKey)
     cloneNotNeeded.delete(nodeKey)
   }

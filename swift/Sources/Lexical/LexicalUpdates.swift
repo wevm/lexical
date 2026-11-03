@@ -255,6 +255,7 @@ package func parseEditorState(
     // Make the editorState immutable
     editorState._readOnly = true
     editorState._parsed = true
+    editorState._nodeMap._frozen = true
   } catch {
     try editor._onError(error)
   }
@@ -317,6 +318,7 @@ func commitPendingUpdatesImpl(_ editor: Editor, _ recoveryEditorState: EditorSta
 
   if !pendingEditorState._readOnly {
     pendingEditorState._readOnly = true
+    pendingEditorState._nodeMap._frozen = true
   }
   let dirtyLeaves = editor._dirtyLeaves
   let dirtyElements = editor._dirtyElements
@@ -536,7 +538,7 @@ func scheduleCascadeReset(_ editor: Editor) {
   }
   context.editorsWithPendingCascadeReset.insert(id)
   // `setTimeout(..., 0)`: after the microtasks of this turn.
-  scheduleMicroTask { [weak editor] in
+  scheduleMacroTask { [weak editor] in
     ThreadContext.current.editorsWithPendingCascadeReset.remove(id)
     editor?._cascadeCount = 0
   }
@@ -746,7 +748,13 @@ func beginUpdate(
     do {
       try commitPendingUpdates(editor)
     } catch {
-      scheduleMicroTask { try? triggerEnqueuedUpdates(editor) }
+      scheduleMicroTask {
+        do {
+          try triggerEnqueuedUpdates(editor)
+        } catch {
+          reportUncaughtError(error)
+        }
+      }
       if rethrown == nil {
         throw error
       }
@@ -777,7 +785,7 @@ func beginUpdate(
         do {
           try commitPendingUpdates(editor)
         } catch {
-          try? editor._onError(error)
+          reportUncaughtError(error)
         }
       }
     }
@@ -799,7 +807,13 @@ package func updateEditorSync(
   if context.activeEditor === editor && options == nil {
     if isCurrentlyReadOnlyMode() {
       // An update dispatched from a read-only context runs as a fresh
-      // writable update so it still applies.
+      // writable update so it still applies. Commit-time bookkeeping does
+      // not warn; an explicit read does.
+      if !context.isCommittingPendingUpdates || context.isReadOnlyMode {
+        consoleWarn(
+          "updateEditorSync: an editor update (e.g. a command listener that mutates the editor) ran while a read-only context was on the stack. This most commonly happens when a command is dispatched from inside editor.read(). The update has been deferred to a fresh writable update so it still applies, but dispatching mutations from a read-only context is an anti-pattern — dispatch after editor.read() returns, or via queueMicrotask."
+        )
+      }
       try beginUpdate(editor, updateFn, options)
     } else {
       try updateFn()

@@ -3,6 +3,13 @@
 /// The node map of an editor state: insertion-ordered, as a JS `Map`.
 public typealias NodeMap = JSMap<NodeKey, LexicalNode>
 
+/// Throws as a frozen JS node map's `set`, `clear` and `delete` do.
+package func errorOnFrozenNodeMap(_ nodeMap: NodeMap, _ method: String) throws {
+  if nodeMap._frozen {
+    throw LexicalError("Cannot call \(method)() on a frozen Lexical node map")
+  }
+}
+
 package func editorStateHasDirtySelection(_ editorState: EditorState, _ editor: Editor) -> Bool {
   let currentSelection = editor.getEditorState()._selection
   if let pendingSelection = editorState._selection {

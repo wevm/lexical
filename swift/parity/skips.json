@@ -819,6 +819,34 @@
     "reason": "dom-only",
     "note": "Shadow DOM traversal has no native equivalent."
   },
+  "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns false for Macintosh user agent without multi-touch": {
+    "reason": "dom-only",
+    "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
+  },
+  "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns false for macOS user agent without touch support": {
+    "reason": "dom-only",
+    "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
+  },
+  "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns false for non-Apple touch device": {
+    "reason": "dom-only",
+    "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
+  },
+  "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns true for Macintosh user agent at the multi-touch…": {
+    "reason": "dom-only",
+    "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
+  },
+  "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns true for iPad user agent": {
+    "reason": "dom-only",
+    "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
+  },
+  "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns true for iPadOS desktop-class Macintosh user age…": {
+    "reason": "dom-only",
+    "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
+  },
+  "lexical/src/__tests__/unit/environment.test.ts::IS_IOS > returns true for iPhone user agent": {
+    "reason": "dom-only",
+    "note": "Tests browser user-agent and maxTouchPoints sniffing (IS_IOS, IS_APPLE...); the native port reads the platform from the OS, not navigator."
+  },
   "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > multiple blocks > remove range between list and nested list": {
     "reason": "out-of-scope-package",
     "note": "@lexical/list: depends on ListNode and ListItemNode behavior. Port with @lexical/list."

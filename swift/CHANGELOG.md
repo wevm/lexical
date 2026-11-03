@@ -5,6 +5,8 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Added `createRefCountedRegistry(_:)`: registrations reference counted by
+  key, activated on the first and torn down after the last release.
 - Added `LexicalWarning`, an `Error` with a namespaced `code` and optional
   `data`, for `onWarn`.
 - Added `mergeRegister(_:)`, which `lexical` exports: one clean-up that runs

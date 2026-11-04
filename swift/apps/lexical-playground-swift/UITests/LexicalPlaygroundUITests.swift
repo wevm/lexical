@@ -1,8 +1,8 @@
 import XCTest
 
 /// Smoke tests of the playground on the iOS Simulator: the editor and the
-/// tree view load, the toolbar formats the selection, and JSON export shows
-/// the document.
+/// tree view load, the toolbar formats the selection, Markdown shortcuts
+/// and check lists work, and JSON export shows the document.
 final class LexicalPlaygroundUITests: XCTestCase {
   private var app: XCUIApplication!
 
@@ -52,5 +52,48 @@ final class LexicalPlaygroundUITests: XCTestCase {
     let value = text.value as? String ?? ""
     XCTAssertTrue(value.contains("\"type\": \"heading\""), value)
     XCTAssertTrue(value.contains("\"text\": \"Welcome to the playground\""), value)
+  }
+
+  /// Clears the document and puts the caret in it.
+  @MainActor
+  private func clearedEditor() -> XCUIElement {
+    let editor = app.textViews["editor"]
+    XCTAssertTrue(editor.waitForExistence(timeout: 10))
+    app.buttons["Clear"].tap()
+    editor.tap()
+    return editor
+  }
+
+  @MainActor
+  private func waitForTree(_ substring: String) {
+    let predicate = NSPredicate(format: "label CONTAINS %@", substring)
+    expectation(for: predicate, evaluatedWith: app.staticTexts["tree-view"])
+    waitForExpectations(timeout: 5)
+  }
+
+  @MainActor
+  func testMarkdownShortcutMakesAHeading() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("# Title")
+    waitForTree(") heading")
+    waitForTree("\"Title\"")
+  }
+
+  @MainActor
+  func testTappingACheckBoxTogglesTheItem() {
+    launch()
+    let editor = clearedEditor()
+    app.buttons["Check List"].tap()
+    editor.typeText("Task")
+    waitForTree(") listitem")
+    // The box sits at the start of the item's first line, past the text
+    // view's 5-point line padding.
+    editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 18, dy: 22)).tap()
+    app.buttons["JSON"].tap()
+    let text = app.textViews["import-export-text"]
+    XCTAssertTrue(text.waitForExistence(timeout: 5))
+    let value = text.value as? String ?? ""
+    XCTAssertTrue(value.contains("\"checked\": true"), value)
   }
 }

@@ -73,6 +73,7 @@ enum PlaygroundSheet: Identifiable {
 enum DocumentFormat: String {
   case json = "JSON"
   case html = "HTML"
+  case markdown = "Markdown"
 }
 
 /// The playground's bottom bar (`ActionsPlugin`): import, export, clear,
@@ -90,6 +91,10 @@ struct ActionsView: View {
         sheet = .importExport(.html)
       }
       .help("Import or export the editor state as HTML")
+      if model.isRichText {
+        Button("Markdown", systemImage: "m.square") { sheet = .importExport(.markdown) }
+          .help("Import or export the document as Markdown")
+      }
       Button("Clear", systemImage: "trash") { model.clearEditor() }
         .help("Clear")
       Toggle(isOn: $model.isEditable) {

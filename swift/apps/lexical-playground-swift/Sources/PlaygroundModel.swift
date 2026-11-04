@@ -1,19 +1,30 @@
+import Foundation
 import Lexical
 import LexicalA11y
+import LexicalCodeCore
 import LexicalDevtoolsCore
 import LexicalExtension
 import LexicalHTML
 import LexicalHistory
+import LexicalLink
+import LexicalList
+import LexicalMarkdown
 import LexicalPlainText
 import LexicalRichText
 import LexicalSelection
 import LexicalUtils
 import Observation
 
+#if os(macOS)
+  import AppKit
+#else
+  import UIKit
+#endif
+
 /// The block types the toolbar offers (the playground's `blockTypeToBlockName`
-/// for the v0.1.0 nodes).
+/// for the nodes the Swift port has).
 enum BlockType: String, CaseIterable, Identifiable {
-  case paragraph, h1, h2, h3, h4, h5, h6, quote
+  case paragraph, h1, h2, h3, h4, h5, h6, bullet, number, check, quote, code
   var id: String { rawValue }
 
   var name: String {
@@ -25,10 +36,62 @@ enum BlockType: String, CaseIterable, Identifiable {
     case .h4: "Heading 4"
     case .h5: "Heading 5"
     case .h6: "Heading 6"
+    case .bullet: "Bulleted List"
+    case .number: "Numbered List"
+    case .check: "Check List"
     case .quote: "Quote"
+    case .code: "Code Block"
+    }
+  }
+
+  /// The list types, which the toolbar also has buttons for.
+  static let lists: [(type: BlockType, symbol: String)] = [
+    (.bullet, "list.bullet"), (.number, "list.number"), (.check, "checklist"),
+  ]
+}
+
+/// `validateUrl` of the playground's utils/url.ts: one token (trailing
+/// whitespace allowed), `https://` as the toolbar's placeholder, and a
+/// supported protocol. Foundation's URL parser stands in for `new URL()`.
+func validateUrl(_ url: String) -> Bool {
+  if url == "https://" { return true }
+  let trimmed = url.replacing(/\s+$/, with: "")
+  guard !trimmed.isEmpty, !trimmed.contains(where: \.isWhitespace) else { return false }
+  var parsed = URL(string: trimmed).flatMap { $0.scheme == nil ? nil : $0 }
+  if parsed == nil, trimmed.hasPrefix("www."), trimmed.count > 4 {
+    parsed = URL(string: "https://" + trimmed)
+  }
+  guard let scheme = parsed?.scheme?.lowercased() else { return false }
+  return ["http", "https", "mailto", "sms", "tel"].contains(scheme)
+}
+
+/// Opens links for `ClickableLinkExtension`: the system's handler for the
+/// URL (a browser for a web link).
+final class PlaygroundLinkWindow: LinkWindow {
+  func open(_ url: String, _ target: String, _ features: String?) {
+    guard let url = URL(string: url) else { return }
+    DispatchQueue.main.async {
+      #if os(macOS)
+        NSWorkspace.shared.open(url)
+      #else
+        UIApplication.shared.open(url)
+      #endif
     }
   }
 }
+
+/// The playground's transformers (`PLAYGROUND_TRANSFORMERS`) for the nodes
+/// the Swift port has: `CHECK_LIST`, which `TRANSFORMERS` leaves out, ahead
+/// of the built-ins.
+nonisolated(unsafe) let playgroundTransformers: [any Transformer] = [CHECK_LIST] + TRANSFORMERS
+
+/// `PlaygroundMarkdownShortcutsExtension`: Markdown typed at the start of a
+/// block (`# `, `- `, `[ ] `, `> `, ` ``` `) or around text (`**bold**`)
+/// becomes its node or format.
+let PlaygroundMarkdownShortcutsExtension = defineExtension(
+  name: "@lexical/playground-swift/MarkdownShortcuts",
+  dependencies: [ListExtension, CheckListExtension, LinkExtension, CodeExtension],
+  register: { editor, _, _ in try registerMarkdownShortcuts(editor, playgroundTransformers) })
 
 /// The text formats the toolbar toggles, in its order.
 let toolbarFormats: [(format: TextFormatType, title: String, symbol: String)] = [
@@ -61,7 +124,10 @@ final class PlaygroundModel {
     didSet { if isRichText != oldValue { rebuild() } }
   }
   var isEditable = true {
-    didSet { try? editor.setEditable(isEditable) }
+    didSet {
+      try? editor.setEditable(isEditable)
+      syncClickableLinks()
+    }
   }
   var showsTreeView = true {
     didSet { refreshTree() }
@@ -76,6 +142,9 @@ final class PlaygroundModel {
   private(set) var alignment: ElementFormatType = "left"
   private(set) var canUndo = false
   private(set) var canRedo = false
+  /// The selection is in a link, whose URL is `linkURL`.
+  private(set) var isLink = false
+  private(set) var linkURL = ""
 
   private(set) var tree = ""
   private(set) var commandsLog: [LexicalCommandLogEntry] = []
@@ -90,18 +159,42 @@ final class PlaygroundModel {
   }
 
   static func makeEditor(richText: Bool) throws -> Editor {
-    try buildEditorFromExtensions(
+    // Links in both modes, as the playground's AppExtension has them; lists,
+    // code blocks and Markdown shortcuts in rich text only.
+    let links: [any AnyLexicalExtensionArgument] = [
+      configExtension(LinkExtension) { $0.validateUrl = validateUrl },
+      configExtension(AutoLinkExtension) {
+        $0.excludeParents = [isCodeNode]
+        $0.matchers = [autoLinkUrlMatcher, autoLinkEmailMatcher]
+      },
+      configExtension(ClickableLinkExtension) {
+        $0.newTab = true
+        $0.getWindow = { _ in PlaygroundLinkWindow() }
+      },
+    ]
+    return try buildEditorFromExtensions(
       defineExtension(
         name: "@lexical/playground-swift",
         dependencies: richText
           ? [
             RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension,
             HistoryAnnounceExtension, EditorModeAnnounceExtension,
-          ]
+            configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
+            CheckListExtension, CodeExtension, PlaygroundMarkdownShortcutsExtension,
+            configExtension(TabIndentationExtension) { $0.maxIndent = 7 },
+          ] + links
           : [
             PlainTextExtension, HistoryExtension, HistoryAnnounceExtension,
             EditorModeAnnounceExtension,
-          ]))
+          ] + links))
+  }
+
+  /// Clickable links are active only while the editor is read-only, as the
+  /// playground's settings synchronization drives `ClickableLinkExtension`;
+  /// while editing, a click places the caret and the toolbar edits the link.
+  private func syncClickableLinks() {
+    try? getExtensionDependencyFromEditor(editor, ClickableLinkExtension).output.disabled.set(
+      isEditable)
   }
 
   /// Builds the other kind of editor, keeping the text: a plain text editor
@@ -133,6 +226,7 @@ final class PlaygroundModel {
   }
 
   private func attach() {
+    syncClickableLinks()
     unregister.append(
       editor.registerUpdateListener { [weak self] _ in
         MainActor.assumeIsolated { self?.refresh() }
@@ -170,6 +264,11 @@ final class PlaygroundModel {
     }
     log(FORMAT_TEXT_COMMAND)
     log(FORMAT_ELEMENT_COMMAND)
+    log(INSERT_UNORDERED_LIST_COMMAND) { _ in "undefined" }
+    log(INSERT_ORDERED_LIST_COMMAND) { _ in "undefined" }
+    log(INSERT_CHECK_LIST_COMMAND) { _ in "undefined" }
+    log(REMOVE_LIST_COMMAND) { _ in "undefined" }
+    log(TOGGLE_LINK_COMMAND) { payload in payload.map { "\($0)" } ?? "null" }
     log(INDENT_CONTENT_COMMAND) { _ in "undefined" }
     log(OUTDENT_CONTENT_COMMAND) { _ in "undefined" }
     log(UNDO_COMMAND) { _ in "undefined" }
@@ -200,13 +299,27 @@ final class PlaygroundModel {
       formats = Set(toolbarFormats.map(\.format).filter { selection.hasFormat($0) })
       let anchor = try selection.anchor.getNode()
       let block = try anchor.getKey() == "root" ? anchor : anchor.getTopLevelElementOrThrow()
-      switch block {
-      case let heading as HeadingNode: blockType = BlockType(rawValue: try heading.getTag()) ?? .h1
-      case is QuoteNode: blockType = .quote
-      default: blockType = .paragraph
+      // A list's type is the nearest list's, as the playground's toolbar
+      // reads it for a nested list.
+      if let list = try getNearestNodeOfType(anchor, ListNode.self) {
+        blockType = BlockType(rawValue: try list.getListType()) ?? .bullet
+      } else {
+        switch block {
+        case let heading as HeadingNode:
+          blockType = BlockType(rawValue: try heading.getTag()) ?? .h1
+        case is QuoteNode: blockType = .quote
+        case is CodeNode: blockType = .code
+        default: blockType = .paragraph
+        }
       }
       let format = try (block as? ElementNode)?.getFormatType() ?? ""
       alignment = format.isEmpty || format == "start" ? "left" : format
+      // `$isLinkNode(parent) || $isLinkNode(node)` in the toolbar, for the
+      // focus's node.
+      let focus = try selection.focus.getNode()
+      let link = try (focus as? LinkNode) ?? (focus.getParent() as? LinkNode)
+      isLink = link != nil
+      linkURL = try link?.getURL() ?? ""
     }
     refreshTree()
   }
@@ -231,17 +344,53 @@ final class PlaygroundModel {
   func undo() { _ = try? editor.dispatchCommand(UNDO_COMMAND) }
   func redo() { _ = try? editor.dispatchCommand(REDO_COMMAND) }
 
-  /// `formatParagraph` / `formatHeading` / `formatQuote` in the playground's
-  /// block format menu.
+  /// `formatParagraph`, `formatHeading`, `formatBulletList`,
+  /// `formatNumberedList`, `formatCheckList`, `formatQuote` and
+  /// `formatCode` in the playground's block format menu. A list command for
+  /// the list type the selection is already in removes the list, as there.
   func setBlockType(_ type: BlockType) {
+    switch type {
+    case .bullet, .number, .check:
+      if blockType == type {
+        _ = try? editor.dispatchCommand(REMOVE_LIST_COMMAND)
+      } else if type == .bullet {
+        _ = try? editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND)
+      } else if type == .number {
+        _ = try? editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND)
+      } else {
+        _ = try? editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND)
+      }
+      return
+    default: break
+    }
+    let isCode = blockType == .code
     try? editor.update {
       let selection = try getSelection()
       switch type {
       case .paragraph: try setBlocksType(selection) { try createParagraphNode() }
       case .quote: try setBlocksType(selection) { try createQuoteNode() }
+      case .code:
+        // `formatCode`: a collapsed selection turns its block into a code
+        // block; a range becomes one code block holding its text.
+        guard !isCode, let selection else { return }
+        if selection.isCollapsed() {
+          try setBlocksType(selection) { try createCodeNode() }
+        } else {
+          let text = try selection.getTextContent()
+          let code = try createCodeNode()
+          try selection.insertNodes([code])
+          try code.append(createTextNode(text))
+          _ = try code.selectEnd()
+        }
       default: try setBlocksType(selection) { try createHeadingNode(type.rawValue) }
       }
     }
+  }
+
+  /// Links the selection to `url`, or with `nil` unlinks it
+  /// (`TOGGLE_LINK_COMMAND`, which the link editor dispatches).
+  func setLink(_ url: String?) {
+    _ = try? editor.dispatchCommand(TOGGLE_LINK_COMMAND, url.map { .url($0) })
   }
 
   /// The playground's Clear Formatting (`$clearFormatting` in
@@ -308,6 +457,20 @@ final class PlaygroundModel {
   func exportHTML() -> String {
     let editor = editor
     return (try? editor.read { try generateHtmlFromNodes(editor) }) ?? ""
+  }
+
+  /// The document as Markdown (`$convertToMarkdownString`, as the
+  /// playground's Markdown toggle writes it).
+  func exportMarkdown() -> String {
+    (try? editor.read { try convertToMarkdownString(playgroundTransformers) }) ?? ""
+  }
+
+  /// Replaces the document with `markdown`'s nodes.
+  func importMarkdown(_ markdown: String) throws {
+    try editor.update(discrete: true) {
+      try convertFromMarkdownString(markdown, playgroundTransformers)
+    }
+    _ = try editor.dispatchCommand(CLEAR_HISTORY_COMMAND)
   }
 
   /// Replaces the document with the nodes `html` imports to.

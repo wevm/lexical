@@ -6,8 +6,9 @@ import SwiftUI
   import UIKit
 #endif
 
-/// Import and export as JSON or HTML: the editor's current document in an
-/// editable text field, which Import loads back into the editor.
+/// Import and export as JSON, HTML or Markdown: the editor's current
+/// document in an editable text field, which Import loads back into the
+/// editor.
 struct ImportExportView: View {
   let model: PlaygroundModel
   let format: DocumentFormat
@@ -47,7 +48,12 @@ struct ImportExportView: View {
       .frame(minWidth: 560, minHeight: 480)
     #endif
     .onAppear {
-      text = format == .json ? model.exportJSON() : model.exportHTML()
+      text =
+        switch format {
+        case .json: model.exportJSON()
+        case .html: model.exportHTML()
+        case .markdown: model.exportMarkdown()
+        }
     }
   }
 
@@ -56,6 +62,7 @@ struct ImportExportView: View {
       switch format {
       case .json: try model.importJSON(text)
       case .html: try model.importHTML(text)
+      case .markdown: try model.importMarkdown(text)
       }
       dismiss()
     } catch {

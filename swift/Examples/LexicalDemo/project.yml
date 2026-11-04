@@ -35,6 +35,8 @@ targets:
       - package: Lexical
         product: Lexical
       - package: Lexical
+        product: LexicalA11y
+      - package: Lexical
         product: LexicalExtension
       - package: Lexical
         product: LexicalHistory

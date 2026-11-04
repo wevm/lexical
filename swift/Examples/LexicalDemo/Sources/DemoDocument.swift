@@ -1,4 +1,5 @@
 import Lexical
+import LexicalA11y
 import LexicalExtension
 import LexicalHistory
 import LexicalRichText
@@ -58,7 +59,10 @@ func makeDemoEditor() throws -> Editor {
   try buildEditorFromExtensions(
     defineExtension(
       name: "demo",
-      dependencies: [RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension],
+      dependencies: [
+        RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension,
+        HistoryAnnounceExtension,
+      ],
       nodes: { [.klass(BadgeNode.self), .klass(CardNode.self)] }))
 }
 

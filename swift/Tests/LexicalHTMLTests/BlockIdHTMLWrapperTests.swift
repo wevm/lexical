@@ -3,6 +3,7 @@ import LexicalExtension
 import LexicalHTML
 import LexicalList
 import LexicalRichText
+import LexicalTesting
 import Testing
 
 // Ports of packages/lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts
@@ -182,26 +183,29 @@ private func blocks(_ editor: Editor, masked: Bool = false, root: Bool = false) 
       "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::an unknown element that hoists the same list again does not make import look at it again"
     ))
   func hoistedListNotLookedAtAgain() throws {
-    var costs: [Int] = []
-    for n in [32, 64, 128] {
-      let editor = try plainEditor("block-wrapper-id-hoist")
-      defer { editor.dispose() }
-      // Each unrecognized wrapper hoists the same ListNode, whose n child
-      // items have already been constructed. The valid top-level wrapper id
-      // remains unresolved, because no wrapping block is created.
-      let dom = parse(
-        String(repeating: "<x-transparent>", count: n) + #"<ul data-block-wrapper-id="foreign">"#
-          + String(repeating: "<li>x</li>", count: n) + "</ul>"
-          + String(repeating: "</x-transparent>", count: n))
-      costs.append(
-        try importCost(editor, dom) { (nodes: [LexicalNode]) throws -> Void in
-          #expect(nodes.count == 1)
-          #expect(
-            try nodes[0].getTextContent().filter { !$0.isWhitespace }
-              == String(repeating: "x", count: n))
-        })
+    // Nests {32, 64, 128} levels deep (see withLargeStack).
+    try withLargeStack {
+      var costs: [Int] = []
+      for n in [32, 64, 128] {
+        let editor = try plainEditor("block-wrapper-id-hoist")
+        defer { editor.dispose() }
+        // Each unrecognized wrapper hoists the same ListNode, whose n child
+        // items have already been constructed. The valid top-level wrapper id
+        // remains unresolved, because no wrapping block is created.
+        let dom = parse(
+          String(repeating: "<x-transparent>", count: n) + #"<ul data-block-wrapper-id="foreign">"#
+            + String(repeating: "<li>x</li>", count: n) + "</ul>"
+            + String(repeating: "</x-transparent>", count: n))
+        costs.append(
+          try importCost(editor, dom) { (nodes: [LexicalNode]) throws -> Void in
+            #expect(nodes.count == 1)
+            #expect(
+              try nodes[0].getTextContent().filter { !$0.isWhitespace }
+                == String(repeating: "x", count: n))
+          })
+      }
+      expectLinear(costs)
     }
-    expectLinear(costs)
   }
 
   @Test(
@@ -209,17 +213,20 @@ private func blocks(_ editor: Editor, masked: Bool = false, root: Bool = false) 
       "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperImport.test.ts::wrapper ids inside many unknown elements are looked at a bounded number of times each"
     ))
   func idsInsideManyUnknownElements() throws {
-    var costs: [Int] = []
-    for n in [32, 64, 128] {
-      let editor = try plainEditor("block-wrapper-id-deep")
-      defer { editor.dispose() }
-      let dom = parse(
-        String(repeating: "<x-transparent>", count: n)
-          + (0..<n).map { #"<ul data-block-wrapper-id="w\#($0)"><li>x</li></ul>"# }.joined()
-          + String(repeating: "</x-transparent>", count: n))
-      costs.append(try importCost(editor, dom))
+    // Nests {32, 64, 128} levels deep (see withLargeStack).
+    try withLargeStack {
+      var costs: [Int] = []
+      for n in [32, 64, 128] {
+        let editor = try plainEditor("block-wrapper-id-deep")
+        defer { editor.dispose() }
+        let dom = parse(
+          String(repeating: "<x-transparent>", count: n)
+            + (0..<n).map { #"<ul data-block-wrapper-id="w\#($0)"><li>x</li></ul>"# }.joined()
+            + String(repeating: "</x-transparent>", count: n))
+        costs.append(try importCost(editor, dom))
+      }
+      expectLinear(costs)
     }
-    expectLinear(costs)
   }
 }
 
@@ -316,24 +323,27 @@ private func populateResult(_ mode: Growth, _ early: Bool) throws -> [String] {
       "lexical-html/src/__tests__/unit/BlockIdHTMLWrapperResolve.test.ts::a list that grows by one item per element around it is resolved in linear work"
     ))
   func growingListIsLinear() throws {
-    var costs: [Int] = []
-    for n in [32, 64, 128] {
-      let editor = try plainEditor("test-changing-count", [growRule])
-      defer { editor.dispose() }
-      let dom = parse(
-        String(repeating: "<x-grow>", count: n)
-          + #"<ul data-block-wrapper-id="foreign"><li>x</li></ul>"#
-          + String(repeating: "</x-grow>", count: n))
-      costs.append(
-        try importCost(editor, dom) { (nodes: [LexicalNode]) throws -> Void in
-          #expect(nodes.count == 1)
-          #expect(try (nodes[0] as! ElementNode).getChildrenSize() == n + 1)
-          #expect(
-            try nodes[0].getTextContent().filter { !$0.isWhitespace }
-              == String(repeating: "x", count: n + 1))
-        })
+    // Nests {32, 64, 128} levels deep (see withLargeStack).
+    try withLargeStack {
+      var costs: [Int] = []
+      for n in [32, 64, 128] {
+        let editor = try plainEditor("test-changing-count", [growRule])
+        defer { editor.dispose() }
+        let dom = parse(
+          String(repeating: "<x-grow>", count: n)
+            + #"<ul data-block-wrapper-id="foreign"><li>x</li></ul>"#
+            + String(repeating: "</x-grow>", count: n))
+        costs.append(
+          try importCost(editor, dom) { (nodes: [LexicalNode]) throws -> Void in
+            #expect(nodes.count == 1)
+            #expect(try (nodes[0] as! ElementNode).getChildrenSize() == n + 1)
+            #expect(
+              try nodes[0].getTextContent().filter { !$0.isWhitespace }
+                == String(repeating: "x", count: n + 1))
+          })
+      }
+      expectLinear(costs)
     }
-    expectLinear(costs)
   }
 
   @Test(

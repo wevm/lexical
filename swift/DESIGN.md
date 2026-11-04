@@ -275,6 +275,14 @@ These are reversible choices made while porting, under Q7 and Q27.
   closure that returns a clean-up spells its type
   (`{ _ -> ListenerCleanup? in … }`). Two unlabeled overloads that differ
   only by return type are otherwise ambiguous for multi-statement closures.
+- **Deep inputs and the stack.** Algorithms recurse where upstream's do;
+  HTML import, for one, recurses once per DOM level. A debug build uses
+  about 4 KB of stack per level, so the 128-level cost cases of
+  `BlockIdHTMLWrapperImport.test.ts` overflow the 512 KB stack Swift
+  Testing's threads get on Darwin (Linux gives them 8 MB). Such a test runs
+  its body in `LexicalTesting.withLargeStack`, an 8 MB thread, rather than
+  with a smaller input. Before a push, `ulimit -s 512` and a full
+  `swift test` reproduce the Darwin limit on Linux.
 
 ## Extension conventions (decided during M2, for tmm to review)
 

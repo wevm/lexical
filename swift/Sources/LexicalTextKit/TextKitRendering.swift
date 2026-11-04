@@ -144,10 +144,11 @@ extension TextKitTheme {
     }
 
     if !restyle.isEmpty {
-      let spans = restyle.compactMap { document.span($0) }
-      for run in document.runs
+      // Only the restyled blocks' text: they are leaf blocks, so none holds
+      // another, and in document order their runs are too.
+      let restyled = restyle.compactMap { key in document.span(key).map { (key, $0.location) } }
+      for run in restyled.sorted(by: { $0.1 < $1.1 }).flatMap({ document.runs(under: $0.0) })
       where run.length > 0
-        && spans.contains(where: { $0.location <= run.location && run.location < $0.end })
         && !finalRanges.contains(where: { $0.location <= run.location && run.location < $0.end })
       {
         guard let node = try getNodeByKey(run.key) as? TextNode else { continue }

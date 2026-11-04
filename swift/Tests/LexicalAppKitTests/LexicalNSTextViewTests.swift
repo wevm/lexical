@@ -190,6 +190,37 @@
       _ = window
     }
 
+    @Test func caretOnAnEmptyLastBlockFollowsItsIndent() throws {
+      let (view, window) = try makeView()
+      insert(view, "Hello")
+      view.insertNewline(nil)
+      // The caret is on the empty last line, which no character carries.
+      func caretX() throws -> CGFloat {
+        let layoutManager = try #require(view.textLayoutManager)
+        let end = NSTextRange(location: layoutManager.documentRange.endLocation)
+        layoutManager.ensureLayout(for: layoutManager.documentRange)
+        var x: CGFloat?
+        layoutManager.enumerateTextSegments(in: end, type: .standard, options: []) {
+          _, segment, _, _ in
+          x = segment.minX
+          return false
+        }
+        return try #require(x)
+      }
+      let start = try caretX()
+      // Only the block's look changes: the text and the selection stay.
+      func indentLastBlock(_ indent: Int) throws {
+        try view.editor.update(discrete: true) {
+          try (getRoot().getLastChild() as? ElementNode)?.setIndent(indent)
+        }
+      }
+      try indentLastBlock(2)
+      #expect(try caretX() == start + 80)
+      try indentLastBlock(0)
+      #expect(try caretX() == start)
+      _ = window
+    }
+
     @Test func centersTextInCSSLineBoxes() throws {
       let (view, window) = try makeView()
       // Lines of capitals, whose ink runs from the cap height to the

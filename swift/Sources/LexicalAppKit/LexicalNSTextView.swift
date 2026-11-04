@@ -40,6 +40,11 @@
 
     /// Kept here because the layout manager refers to it weakly.
     private let contentStorage: NSTextContentStorage
+    /// The layout manager's delegate, kept for the same reason.
+    private let layoutDelegate = CenteredLineLayoutDelegate()
+    /// The caret view, while its frame changes are observed.
+    private var observedInsertionIndicator: NSTextInsertionIndicator?
+    private var isFittingInsertionIndicator = false
 
     public init(editor: Editor, frame: NSRect = .zero) {
       controller = TextKitInputController(editor: editor)
@@ -53,6 +58,7 @@
       container.widthTracksTextView = true
       layoutManager.textContainer = container
       super.init(frame: frame, textContainer: container)
+      layoutManager.delegate = layoutDelegate
       isRichText = true
       importsGraphics = false
       allowsUndo = false
@@ -90,6 +96,7 @@
 
     isolated deinit {
       removeListeners.forEach { $0() }
+      NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: Rendering
@@ -127,7 +134,9 @@
           NSRange(location: paragraph.range.location, length: paragraph.range.length),
           NSRange(location: 0, length: length))
         textStorage.addAttribute(
-          .paragraphStyle, value: paragraph.attributes.nsParagraphStyle, range: range)
+          .paragraphStyle,
+          value: paragraph.attributes.nsParagraphStyle(fontSize: paragraph.text.nsFont.pointSize),
+          range: range)
         // The separator after the text takes the block's own look, so an
         // empty block's line has its height.
         if range.length > 0,
@@ -225,13 +234,70 @@
       return frame
     }
 
-    /// Where the item's text sits in its first line `line`: a line height
-    /// above the font's adds its space above the text, so the glyphs end at
-    /// the line's bottom.
+    /// Where the item's text sits in its first line `line`: centered, as
+    /// `CenteredLineLayoutFragment` draws it.
     private func glyphBox(_ layout: TextKitListMarkerLayout, _ line: NSRect) -> NSRect {
       let font = layout.text.nsFont
-      let height = min(line.height, font.ascender - font.descender)
-      return NSRect(x: line.minX, y: line.maxY - height, width: line.width, height: height)
+      let height = font.ascender - font.descender
+      return NSRect(x: line.minX, y: line.midY - height / 2, width: line.width, height: height)
+    }
+
+    // MARK: Caret
+
+    public override func layout() {
+      super.layout()
+      fitInsertionIndicator()
+    }
+
+    /// Makes the caret as tall as the font at it, on its line's centered
+    /// text, as a browser draws it: `NSTextView` makes it as tall as the
+    /// line, from where TextKit put the text. The caret view's frame is
+    /// fitted again whenever `NSTextView` moves it.
+    private func fitInsertionIndicator() {
+      guard !isFittingInsertionIndicator,
+        let indicator = subviews.lazy.compactMap({ $0 as? NSTextInsertionIndicator }).first
+      else { return }
+      if indicator !== observedInsertionIndicator {
+        if let observed = observedInsertionIndicator {
+          NotificationCenter.default.removeObserver(
+            self, name: NSView.frameDidChangeNotification, object: observed)
+        }
+        observedInsertionIndicator = indicator
+        indicator.postsFrameChangedNotifications = true
+        NotificationCenter.default.addObserver(
+          self, selector: #selector(insertionIndicatorMoved(_:)),
+          name: NSView.frameDidChangeNotification, object: indicator)
+      }
+      guard let layoutManager = textLayoutManager,
+        let location = textRange(NSRange(location: selectedRange().location, length: 0))?.location,
+        let fragment = layoutManager.textLayoutFragment(for: location)
+      else { return }
+      let origin = textContainerOrigin
+      let frame = fragment.layoutFragmentFrame
+      let caret = indicator.frame
+      // The line the caret is on, which `NSTextView` put it beside.
+      guard
+        let line = fragment.textLineFragments.first(where: { line in
+          let bounds = line.typographicBounds.offsetBy(
+            dx: frame.minX + origin.x, dy: frame.minY + origin.y)
+          return bounds.minY <= caret.midY && caret.midY < bounds.maxY
+        }) ?? fragment.textLineFragments.last
+      else { return }
+      let font = typingAttributes[.font] as? NSFont
+      let ascent = font?.ascender ?? line.fontExtents?.ascent ?? 0
+      let descent = font.map { -$0.descender } ?? line.fontExtents?.descent ?? 0
+      let baseline =
+        origin.y + frame.minY + line.typographicBounds.minY + line.glyphOrigin.y - line.textOffset
+      let fitted = NSRect(
+        x: caret.minX, y: baseline - ascent, width: caret.width, height: ascent + descent)
+      guard ascent + descent > 0, fitted != caret else { return }
+      isFittingInsertionIndicator = true
+      indicator.frame = fitted
+      isFittingInsertionIndicator = false
+    }
+
+    @objc private func insertionIndicatorMoved(_ notification: Notification) {
+      fitInsertionIndicator()
     }
 
     /// Draws `layout`'s marker on the item's first line, `line`: a text

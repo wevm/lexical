@@ -640,7 +640,14 @@ Reversible choices made porting `@lexical/extension` under Q18.
   then the paragraphs the commit touched (every leaf block of an element
   marked dirty itself, and each dirty leaf block) get their
   `NSParagraphStyle` again, and their separator the block's own text look,
-  so an empty block's line has its height. Quote bars are drawn behind the
+  so an empty block's line has its height. A theme `lineHeightMultiple` is
+  CSS `line-height`: the line is at least that many times the block's font
+  size (its `minimumLineHeight`), and each paragraph's layout fragment
+  (`CenteredLineLayoutFragment`) draws its lines' text centered in them,
+  with the half-leading above and below, where TextKit would put all the
+  extra space above the text. The caret is fitted to the font's ascent and
+  descent at that centered baseline, as a browser draws it, while the
+  selection keeps the whole line box. Quote bars are drawn behind the
   text from the block's line fragments. `textTransform` is not drawn yet,
   so the default theme's `h2` and `h3` show their case as typed.
 - **Decorators** (Q12). A decorator's U+FFFC carries an `NSTextAttachment`

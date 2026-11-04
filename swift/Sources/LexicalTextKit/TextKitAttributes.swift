@@ -234,6 +234,7 @@ public struct TextKitStyle: Hashable, Sendable {
   public var headIndent: Double?
   public var spacingBefore: Double?
   public var spacingAfter: Double?
+  /// A CSS `line-height` number, a multiple of the block's font size.
   public var lineHeightMultiple: Double?
   public var blockBar: TextKitBlockBar?
 
@@ -559,7 +560,9 @@ public struct TextKitParagraphAttributes: Hashable, Sendable {
   public var headIndent: Double = 0
   public var spacingBefore: Double = 0
   public var spacingAfter: Double = 0
-  /// `nil` is the font's own line height.
+  /// A CSS `line-height` number: each line is at least this many times the
+  /// block's font size, with its text centered in it. `nil` is the font's
+  /// own line height.
   public var lineHeightMultiple: Double?
   public var backgroundColor: TextKitColor?
   /// Quote bars, outermost first, offsets from the inline start.

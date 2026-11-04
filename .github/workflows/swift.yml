@@ -84,6 +84,29 @@ jobs:
       - name: Run
         run: swift run -c release LexicalBenchmarks --markdown "$GITHUB_STEP_SUMMARY"
 
+  # The same benchmarks on upstream's JS, for comparison: headless in Node
+  # (the model only) and on a mounted contenteditable in Chromium and WebKit
+  # (the model and the DOM reconcile). Reported, never gating.
+  js-baselines:
+    name: JS baselines (reported)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.24.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Run
+        run: node packages/lexical-conformance/scripts/bench.mjs --node --browser chromium,webkit --markdown "$GITHUB_STEP_SUMMARY"
+
   # Fails on a break of the public API since the mirror's newest release tag,
   # unless CHANGELOG.md lists it as breaking (swift/scripts/api-breaks.sh).
   api-breaks:

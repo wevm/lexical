@@ -114,7 +114,13 @@ var results: [Result] = []
 }
 
 let json = try fixture()
-print("Fixture: \(paragraphCount) blocks, \(json.utf8.count / 1024) KB of JSON")
+// FNV-1a (32-bit) of the JSON, which the JS baselines print too
+// (packages/lexical-conformance/bench), so the outputs show both ran on the
+// same bytes.
+let checksum = json.utf8.reduce(UInt32(0x811c_9dc5)) { ($0 ^ UInt32($1)) &* 0x0100_0193 }
+print(
+  "Fixture: \(paragraphCount) blocks, \(json.utf8.count / 1024) KB of JSON, FNV-1a "
+    + String(format: "%08x", checksum))
 
 // Load: a mounted view gets a serialized document, from the JSON string to
 // the storage holding its text.

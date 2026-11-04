@@ -655,20 +655,6 @@
     ],
     "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
   },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a copy of a list merged with the equal …": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a heading split around a list: the list…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a list lifted out of a link: the items …": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -676,55 +662,6 @@
       "lexical-link"
     ],
     "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a new list with an id merged with the l…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a new list without an id merged with th…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > copies of a list, one apart and one on each side of it: the merged list keeps its id": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > equal adjacent lists merge: the first k…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > nested lists joined at a seam: the firs…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a copy of a list merged with the equal …": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a heading split around a list: the list…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
   },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a list lifted out of a link: the items …": {
     "reason": "out-of-scope-package",
@@ -734,55 +671,6 @@
     ],
     "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
   },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a new list with an id merged with the l…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a new list without an id merged with th…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > copies of a list, one apart and one on each side of it: the merged list keeps its id": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > equal adjacent lists merge: the first k…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > nested lists joined at a seam: the firs…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a copy of a list merged with the equal …": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a heading split around a list: the list…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a list lifted out of a link: the items …": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -790,62 +678,6 @@
       "lexical-link"
     ],
     "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a new list with an id merged with the l…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a new list without an id merged with th…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > copies of a list, one apart and one on each side of it: the merged list keeps its id": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > equal adjacent lists merge: the first k…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > nested lists joined at a seam: the firs…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > block ids first: equal adjacent lists get the ids of the merged document, as without the structure": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > both orders derive the same ids": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > structure first: equal adjacent lists get the ids of the merged document, as without the structure": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds or loads bullet lists (ListNode, ListItemNode) whose merging and splitting NodeStructureExtension normalizes."
   },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: a copy of a list pasted above another list > the list it merges into keeps its id": {
     "reason": "out-of-scope-package",

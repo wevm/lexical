@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalList
 import LexicalRichText
 import Testing
 
@@ -7,8 +8,8 @@ import Testing
 // block ids in an editor that also enforces declared node structure, whose
 // normalization splits, joins, lifts and merges blocks in the same update as
 // the change that needs it. Upstream's editors register ListExtension and
-// LinkExtension too; the cases that build lists or links are skipped until
-// those packages are ported, and the rest need neither.
+// LinkExtension too; the case that builds a link is skipped until
+// @lexical/link is ported.
 
 /// The order the extensions are listed in, or the structure enabled after
 /// the editor is built, or no structure at all.
@@ -40,7 +41,8 @@ private func build(
     }
   let editor = try buildEditorFromExtensions(
     defineExtension(
-      name: "[block-id-structure-test]", dependencies: [RichTextExtension] + structure,
+      name: "[block-id-structure-test]",
+      dependencies: [RichTextExtension, ListExtension] + structure,
       editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
   if order == .structureEnabledLater {
     try getExtensionDependencyFromEditor(editor, NodeStructureExtension).output.disabled.set(false)
@@ -132,6 +134,67 @@ let STRUCTURE_CASES: [BlockIdStructureCase] = [
     expected: [#"heading#H["h" linebreak "a" linebreak "b"]"#]),
 ]
 
+private func li(_ children: LexicalNode...) throws -> ListItemNode {
+  try createListItemNode().append(contentsOf: children)
+}
+private func ul(_ children: LexicalNode...) throws -> ListNode {
+  try createListNode("bullet").append(contentsOf: children)
+}
+
+let LIST_STRUCTURE_CASES: [BlockIdStructureCase] = [
+  BlockIdStructureCase(
+    name: "a heading split around a list: the list and the second piece get new ids",
+    setup: { try getRoot().append(withId(createHeadingNode("h1").append(t("a")), "H")) },
+    change: { try block("H").append(ul(withId(li(t("x")), "L")), t("b")) },
+    expected: [#"heading#H["a"]"#, #"list#g1[listitem#L["x"]]"#, #"heading#g2["b"]"#]),
+  BlockIdStructureCase(
+    name: "equal adjacent lists merge: the first keeps its id",
+    setup: {
+      try getRoot().append(
+        withId(ul(withId(li(t("a")), "LA")), "U1"), withId(p(t("sep")), "SEP"),
+        withId(ul(withId(li(t("b")), "LB")), "U2"))
+    },
+    change: { try block("SEP").remove() },
+    expected: [#"list#U1[listitem#LA["a"] listitem#LB["b"]]"#]),
+  BlockIdStructureCase(
+    name: "nested lists joined at a seam: the first item keeps its id",
+    setup: {
+      try getRoot().append(
+        withId(ul(withId(li(ul(withId(li(t("a")), "NA"))), "W1")), "U1"),
+        withId(p(t("sep")), "SEP"),
+        withId(ul(withId(li(ul(withId(li(t("b")), "NB"))), "W2")), "U2"))
+    },
+    change: { try block("SEP").remove() },
+    expected: [#"list#U1[listitem#W1[list[listitem#NA["a"] listitem#NB["b"]]]]"#]),
+  BlockIdStructureCase(
+    name: "a new list without an id merged with the list after it continues that list",
+    setup: {
+      try getRoot().append(withId(p(t("z")), "Z"), withId(ul(withId(li(t("a")), "LA")), "U1"))
+    },
+    change: { _ = try block("U1").insertBefore(ul(li(t("new")))) },
+    expected: [#"paragraph#Z["z"]"#, #"list#U1[listitem#g1["new"] listitem#LA["a"]]"#]),
+  BlockIdStructureCase(
+    name: "a new list with an id merged with the list after it keeps its own id",
+    setup: {
+      try getRoot().append(withId(p(t("z")), "Z"), withId(ul(withId(li(t("a")), "LA")), "U1"))
+    },
+    change: { _ = try block("U1").insertBefore(withId(ul(li(t("new"))), "NEW")) },
+    expected: [#"paragraph#Z["z"]"#, #"list#NEW[listitem#g1["new"] listitem#LA["a"]]"#]),
+  BlockIdStructureCase(
+    name: "a copy of a list merged with the equal list after it continues that list",
+    setup: {
+      try getRoot().append(
+        withId(ul(withId(li(t("l")), "LL")), "L"), withId(p(t("sep")), "SEP"),
+        withId(ul(withId(li(t("m")), "MM")), "M"))
+    },
+    // A copy of list L, with L's ids, pasted right above the equal list M.
+    change: { _ = try block("M").insertBefore(withId(ul(withId(li(t("l")), "LL")), "L")) },
+    expected: [
+      #"list#L[listitem#LL["l"]]"#, #"paragraph#SEP["sep"]"#,
+      #"list#M[listitem#g1["l"] listitem#MM["m"]]"#,
+    ]),
+]
+
 @Suite struct BlockIdStructureTests {
   @Test(
     .upstream(
@@ -164,6 +227,106 @@ let STRUCTURE_CASES: [BlockIdStructureCase] = [
     arguments: [BlockIdStructureOrder.blockIdsFirst, .structureFirst, .structureEnabledLater],
     STRUCTURE_CASES)
   func normalization(_ order: BlockIdStructureOrder, _ testCase: BlockIdStructureCase) throws {
+    try runCase(order, testCase)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a heading split around a list: the list…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > equal adjacent lists merge: the first k…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > nested lists joined at a seam: the firs…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a new list without an id merged with th…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a new list with an id merged with the l…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a copy of a list merged with the equal …"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a heading split around a list: the list…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > equal adjacent lists merge: the first k…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > nested lists joined at a seam: the firs…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a new list without an id merged with th…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a new list with an id merged with the l…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a copy of a list merged with the equal …"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a heading split around a list: the list…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > equal adjacent lists merge: the first k…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > nested lists joined at a seam: the firs…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a new list without an id merged with th…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a new list with an id merged with the l…"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a copy of a list merged with the equal …"
+    ),
+    arguments: [BlockIdStructureOrder.blockIdsFirst, .structureFirst, .structureEnabledLater],
+    LIST_STRUCTURE_CASES)
+  func listNormalization(_ order: BlockIdStructureOrder, _ testCase: BlockIdStructureCase) throws {
+    try runCase(order, testCase)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > copies of a list, one apart and one on each side of it: the merged list keeps its id"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > copies of a list, one apart and one on each side of it: the merged list keeps its id"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > copies of a list, one apart and one on each side of it: the merged list keeps its id"
+    ),
+    arguments: [BlockIdStructureOrder.blockIdsFirst, .structureFirst, .structureEnabledLater])
+  func copiesOfAList(_ order: BlockIdStructureOrder) throws {
+    let editor = try build(order)
+    defer { editor.dispose() }
+    try discrete(editor) {
+      try getRoot().append(
+        withId(p(t("z")), "Z"), withId(createHeadingNode("h1").append(t("h")), "H"),
+        withId(ul(withId(li(t("a")), "A")), "U"))
+    }
+    try discrete(editor) {
+      // Copies of list U, with U's ids.
+      func copy() throws -> ListNode { try withId(ul(withId(li(t("a")), "A")), "U") }
+      _ = try block("Z").insertAfter(copy())
+      _ = try block("H").insertAfter(copy())
+      _ = try block("U").insertAfter(copy())
+    }
+    // Generated ids (`g<n>`) depend on how many were discarded.
+    #expect(
+      try shape(editor).map { try $0.replacing(Regex(#"#g\d+"#), with: "#g") } == [
+        #"paragraph#Z["z"]"#, #"list#g[listitem#g["a"]]"#, #"heading#H["h"]"#,
+        #"list#U[listitem#g["a"] listitem#A["a"] listitem#g["a"]]"#,
+      ])
+    try expectIndexed(editor)
+  }
+
+  private func runCase(_ order: BlockIdStructureOrder, _ testCase: BlockIdStructureCase) throws {
     let editor = try build(order)
     defer { editor.dispose() }
     try discrete(editor) { try testCase.setup() }
@@ -177,7 +340,7 @@ let STRUCTURE_CASES: [BlockIdStructureCase] = [
 private func storedJSON(_ build: @escaping () throws -> Void) throws -> String {
   let writer = try buildEditorFromExtensions(
     defineExtension(
-      name: "[block-id-structure-test-writer]", dependencies: [RichTextExtension],
+      name: "[block-id-structure-test-writer]", dependencies: [RichTextExtension, ListExtension],
       editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
   defer { writer.dispose() }
   try discrete(writer, skipTransforms: true) { try build() }
@@ -226,6 +389,47 @@ private func withoutIds(_ blocks: [String]) throws -> [String] {
 }
 
 @Suite struct BlockIdStructureLoadTests {
+  private func lists() throws -> String {
+    try storedJSON {
+      try getRoot().append(p(t("z")), ul(li(t("x"))), ul(li(t("y"))))
+    }
+  }
+
+  private func quote() throws -> String {
+    try storedJSON {
+      try getRoot().append(
+        p(t("a"), createQuoteNode().append(t("q")), t("b")), p(t("c")))
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > block ids first: equal adjacent lists get the ids of the merged document, as without the structure"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > structure first: equal adjacent lists get the ids of the merged document, as without the structure"
+    ),
+    arguments: [BlockIdStructureOrder.blockIdsFirst, .structureFirst])
+  func equalAdjacentLists(_ order: BlockIdStructureOrder) throws {
+    let lists = try lists()
+    let ids = try loadedIds(order, lists)
+    #expect(try ids == idsOfLoadedDocument(order, lists))
+    #expect(try ids == loadedIds(.noStructure, lists))
+    #expect(try withoutIds(ids) == [#"paragraph["z"]"#, #"list[listitem["x"] listitem["y"]]"#])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > both orders derive the same ids"
+    ),
+  )
+  func bothOrdersDeriveTheSameIds() throws {
+    let quote = try quote()
+    let lists = try lists()
+    #expect(try loadedIds(.blockIdsFirst, quote) == loadedIds(.structureFirst, quote))
+    #expect(try loadedIds(.blockIdsFirst, lists) == loadedIds(.structureFirst, lists))
+  }
+
   @Test(
     .upstream(
       "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension: loads > block ids first: a split document gets the ids of the document the load ends with"

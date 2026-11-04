@@ -1,4 +1,5 @@
 import Lexical
+import LexicalCodeCore
 import LexicalExtension
 import LexicalLink
 import LexicalList
@@ -9,8 +10,8 @@ import Testing
 // Port of packages/lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts.
 // Upstream's `build` registers the list, link, table, code and overflow
 // nodes in every editor; the editors here register rich text, the list, the
-// link and the horizontal rule. The tests that use the other packages are
-// skipped until they are ported.
+// link, the code block and the horizontal rule. The tests that use the
+// other packages are skipped until they are ported.
 
 private func shape(_ node: LexicalNode) throws -> JSONValue {
   if let element = node as? ElementNode {
@@ -32,6 +33,7 @@ private func build(_ initial: @escaping () throws -> Void, _ withStructure: Bool
       name: "node-structure-test",
       dependencies: [RichTextExtension, ListExtension, LinkExtension, HorizontalRuleExtension]
         + (withStructure ? [NodeStructureExtension] : []),
+      nodes: { [.klass(CodeNode.self)] },
       editorConfig: InitialEditorConfig(
         onError: { error, _ in throw error }, initialEditorState: .update { _ in try initial() })))
 }
@@ -813,6 +815,91 @@ private final class StatefulLinkNode: LinkNode {
         == #"[["test-wrap-group",["test-wrap-item","a","linebreak"],["paragraph","p"],["test-wrap-item","b"]]]"#
     )
   }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > typed blocks inside a quote are split around and keep their type"
+    ))
+  func typedBlocksInQuote() throws {
+    let editor = try build(
+      {
+        try getRoot().append(
+          createQuoteNode().append(
+            createParagraphNode().append(createTextNode("a")),
+            createHeadingNode("h2").append(createTextNode("h")),
+            createParagraphNode().append(createTextNode("b")),
+            createCodeNode().append(createTextNode("c")),
+            createQuoteNode().append(createTextNode("q")),
+            createParagraphNode().append(createTextNode("d"))))
+      }, true)
+    defer { editor.dispose() }
+    #expect(
+      try rootShape(editor)
+        == #"[["quote","a"],["heading","h"],["quote","b"],["code","c"],["quote","q"],["quote","d"]]"#
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > paragraphs in other blocks that hold inline content become lines"
+    ))
+  func paragraphsInInlineBlocks() throws {
+    let editor = try build(
+      {
+        try getRoot().append(
+          createCodeNode().append(
+            createParagraphNode().append(createTextNode("one")),
+            createParagraphNode().append(createTextNode("two"))),
+          createHeadingNode("h1").append(
+            createTextNode("x"), createLineBreakNode(),
+            createParagraphNode().append(createTextNode("y"))))
+      }, true)
+    defer { editor.dispose() }
+    #expect(
+      try rootShape(editor)
+        == #"[["code","one","linebreak","two"],["heading","x","linebreak","linebreak","y"]]"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a paragraph in a block in a holder: the result does not depend on which is repaired first"
+    ))
+  func repairOrderIndependent() throws {
+    let doc: () throws -> Void = {
+      _ = try getRoot().append(
+        createCodeNode().append(
+          createParagraphNode().append(
+            createHeadingNode("h1").append(createTextNode("h")), createTextNode("a"))))
+    }
+    let built = try build(doc, true)
+    defer { built.dispose() }
+    let want = try rootShape(built)
+    #expect(want == #"[["heading","h"],["code","a"]]"#)
+    // The same document built with the extension off, then every element
+    // marked dirty inner first once it is on.
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "order",
+        dependencies: [
+          RichTextExtension, configExtension(NodeStructureExtension) { $0.disabled = true },
+        ],
+        nodes: { [.klass(CodeNode.self)] },
+        editorConfig: InitialEditorConfig(initialEditorState: .update { _ in try doc() })))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      var all: [LexicalNode] = []
+      func walk(_ n: LexicalNode) throws {
+        if let element = n as? ElementNode {
+          try element.getChildren().forEach(walk)
+        }
+        all.append(n)
+      }
+      try getRoot().getChildren().forEach(walk)
+      try all.forEach { try $0.markDirty() }
+    }
+    try getExtensionDependencyFromEditor(editor, NodeStructureExtension).output.disabled.set(false)
+    #expect(try rootShape(editor) == want)
+  }
 }
 
 @Suite struct NodeStructureRegistrationTests {
@@ -1334,6 +1421,24 @@ private final class SubListNode: ListNode {
       try item.getFirstChildOrThrow().insertBefore(createHorizontalRuleNode())
     }
     #expect(try listStarts(editor) == [[5, "x"], "horizontalrule", [6, "a", "y"]])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block lifted out of a list item splits the list and keeps its type"
+    ))
+  func blockLiftedOutOfListItem() throws {
+    func h() throws -> LexicalNode { try createHeadingNode("h2").append(createTextNode("h")) }
+    let cases: [(() throws -> [LexicalNode], JSONValue)] = [
+      ({ [try h(), try createTextNode("a")] }, [[1, "x"], "heading", [2, "a", "y"]]),
+      ({ [try createTextNode("a"), try h()] }, [[1, "x", "a"], "heading", [3, "y"]]),
+      ({ [try createCodeNode().append(createTextNode("c"))] }, [[1, "x"], "code", [2, "y"]]),
+    ]
+    for (item, expected) in cases {
+      let editor = try build({ try numbered(1, .text("x"), .nodes(item), .text("y")) }, true)
+      defer { editor.dispose() }
+      #expect(try listStarts(editor) == expected)
+    }
   }
 
   @Test(

@@ -1,4 +1,5 @@
 import Lexical
+import LexicalCodeCore
 import LexicalExtension
 import LexicalList
 import LexicalRichText
@@ -8,10 +9,9 @@ import LexicalUtils
 import Testing
 
 // Port of packages/lexical-extension/src/__tests__/unit/BlockContainers.test.ts.
-// Upstream's editor also has the list, link and code extensions and the
-// markdown shortcuts. The cases ported here use none of them (core, rich
-// text, @lexical/selection and @lexical/utils commands only); the ones that
-// do are skipped until those packages are ported.
+// Upstream's editor also has the link extension and the markdown
+// shortcuts. The cases ported here use neither; the ones that do are
+// skipped until those packages are ported.
 
 private final class PlainBoxNode: ElementNode {
   override class func config() -> NodeConfig? {
@@ -222,6 +222,10 @@ nonisolated(unsafe) private let CMDS: [String: Cmd] = [
   }) { _ in
     _ = try findText("abc").select(1, 1)
     try removeList()
+  },
+  "setBlocksType-code-range": Cmd(inner: twoParagraphs) { _ in
+    try selectRange(findText("abc"), 1, findText("def"), 1)
+    try setBlocksType(getSelection()) { try createCodeNode() }
   },
   "setBlocksType-heading": Cmd(inner: twoParagraphs) { _ in
     _ = try findText("abc").select(1, 1)
@@ -644,7 +648,7 @@ private func buildEditor(_ structure: Bool) throws -> Editor {
   try buildEditorFromExtensions(
     defineExtension(
       name: "block-containers",
-      dependencies: [RichTextExtension, ListExtension, HorizontalRuleExtension]
+      dependencies: [RichTextExtension, ListExtension, CodeExtension, HorizontalRuleExtension]
         + (structure ? [NodeStructureExtension] : []),
       nodes: {
         [
@@ -1890,6 +1894,79 @@ struct StructuralCase: Sendable, CustomTestStringConvertible {
       StructuralCase("removeList", "slot-shadow", true),
     ])
   func listStructuralCommand(_ c: StructuralCase) throws {
+    let want = try #require(expected(c.cmd, c.ctx)).with(c.structure)
+    #expect(try run(CMDS[c.cmd]!, c.ctx, c.structure) == want)
+  }
+
+  // The code command, which needs LexicalCodeCore.
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in declared (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in declared (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in declared2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in declared2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in plain (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in plain (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in plain2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in plain2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in root (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in shadow2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in shadow2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in slot-shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > setBlocksType-code-range in slot-shadow (NodeStructureExtension: true)"
+    ),
+    arguments: [
+      StructuralCase("setBlocksType-code-range", "declared", false),
+      StructuralCase("setBlocksType-code-range", "declared", true),
+      StructuralCase("setBlocksType-code-range", "declared2", false),
+      StructuralCase("setBlocksType-code-range", "declared2", true),
+      StructuralCase("setBlocksType-code-range", "plain", false),
+      StructuralCase("setBlocksType-code-range", "plain", true),
+      StructuralCase("setBlocksType-code-range", "plain2", false),
+      StructuralCase("setBlocksType-code-range", "plain2", true),
+      StructuralCase("setBlocksType-code-range", "root", false),
+      StructuralCase("setBlocksType-code-range", "root", true),
+      StructuralCase("setBlocksType-code-range", "shadow", false),
+      StructuralCase("setBlocksType-code-range", "shadow", true),
+      StructuralCase("setBlocksType-code-range", "shadow2", false),
+      StructuralCase("setBlocksType-code-range", "shadow2", true),
+      StructuralCase("setBlocksType-code-range", "slot-shadow", false),
+      StructuralCase("setBlocksType-code-range", "slot-shadow", true),
+    ])
+  func codeStructuralCommand(_ c: StructuralCase) throws {
     let want = try #require(expected(c.cmd, c.ctx)).with(c.structure)
     #expect(try run(CMDS[c.cmd]!, c.ctx, c.structure) == want)
   }

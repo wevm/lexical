@@ -762,6 +762,16 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   `lexical-link` is `enforced`: 287 upstream tests, 285 ported, 2 skips
   (a MarkNode case and a paste into a code block), and the 157 link cases in
   other packages' tests are ported too.
+- **`LexicalCodeCore`** ports `@lexical/code-core`, which `@lexical/markdown`
+  needs. `CodeHighlightNode(text, highlightType)` takes no default for the
+  type, so that `CodeHighlightNode(text)` is the inherited `TextNode` init
+  rather than an ambiguous call. `CodeGutter.ts` writes `data-gutter` on
+  each code block's live DOM element; the native views have no such
+  element, so it is not ported and its tests are `dom-only` (line numbers
+  belong to the views, with the highlighter). The JS warning for a CodeNode
+  without CodeExtension is not ported. `lexical-code-core` is `enforced`:
+  81 upstream tests, 75 ported, 6 skips (`lexical-table` and the gutter),
+  and the 21 code cases in other packages' tests are ported too.
 
 ## Scope of v0.1.0 (Q21)
 

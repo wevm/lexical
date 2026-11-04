@@ -11,5 +11,7 @@
   "lexical-clipboard": "enforced",
   "lexical-a11y": "enforced",
   "lexical-list": "enforced",
-  "lexical-link": "enforced"
+  "lexical-link": "enforced",
+  "lexical-code-core": "enforced",
+  "lexical-markdown": "pending"
 }

@@ -1,4 +1,5 @@
 import Lexical
+import LexicalCodeCore
 import LexicalLink
 import LexicalList
 import Testing
@@ -17,6 +18,7 @@ struct SerializationTests {
   static let cases: [Case] = (try? Vectors.load("serialization/core")) ?? []
   static let listCases: [Case] = (try? Vectors.load("serialization/list")) ?? []
   static let linkCases: [Case] = (try? Vectors.load("serialization/link")) ?? []
+  static let codeCases: [Case] = (try? Vectors.load("serialization/code")) ?? []
 
   @Test(arguments: cases)
   func roundTrip(_ vector: Case) throws {
@@ -35,6 +37,14 @@ struct SerializationTests {
     try check(
       vector,
       createEditor(CreateEditorArgs(nodes: [.klass(LinkNode.self), .klass(AutoLinkNode.self)])))
+  }
+
+  @Test(arguments: codeCases)
+  func codeRoundTrip(_ vector: Case) throws {
+    try check(
+      vector,
+      createEditor(
+        CreateEditorArgs(nodes: [.klass(CodeNode.self), .klass(CodeHighlightNode.self)])))
   }
 
   func check(_ vector: Case, _ editor: Editor) throws {

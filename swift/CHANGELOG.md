@@ -22,6 +22,13 @@ workflow publishes the section headed `## <swift/VERSION>`.
   `AutoLinkAnnounceExtension`, and `ClickableLinkExtension`, which opens a
   clicked link through a `LinkWindow` the app supplies. Links serialize byte
   for byte as in JS.
+- New `LexicalCodeCore`, a port of `@lexical/code-core`: `CodeNode`,
+  `CodeHighlightNode`, `CodeExtension` (Enter out of a code block, plain
+  tabs), `CodeImportRules` with the VS Code paste overlay,
+  `CodeIndentExtension` and `registerCodeIndentation`, and the line helpers
+  (`getFirstCodeNodeOfLine`, `getStartOfCodeInLine`, `plainifyCodeContent`,
+  `outdentLeadingSpaces`, …). Code blocks serialize byte for byte as in JS.
+  There is no highlighter yet, and no gutter.
 - `DataTransfer` reads and writes the `text` format as `text/plain` and
   `url` as `text/uri-list`, as browsers do.
 - `LexicalTesting.withLargeStack` runs a test body on an 8 MB stack.

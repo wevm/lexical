@@ -1,4 +1,5 @@
 import Lexical
+import LexicalCodeCore
 import LexicalExtension
 import LexicalLink
 import LexicalRichText
@@ -6,8 +7,6 @@ import LexicalTesting
 import Testing
 
 // Port of packages/lexical-link/src/__tests__/unit/LinkExtension.test.ts.
-// The paste into a code block needs @lexical/code-core (skipped in the
-// ledger).
 
 private func linkExtension(
   name: String = "[root]", text: String = "Hello",
@@ -245,6 +244,47 @@ private func paragraph() throws -> ParagraphNode {
 }
 
 @Suite struct LinkExtensionPasteTests {
+  private let pasteUrl = "https://lexical.dev/"
+
+  private func dispatchPaste(_ editor: Editor) throws {
+    let clipboardData = DataTransfer()
+    clipboardData.setData("text/plain", pasteUrl)
+    clipboardData.setData("text/html", pasteUrl)
+    _ = try editor.dispatchCommand(
+      PASTE_COMMAND, .clipboard(ClipboardEvent("paste", clipboardData: clipboardData)))
+  }
+
+  @Test(
+    .upstream(
+      "lexical-link/src/__tests__/unit/LinkExtension.test.ts::Link > PASTE_COMMAND with URLs > does not convert pasted URL to link inside a code block"
+    ))
+  func noLinkInCodeBlock() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "[root-code]",
+        dependencies: [
+          configExtension(LinkExtension) { $0.validateUrl = { _ in true } }, RichTextExtension,
+          CodeExtension,
+        ],
+        editorConfig: InitialEditorConfig(
+          initialEditorState: .update { _ in
+            let code = try createCodeNode()
+            try code.append(createCodeHighlightNode("const x = 5;"))
+            try getRoot().append(code)
+          })))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      let codeHighlight = try #require(
+        try getRoot().getFirstDescendant() as? TextNode, "Expected a TextNode")
+      try codeHighlight.select(0, 5)
+      try dispatchPaste(editor)
+    }
+    try editor.read { () throws -> Void in
+      let code = try #require(try getRoot().getFirstChild() as? CodeNode, "Expected a CodeNode")
+      #expect(!(try code.getChildren().contains { $0 is LinkNode }))
+    }
+  }
+
   @Test(
     .upstream(
       "lexical-link/src/__tests__/unit/LinkExtension.test.ts::Link > PASTE_COMMAND with URLs > wraps selected plain text in a link when a URL is pasted"

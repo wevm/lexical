@@ -340,6 +340,17 @@ open class LexicalNode {
     let selection = editorState._selection
     selection?.setCachedNodes(nil)
     if let writableNode = cloneNotNeeded.get(key) as? Self {
+      // Already marked dirty in this pass: marking it again would change
+      // nothing, since its ancestors were marked with it (or by the parent
+      // it was inserted into, which is made writable), and
+      // `internalMarkParentElementsAsDirty` stops at a marked element on
+      // the same assumption. Every JSON setter of a node being imported
+      // lands here.
+      if writableNode is ElementNode
+        ? editor._dirtyElements.get(key) == true : editor._dirtyLeaves.has(key)
+      {
+        return writableNode
+      }
       // Transforms clear the dirty node set on each iteration to keep track
       // on newly dirty nodes.
       try internalMarkNodeAsDirty(writableNode)

@@ -271,5 +271,48 @@
       }
       _ = window
     }
+
+    @Test func selectsOnlyTheText() throws {
+      let (view, window) = try makeView()
+      view.insertText(String(repeating: "word ", count: 12) + "end")
+      view.insertText("\n")
+      view.insertText("Second")
+      try view.editor.update(discrete: true) {
+        for child in try getRoot().getChildren() { try (child as? ElementNode)?.setIndent(2) }
+      }
+      view.layoutIfNeeded()
+      let all = try #require(
+        view.textRange(from: view.beginningOfDocument, to: view.endOfDocument))
+      let rects = view.selectionRects(for: all)
+      // Three lines: the first paragraph wraps once.
+      try #require(rects.count == 3, "\(rects.map(\.rect))")
+      #expect(rects.first?.containsStart == true)
+      #expect(rects.last?.containsEnd == true)
+      // Each line's text, as TextKit lays it out.
+      let layoutManager = try #require(view.textLayoutManager)
+      var text: [CGRect] = []
+      layoutManager.enumerateTextSegments(
+        in: layoutManager.documentRange, type: .standard, options: .rangeNotRequired
+      ) { _, segment, _, _ in
+        text.append(
+          segment.offsetBy(dx: view.textContainerInset.left, dy: view.textContainerInset.top))
+        return true
+      }
+      try #require(text.count >= 3, "\(text)")
+      let font = UIFont.systemFont(ofSize: 16)
+      let left = view.textContainerInset.left + view.textContainer.lineFragmentPadding
+      for (index, (rect, text)) in zip(rects.map(\.rect), text).enumerated() {
+        // From the indented text's start to its end, not the container's
+        // edges.
+        #expect(abs(rect.minX - (left + 80)) <= 0.5, "\(index): \(rect)")
+        #expect(abs(rect.maxX - text.maxX) <= 0.5, "\(index): \(rect) \(text)")
+        // Over the font's content area, centered in the 27.2-point line.
+        #expect(abs(rect.height - (font.ascender - font.descender)) <= 0.5, "\(rect)")
+        #expect(
+          abs(rect.midY - (view.textContainerInset.top + 27.2 * (CGFloat(index) + 0.5))) <= 1,
+          "\(index): \(rect)")
+      }
+      _ = window
+    }
   }
 #endif

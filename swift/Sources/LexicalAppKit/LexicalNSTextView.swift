@@ -56,7 +56,7 @@
       // `init(frame:textContainer: nil)` leaves the view without a text
       // system, so the TextKit 2 stack is built here.
       contentStorage = NSTextContentStorage()
-      let layoutManager = NSTextLayoutManager()
+      let layoutManager = TextBoxLayoutManager()
       contentStorage.addTextLayoutManager(layoutManager)
       let container = NSTextContainer(
         size: NSSize(width: frame.width, height: CGFloat.greatestFiniteMagnitude))

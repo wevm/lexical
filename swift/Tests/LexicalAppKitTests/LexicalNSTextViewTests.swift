@@ -423,5 +423,50 @@
       }
       _ = window
     }
+
+    @Test func selectsOnlyTheText() throws {
+      let (view, window) = try makeView()
+      insert(view, String(repeating: "word ", count: 12) + "end")
+      view.insertNewline(nil)
+      insert(view, "Second")
+      try view.editor.update(discrete: true) {
+        for child in try getRoot().getChildren() { try (child as? ElementNode)?.setIndent(2) }
+      }
+      let layoutManager = try #require(view.textLayoutManager)
+      layoutManager.ensureLayout(for: layoutManager.documentRange)
+      // What NSTextView highlights for a selection of everything.
+      var segments: [CGRect] = []
+      layoutManager.enumerateTextSegments(
+        in: layoutManager.documentRange, type: .selection, options: .rangeNotRequired
+      ) { _, segment, _, _ in
+        segments.append(segment)
+        return true
+      }
+      // Three lines: the first paragraph wraps once.
+      try #require(segments.count == 3, "\(segments)")
+      let font = NSFont.systemFont(ofSize: 16)
+      let padding = try #require(view.textContainer).lineFragmentPadding
+      for (index, segment) in segments.enumerated() {
+        // From the indented text's start, not the container's edge.
+        #expect(abs(segment.minX - (padding + 80)) <= 0.5, "\(index): \(segment)")
+        // Over the font's content area, centered in the 27.2-point line.
+        #expect(abs(segment.height - (font.ascender - font.descender)) <= 0.5, "\(segment)")
+        #expect(abs(segment.midY - 27.2 * (CGFloat(index) + 0.5)) <= 1, "\(index): \(segment)")
+      }
+      // Each line ends where its text does, not at the container's edge.
+      var text: [CGRect] = []
+      layoutManager.enumerateTextSegments(
+        in: layoutManager.documentRange, type: .standard, options: .rangeNotRequired
+      ) { _, segment, _, _ in
+        text.append(segment)
+        return true
+      }
+      // (TextKit reports the last line's twice.)
+      try #require(text.count >= 3, "\(text)")
+      for (segment, text) in zip(segments, text) {
+        #expect(abs(segment.maxX - text.maxX) <= 0.5, "\(segment) \(text)")
+      }
+      _ = window
+    }
   }
 #endif

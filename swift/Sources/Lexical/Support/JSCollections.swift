@@ -197,7 +197,7 @@ package struct FastHashKey<Key: Hashable>: Hashable {
 
   @inlinable package init(_ key: Key) { self.key = key }
 
-  @inlinable package static func == (lhs: Self, rhs: Self) -> Bool {
+  @inlinable @_optimize(speed) package static func == (lhs: Self, rhs: Self) -> Bool {
     guard Key.self == String.self else { return lhs.key == rhs.key }
     let a = unsafeBitCast(lhs.key, to: String.self)
     let b = unsafeBitCast(rhs.key, to: String.self)
@@ -206,18 +206,18 @@ package struct FastHashKey<Key: Hashable>: Hashable {
     #else
       let aBits = unsafeBitCast(a, to: (UInt64, UInt64).self)
       let bBits = unsafeBitCast(b, to: (UInt64, UInt64).self)
-      if aBits == bBits { return true }
+      if aBits.0 == bBits.0 && aBits.1 == bBits.1 { return true }
       // A small string's bits are its contents, so two that differ differ.
       if aBits.1 & smallStringFlag != 0, bBits.1 & smallStringFlag != 0 { return false }
       return a.utf8.elementsEqual(b.utf8)
     #endif
   }
 
-  @inlinable package func hash(into hasher: inout Hasher) {
+  @inlinable @_optimize(speed) package func hash(into hasher: inout Hasher) {
     hasher.combine(_rawHashValue(seed: 0))
   }
 
-  @inlinable package func _rawHashValue(seed: Int) -> Int {
+  @inlinable @_optimize(speed) package func _rawHashValue(seed: Int) -> Int {
     guard Key.self == String.self else { return key._rawHashValue(seed: seed) }
     var string = unsafeBitCast(key, to: String.self)
     var h: UInt64
@@ -265,7 +265,7 @@ package struct FastHashKey<Key: Hashable>: Hashable {
 /// holds its bytes in them.
 @usableFromInline let smallStringFlag: UInt64 = 0x2000_0000_0000_0000
 
-@inlinable func mixWords(_ a: UInt64, _ b: UInt64) -> UInt64 {
+@inlinable @_optimize(speed) func mixWords(_ a: UInt64, _ b: UInt64) -> UInt64 {
   var h = (a ^ 0x9E37_79B9_7F4A_7C15) &* 0xff51_afd7_ed55_8ccd
   h ^= b &+ (h >> 29)
   h = h &* 0xc4ce_b9fe_1a85_ec53

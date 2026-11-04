@@ -16939,5 +16939,12 @@
   "lexical-a11y/src/__tests__/unit/RovingTabIndexExtension.test.ts::RovingTabIndexExtension > vertical orientation responds to ArrowDown, not ArrowRight": {
     "reason": "dom-only",
     "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
+  },
+  "lexical-list/src/__tests__/unit/LexicalListNode.test.ts::LexicalListNode tests > ListNode.append() should wrap an InlineNode in a ListItemNode without converting it to TextNode": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-link"
+    ],
+    "note": "Appends a @lexical/link LinkNode to a list; port with lexical-link."
   }
 }

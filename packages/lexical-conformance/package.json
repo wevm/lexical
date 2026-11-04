@@ -20,6 +20,7 @@
     "@lexical/headless": "workspace:*",
     "@lexical/history": "workspace:*",
     "@lexical/html": "workspace:*",
+    "@lexical/list": "workspace:*",
     "@lexical/plain-text": "workspace:*",
     "@lexical/rich-text": "workspace:*",
     "@lexical/selection": "workspace:*",

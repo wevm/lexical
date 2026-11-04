@@ -9,5 +9,6 @@
   "lexical-headless": "enforced",
   "lexical-html": "enforced",
   "lexical-clipboard": "enforced",
-  "lexical-a11y": "enforced"
+  "lexical-a11y": "enforced",
+  "lexical-list": "pending"
 }

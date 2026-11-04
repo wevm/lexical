@@ -26,6 +26,7 @@ let package = Package(
     .library(name: "LexicalPlainText", targets: ["LexicalPlainText"]),
     .library(name: "LexicalA11y", targets: ["LexicalA11y"]),
     .library(name: "LexicalDevtoolsCore", targets: ["LexicalDevtoolsCore"]),
+    .library(name: "LexicalList", targets: ["LexicalList"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -90,6 +91,16 @@ let package = Package(
       dependencies: [
         "Lexical", "LexicalA11y", "LexicalExtension", "LexicalHTML", "LexicalPlainText",
         "LexicalRichText", "LexicalTesting",
+      ]),
+    // @lexical/list: list nodes, the list commands and checklists.
+    .target(
+      name: "LexicalList",
+      dependencies: ["Lexical", "LexicalExtension", "LexicalHTML", "LexicalUtils"]),
+    .testTarget(
+      name: "LexicalListTests",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalHTML", "LexicalList",
+        "LexicalRichText", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/a11y: the live region and the announcers.
     .target(name: "LexicalA11y", dependencies: ["Lexical", "LexicalExtension"]),
@@ -184,7 +195,8 @@ let package = Package(
     .testTarget(
       name: "ConformanceTests",
       dependencies: [
-        "Lexical", "LexicalDevtoolsCore", "LexicalHTML", "LexicalRichText", "LexicalTesting",
+        "Lexical", "LexicalDevtoolsCore", "LexicalHTML", "LexicalList", "LexicalRichText",
+        "LexicalTesting",
       ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
     .testTarget(

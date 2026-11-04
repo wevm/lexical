@@ -365,11 +365,13 @@ open class ElementNode: LexicalNode, SlotNode {
 
   @discardableResult
   public func append(_ nodesToAppend: LexicalNode...) throws -> Self {
-    try splice(getChildrenSize(), 0, nodesToAppend)
+    try append(contentsOf: nodesToAppend)
   }
 
+  /// `append(...nodesToAppend)`; a subclass overrides this one (ListItemNode
+  /// merges appended list items into itself).
   @discardableResult
-  public func append(contentsOf nodesToAppend: [LexicalNode]) throws -> Self {
+  open func append(contentsOf nodesToAppend: [LexicalNode]) throws -> Self {
     try splice(getChildrenSize(), 0, nodesToAppend)
   }
 

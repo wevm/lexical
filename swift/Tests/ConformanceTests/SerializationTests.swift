@@ -1,4 +1,5 @@
 import Lexical
+import LexicalList
 import Testing
 
 /// Replays `vectors/serialization/*.json`: each document parses from both
@@ -13,10 +14,21 @@ struct SerializationTests {
   }
 
   static let cases: [Case] = (try? Vectors.load("serialization/core")) ?? []
+  static let listCases: [Case] = (try? Vectors.load("serialization/list")) ?? []
 
   @Test(arguments: cases)
   func roundTrip(_ vector: Case) throws {
-    let editor = try createEditor()
+    try check(vector, createEditor())
+  }
+
+  @Test(arguments: listCases)
+  func listRoundTrip(_ vector: Case) throws {
+    try check(
+      vector,
+      createEditor(CreateEditorArgs(nodes: [.klass(ListNode.self), .klass(ListItemNode.self)])))
+  }
+
+  func check(_ vector: Case, _ editor: Editor) throws {
     for input in [vector.legacy, vector.compact] {
       let editorState = try editor.parseEditorState(input)
       #expect(try editorState.toJSON().stringify() == vector.legacy)

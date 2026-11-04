@@ -7,6 +7,12 @@
  */
 import {createHeadlessEditor} from '@lexical/headless';
 import {
+  $createListItemNode,
+  $createListNode,
+  ListItemNode,
+  ListNode,
+} from '@lexical/list';
+import {
   $createLineBreakNode,
   $createParagraphNode,
   $createTabNode,
@@ -76,6 +82,72 @@ test('serialization/core', () => {
     'serialization/core',
     'serialization',
     'Core-node documents and the exact JSON text JS writes for them, legacy and compact.',
+    cases,
+  );
+});
+
+// Documents with @lexical/list nodes: list types, start, checked items and
+// nesting (a list item's indent is derived from it).
+test('serialization/list', () => {
+  const $item = (text: string, checked?: boolean) =>
+    $createListItemNode(checked).append($createTextNode(text));
+  const documents: Record<string, () => void> = {
+    'aligned item, empty item': () => {
+      $getRoot().append(
+        $createListNode('bullet').append(
+          $item('centered').setFormat('center'),
+          $createListItemNode(),
+        ),
+        $createParagraphNode(),
+      );
+    },
+    'bullet list': () => {
+      $getRoot().append(
+        $createListNode('bullet').append($item('a'), $item('b')),
+      );
+    },
+    checklist: () => {
+      $getRoot().append(
+        $createListNode('check').append($item('done', true), $item('todo')),
+      );
+    },
+    'nested list': () => {
+      const nested = $createListItemNode().append(
+        $createListNode('bullet').append($item('inner')),
+      );
+      $getRoot().append(
+        $createListNode('number').append(
+          $item('outer'),
+          nested,
+          $item('after'),
+        ),
+      );
+    },
+    'numbered list from 3': () => {
+      $getRoot().append(
+        $createListNode('number', 3).append($item('one'), $item('two')),
+      );
+    },
+  };
+  const cases: Case[] = Object.entries(documents).map(([name, build]) => {
+    const editor = createHeadlessEditor({
+      nodes: [ListNode, ListItemNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    editor.update(build, {discrete: true});
+    const state = editor.getEditorState();
+    return {
+      compact: JSON.stringify(state.toJSON(true)),
+      legacy: JSON.stringify(state.toJSON()),
+      name,
+    };
+  });
+  emitVectors(
+    'serialization/list',
+    'serialization',
+    'Documents with @lexical/list nodes and the exact JSON text JS writes for them.',
     cases,
   );
 });

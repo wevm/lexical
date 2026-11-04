@@ -5,6 +5,16 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- New `LexicalList`, a port of `@lexical/list` (in progress): `ListNode`,
+  `ListItemNode`, `ListExtension`, `insertList`, `removeList`,
+  `handleIndent`, `handleOutdent`, `handleListInsertParagraph`,
+  `registerList`, `registerListStrictIndentTransform` and the list
+  commands. Lists serialize byte for byte as in JS. Checklists and HTML
+  import rules are not ported yet.
+- `ElementNode.append(contentsOf:)` is `open`, so a subclass can override
+  how it takes children, as `ListItemNode` does. Added
+  `DOMNode.previousElementSibling`.
+
 ## 0.1.0
 
 The first release. It conforms to upstream Lexical **0.53.0**, at

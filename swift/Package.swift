@@ -7,7 +7,7 @@ import PackageDescription
 // Apple-only.
 let package = Package(
   name: "Lexical",
-  platforms: [.iOS(.v27), .macOS(.v27)],
+  platforms: [.iOS(.v26), .macOS(.v26)],
   products: [
     .library(name: "Lexical", targets: ["Lexical"]),
     .library(name: "LexicalTesting", targets: ["LexicalTesting"]),

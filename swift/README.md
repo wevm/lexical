@@ -18,7 +18,7 @@ conforms to.
 .package(url: "https://github.com/wevm/lexical-swift", from: "0.1.0")
 ```
 
-Requires iOS 27 or macOS 27 and Swift 6.4. The non-UI modules also build on
+Requires iOS 26 or macOS 26 and Swift 6.4 (Xcode 27). The non-UI modules also build on
 Linux.
 
 ## Development

@@ -6,8 +6,8 @@ name: LexicalDemo
 options:
   bundleIdPrefix: dev.lexical.swift
   deploymentTarget:
-    iOS: '27.0'
-    macOS: '27.0'
+    iOS: '26.0'
+    macOS: '26.0'
 packages:
   Lexical:
     path: ../..

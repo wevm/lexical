@@ -1,6 +1,7 @@
 name: Swift (macOS)
 
 # The Swift port on macOS and the iOS Simulator, with the Xcode 27 toolchain.
+# The package supports iOS 26 and macOS 26, so the oldest runtimes run too.
 # Path-filtered because macOS runners are slow to start.
 
 on:
@@ -40,9 +41,14 @@ jobs:
         run: swift test
 
   ios:
-    name: Swift (iOS Simulator)
+    name: Swift (iOS ${{ matrix.ios }} Simulator)
     runs-on: xcode-27
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # The newest runtime and the deployment target's.
+        ios: ['27', '26']
     defaults:
       run:
         working-directory: swift
@@ -50,11 +56,52 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
-      - name: Test (iOS Simulator)
+      - name: Test (iOS ${{ matrix.ios }} Simulator)
+        env:
+          IOS_MAJOR: ${{ matrix.ios }}
         run: |
-          device="$(xcrun simctl list devices available -j |
-            python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for k,v in d.items() if "iOS" in k for x in v if x["name"].startswith("iPhone")))')"
+          # An iPhone on the newest installed runtime of this major version.
+          device="$(xcrun simctl list devices available -j | python3 -c '
+          import json, os, re, sys
+          major = os.environ["IOS_MAJOR"]
+          runtimes = []
+          for key, devices in json.load(sys.stdin)["devices"].items():
+              m = re.search(r"iOS-(\d+)-(\d+)", key)
+              phones = [d for d in devices if d["name"].startswith("iPhone")]
+              if m and m.group(1) == major and phones:
+                  runtimes.append(((int(m.group(1)), int(m.group(2))), phones[0]["udid"], key))
+          if not runtimes:
+              sys.exit(f"no iPhone simulator on an iOS {major} runtime")
+          version, udid, key = max(runtimes)
+          print(key, file=sys.stderr)
+          print(udid)
+          ')"
           # The macro expansion tests link swift-syntax for the host; they run
           # in the macOS job and cannot load in the simulator.
           xcodebuild test -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
             -skip-testing:LexicalMacrosTests
+
+  # macOS 26, the deployment target, with Xcode 27 (the package needs Swift
+  # 6.4). Not gating until the macos-26 image is known to carry Xcode 27.
+  macos-26:
+    name: Swift (macOS 26)
+    runs-on: macos-26
+    timeout-minutes: 45
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: swift
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Select Xcode 27
+        run: |
+          xcode="$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$xcode" ]; then
+            echo "::error::The macos-26 image has no Xcode 27"; ls -d /Applications/Xcode*.app; exit 1
+          fi
+          sudo xcode-select -s "$xcode"
+          sw_vers; swift --version
+      - name: Build and test (macOS 26)
+        run: swift test

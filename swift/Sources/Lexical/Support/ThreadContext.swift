@@ -14,25 +14,27 @@
 /// those variables per thread, which preserves the JS semantics exactly:
 /// updates save, set, and restore them around their callbacks.
 package final class ThreadContext {
+  // The fields read on every node access are plain reads and assignments,
+  // never passed inout, so their dynamic exclusivity checks are off.
   // LexicalUpdates.ts
-  package var activeEditorState: EditorState?
-  package var activeEditor: Editor?
-  package var isReadOnlyMode = false
+  @exclusivity(unchecked) package var activeEditorState: EditorState?
+  @exclusivity(unchecked) package var activeEditor: Editor?
+  @exclusivity(unchecked) package var isReadOnlyMode = false
   package var isAttemptingToRecoverFromReconcilerError = false
   package var isCommittingPendingUpdates = false
   package var editorsWithPendingCascadeReset = Set<ObjectIdentifier>()
   package var editorsWithPendingSelectionChange = Set<ObjectIdentifier>()
   package var editorsDispatchingCommitListeners = Set<ObjectIdentifier>()
-  package var infiniteTransformCount = 0
+  @exclusivity(unchecked) package var infiniteTransformCount = 0
   // LexicalUtils.ts
-  package var keyCounter = 1
+  @exclusivity(unchecked) package var keyCounter = 1
   package var serverUIDCounter = 0
-  package var exportWalk = false
-  package var exportMemo: ExportMemo?
+  @exclusivity(unchecked) package var exportWalk = false
+  @exclusivity(unchecked) package var exportMemo: ExportMemo?
   // LexicalSerializedExport.ts
-  package var compactExport = false
+  @exclusivity(unchecked) package var compactExport = false
   // LexicalTextNode.ts
-  package var textEditSuspended: NodeKey?
+  @exclusivity(unchecked) package var textEditSuspended: NodeKey?
   // `console.warn` (see Warnings.swift).
   package var warningHandler: ((String) -> Void)?
   /// `withUncaughtErrorHandler`.

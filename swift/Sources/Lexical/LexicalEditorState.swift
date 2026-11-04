@@ -58,10 +58,10 @@ func exportNodeToJSON(_ node: LexicalNode) throws -> JSONObject {
 /// An immutable snapshot of the editor content: the node map and the
 /// selection. Serializes to JSON in the legacy and compact forms.
 public final class EditorState {
-  package var _nodeMap: NodeMap
-  package var _selection: BaseSelection?
+  @exclusivity(unchecked) package var _nodeMap: NodeMap
+  @exclusivity(unchecked) package var _selection: BaseSelection?
   package var _flushSync = false
-  package var _readOnly = false
+  @exclusivity(unchecked) package var _readOnly = false
   package var _parsed = false
   package var _slotsUsed: Bool
   /// The keys of nodes moved during the update, keyed by the previous node

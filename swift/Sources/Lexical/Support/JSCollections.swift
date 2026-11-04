@@ -6,11 +6,14 @@
 /// Deleted entries leave a tombstone that is compacted away once no iterator
 /// is open, so iteration indices stay valid while one is.
 public final class JSMap<Key: Hashable, Value> {
-  private var keys: [Key?] = []
-  private var values: [Value?] = []
-  private var index: [Key: Int] = [:]
-  private var tombstones = 0
-  fileprivate var openIterators = 0
+  // Every access to the storage is a plain read or write inside one of
+  // these methods, none of which calls out while it holds one, so the
+  // dynamic exclusivity checks (a large share of an update's time) are off.
+  @exclusivity(unchecked) private var keys: [Key?] = []
+  @exclusivity(unchecked) private var values: [Value?] = []
+  @exclusivity(unchecked) private var index: [Key: Int] = [:]
+  @exclusivity(unchecked) private var tombstones = 0
+  @exclusivity(unchecked) fileprivate var openIterators = 0
   /// Set on a committed node map, which JS's dev build freezes
   /// (`handleDEVOnlyPendingUpdateGuarantees`); the node map writers check it.
   package var _frozen = false

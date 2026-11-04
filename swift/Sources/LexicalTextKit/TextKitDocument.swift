@@ -255,60 +255,84 @@ public struct TextKitDocument: Sendable {
   }
 
   /// The location one `granularity` unit before or after `location`.
+  ///
+  /// Walks the string from `location` only, so a move costs the length of
+  /// what it crosses, not of the document.
   public func move(
     _ location: Int, isBackward: Bool, granularity: SelectionGranularity
   ) -> Int {
-    let units = Array(string.utf16)
+    let utf16 = string.utf16
+    let start = utf16.startIndex
+    let end = utf16.endIndex
+    guard let at = utf16.index(start, offsetBy: location, limitedBy: end) else { return location }
     let isBreak: (UInt16) -> Bool = { $0 == 0x0A || $0 == 0x2028 }
+    let offset = { utf16.distance(from: start, to: $0) }
     switch granularity {
     case .character:
-      // Grapheme boundaries in UTF-16 offsets.
-      var boundaries: [Int] = []
-      var offset = 0
-      for character in string {
-        boundaries.append(offset)
-        offset += character.utf16.count
+      // Grapheme boundaries in UTF-16 offsets, within the line around
+      // `location` (a line break is a grapheme of its own).
+      var lineStart = at
+      while lineStart > start, !isBreak(utf16[utf16.index(before: lineStart)]) {
+        lineStart = utf16.index(before: lineStart)
       }
-      boundaries.append(offset)
-      return isBackward
-        ? boundaries.last { $0 < location } ?? location
-        : boundaries.first { $0 > location } ?? location
+      var lineEnd = at
+      while lineEnd < end, !isBreak(utf16[lineEnd]) { lineEnd = utf16.index(after: lineEnd) }
+      let base = offset(lineStart)
+      var boundaries: [Int] = []
+      var position = base
+      for character in Substring(utf16[lineStart..<lineEnd]) ?? "" {
+        boundaries.append(position)
+        position += character.utf16.count
+      }
+      boundaries.append(position)
+      if isBackward {
+        if let previous = boundaries.last(where: { $0 < location }) { return previous }
+        return lineStart > start ? base - 1 : location
+      }
+      if let next = boundaries.first(where: { $0 > location }) { return next }
+      return lineEnd < end ? offset(lineEnd) + 1 : location
     case .word:
       let isSpace: (UInt16) -> Bool = { $0 == 0x20 || $0 == 0x09 || isBreak($0) }
-      var i = location
+      var i = at
       if isBackward {
-        while i > 0, isSpace(units[i - 1]) { i -= 1 }
-        while i > 0, !isSpace(units[i - 1]) { i -= 1 }
+        while i > start, isSpace(utf16[utf16.index(before: i)]) { i = utf16.index(before: i) }
+        while i > start, !isSpace(utf16[utf16.index(before: i)]) { i = utf16.index(before: i) }
       } else {
-        while i < units.count, isSpace(units[i]) { i += 1 }
-        while i < units.count, !isSpace(units[i]) { i += 1 }
+        while i < end, isSpace(utf16[i]) { i = utf16.index(after: i) }
+        while i < end, !isSpace(utf16[i]) { i = utf16.index(after: i) }
       }
-      return i
+      return offset(i)
     case .line:
       // The same column on the previous or next line, clamped to its end.
-      var start = location
-      while start > 0, !isBreak(units[start - 1]) { start -= 1 }
-      let column = location - start
-      if isBackward {
-        guard start > 0 else { return location }
-        var prevStart = start - 1
-        while prevStart > 0, !isBreak(units[prevStart - 1]) { prevStart -= 1 }
-        return min(prevStart + column, start - 1)
+      var lineStart = at
+      while lineStart > start, !isBreak(utf16[utf16.index(before: lineStart)]) {
+        lineStart = utf16.index(before: lineStart)
       }
-      var end = location
-      while end < units.count, !isBreak(units[end]) { end += 1 }
-      guard end < units.count else { return location }
-      var nextEnd = end + 1
-      while nextEnd < units.count, !isBreak(units[nextEnd]) { nextEnd += 1 }
-      return min(end + 1 + column, nextEnd)
+      let column = utf16.distance(from: lineStart, to: at)
+      if isBackward {
+        guard lineStart > start else { return location }
+        let prevEnd = utf16.index(before: lineStart)
+        var prevStart = prevEnd
+        while prevStart > start, !isBreak(utf16[utf16.index(before: prevStart)]) {
+          prevStart = utf16.index(before: prevStart)
+        }
+        return offset(prevStart) + min(column, utf16.distance(from: prevStart, to: prevEnd))
+      }
+      var lineEnd = at
+      while lineEnd < end, !isBreak(utf16[lineEnd]) { lineEnd = utf16.index(after: lineEnd) }
+      guard lineEnd < end else { return location }
+      let nextStart = utf16.index(after: lineEnd)
+      var nextEnd = nextStart
+      while nextEnd < end, !isBreak(utf16[nextEnd]) { nextEnd = utf16.index(after: nextEnd) }
+      return offset(nextStart) + min(column, utf16.distance(from: nextStart, to: nextEnd))
     case .lineboundary:
-      var i = location
+      var i = at
       if isBackward {
-        while i > 0, !isBreak(units[i - 1]) { i -= 1 }
+        while i > start, !isBreak(utf16[utf16.index(before: i)]) { i = utf16.index(before: i) }
       } else {
-        while i < units.count, !isBreak(units[i]) { i += 1 }
+        while i < end, !isBreak(utf16[i]) { i = utf16.index(after: i) }
       }
-      return i
+      return offset(i)
     }
   }
 }

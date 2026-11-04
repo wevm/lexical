@@ -154,7 +154,10 @@ let middle = try editor.read { try getRoot().getChildAtIndex(paragraphCount / 2)
 
 try caretAtEnd(of: middle)
 try bench("keystroke: insert a character", 200, target: 8) { try controller.insertText("a") }
-// Each keystroke benchmark starts where the one before left the caret.
+// The deletes remove what the inserts typed, so they stay in one paragraph.
+if !selected("keystroke: insert a character") {
+  for _ in 0..<200 { try controller.insertText("a") }
+}
 try caretAtEnd(of: middle)
 try bench("keystroke: delete a character", 200, target: 8) {
   try controller.beforeInput("deleteContentBackward")

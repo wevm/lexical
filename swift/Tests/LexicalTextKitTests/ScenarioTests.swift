@@ -30,7 +30,7 @@ private enum ScenarioVectors {
     return FileManager.default.fileExists(atPath: url.path) ? url : nil
   }()
 
-  static let files = ["text-entry", "history", "text-formatting"]
+  static let files = ["text-entry", "history", "text-formatting", "selection"]
 
   /// `swift/parity/deviations.json`: the deviation listing each scenario
   /// (`<name> (<mode>)`) that may differ from WebKit.
@@ -94,13 +94,25 @@ private struct Chord {
   }
 }
 
+/// The focused view the editor's root is, as the native views are: with a
+/// root the model reconciler runs, so elements take their text format and
+/// style from their first text node as they do in the browser.
+private final class ScenarioRoot: LexicalRootElement {
+  let isConnected = true
+  let hasFocus = true
+}
+
 private final class ScenarioRunner {
   let editor: Editor
+  private let root = ScenarioRoot()
   let controller: TextKitInputController
   /// The view's own selection, which keeps its anchor while a shift-arrow
   /// extends it, as NSTextView does; the model's range is what the view was
   /// told last.
   private var viewSelection: (anchor: Int, focus: Int)?
+  /// The column consecutive up and down moves keep to, as a text view
+  /// keeps its goal x until the caret moves another way.
+  private var goalColumn: Int?
 
   init(mode: String) throws {
     editor = try buildEditorFromExtensions(
@@ -111,6 +123,7 @@ private final class ScenarioRunner {
           configExtension(HistoryExtension) { $0.now = { 0 } },
         ]))
     controller = TextKitInputController(editor: editor)
+    try editor.setRootElement(root)
     try editor.update(discrete: true) {
       let paragraph = try createParagraphNode()
       try getRoot().clear().append(paragraph)
@@ -137,6 +150,10 @@ private final class ScenarioRunner {
   }
 
   private func press(_ chord: Chord) throws {
+    let isVertical =
+      (chord.key == "ArrowUp" || chord.key == "ArrowDown") && !chord.meta && !chord.alt
+      && !chord.ctrl
+    if !isVertical { goalColumn = nil }
     if try controller.keyDown(chord.event) { return }
     try keyBinding(chord)
   }
@@ -201,8 +218,17 @@ private final class ScenarioRunner {
       target = isBackward ? 0 : document.length
     } else {
       let from = chord.shift ? focus : isBackward ? min(anchor, focus) : max(anchor, focus)
+      let lineStart = { document.move($0, isBackward: true, granularity: .lineboundary) }
+      let goal = goalColumn ?? from - lineStart(from)
+      goalColumn = goal
       let moved = document.move(from, isBackward: isBackward, granularity: .line)
-      target = moved != from ? moved : isBackward ? 0 : document.length
+      if moved == from {
+        target = isBackward ? 0 : document.length
+      } else {
+        let start = lineStart(moved)
+        let end = document.move(moved, isBackward: false, granularity: .lineboundary)
+        target = min(start + goal, end)
+      }
     }
     if !chord.shift { anchor = target }
     focus = target

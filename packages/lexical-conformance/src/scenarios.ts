@@ -289,10 +289,123 @@ export const TEXT_FORMATTING: Scenario[] = [
   },
 ];
 
+const threeLines: ScenarioStep[] = [
+  {type: 'One'},
+  {press: 'Enter'},
+  {type: 'Two'},
+  {press: 'Enter', times: 2},
+  {type: 'Three'},
+];
+
+/** The keyboard-only tests of Selection.spec.mjs (Mac key bindings). */
+export const SELECTION: Scenario[] = [
+  {
+    modes: ['rich'],
+    name: 'Selection > can delete text by line backwards with CMD+delete',
+    steps: [
+      ...threeLines,
+      {press: 'Meta+Backspace'},
+      {press: 'Backspace'},
+      {press: 'Meta+Backspace'},
+      {press: 'Meta+Backspace'},
+      {press: 'Backspace'},
+      {press: 'Meta+Backspace'},
+    ],
+  },
+  ...(
+    [
+      ['opt+CMD+delete', 'Meta+Delete'],
+      ['control+K', 'Control+k'],
+    ] as const
+  ).map(
+    ([title, chord]): Scenario => ({
+      modes: ['rich'],
+      name: `Selection > can delete text by line forwards with ${title}`,
+      steps: [
+        ...threeLines,
+        {press: 'ArrowUp', times: 2},
+        {press: chord, times: 4},
+        {press: 'Meta+ArrowUp'},
+        {press: chord, times: 4},
+      ],
+    }),
+  ),
+  {
+    modes: ['plain'],
+    name: 'Selection > Can delete at boundary #4221',
+    steps: [
+      {type: 'aaa'},
+      {press: 'Enter'},
+      {type: 'b'},
+      {press: 'Enter'},
+      {type: 'c'},
+      {press: 'Shift+ArrowLeft', times: 3},
+      {press: 'Delete'},
+      {press: 'Shift+ArrowLeft'},
+      {press: 'Delete'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'Selection > Backspace at the start of the first paragraph keeps content that follows a blank text node',
+    steps: [
+      {type: '  '},
+      {press: 'Meta+b'},
+      {type: 'hello'},
+      {press: 'Enter'},
+      {press: 'Meta+b'},
+      {type: 'world'},
+      {press: 'Meta+ArrowUp'},
+      {press: 'Backspace'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'Selection > Can persist the text format from the paragraph',
+    steps: [
+      {press: 'Meta+b'},
+      {type: 'Line1'},
+      {press: 'Enter', times: 3},
+      {type: 'Line2'},
+      {press: 'ArrowUp'},
+      {type: 'Line3'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'Selection > toggle format at the start of paragraph to a different format persists the format',
+    steps: [
+      {press: 'Meta+b'},
+      {type: 'Line1'},
+      {press: 'Enter', times: 3},
+      {press: 'Meta+i'},
+      {type: 'Line2'},
+      {press: 'ArrowUp'},
+      {press: 'Meta+b'},
+      {type: 'Line3'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'Selection > formatting is persisted after deleting all nodes from the paragraph node',
+    steps: [
+      {press: 'Meta+b'},
+      {type: 'Line1'},
+      {press: 'Enter'},
+      {press: 'Meta+b'},
+      {type: 'Line2'},
+      {press: 'Alt+Shift+ArrowLeft'},
+      {press: 'Backspace'},
+      {type: 'Line3'},
+    ],
+  },
+];
+
 export const SCENARIO_FILES: {name: string; scenarios: Scenario[]}[] = [
   {name: 'text-entry', scenarios: TEXT_ENTRY},
   {name: 'history', scenarios: HISTORY},
   {name: 'text-formatting', scenarios: TEXT_FORMATTING},
+  {name: 'selection', scenarios: SELECTION},
 ];
 
 /**

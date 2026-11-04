@@ -77,6 +77,15 @@ open class ListItemNode: ElementNode, NodeStructureLiftHook {
     __checked = checked
   }
 
+  /// `checked` is an accessor property, which the schema does not carry
+  /// across a clone.
+  open override func afterCloneFrom(_ prevNode: LexicalNode) throws {
+    try super.afterCloneFrom(prevNode)
+    let prev = prevNode as! ListItemNode
+    __value = prev.__value
+    __checked = prev.__checked
+  }
+
   // View
 
   open override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement

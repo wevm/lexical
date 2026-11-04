@@ -16946,5 +16946,12 @@
       "lexical-link"
     ],
     "note": "Appends a @lexical/link LinkNode to a list; port with lexical-link."
+  },
+  "lexical-list/src/__tests__/unit/formatList.test.ts::insertList > inserting with empty shadow root selection": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-table"
+    ],
+    "note": "Inserts a list into a @lexical/table cell; port with lexical-table."
   }
 }

@@ -79,6 +79,16 @@ open class ListNode: ElementNode, NodeStructureMergeHook, NodeStructureSplitHook
     __start = start
   }
 
+  /// `listType` and `tag` are accessor properties, which the schema does
+  /// not carry across a clone.
+  open override func afterCloneFrom(_ prevNode: LexicalNode) throws {
+    try super.afterCloneFrom(prevNode)
+    let prev = prevNode as! ListNode
+    __tag = prev.__tag
+    __start = prev.__start
+    __listType = prev.__listType
+  }
+
   open func getTag() throws -> ListNodeTagType {
     try getLatest().__tag
   }

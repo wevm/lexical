@@ -173,6 +173,7 @@ private func helloWorld() throws -> (TextNode, TextNode, ParagraphNode, Paragrap
     try update(editor) {
       let (t1, t2, p1, p2) = try helloWorld()
       let visited = try extendCaretToRange(getTextPointCaret(t1, .next, 2)).iterNodeCarets()
+        .toArray()
       let expected = [
         getSiblingCaret(p1, .next), getChildCaret(p2, .next), getSiblingCaret(t2, .next),
         getSiblingCaret(p2, .next),
@@ -209,7 +210,7 @@ private func helloWorld() throws -> (TextNode, TextNode, ParagraphNode, Paragrap
       #expect(try comparePointCaretNext(range.anchor, range.anchor) == 0)
       #expect(try comparePointCaretNext(range.focus, range.focus) == 0)
       #expect(try comparePointCaretNext(range.focus, range.anchor) == 1)
-      for caret in try range.iterNodeCarets() {
+      for caret in try range.iterNodeCarets().toArray() {
         #expect(try comparePointCaretNext(caret, caret) == 0)
         for seenCaret in seenCarets {
           #expect(try comparePointCaretNext(caret, seenCaret) == 1)
@@ -273,7 +274,7 @@ private func helloWorld() throws -> (TextNode, TextNode, ParagraphNode, Paragrap
       let root = try getRoot()
       expectCommonAncestor(try getCommonAncestor(root, root), same: root)
       for caret in try getCaretRange(getChildCaret(root, .next), getSiblingCaret(root, .next))
-        .iterNodeCarets() where caret.isSibling
+        .iterNodeCarets().toArray() where caret.isSibling
       {
         expectCommonAncestor(try getCommonAncestor(caret.origin, caret.origin), same: caret.origin)
         expectCommonAncestor(try getCommonAncestor(root, caret.origin), ancestor: root)

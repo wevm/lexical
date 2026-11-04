@@ -438,23 +438,22 @@ public final class CaretRange {
 
   /// The node carets strictly between anchor and focus, in document order
   /// for `direction`.
-  public func iterNodeCarets(_ rootMode: RootMode = .root) throws -> [NodeCaret] {
+  public func iterNodeCarets(
+    _ rootMode: RootMode = .root
+  ) throws -> StepwiseIterator<NodeCaret, NodeCaret> {
     let anchor = try self.anchor.isText ? self.anchor.getSiblingCaret() : self.anchor.getLatest()
     let focus = try self.focus.getLatest()
     let isTextFocus = focus.isText
-    func step(_ state: NodeCaret) throws -> NodeCaret? {
+    let step: (NodeCaret) throws -> NodeCaret? = { state in
       if state.isSameNodeCaret(focus) {
         return nil
       }
       return try getAdjacentChildCaret(state) ?? state.getParentCaret(rootMode)
     }
-    var result: [NodeCaret] = []
-    var state = try anchor.isSameNodeCaret(focus) ? nil : step(anchor)
-    while let current = state, !(isTextFocus && focus.isSameNodeCaret(current)) {
-      result.append(current)
-      state = try step(current)
-    }
-    return result
+    return StepwiseIterator(
+      initial: anchor.isSameNodeCaret(focus) ? nil : try step(anchor),
+      hasNext: { !(isTextFocus && focus.isSameNodeCaret($0)) },
+      step: step, map: { $0 })
   }
 }
 

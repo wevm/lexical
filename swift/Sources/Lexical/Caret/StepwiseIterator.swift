@@ -1,5 +1,3 @@
-import Lexical
-
 /// `makeStepwiseIterator`: a lazy iterator whose steps may throw. JS
 /// iterators are lazy and re-read the tree at each step, so a loop that
 /// moves nodes sees the moves; this keeps that. It is not a `Sequence`,

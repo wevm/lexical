@@ -302,7 +302,7 @@ private func expectRemainingNodes(
         let slices = try nonNilSlices(range)
         #expect(slices.count == 1)
         #expect(sliceMatches(slices.first, .next, offset, node, 0))
-        #expect(try range.iterNodeCarets(.root).isEmpty)
+        #expect(try range.iterNodeCarets(.root).toArray().isEmpty)
         #expect(matchesOriginal(try removeTextFromCaretRange(range)))
         #expect(try getRoot().getTextContent() == originalText)
         try setSelection(nil)
@@ -352,7 +352,7 @@ private func expectRemainingNodes(
           $0.caret.offset == (direction == .next ? 0 : size) && $0.caret.origin.is(node)
             && $0.distance == (direction == .next ? 1 : -1) * size
         } == true)
-      #expect(try range.iterNodeCarets(.root).isEmpty)
+      #expect(try range.iterNodeCarets(.root).toArray().isEmpty)
       #expect(range.isCollapsed() == false)
       let resultRange = try removeTextFromCaretRange(range)
       try setSelection(nil)
@@ -466,7 +466,7 @@ private func expectRemainingNodes(
       let range = try caretRangeFromSelection(selection)
       #expect(range.isCollapsed() == false)
       let bothOutside = c.anchorOutside && c.focusOutside
-      #expect(try range.iterNodeCarets(.root).count == (bothOutside ? 1 : 0))
+      #expect(try range.iterNodeCarets(.root).toArray().count == (bothOutside ? 1 : 0))
       let slices = try nonNilSlices(range).filter { $0.distance != 0 }
       if bothOutside {
         #expect(slices.isEmpty)
@@ -531,7 +531,7 @@ private func expectRemainingNodes(
       let offsetEnd = max(anchor.offset, focus.offset)
       let range = try getCaretRange(anchor, focus)
       let slices = try nonNilSlices(range).filter { $0.distance != 0 }
-      #expect(try range.iterNodeCarets(.root).isEmpty)
+      #expect(try range.iterNodeCarets(.root).toArray().isEmpty)
       try #require(slices.count == 1)
       let slice = slices[0]
       #expect(
@@ -723,7 +723,8 @@ private func expectRemainingNodes(
       let originalNodes = try getRoot().getAllTextNodes()
       let (startCaret, endCaret, range) = try multipleTextNodeRange(c, originalNodes)
       #expect(
-        try range.iterNodeCarets(.root).count == max(0, c.nodeIndexEnd - c.nodeIndexStart - 1))
+        try range.iterNodeCarets(.root).toArray().count
+          == max(0, c.nodeIndexEnd - c.nodeIndexStart - 1))
       let resultRange = try removeTextFromCaretRange(range)
       #expect(resultRange.anchor.direction == c.direction)
       #expect(resultRange.direction == c.direction)

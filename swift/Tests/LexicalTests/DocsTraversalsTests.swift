@@ -159,7 +159,7 @@ private func iterSiblings(_ startCaret: PointCaret) throws -> [PointCaret] {
     try withDoc { d throws in
       let start = getChildCaret(try getRoot(), .next)
       let carets = try getCaretRange(start, getSiblingCaret(try getRoot(), start.direction))
-        .iterNodeCarets()
+        .iterNodeCarets().toArray()
       #expect(same(carets, depthFirst(d)))
     }
   }
@@ -174,7 +174,7 @@ private func iterSiblings(_ startCaret: PointCaret) throws -> [PointCaret] {
       var nodes: [LexicalNode] = []
       for caret in try getCaretRange(
         getChildCaret(d.paragraphA, .next), getChildCaret(d.paragraphC, .next)
-      ).iterNodeCarets() {
+      ).iterNodeCarets().toArray() {
         if caret.isChild {
           seen.insert(caret.origin.getKey())
         } else if !(caret.origin is ElementNode) || seen.contains(caret.origin.getKey()) {
@@ -196,7 +196,7 @@ private func iterSiblings(_ startCaret: PointCaret) throws -> [PointCaret] {
     try withDoc { d throws in
       let carets = try getCaretRange(
         getChildCaret(try getRoot(), .next), getSiblingCaret(try getRoot(), .next)
-      ).iterNodeCarets()
+      ).iterNodeCarets().toArray()
       #expect(same(carets, depthFirst(d)))
     }
   }

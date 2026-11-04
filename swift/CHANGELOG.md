@@ -5,6 +5,13 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `CaretRange.iterNodeCarets` is lazy, as in JS: it returns a
+  `StepwiseIterator` (now in `Lexical`, as `makeStepwiseIterator` is in
+  `lexical`) instead of an array, so a loop that stops early no longer
+  walks to the end of the range first, and a loop that changes the tree
+  sees the changes. Use `next()`, `forEach` or `toArray()`. Backspace at
+  the start of a paragraph walked to the start of the document; at 5,000
+  blocks it went from 23 ms to 10 ms p50 (release).
 - `getChildren()` and the other sibling walks read the node map once
   instead of resolving each node's latest version twice. Typing at 5,000
   blocks went from 2.8 ms to 1.7 ms p50, and Enter from 13.4 ms to 11.9 ms

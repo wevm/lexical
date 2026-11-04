@@ -260,7 +260,7 @@ func nonNilSlices(_ range: CaretRange) throws -> [TextPointCaretSlice] {
         let slices = try nonNilSlices(range)
         #expect(slices.count == 1)
         #expect(sliceMatches(slices.first, .next, offset, node, 0))
-        #expect(try range.iterNodeCarets(.root).isEmpty)
+        #expect(try range.iterNodeCarets(.root).toArray().isEmpty)
       }
     }
   }
@@ -293,7 +293,7 @@ func nonNilSlices(_ range: CaretRange) throws -> [TextPointCaretSlice] {
         #expect(slices.count == 1)
         #expect(
           sliceMatches(slices.first, direction, anchorOffset, node, focusOffset - anchorOffset))
-        #expect(try range.iterNodeCarets(.root).isEmpty)
+        #expect(try range.iterNodeCarets(.root).toArray().isEmpty)
         #expect(range.isCollapsed() == false)
       }
     }
@@ -323,7 +323,7 @@ func nonNilSlices(_ range: CaretRange) throws -> [TextPointCaretSlice] {
               let slices = try nonNilSlices(range)
               #expect(slices.count == 1)
               #expect(sliceMatches(slices.first, direction, offset, node, size))
-              #expect(try range.iterNodeCarets(.root).isEmpty)
+              #expect(try range.iterNodeCarets(.root).toArray().isEmpty)
             }
           }
         }
@@ -371,7 +371,7 @@ func nonNilSlices(_ range: CaretRange) throws -> [TextPointCaretSlice] {
                   slices[1], direction, focusOffset, focusNode,
                   direction == .next
                     ? 0 - focusOffset : try focusNode.getTextContentSize() - focusOffset))
-              let carets = try range.iterNodeCarets(.root)
+              let carets = try range.iterNodeCarets(.root).toArray()
               let expected = Array(textNodes[(indexNodeStart + 1)..<indexNodeEnd])
               #expect(carets.count == expected.count)
               for (caret, origin) in zip(carets, expected) {

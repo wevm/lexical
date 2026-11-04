@@ -377,7 +377,8 @@ private func getNodesFromCaretRangeCompat(_ range: CaretRange) throws -> [Lexica
   }
   var seenAncestors = Set<NodeKey>()
   var openElements = 0
-  for caret in try range.iterNodeCarets() {
+  let carets = try range.iterNodeCarets()
+  while let caret = try carets.next() {
     let origin = caret.origin
     if caret.isChild {
       if nodes.isEmpty {

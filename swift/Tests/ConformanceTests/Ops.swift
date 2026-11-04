@@ -279,7 +279,7 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     ctx.log.append(
       .array([
         .string("caretRange"), caretSnapshot(range.anchor), caretSnapshot(range.focus),
-        .array(try range.iterNodeCarets().map(caretSnapshot)),
+        .array(try range.iterNodeCarets().toArray().map(caretSnapshot)),
         .array([slice(anchorSlice), slice(focusSlice)]),
       ]))
   case "removeTextFromCaretRange":

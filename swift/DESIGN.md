@@ -345,11 +345,12 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `StyleObject`, ordered like a JS object's keys, so `patchStyleText`
   writes CSS in the same order as JS. A patch is `KeyValuePairs` for the
   same reason.
-- **Iterators are lazy and throw.** `$firstToLastIterator`, `$dfsIterator`
-  and the others re-read the tree at each step in JS, so a loop that moves
-  nodes sees the moves. Swift returns a `StepwiseIterator` with a throwing
-  `next()` (and `forEach`, `map`, `toArray`), not a `Sequence`, because
-  `IteratorProtocol.next()` can't throw.
+- **Iterators are lazy and throw.** `$firstToLastIterator`, `$dfsIterator`,
+  `CaretRange.iterNodeCarets` and the others re-read the tree at each step
+  in JS, so a loop that moves nodes sees the moves. Swift returns a
+  `StepwiseIterator` (in `Lexical`, like `makeStepwiseIterator`) with a
+  throwing `next()` (and `forEach`, `map`, `toArray`), not a `Sequence`,
+  because `IteratorProtocol.next()` can't throw.
 - **`@lexical/utils`' DOM helpers belong to the views.** `markSelection`,
   `positionNodeOnRange`, `selectionAlwaysOnDisplay`, `calculateZoomLevel`,
   `getScrollParent` and `mediaFileReader` are not in `LexicalUtils`; the

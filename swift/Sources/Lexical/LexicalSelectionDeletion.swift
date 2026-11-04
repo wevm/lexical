@@ -88,9 +88,9 @@ private func modifySelectionAroundDecoratorsAndBlocks(
       return true
     }
     if checkForBlock {
-      for nextCaret in try extendCaretToRange(initialFocus).iterNodeCarets(
+      let carets = try extendCaretToRange(initialFocus).iterNodeCarets(
         alter == .extend ? .shadowRoot : .root)
-      {
+      while let nextCaret = try carets.next() {
         if nextCaret.isChild {
           if try !nextCaret.origin.isInline() {
             focus = nextCaret
@@ -181,7 +181,8 @@ private func extendSelectionForDeletion(
 }
 
 private func stopLineDeletionAtLineBreak(_ selection: RangeSelection) throws {
-  for caret in try caretRangeFromSelection(selection).iterNodeCarets(.shadowRoot) {
+  let carets = try caretRangeFromSelection(selection).iterNodeCarets(.shadowRoot)
+  while let caret = try carets.next() {
     if caret.isSibling && caret.origin is LineBreakNode {
       try setPointFromCaret(selection.focus, rewindSiblingCaret(caret))
       return
@@ -386,7 +387,8 @@ extension RangeSelection {
           }
         }
         var state = MergeState.initial
-        loop: for caret in try initialRange.iterNodeCarets(.shadowRoot) {
+        let carets = try initialRange.iterNodeCarets(.shadowRoot)
+        loop: while let caret = try carets.next() {
           if caret.isChild {
             let origin = caret.origin as! ElementNode
             if try origin.isInline() {

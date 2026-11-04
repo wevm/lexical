@@ -59,7 +59,8 @@ public func removeTextFromCaretRange(
   var focusCandidates = try getAnchorCandidates(range.focus.getFlipped(), rootMode)
   var seenStart = Set<NodeKey>()
   var removedNodes: [LexicalNode] = []
-  for caret in try range.iterNodeCarets(rootMode) {
+  let carets = try range.iterNodeCarets(rootMode)
+  while let caret = try carets.next() {
     if caret.isChild {
       seenStart.insert(caret.origin.getKey())
     } else if caret.isSibling {

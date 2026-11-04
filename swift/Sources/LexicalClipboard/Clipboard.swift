@@ -247,7 +247,8 @@ private func updateSelectionOnInsert(_ selection: any BaseSelection) throws {
     nodeToInspect = anchorCaret.origin
   } else {
     let range = try getCaretRange(anchorCaret, getChildCaret(getRoot(), .next).getFlipped())
-    for caret in try range.iterNodeCarets() {
+    let carets = try range.iterNodeCarets()
+    while let caret = try carets.next() {
       if caret.origin is TextNode {
         nodeToInspect = caret.origin
         break

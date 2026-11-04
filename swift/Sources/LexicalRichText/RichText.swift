@@ -217,14 +217,16 @@ private func tryExitShadowRootToBlockCursor(
   // From the edge to the shadow root, only parent nodes are expected, as
   // sibling carets.
   var prevOrigin = range.anchor.origin
-  for caret in try range.iterNodeCarets() {
+  let carets = try range.iterNodeCarets()
+  while let caret = try carets.next() {
     guard try caret.isSibling && caret.origin.is(prevOrigin.getParent()) else { return false }
     prevOrigin = caret.origin
   }
   // Walk outward through nested shadow roots until a sibling needs a block
   // cursor beside it.
   var prevShadow = shadowRoot
-  for caret in try extendCaretToRange(getSiblingCaret(shadowRoot, direction)).iterNodeCarets() {
+  let outward = try extendCaretToRange(getSiblingCaret(shadowRoot, direction)).iterNodeCarets()
+  while let caret = try outward.next() {
     // A caret whose origin is the parent of the current level is the
     // "leave" step walking outward; keep going only through shadow roots.
     if try caret.origin.is(prevShadow.getParent()) {

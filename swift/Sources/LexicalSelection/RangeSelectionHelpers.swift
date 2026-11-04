@@ -466,7 +466,8 @@ public func shouldOverrideDefaultCharacterSelection(
       return true
     }
   }
-  for nextCaret in try extendCaretToRange(focusCaret).iterNodeCarets() {
+  let carets = try extendCaretToRange(focusCaret).iterNodeCarets()
+  while let nextCaret = try carets.next() {
     if nextCaret.isChild {
       return try !nextCaret.origin.isInline()
     } else if nextCaret.origin is ElementNode {

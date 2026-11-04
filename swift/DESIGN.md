@@ -76,6 +76,27 @@ note pointing here; fuzz vectors keep offsets off pair interiors.
   in-scope rich-text and plain-text spec.
 - **Benchmarks** (Q32): reported, not gating, until stable. Targets: under
   8 ms p95 keystroke-to-reconcile on 5,000 paragraphs, under 300 ms load.
+  Typing, deleting and caret moves meet it (Linux release p95 1.6–1.7 ms;
+  7.64 ms on an iPhone 15 Pro in release, which includes the UIKit
+  storage edit). Enter (11.6 ms) and joining paragraphs (15.3 ms) don't,
+  and neither does load (1.0 s). These need structural work, planned here
+  and deferred past v0.1.0:
+  - **Enter and join.** Inserting or removing a root child clones the root,
+    so `TextKitDocument.reconcileChildren` handles it, and a gdb sample of
+    Enter puts 12 of 14 stacks there. It is linear in the root's children
+    four times over: `createChildrenArray`, the prefix and suffix `isKept`
+    scans, a `reconcileNode` call per kept child, and rebuilding `kids` with
+    absolute starts and re-indexing every entry after the change. The plan:
+    (1) find the changed run from the dirty children and the removed keys
+    (`dirtyChildren`, and children whose parent or presence changed) instead
+    of scanning from both ends; (2) keep each element's kids in a balanced
+    tree of lengths (a B-tree or Fenwick tree keyed by position), so a start
+    offset and an index are O(log n) and a splice doesn't shift the rest.
+    Then core's `normalizeShadowRootChildren` (which JS also runs, so it
+    stays) is the remaining O(n) pass, a cheap `getChildren` walk.
+  - **Load.** The profile is flat (JSON parse about 20%, node creation and
+    splicing about 40%, transforms about 10%, render about 7%). It needs
+    cheaper node keys and fewer thread-context reads per node, not one fix.
 
 ## Architecture
 

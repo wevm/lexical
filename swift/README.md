@@ -8,9 +8,9 @@ editing behavior.
 > **Pre-release.** The API is unstable until 1.0, and most of Lexical isn't
 > ported yet. See [DESIGN.md](DESIGN.md) for the plan.
 
-Tracks upstream Lexical just after **0.53.0** (see `UPSTREAM_VERSION` and
-[DESIGN.md](DESIGN.md)); the first release will name the upstream release it
-conforms to.
+0.1.0 conforms to upstream Lexical main just after **0.53.0** (2b388b92d;
+see `UPSTREAM_VERSION` and [DESIGN.md](DESIGN.md)). Each release's notes in
+[CHANGELOG.md](CHANGELOG.md) name the upstream code it conforms to.
 
 ## Installation
 

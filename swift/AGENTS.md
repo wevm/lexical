@@ -53,6 +53,14 @@ npx tsc -p ./tsconfig.build.json --noEmit   # after changing lexical-conformance
 
 UI changes also run on macOS and the iOS Simulator.
 
+## Releases
+
+A release happens when a change to `swift/VERSION` naming an unreleased
+version lands on main: the Swift Release workflow publishes the mirror, the
+tag and the GitHub release from that version's `CHANGELOG.md` section. The
+`swift-release` environment only limits deployments to `main`; no one
+approves them, so treat a `VERSION` bump as shipping.
+
 ## Commits
 
 Conventional commits (`feat(swift): ...`, `test(conformance): ...`), not the

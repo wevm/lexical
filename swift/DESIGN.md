@@ -826,8 +826,10 @@ upstream playground (Q31, Q39). Then `LexicalList`, `LexicalLink`,
 - Work happens in `swift/` of [wevm/lexical](https://github.com/wevm/lexical),
   a fork of meta/lexical. [wevm/lexical-swift](https://github.com/wevm/lexical-swift)
   is a read-only mirror filled by `git subtree split --prefix=swift` (Q9, Q19).
-- `.github/workflows/swift-release.yml` publishes when `VERSION` names an
-  unreleased version, after approval in the `swift-release` environment. It
+- `.github/workflows/swift-release.yml` publishes when a change to
+  `VERSION` naming an unreleased version lands on main. The `swift-release`
+  environment has no required reviewer (tmm's decision after v0.1.0); it
+  only limits deployments to `main`, so landing the bump is the release. It
   gets a mirror token from GitHub STS, authorized by
   `.github/sts/mirror.sts.yaml` on the mirror's main (Q36). The first mirror
   push is made by hand, because the policy must already be there.

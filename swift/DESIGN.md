@@ -730,6 +730,8 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   click in the marker's rect) and an accessibility toggle action belong to
   the text views, with the marker drawing; `disableTakeFocusOnClick` is kept
   in `CheckListConfig` for that. The pointer tests are `dom-only`.
+  `lexical-list` is `enforced`: every upstream test that needs only
+  enforced packages is ported or carries a recorded skip.
 
 ## Scope of v0.1.0 (Q21)
 

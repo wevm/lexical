@@ -1,13 +1,13 @@
 import Lexical
 import LexicalExtension
 import LexicalHeadless
+import LexicalList
 import LexicalRichText
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-extension/src/__tests__/unit/BlockIdExtension.handles.test.ts.
-// Upstream's `build` registers the list nodes too; only the test that
-// builds a list needs them, and it is skipped until @lexical/list is ported.
+// The editors register ListExtension, as upstream's `build` does.
 
 /// A generateId that hands out `ids` in order, then a counter.
 private func fixedIds(_ ids: [String]) -> () -> String {
@@ -33,7 +33,7 @@ private func build(
       defineExtension(
         name: "[block-handle-test]",
         dependencies: (headless ? [HeadlessExtension] : []) + [
-          RichTextExtension,
+          RichTextExtension, ListExtension,
           configExtension(BlockIdExtension) {
             $0.disabled = disabled
             $0.generateId = fixedIds(ids)
@@ -333,6 +333,43 @@ private let ELEVEN = [
 }
 
 @Suite struct GetBlockHandleTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.test.ts::$getBlockHandle > null for a node without an id or that is not an identified block"
+    ))
+  func nullWithoutAnIdOrNotIdentified() throws {
+    let ids = ["listid", "item1", "item2"]
+    let handles = dictionary(buildHandleTable(ids).handles)
+    let editor = try build(ids)
+    defer { editor.dispose() }
+    try discrete(editor) {
+      try getRoot().append(
+        createListNode("bullet").append(
+          createListItemNode().append(createTextNode("one")),
+          createListItemNode().append(
+            createListNode("bullet").append(createListItemNode().append(createTextNode("nested"))))
+        ))
+    }
+    try editor.read { () throws -> Void in
+      let list = try #require(try getRoot().getFirstChildOrThrow() as? ElementNode)
+      let item = try #require(try list.getFirstChildOrThrow() as? ElementNode)
+      #expect(try getBlockHandle(list) == handles["listid"])
+      #expect(try getBlockHandle(item) == handles["item1"])
+      // A text node, and a nested list (a wrapper, not identified).
+      #expect(try getBlockHandle(item.getFirstChildOrThrow()) == nil)
+      let secondItem = try #require(try list.getLastChildOrThrow() as? ElementNode)
+      #expect(try getBlockHandle(secondItem) == handles["item2"])
+      let nestedList = try #require(try secondItem.getFirstChildOrThrow() as? ElementNode)
+      #expect(try getBlockHandle(nestedList) == nil)
+    }
+    // Detached.
+    try discrete(editor) {
+      let list = try getRoot().getFirstChildOrThrow()
+      try list.remove()
+      #expect(try getBlockHandle(list) == nil)
+    }
+  }
+
   @Test(
     .upstream(
       "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.test.ts::$getBlockHandle > gives each block its handle"

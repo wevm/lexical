@@ -1,6 +1,7 @@
 import Lexical
 import LexicalExtension
 import LexicalHistory
+import LexicalList
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -20,7 +21,7 @@ import Testing
 // test utils. The HTML is compared through `renderedHTML`, and the expected
 // window selection through the DOM path of the committed selection.
 //
-// Not ported: the cases that build lists, links, tables or markdown.
+// Not ported: the cases that build links, tables or markdown.
 
 private let theme: EditorThemeClasses = [
   "code": "editor-code",
@@ -422,7 +423,8 @@ private final class Fixture {
         name: "@test",
         // `HistoryPlugin`, whose default delay is 1000 ms.
         dependencies: [RichTextExtension, configExtension(HistoryExtension) { $0.delay = 1000 }],
-        nodes: { defaultTestNodes },
+        // Upstream's default test nodes include the list nodes.
+        nodes: { defaultTestNodes + [.klass(ListNode.self), .klass(ListItemNode.self)] },
         editorConfig: InitialEditorConfig(theme: theme)))
     try editor.setRootElement(TestRootElement())
     editor.selectionMovement = movement
@@ -1131,7 +1133,18 @@ private func rootTypes(_ editor: Editor) throws -> [String] {
 /// A mounted `createTestEditor` with HeadingNode registered, as upstream's
 /// test editor has it.
 private func mountedHeadingEditor() throws -> Editor {
-  try createMountedTestEditor(nodes: [.klass(HeadingNode.self)])
+  try createMountedTestEditor(nodes: [
+    .klass(HeadingNode.self), .klass(ListNode.self), .klass(ListItemNode.self),
+  ])
+}
+
+/// Each child of the root as `type:text:indent`.
+private func blocksWithIndent(_ editor: Editor) throws -> [String] {
+  try editor.read(.latest) {
+    try getRoot().getChildren().map {
+      "\($0.getType()):\(try $0.getTextContent()):\(try ($0 as! ElementNode).getIndent())"
+    }
+  }
 }
 
 /// The style-value cases: a paragraph's text with `style`, the
@@ -1159,6 +1172,54 @@ private func withStyledText(
 }
 
 @Suite struct LexicalSelectionSuite {
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Selection correctly resolves to a sibling ElementNode when a node is removed > "
+    ))
+  func resolvesToSiblingWhenNodeRemoved() throws {
+    let fixture = try Fixture()
+    defer { fixture.dispose() }
+    try fixture.update {
+      let listNode = try createListNode("bullet")
+      let listItemNode = try createListItemNode()
+      let paragraph = try createParagraphNode()
+      try getRoot().append(listNode)
+      try listNode.append(listItemNode)
+      _ = try listItemNode.select()
+      try listNode.insertAfter(paragraph)
+      try listItemNode.remove()
+      let selection = try #require(try getSelection() as? RangeSelection)
+      #expect(try selection.anchor.getNode().__type == "paragraph")
+      #expect(try selection.focus.getNode().__type == "paragraph")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Selection correctly resolves to a sibling ElementNode when a selected node child is removed > "
+    ))
+  func resolvesToSiblingWhenSelectedChildRemoved() throws {
+    let fixture = try Fixture()
+    defer { fixture.dispose() }
+    var paragraphNodeKey = ""
+    try fixture.update {
+      let paragraphNode = try createParagraphNode()
+      paragraphNodeKey = paragraphNode.getKey()
+      let listItemNode2 = try createListItemNode().append(
+        createListNode("number").append(createListItemNode()))
+      let listNode = try createListNode("number").append(
+        createListItemNode().append(createTextNode("foo")), listItemNode2)
+      try getRoot().append(paragraphNode, listNode)
+      _ = try listItemNode2.select()
+      try listNode.remove()
+    }
+    try fixture.editor.read(.latest) { () throws in
+      let selection = try #require(try getSelection() as? RangeSelection)
+      #expect(selection.anchor.key == paragraphNodeKey)
+      #expect(selection.focus.key == paragraphNodeKey)
+    }
+  }
+
   @Test(
     .upstream(
       "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Expect initial output to be a block with no text."
@@ -2182,6 +2243,53 @@ private func withStyledText(
   }
 
   // MARK: $setBlocksType
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Nested list"
+    ))
+  func setBlocksTypeNestedList() throws {
+    let testEditor = try mountedHeadingEditor()
+    defer { testEditor.dispose() }
+    try update(testEditor) { () throws in
+      let text1 = try createTextNode("1")
+      let text1_1 = try createTextNode("1.1")
+      try getRoot().append(
+        createListNode("bullet").append(
+          createListItemNode().append(text1),
+          createListItemNode().append(
+            createListNode("bullet").append(createListItemNode().append(text1_1)))))
+      let selection = createRangeSelection()
+      try setSelection(selection)
+      try setAnchorPoint(text1.getKey(), 1, .text)
+      try setFocusPoint(text1_1.getKey(), 1, .text)
+      try setBlocksType(selection) { try createHeadingNode("h1") }
+    }
+    // Upstream's HTML: the nested item's heading is indented once.
+    #expect(try blocksWithIndent(testEditor) == ["heading:1:0", "heading:1.1:1"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Nested list with listItem twice indented from its parent"
+    ))
+  func setBlocksTypeTwiceIndentedItem() throws {
+    let testEditor = try mountedHeadingEditor()
+    defer { testEditor.dispose() }
+    try update(testEditor) { () throws in
+      let text1_1 = try createTextNode("1.1")
+      try getRoot().append(
+        createListNode("bullet").append(
+          createListItemNode().append(
+            createListNode("bullet").append(createListItemNode().append(text1_1)))))
+      let selection = createRangeSelection()
+      try setSelection(selection)
+      try setAnchorPoint(text1_1.getKey(), 1, .text)
+      try setFocusPoint(text1_1.getKey(), 1, .text)
+      try setBlocksType(selection) { try createHeadingNode("h1") }
+    }
+    #expect(try blocksWithIndent(testEditor) == ["heading:1.1:1"])
+  }
 
   @Test(
     .upstream(

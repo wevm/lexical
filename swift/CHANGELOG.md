@@ -5,7 +5,7 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
-- New `LexicalList`, a port of `@lexical/list` (in progress): `ListNode`,
+- New `LexicalList`, a port of `@lexical/list`: `ListNode`,
   `ListItemNode`, `ListExtension`, `insertList`, `removeList`,
   `handleIndent`, `handleOutdent`, `handleListInsertParagraph`,
   `registerList`, `registerListStrictIndentTransform`, the list commands,

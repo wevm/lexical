@@ -458,13 +458,6 @@
     "reason": "deviation",
     "note": "generateBlockId uses the system CSPRNG (SystemRandomNumberGenerator), which cannot be removed the way a test stubs globalThis.crypto, so there is no missing-crypto error to check."
   },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.format.test.ts::block id format > the documented end-to-end vector": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Loads a bullet list with ListExtension; the vector's list and listitem ids need the list nodes."
-  },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.perf.test.ts::block handles: 10,000 blocks > every handle while the extension is disabled, and derived ids": {
     "reason": "deviation",
     "note": "An opt-in benchmark (BLOCK_ID_PERF=1, skipped upstream by default) comparing wall-clock medians on 10,000 blocks; its bounds are not meaningful in a debug Swift build."
@@ -476,20 +469,6 @@
   "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.property.test.ts::block handles: property > one-character typo rate and handle length, 1000-block documents": {
     "reason": "deviation",
     "note": "An opt-in measurement that upstream skips unless BLOCK_HANDLE_TYPO_DOCS is set and that only prints rates; the typo-rate bound is checked by the ported handles tests."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.handles.test.ts::$getBlockHandle > null for a node without an id or that is not an identified block": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds bullet lists with ListNode and ListItemNode."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.nestedCopy.test.ts::a list copied into a nested list item (where it nests) keeps no block id": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Pastes a list into a nested list item."
   },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.perf.test.ts::BlockIdExtension perf > 10000 blocks: keystroke, Enter, paste and repair overhead": {
     "reason": "deviation",
@@ -997,27 +976,6 @@
     "reason": "deviation",
     "note": "HMRExtension carries editor state across a bundler's hot module replacement (import.meta.hot); Swift has no hot module replacement, so the extension is not ported (DESIGN.md, Extension conventions)."
   },
-  "lexical-extension/src/__tests__/unit/IndentationLimits.test.ts::caps each selected item independently in a nested list": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Indents list items."
-  },
-  "lexical-extension/src/__tests__/unit/IndentationLimits.test.ts::caps list indentation for \"\"": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Indents list items."
-  },
-  "lexical-extension/src/__tests__/unit/IndentationLimits.test.ts::caps list indentation for \"World\"": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Indents list items."
-  },
   "lexical-extension/src/__tests__/unit/IndentationLimits.test.ts::outdent never makes indent 0.025 negative": {
     "reason": "deviation",
     "note": "A Swift ElementNode indent is an Int, so a fractional indent cannot be set; the integer cases are ported."
@@ -1481,20 +1439,6 @@
     "reason": "deviation",
     "note": "Asserts the precompiled override table by JS function identity (toEqual on the internal PreEditorDOMRenderConfig); Swift closures have no identity and the table is private. The ordering it pins is checked through behavior by the DOMRenderExtension type merge and decorateDOM order tests."
   },
-  "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > list with an empty item: cross-block me…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds ListNode and ListItemNode; ports with @lexical/list."
-  },
-  "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > preserves heading when followed by a non-paragraph sibling": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds ListNode and ListItemNode; ports with @lexical/list."
-  },
   "lexical-rich-text/src/__tests__/unit/RichTextBlockCursorShadowRoot.test.ts::$updateDOMBlockCursorElement — block cursor beside decorator with editable sibling > shows block cursor before a block decorator even when preceded by an editable paragraph": {
     "reason": "dom-only",
     "note": "Asserts the [data-lexical-cursor] element the DOM reconciler renders beside a block decorator; the native views draw the block cursor in M3."
@@ -1506,27 +1450,6 @@
   "lexical-rich-text/src/__tests__/unit/RichTextBlockCursorShadowRoot.test.ts::$updateDOMBlockCursorElement — block cursor beside decorator with editable sibling > shows block cursor before a block decorator when preceded by another block decorator": {
     "reason": "dom-only",
     "note": "Asserts the [data-lexical-cursor] element the DOM reconciler renders beside a block decorator; the native views draw the block cursor in M3."
-  },
-  "lexical-rich-text/src/__tests__/unit/RichTextCutSelectAll.test.ts::select-all + cut (#5835) > a collapsed caret in an empty list cuts nothing": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds a ListNode; @lexical/list is not ported yet."
-  },
-  "lexical-rich-text/src/__tests__/unit/RichTextCutSelectAll.test.ts::select-all + cut (#5835) > a lone list leaves an empty paragraph": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds a ListNode; @lexical/list is not ported yet."
-  },
-  "lexical-rich-text/src/__tests__/unit/RichTextCutSelectAll.test.ts::select-all + cut (#5835) > cutting a lone list and pasting restores it": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds a ListNode; @lexical/list is not ported yet."
   },
   "lexical-rich-text/src/__tests__/unit/RichTextGeneratedJSON.test.ts::rich-text generated JSON > HeadingNode agrees with the schema-driven walk": {
     "reason": "deviation",
@@ -1680,20 +1603,6 @@
     ],
     "note": "Builds a table ($createTableNodeWithDimensions); waits for @lexical/table."
   },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Nested list": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds ListNode and ListItemNode; waits for @lexical/list."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Nested list with listItem twice indented from its parent": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds ListNode and ListItemNode; waits for @lexical/list."
-  },
   "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Paragraph with links to heading with links": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1722,20 +1631,6 @@
       "lexical-link"
     ],
     "note": "Builds a LinkNode ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Selection correctly resolves to a sibling ElementNode when a node is removed > ": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds ListNode and ListItemNode; waits for @lexical/list."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Selection correctly resolves to a sibling ElementNode when a selected node child is removed > ": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Builds ListNode and ListItemNode; waits for @lexical/list."
   },
   "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > insertParagraph > adjust offset for inline elements text formatting": {
     "reason": "out-of-scope-package",
@@ -11932,24 +11827,6 @@
     ],
     "note": "Builds MarkNode."
   },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > empty block node in li behaves like a line break (#30)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-list"
-    ],
-    "note": "Pastes a <ul>/<ol>, which imports as ListNode/ListItemNode from @lexical/list; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > only br in a li (#35)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-list"
-    ],
-    "note": "Pastes a <ul>/<ol>, which imports as ListNode/ListItemNode from @lexical/list; ports with it."
-  },
   "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > pre (no touchy) (1) (#20)": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -11967,24 +11844,6 @@
       "lexical-code"
     ],
     "note": "Pastes a <pre>, which imports as CodeNode from @lexical/code; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should ignore DOM node types that do not have transformers, but still process their children. (#15)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-list"
-    ],
-    "note": "Pastes a <ul>/<ol>, which imports as ListNode/ListItemNode from @lexical/list; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should ignore multiple levels of DOM node types that do not have transformers, but still process their children. (#16)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-list"
-    ],
-    "note": "Pastes a <ul>/<ol>, which imports as ListNode/ListItemNode from @lexical/list; ports with it."
   },
   "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve formatting from HTML tags on deeply nested and top level text nodes. (#18)": {
     "reason": "out-of-scope-package",
@@ -12022,15 +11881,6 @@
     ],
     "note": "Pastes an <a>, which imports as LinkNode from @lexical/link; ports with it."
   },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML ul element (#4)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-list"
-    ],
-    "note": "Pastes a <ul>/<ol>, which imports as ListNode/ListItemNode from @lexical/list; ports with it."
-  },
   "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted combination of HTML anchor elements and text nodes (#14)": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -12048,15 +11898,6 @@
       "lexical-link"
     ],
     "note": "Pastes an <a>, which imports as LinkNode from @lexical/link; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from pasted HTML ol element (#5)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-list"
-    ],
-    "note": "Pastes a <ul>/<ol>, which imports as ListNode/ListItemNode from @lexical/list; ports with it."
   },
   "lexical-utils/src/__tests__/unit/LexicalNodeHelpers.test.ts::LexicalNodeHelpers tests > dfs order > DFS starting at last child of element node should not include parent's siblings": {
     "reason": "out-of-scope-package",
@@ -12078,46 +11919,6 @@
       "lexical-text"
     ],
     "note": "Tests $rootTextContent and $isRootTextContentEmpty from @lexical/text; ports with that package."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the end of the last nested list item": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html",
-      "lexical-list"
-    ],
-    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert into nested list items": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html",
-      "lexical-list"
-    ],
-    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split list items before the first text node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html",
-      "lexical-list"
-    ],
-    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split list items between two text nodes": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html",
-      "lexical-list"
-    ],
-    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split nested list items": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-html",
-      "lexical-list"
-    ],
-    "note": "Builds list documents with $generateNodesFromDOM; needs @lexical/list, which is not ported yet."
   },
   "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > calls onReposition for a range selection": {
     "reason": "dom-only",

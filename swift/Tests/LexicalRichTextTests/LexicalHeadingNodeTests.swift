@@ -1,11 +1,12 @@
 import Lexical
+import LexicalList
 import LexicalRichText
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts.
 // The reconciled HTML upstream compares is asserted as the model shape
-// (`blocks`), and tests that build list nodes wait for @lexical/list.
+// (`blocks`).
 
 private var editorConfig: EditorConfig {
   EditorConfig(
@@ -324,6 +325,55 @@ private func replaceRootWithHeading(_ children: LexicalNode...) throws -> Headin
       #expect(children.count == 1)
       #expect(!isHeadingNode(children[0]))
       #expect(try children[0].getTextContent() == "BeforeHeading")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > list with an empty item: cross-block me…"
+    ))
+  func emptyListItemPullsHeadingText() throws {
+    let editor = try backspace {
+      let text = try createTextNode("Heading")
+      try getRoot().clear().append(
+        createListNode("bullet").append(createListItemNode()), createHeadingNode("h1").append(text))
+      return text
+    }
+    // A ListNode whose only child is an empty ListItemNode is not considered
+    // empty: the exception skips it and the default cross-block merge runs,
+    // pulling the heading text into the empty item. Matches Google Docs'
+    // Backspace-at-heading behavior next to an empty bullet.
+    try editor.read { () throws in
+      let children = try getRoot().getChildren()
+      #expect(children.count == 1)
+      let list = try #require(children.first as? ListNode)
+      let item = try #require(try list.getFirstChild() as? ListItemNode)
+      #expect(try item.getTextContent() == "Heading")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-rich-text/src/__tests__/unit/LexicalHeadingNode.test.ts::Backspace at start of heading (#4359) > preserves heading when followed by a non-paragraph sibling"
+    ))
+  func preservesHeadingBeforeAList() throws {
+    let editor = try createMountedTestEditor(nodes: richTextTestNodes)
+    var originalKey = ""
+    try editor.update(discrete: true) {
+      let heading = try createHeadingNode("h1").append(createTextNode("Heading"))
+      try getRoot().clear().append(
+        heading,
+        createListNode("bullet").append(createListItemNode().append(createTextNode("Item"))))
+      originalKey = heading.getKey()
+      try heading.collapseAtStart()
+    }
+    try editor.read { () throws in
+      let children = try getRoot().getChildren()
+      #expect(children.count == 2)
+      let first = try #require(children.first as? HeadingNode)
+      #expect(first.getKey() == originalKey)
+      #expect(try first.getTextContent() == "Heading")
+      #expect(children[1].getType() == "list")
     }
   }
 

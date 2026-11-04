@@ -69,8 +69,8 @@ let package = Package(
     .testTarget(
       name: "LexicalUtilsTests",
       dependencies: [
-        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalRichText",
-        "LexicalSelection", "LexicalTesting", "LexicalUtils",
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalList",
+        "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/html: HTML export and import over the DOM in core.
     .target(
@@ -91,8 +91,8 @@ let package = Package(
     .testTarget(
       name: "LexicalRichTextTests",
       dependencies: [
-        "Lexical", "LexicalA11y", "LexicalExtension", "LexicalHTML", "LexicalPlainText",
-        "LexicalRichText", "LexicalTesting",
+        "Lexical", "LexicalA11y", "LexicalExtension", "LexicalHTML", "LexicalList",
+        "LexicalPlainText", "LexicalRichText", "LexicalTesting",
       ]),
     // @lexical/list: list nodes, the list commands and checklists.
     .target(

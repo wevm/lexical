@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalList
 import LexicalRichText
 import LexicalTesting
 import Testing
@@ -212,12 +213,11 @@ private final class CaretRoot: LexicalRootElement {
 }
 
 // Port of packages/lexical-rich-text/src/__tests__/unit/RichTextCutSelectAll.test.ts.
-// Cutting the whole document wipes it as deleting does (#5835). The list
-// cases need @lexical/list and are skipped.
+// Cutting the whole document wipes it as deleting does (#5835).
 
 private func cutEditor() throws -> Editor {
   let editor = try buildEditorFromExtensions(
-    defineExtension(name: "[5835-cut]", dependencies: [RichTextExtension]))
+    defineExtension(name: "[5835-cut]", dependencies: [RichTextExtension, ListExtension]))
   try editor.setRootElement(TestRootElement())
   return editor
 }
@@ -296,5 +296,61 @@ private func cut(_ editor: Editor, _ data: DataTransfer = DataTransfer()) throws
     }
     try cut(editor)
     #expect(try readOutline(editor) == [.element("heading", [])])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-rich-text/src/__tests__/unit/RichTextCutSelectAll.test.ts::select-all + cut (#5835) > a lone list leaves an empty paragraph"
+    ))
+  func loneList() throws {
+    let editor = try cutEditor()
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      try getRoot().clear().append(
+        createListNode("bullet").append(createListItemNode().append(createTextNode("one"))))
+    }
+    try editor.update(discrete: true) { _ = try selectAll() }
+    try cut(editor)
+    #expect(try readOutline(editor) == [.element("paragraph", [])])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-rich-text/src/__tests__/unit/RichTextCutSelectAll.test.ts::select-all + cut (#5835) > cutting a lone list and pasting restores it"
+    ))
+  func cutAndPasteList() throws {
+    let editor = try cutEditor()
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      try getRoot().clear().append(
+        createListNode("bullet").append(
+          createListItemNode().append(createTextNode("one")),
+          createListItemNode().append(createTextNode("two"))))
+    }
+    let before = try readOutline(editor)
+    try editor.update(discrete: true) { _ = try selectAll() }
+    let cutData = DataTransfer()
+    try cut(editor, cutData)
+    #expect(try readOutline(editor) == [.element("paragraph", [])])
+    _ = try editor.dispatchCommand(
+      PASTE_COMMAND, .clipboard(ClipboardEvent("paste", clipboardData: cutData)))
+    drainMicrotasks()
+    #expect(try readOutline(editor) == before)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-rich-text/src/__tests__/unit/RichTextCutSelectAll.test.ts::select-all + cut (#5835) > a collapsed caret in an empty list cuts nothing"
+    ))
+  func collapsedInEmptyList() throws {
+    let editor = try cutEditor()
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      let block = try createListNode("bullet").append(createListItemNode())
+      try getRoot().clear().append(block)
+      try block.selectStart()
+    }
+    try cut(editor)
+    #expect(try readOutline(editor) == [.element("list", [.element("listitem", [])])])
   }
 }

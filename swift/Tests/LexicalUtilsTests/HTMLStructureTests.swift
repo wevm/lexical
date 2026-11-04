@@ -1,6 +1,7 @@
 import Foundation
 import Lexical
 import LexicalHTML
+import LexicalList
 import LexicalTesting
 import LexicalUtils
 import Testing
@@ -9,7 +10,11 @@ import Testing
 // LexicalUtilsInsertNodeToNearestRoot.test.tsx and LexicalUtilsSplitNode.test.tsx.
 // Each case imports its document from HTML, edits it, and compares the
 // exported HTML in the same update, so adjacent text nodes stay unmerged.
-// The list cases need @lexical/list and are skipped.
+// The editors register the list nodes, as upstream's default test nodes do.
+
+private func listEditor() throws -> Editor {
+  try createTestEditor(nodes: [.klass(ListNode.self), .klass(ListItemNode.self)], headless: true)
+}
 
 private func importDocument(_ editor: Editor, _ html: String) throws {
   let dom = DOMParser().parseFromString(html)
@@ -39,6 +44,17 @@ private let insertCases: [InsertCase] = [
       #"<p><span style="white-space: pre-wrap;">Hello</span></p><test-decorator></test-decorator><p><span style="white-space: pre-wrap;">world</span></p>"#,
     selectionPath: [0, 0], selectionOffset: 5),
   InsertCase(
+    name: "insert into nested list items",
+    initialHtml:
+      "<ul><li><span>Before</span></li><ul><li><span>Helloworld</span></li></ul>"
+      + "<li><span>After</span></li></ul>",
+    expectedHtml:
+      #"<ul><li><span style="white-space: pre-wrap;">Before</span><ul><li><span style="white-space: pre-wrap;">Hello</span></li></ul></li></ul>"#
+      + "<test-decorator></test-decorator>"
+      + #"<ul><li><ul><li><span style="white-space: pre-wrap;">world</span></li></ul></li><li><span style="white-space: pre-wrap;">After</span></li></ul>"#,
+    // On the text node, after "Hello".
+    selectionPath: [0, 1, 0, 0, 0], selectionOffset: 5),
+  InsertCase(
     name: "insert into empty paragraph",
     initialHtml: "<p></p>",
     expectedHtml: "<p><br></p><test-decorator></test-decorator><p><br></p>",
@@ -55,6 +71,16 @@ private let insertCases: [InsertCase] = [
     expectedHtml:
       #"<p><span style="white-space: pre-wrap;">Hello world</span></p><test-decorator></test-decorator><p><span style="white-space: pre-wrap;">Second</span></p>"#,
     selectionPath: [0, 0], selectionOffset: 11),
+  InsertCase(
+    name: "insert in the end of the last nested list item",
+    initialHtml:
+      "<ul><li><span>Before</span></li><ul><li><span>Hello</span></li></ul>"
+      + "<li><span>After</span></li></ul>",
+    expectedHtml:
+      #"<ul><li><span style="white-space: pre-wrap;">Before</span><ul><li><span style="white-space: pre-wrap;">Hello</span></li></ul></li></ul>"#
+      + "<test-decorator></test-decorator>"
+      + #"<ul><li><span style="white-space: pre-wrap;">After</span></li></ul>"#,
+    selectionPath: [0, 1, 0, 0, 0], selectionOffset: 5),
   InsertCase(
     name: "insert in the beginning of paragraph",
     initialHtml: "<p>Hello world</p>",
@@ -108,9 +134,15 @@ private let insertCases: [InsertCase] = [
     .upstream(
       "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert with selection on root end"
     ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert into nested list items"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalUtilsInsertNodeToNearestRoot.test.tsx::LexicalUtils#insertNodeToNearestRoot > insert in the end of the last nested list item"
+    ),
     arguments: insertCases)
   func insert(_ testCase: InsertCase) throws {
-    let editor = try createTestEditor(headless: true)
+    let editor = try listEditor()
     defer { editor.dispose() }
     try update(editor) {
       try importDocument(editor, testCase.initialHtml)
@@ -159,6 +191,27 @@ private let splitCases: [SplitCase] = [
     expectedHtml:
       #"<p><span style="white-space: pre-wrap;">Hello</span><span style="white-space: pre-wrap;">world</span></p><p><br></p>"#,
     splitPath: [0], splitOffset: 2),
+  SplitCase(
+    name: "split list items between two text nodes",
+    initialHtml: "<ul><li><span>Hello</span><span>world</span></li></ul>",
+    expectedHtml:
+      #"<ul><li><span style="white-space: pre-wrap;">Hello</span></li></ul><ul><li><span style="white-space: pre-wrap;">world</span></li></ul>"#,
+    splitPath: [0, 0], splitOffset: 1),
+  SplitCase(
+    name: "split list items before the first text node",
+    initialHtml: "<ul><li><span>Hello</span><span>world</span></li></ul>",
+    expectedHtml:
+      #"<ul><li></li></ul><ul><li><span style="white-space: pre-wrap;">Hello</span><span style="white-space: pre-wrap;">world</span></li></ul>"#,
+    splitPath: [0, 0], splitOffset: 0),
+  SplitCase(
+    name: "split nested list items",
+    initialHtml:
+      "<ul><li><span>Before</span></li><ul><li><span>Hello</span><span>world</span></li></ul>"
+      + "<li><span>After</span></li></ul>",
+    expectedHtml:
+      #"<ul><li><span style="white-space: pre-wrap;">Before</span><ul><li><span style="white-space: pre-wrap;">Hello</span></li></ul></li></ul>"#
+      + #"<ul><li><ul><li><span style="white-space: pre-wrap;">world</span></li></ul></li><li><span style="white-space: pre-wrap;">After</span></li></ul>"#,
+    splitPath: [0, 1, 0, 0], splitOffset: 1),
 ]
 
 @Suite struct LexicalUtilsSplitNodeTests {
@@ -172,9 +225,18 @@ private let splitCases: [SplitCase] = [
     .upstream(
       "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split paragraph after the last text node"
     ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split list items between two text nodes"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split list items before the first text node"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > split nested list items"
+    ),
     arguments: splitCases)
   func split(_ testCase: SplitCase) throws {
-    let editor = try createTestEditor(headless: true)
+    let editor = try listEditor()
     defer { editor.dispose() }
     try update(editor) {
       try importDocument(editor, testCase.initialHtml)
@@ -192,7 +254,7 @@ private let splitCases: [SplitCase] = [
       "lexical-utils/src/__tests__/unit/LexicalUtilsSplitNode.test.tsx::LexicalUtils#splitNode > throws when splitting root"
     ))
   func throwsOnRoot() throws {
-    let editor = try createTestEditor(headless: true)
+    let editor = try listEditor()
     defer { editor.dispose() }
     try update(editor) {
       #expect(throws: (any Error).self) { try splitNode(try getRoot(), 0) }

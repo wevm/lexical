@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalList
 import LexicalRichText
 import LexicalTesting
 import Testing
@@ -14,8 +15,8 @@ import Testing
 // with a ClipboardEvent carrying the HTML, and compares the DOM each node's
 // `createDOM` renders, as the reconciler mounts it (`renderedHTML`).
 //
-// Not ported: the cases that paste lists, links or code blocks, which need
-// @lexical/list, @lexical/link and @lexical/code (skipped in the ledger).
+// Not ported: the cases that paste links or code blocks, which need
+// @lexical/link and @lexical/code (skipped in the ledger).
 
 private let theme: EditorThemeClasses = [
   "code": "editor-code",
@@ -47,7 +48,7 @@ private let rootOpen =
 private func createEventHelpersEditor() throws -> Editor {
   let editor = try buildEditorFromExtensions(
     defineExtension(
-      name: "test", dependencies: [RichTextExtension],
+      name: "test", dependencies: [RichTextExtension, ListExtension],
       editorConfig: InitialEditorConfig(
         theme: theme,
         initialEditorState: .update { _ in
@@ -175,6 +176,34 @@ private let baselineCases: [PasteCase] = [
     html: "<meta charset='utf-8'><h1>Lyrics to Hello by Adele</h1>A thousand times",
     expectedHTML:
       "<div contenteditable=\"true\" style=\"user-select: text; white-space: pre-wrap; word-break: break-word;\" data-lexical-editor=\"true\"><h1 class=\"editor-heading-h1\" dir=\"auto\"><span data-lexical-text=\"true\">Lyrics to Hello by Adele</span></h1><p class=\"editor-paragraph\" dir=\"auto\"><span data-lexical-text=\"true\">A thousand times</span></p></div>"
+  ),
+  PasteCase(
+    name: "should produce the correct editor state from a pasted HTML ul element (#4)",
+    html: #"<meta charset='utf-8'><ul><li>Other side</li><li>I must have called</li></ul>"#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><ul class="editor-list-ul" dir="auto"><li value="1" class="editor-listitem"><span data-lexical-text="true">Other side</span></li><li value="2" class="editor-listitem"><span data-lexical-text="true">I must have called</span></li></ul></div>"#
+  ),
+  PasteCase(
+    name: "should produce the correct editor state from pasted HTML ol element (#5)",
+    html: #"<meta charset='utf-8'><ol><li>To tell you</li><li>I’m sorry</li></ol>"#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><ol class="editor-list-ol" dir="auto"><li value="1" class="editor-listitem"><span data-lexical-text="true">To tell you</span></li><li value="2" class="editor-listitem"><span data-lexical-text="true">I’m sorry</span></li></ol></div>"#
+  ),
+  PasteCase(
+    name:
+      "should ignore DOM node types that do not have transformers, but still process their children. (#15)",
+    html:
+      #"<meta charset='utf-8'><doesnotexist><ul><li>Hello</li><li>from the other</li><li>side</li></ul></doesnotexist>"#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><ul class="editor-list-ul" dir="auto"><li value="1" class="editor-listitem"><span data-lexical-text="true">Hello</span></li><li value="2" class="editor-listitem"><span data-lexical-text="true">from the other</span></li><li value="3" class="editor-listitem"><span data-lexical-text="true">side</span></li></ul></div>"#
+  ),
+  PasteCase(
+    name:
+      "should ignore multiple levels of DOM node types that do not have transformers, but still process their children. (#16)",
+    html:
+      #"<meta charset='utf-8'><doesnotexist><doesnotexist><ul><li>Hello</li><li>from the other</li><li>side</li></ul></doesnotexist></doesnotexist>"#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><ul class="editor-list-ul" dir="auto"><li value="1" class="editor-listitem"><span data-lexical-text="true">Hello</span></li><li value="2" class="editor-listitem"><span data-lexical-text="true">from the other</span></li><li value="3" class="editor-listitem"><span data-lexical-text="true">side</span></li></ul></div>"#
   ),
 ]
 
@@ -407,6 +436,18 @@ private let w3SpacingCases: [PasteCase] = [
     expectedHTML:
       "<p class=\"editor-paragraph\" dir=\"auto\"><span data-lexical-text=\"true\">1</span></p><p class=\"editor-paragraph\" dir=\"auto\"><span data-lexical-text=\"true\">2</span></p><p class=\"editor-paragraph\" dir=\"auto\"><span data-lexical-text=\"true\">3</span></p>"
   ),
+  PasteCase(
+    name: "empty block node in li behaves like a line break (#30)",
+    html: #"<ol><li>1<div></div>2</li><li></li><li>3</li></ol>"#,
+    expectedHTML:
+      #"<ol class="editor-list-ol" dir="auto"><li value="1" class="editor-listitem"><span data-lexical-text="true">1</span><br><span data-lexical-text="true">2</span></li><li value="2" class="editor-listitem"><br data-lexical-managed-linebreak="true"></li><li value="3" class="editor-listitem"><span data-lexical-text="true">3</span></li></ol>"#
+  ),
+  PasteCase(
+    name: "only br in a li (#35)",
+    html: #"<ol><li>1</li><li><br /></li><li>3</li></ol>"#,
+    expectedHTML:
+      #"<ol class="editor-list-ol" dir="auto"><li value="1" class="editor-listitem"><span data-lexical-text="true">1</span></li><li value="2" class="editor-listitem"><br data-lexical-managed-linebreak="true"></li><li value="3" class="editor-listitem"><span data-lexical-text="true">3</span></li></ol>"#
+  ),
 ]
 
 @Suite struct LexicalEventHelpersTests {
@@ -450,6 +491,18 @@ private let w3SpacingCases: [PasteCase] = [
     ),
     .upstream(
       "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from pasted heading node followed by a DOM Text Node (#11)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML ul element (#4)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from pasted HTML ol element (#5)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should ignore DOM node types that do not have transformers, but still process their children. (#15)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should ignore multiple levels of DOM node types that do not have transformers, but still process their children. (#16)"
     ),
     arguments: baselineCases)
   func baseline(_ testCase: PasteCase) throws {
@@ -578,6 +631,12 @@ private let w3SpacingCases: [PasteCase] = [
     ),
     .upstream(
       "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > last br in a block node is ignored (#36)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > empty block node in li behaves like a line break (#30)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > W3 spacing > only br in a li (#35)"
     ),
     arguments: w3SpacingCases)
   func w3Spacing(_ testCase: PasteCase) throws {

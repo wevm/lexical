@@ -10,5 +10,5 @@
   "lexical-html": "enforced",
   "lexical-clipboard": "enforced",
   "lexical-a11y": "enforced",
-  "lexical-list": "pending"
+  "lexical-list": "enforced"
 }

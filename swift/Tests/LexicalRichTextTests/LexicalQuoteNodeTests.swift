@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalList
 import LexicalRichText
 import LexicalTesting
 import Testing
@@ -8,7 +9,13 @@ import Testing
 // LexicalTabNode.test.ts from packages/lexical-rich-text/src/__tests__/unit.
 
 /// The rich text nodes of upstream's `DEFAULT_NODES`.
-var richTextTestNodes: [LexicalNodeConfig] { [.klass(HeadingNode.self), .klass(QuoteNode.self)] }
+/// The upstream default test nodes this package's tests use.
+var richTextTestNodes: [LexicalNodeConfig] {
+  [
+    .klass(HeadingNode.self), .klass(QuoteNode.self), .klass(ListNode.self),
+    .klass(ListItemNode.self),
+  ]
+}
 
 private var editorConfig: EditorConfig {
   EditorConfig(namespace: "", theme: ["quote": "my-quote-class"])

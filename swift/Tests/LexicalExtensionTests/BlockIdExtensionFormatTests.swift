@@ -1,6 +1,7 @@
 import Foundation
 import Lexical
 import LexicalExtension
+import LexicalList
 import LexicalRichText
 import Testing
 
@@ -48,6 +49,68 @@ private func childIds(_ editor: Editor) throws -> [String?] {
 }
 
 @Suite struct BlockIdFormatTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.format.test.ts::block id format > the documented end-to-end vector"
+    ))
+  func documentedEndToEndVector() throws {
+    let stored =
+      #"{"root":{"children":["#
+      + #"{"$":{"10":1.5,"9":"x","note":"tab\tquote\""},"#
+      + #""children":[{"text":"Hello, wörld 👋","type":"text"}],"type":"paragraph"},"#
+      + #"{"children":["#
+      + #"{"children":[{"text":"one","type":"text"}],"type":"listitem","value":1},"#
+      + #"{"children":[{"text":"two","type":"text"}],"type":"listitem","value":2}],"#
+      + #""listType":"bullet","start":1,"tag":"ul","type":"list"},"#
+      + #"{"$":{"blockId":"kept-id"},"children":[],"type":"paragraph"}"#
+      + #"],"type":"root"}}"#
+    let canonical =
+      #"{"children":["#
+      + #"{"$":{"9":"x","10":1.5,"note":"tab\tquote\""},"#
+      + #""children":[{"text":"Hello, wörld 👋","type":"text"}],"type":"paragraph"},"#
+      + #"{"children":["#
+      + #"{"children":[{"text":"one","type":"text"}],"type":"listitem"},"#
+      + #"{"children":[{"text":"two","type":"text"}],"type":"listitem","value":2}],"#
+      + #""listType":"bullet","type":"list"},"#
+      + #"{"children":[],"type":"paragraph"}"#
+      + #"],"type":"root"}"#
+    // Node's sha256 of `canonical`, and of the key and each place.
+    let key = "9fa59b03bb40d3d4ac45b31a472f965a0825ffc10693d4165b1e4dcf956b5dfa"
+    let expected: [(String?, String, String)] = [
+      ("0", "paragraph", "qfDxX6r4J9KOyXNjM0x2X"),
+      ("1", "list", "nWeVEnzogQyDvzB4_4gMw"),
+      ("1.0", "listitem", "L9_QRFvuohaGhhqAlzLEB"),
+      ("1.1", "listitem", "BCreOq5xUSiXSxTd8xMLr"),
+      (nil, "paragraph", "kept-id"),
+    ]
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "[format-vector]",
+        dependencies: [RichTextExtension, ListExtension, BlockIdExtension],
+        editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
+    defer { editor.dispose() }
+    try editor.setEditorState(editor.parseEditorState(stored))
+    #expect(try editor.read { try canonicalDocument() } == canonical)
+    let documentKey = try editor.read { try documentKey() }
+    #expect(hex(documentKey) == key)
+    var actual: [String] = []
+    func visit(_ node: JSONValue) {
+      guard let object = node.objectValue else { return }
+      if let id = object["$"]?.objectValue?["blockId"]?.stringValue {
+        actual.append("\(object["type"]?.stringValue ?? ""):\(id)")
+      }
+      object["children"]?.arrayValue?.forEach(visit)
+    }
+    try editor.getEditorState().toJSON()["root"]?.objectValue?["children"]?.arrayValue?.forEach(
+      visit)
+    #expect(actual == expected.map { "\($0.1):\($0.2)" })
+    for (place, _, id) in expected {
+      if let place {
+        #expect(derivePositionalId(documentKey, place) == id, "\(place)")
+      }
+    }
+  }
+
   @Test(
     .upstream(
       "lexical-extension/src/__tests__/unit/BlockIdExtension.format.test.ts::block id format > sha256 matches the standard on every padding boundary and beyond"

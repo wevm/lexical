@@ -614,9 +614,9 @@ private func jsNumberString(_ n: Double) -> String {
 /// The JSON number grammar, which `numberValue` reads strings with:
 /// `/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/`.
 func isJSONNumber(_ s: String) -> Bool {
-  var parser = JSONParser(Array(s.utf16))
+  var parser = JSONParser(s)
   guard (try? parser.parseNumber()) != nil else { return false }
-  return parser.i == parser.units.count
+  return parser.i == parser.bytes.count
 }
 
 /// One property of a node's serialization schema, with the accessors that

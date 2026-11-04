@@ -710,6 +710,27 @@ Reversible choices made porting `@lexical/extension` under Q18.
   medium (macOS).
 - **Tier 2 differences** are listed in `parity/deviations.json`.
 
+## Follow-up packages (after v0.1.0)
+
+Each is its own module with its own ledger entry in `parity/packages.json`,
+`pending` while it is ported and `enforced` once it is.
+
+- **`LexicalList`** ports `@lexical/list`. `ListNode` and `ListItemNode`
+  copy every class field in `afterCloneFrom`, not only their `withField`
+  ones: the list type, tag, start, value and checked state were otherwise
+  lost on the first `getWritable`. Upstream tests that compare a root's
+  reconciled HTML rebuild it from each node's `createDOM` and compare it
+  exactly, so attributes are in the order JS sets them (`value` before
+  `class`), which upstream's order-insensitive helpers do not pin.
+  `checkList.ts` is ported only as `INSERT_CHECK_LIST_COMMAND`,
+  `registerCheckList` and `CheckListExtension`. The rest of it moves DOM
+  focus onto a check list `<li>` so that Space, the arrows and Escape
+  operate the checkbox, and hit-tests pointer events against the `::before`
+  marker. On the native views, toggling an item from its marker (a tap or a
+  click in the marker's rect) and an accessibility toggle action belong to
+  the text views, with the marker drawing; `disableTakeFocusOnClick` is kept
+  in `CheckListConfig` for that. The pointer tests are `dom-only`.
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

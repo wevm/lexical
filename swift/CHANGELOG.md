@@ -8,12 +8,15 @@ workflow publishes the section headed `## <swift/VERSION>`.
 - New `LexicalList`, a port of `@lexical/list` (in progress): `ListNode`,
   `ListItemNode`, `ListExtension`, `insertList`, `removeList`,
   `handleIndent`, `handleOutdent`, `handleListInsertParagraph`,
-  `registerList`, `registerListStrictIndentTransform` and the list
-  commands. Lists serialize byte for byte as in JS. Checklists and HTML
-  import rules are not ported yet.
+  `registerList`, `registerListStrictIndentTransform`, the list commands,
+  `CheckListExtension` with `INSERT_CHECK_LIST_COMMAND`, `ListImportRules`
+  (which `ListExtension` contributes to `DOMImportExtension`), `ListSchema`
+  and the opt-in `WordListImportExtension` for lists pasted from MS Word.
+  Lists serialize byte for byte as in JS. Toggling a checklist item from
+  its marker in the views is not done yet.
 - `ElementNode.append(contentsOf:)` is `open`, so a subclass can override
   how it takes children, as `ListItemNode` does. Added
-  `DOMNode.previousElementSibling`.
+  `DOMNode.previousElementSibling` and `DOMNode.nextElementSibling`.
 - `LexicalTesting.TestDecoratorNode` is `open`, so a test can subclass it
   as upstream's tests do.
 

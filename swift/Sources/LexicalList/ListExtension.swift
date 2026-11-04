@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalHTML
 
 // Port of packages/lexical-list/src/LexicalListExtension.ts.
 
@@ -17,9 +18,17 @@ public struct ListConfig {
 }
 
 /// `ListExtension`: registers `ListNode` and `ListItemNode`, the list
-/// commands, and the strict indent transform when `hasStrictIndent` is set.
+/// commands, the strict indent transform when `hasStrictIndent` is set,
+/// and `ListImportRules`.
 public let ListExtension = defineExtension(
   name: "@lexical/list/List", config: safeCast(ListConfig()),
+  dependencies: [
+    // DOMImportExtension support for the nodes registered here. Inert
+    // unless the editor imports HTML through the DOMImportExtension
+    // pipeline.
+    CoreImportExtension,
+    configExtension(DOMImportExtension) { $0.rules = ListImportRules.map(\.entry) },
+  ],
   nodes: { [.klass(ListNode.self), .klass(ListItemNode.self)] },
   build: { _, config, _ in namedSignals(config) },
   register: { editor, _, state in

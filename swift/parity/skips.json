@@ -16967,5 +16967,36 @@
       "lexical-link"
     ],
     "note": "Splices a paragraph holding a @lexical/link LinkNode; port with lexical-link."
+  },
+  "lexical-list/src/__tests__/unit/checkList.test.tsx::CheckListExtension mobile tap toggle > touch pointerup over the marker area toggles the item": {
+    "reason": "dom-only",
+    "note": "Dispatches pointer and click events at a check list <li> and hit-tests its ::before marker, with a touch dedup window; on the native views, toggling by the marker is the text view's work (see DESIGN.md, LexicalList)."
+  },
+  "lexical-list/src/__tests__/unit/checkList.test.tsx::CheckListExtension mobile tap toggle > mouse pointerup is ignored (click stays the desktop path)": {
+    "reason": "dom-only",
+    "note": "Dispatches pointer and click events at a check list <li> and hit-tests its ::before marker, with a touch dedup window; on the native views, toggling by the marker is the text view's work (see DESIGN.md, LexicalList)."
+  },
+  "lexical-list/src/__tests__/unit/checkList.test.tsx::CheckListExtension mobile tap toggle > pointerup followed by a synthesized click does not double-toggle": {
+    "reason": "dom-only",
+    "note": "Dispatches pointer and click events at a check list <li> and hit-tests its ::before marker, with a touch dedup window; on the native views, toggling by the marker is the text view's work (see DESIGN.md, LexicalList)."
+  },
+  "lexical-list/src/__tests__/unit/checkList.test.tsx::CheckListExtension mobile tap toggle > rapid taps on two different items toggle both within the dedup window": {
+    "reason": "dom-only",
+    "note": "Dispatches pointer and click events at a check list <li> and hit-tests its ::before marker, with a touch dedup window; on the native views, toggling by the marker is the text view's work (see DESIGN.md, LexicalList)."
+  },
+  "lexical-list/src/__tests__/unit/checkList.test.tsx::CheckListExtension mobile tap toggle > rapid mouse clicks on the same item all toggle (desktop not throttled)": {
+    "reason": "dom-only",
+    "note": "Dispatches pointer and click events at a check list <li> and hit-tests its ::before marker, with a touch dedup window; on the native views, toggling by the marker is the text view's work (see DESIGN.md, LexicalList)."
+  },
+  "lexical-list/src/__tests__/unit/checkList.test.tsx::CheckListExtension mobile tap toggle > rapid touch taps on the same item are throttled (mobile preserved)": {
+    "reason": "dom-only",
+    "note": "Dispatches pointer and click events at a check list <li> and hit-tests its ::before marker, with a touch dedup window; on the native views, toggling by the marker is the text view's work (see DESIGN.md, LexicalList)."
+  },
+  "lexical-list/src/__tests__/unit/ListImportExtension.test.ts::ListItemNode block flattening > with NodeStructureExtension, a pasted link around a list item stays on its text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-link"
+    ],
+    "note": "Pastes HTML whose <a> wraps a list item and compares the @lexical/link LinkNode shape; port with lexical-link."
   }
 }

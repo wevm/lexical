@@ -59,6 +59,12 @@ open class DOMNode {
     return parent.childNodes[..<index].last { $0 is DOMElement } as? DOMElement
   }
 
+  /// `nextElementSibling`: the nearest element after this node.
+  public var nextElementSibling: DOMElement? {
+    guard let parent = parentNode, let index = parent.indexOf(self) else { return nil }
+    return parent.childNodes[(index + 1)...].first { $0 is DOMElement } as? DOMElement
+  }
+
   /// The element children.
   public var children: [DOMElement] { childNodes.compactMap { $0 as? DOMElement } }
 

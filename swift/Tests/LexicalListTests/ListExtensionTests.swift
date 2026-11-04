@@ -74,3 +74,43 @@ import Testing
     }
   }
 }
+
+@Suite struct CheckListExtensionTests {
+  @Test(
+    .upstream(
+      "lexical-list/src/__tests__/unit/ListExtension.test.ts::CheckListExtension > Creates the list"
+    ))
+  func createsTheList() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "[root]", dependencies: [CheckListExtension, RichTextExtension],
+        editorConfig: InitialEditorConfig(
+          initialEditorState: .update { _ in
+            try getRoot().append(
+              createListNode("check").append(
+                createListItemNode(true).append(createTextNode("checked")),
+                createListItemNode(false).append(createTextNode("unchecked"))))
+          })))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) { () throws in
+      #expect(isListNode(try getRoot().getFirstChildOrThrow()))
+    }
+  }
+
+  @Test func insertCheckListCommand() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(name: "[root]", dependencies: [CheckListExtension, RichTextExtension]))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      let text = try createTextNode("todo")
+      try getRoot().clear().append(createParagraphNode().append(text))
+      _ = try text.select(0, 0)
+    }
+    #expect(try editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, ()))
+    try editor.read { () throws -> Void in
+      let list = try #require(try getRoot().getFirstChild() as? ListNode)
+      #expect(try list.getListType() == "check")
+      #expect(try list.getTextContent() == "todo")
+    }
+  }
+}

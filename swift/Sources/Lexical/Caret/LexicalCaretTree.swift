@@ -213,11 +213,17 @@ public func collectSiblingNodes(
 ) throws
   -> [LexicalNode]
 {
+  guard let start else { return [] }
+  // `getNextSibling()` one node at a time, with the node map read once: a
+  // node in the map is its latest version, so its `__next` is current.
+  let nodeMap = try getActiveEditorState()._nodeMap
   var siblings: [LexicalNode] = []
-  var node = start
-  while let current = node {
-    siblings.append(current)
-    node = try direction == .next ? current.getNextSibling() : current.getPreviousSibling()
+  var node: LexicalNode? = try start.getLatest()
+  siblings.append(start)
+  while let key = direction == .next ? node?.__next : node?.__prev {
+    node = nodeMap.get(key)
+    guard let node else { break }
+    siblings.append(node)
   }
   return siblings
 }

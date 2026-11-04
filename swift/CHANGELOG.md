@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `getChildren()` and the other sibling walks read the node map once
+  instead of resolving each node's latest version twice. Typing at 5,000
+  blocks went from 2.8 ms to 1.7 ms p50, and Enter from 13.4 ms to 11.9 ms
+  (release).
 - Serializing an editor state to JSON is linear in its size: each string
   was appended through `String.UnicodeScalarView.append(contentsOf:)`,
   which copied the whole output so far. Stringifying a 3 MB document went

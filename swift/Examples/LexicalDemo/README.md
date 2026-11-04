@@ -13,9 +13,13 @@ cd swift/Examples/LexicalDemo
 xcodegen generate
 ```
 
-Launch arguments: `-empty` starts from an empty paragraph; `-uitest` shows
-the model probe (the editor's text content, JSON and the last commands the
-view dispatched, as accessibility labels) that the UI tests read.
+Launch arguments: `-empty` starts from an empty paragraph; `-text
+<paragraph>`, repeated once per paragraph, starts from those paragraphs;
+`-uitest` shows the model probe (the editor's text content, JSON and the
+last commands the view dispatched, as accessibility labels) that the UI
+tests read; `-benchmark` types 200 keystrokes into a 5,000-paragraph
+document and shows their p95 (`testReportsKeystrokeTiming` prints it; pass
+`-configuration Release` for release numbers).
 
 ## Simulator
 
@@ -54,6 +58,9 @@ Before the first run, on the device: Developer Mode on (Settings > Privacy
 & Security), the keyboards above added (Settings > General > Keyboard >
 Keyboards), and, with a free team, the developer trusted after the first
 install (Settings > General > VPN & Device Management).
+
+On a device, the paste test skips, because the test runner cannot write the
+general pasteboard there; paste from another app is a manual check below.
 
 ## Manual checks
 

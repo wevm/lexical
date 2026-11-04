@@ -73,11 +73,37 @@ final class LexicalDemoUITests: XCTestCase {
   }
 
   /// Starts using the hardware keyboard with a key that changes nothing (the
-  /// caret is at the end): the simulator drops the first hardware key after
-  /// software keyboard input.
+  /// caret is at the end), until the editor sees it: after software keyboard
+  /// input the simulator drops the first hardware key, and a device drops
+  /// keys for longer.
   @MainActor
   private func startHardwareKeyboard() {
-    editor.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [])
+    let log = app.staticTexts["model-log"]
+    for _ in 0..<5 {
+      let before = log.label.components(separatedBy: "ArrowRight").count
+      editor.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [])
+      let seen = NSPredicate { _, _ in
+        log.label.components(separatedBy: "ArrowRight").count > before
+      }
+      if XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: seen, object: nil)], timeout: 1)
+        == .completed
+      {
+        return
+      }
+    }
+  }
+
+  /// Cmd-V, answering the system's paste prompt for another app's
+  /// clipboard, which a device shows (the simulator allows it).
+  @MainActor
+  private func pasteFromAnotherApp() {
+    editor.typeKey("v", modifierFlags: .command)
+    let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+    for allow in [app.buttons["Allow Paste"], springboard.buttons["Allow Paste"]]
+    where allow.waitForExistence(timeout: 2) {
+      allow.tap()
+      return
+    }
   }
 
   /// Taps the software keyboard's keys for `text`, one by one, so the IME
@@ -152,12 +178,17 @@ final class LexicalDemoUITests: XCTestCase {
   }
 
   @MainActor
-  func testPastesTextFromAnotherApp() {
+  func testPastesTextFromAnotherApp() throws {
     launch()
     // The test runner is another process, so this is another app's copy.
     UIPasteboard.general.string = "From elsewhere"
+    // On a device the test runner is a background process, which may not
+    // write the general pasteboard; that paste is a manual check there.
+    try XCTSkipUnless(
+      UIPasteboard.general.string == "From elsewhere",
+      "this runner can't write the general pasteboard (a device); check paste by hand")
     startHardwareKeyboard()
-    editor.typeKey("v", modifierFlags: .command)
+    pasteFromAnotherApp()
     expectText("From elsewhere")
   }
 
@@ -207,13 +238,12 @@ final class LexicalDemoUITests: XCTestCase {
   private static let paragraph1 =
     "Paragraph 1" + String(repeating: " and more words", count: 40) + "."
 
-  /// Pastes two paragraphs, triple-taps the first and bolds with Cmd-B.
+  /// Opens two paragraphs, triple-taps the first and bolds with Cmd-B.
   @MainActor
   private func tripleTapAndBold() {
-    UIPasteboard.general.string = Self.paragraph1 + "\nParagraph 2"
-    startHardwareKeyboard()
-    editor.typeKey("v", modifierFlags: .command)
+    launch(["-text", Self.paragraph1, "-text", "Paragraph 2"])
     expectText(Self.paragraph1 + "\n\nParagraph 2")
+    startHardwareKeyboard()
     editor.tap(withNumberOfTaps: 3, numberOfTouches: 1)
     sleep(1)
     editor.typeKey("b", modifierFlags: .command)
@@ -221,7 +251,6 @@ final class LexicalDemoUITests: XCTestCase {
 
   @MainActor
   func testTripleTapSelectsOnlyTheTappedParagraph() {
-    launch()
     tripleTapAndBold()
     // NormalizeTripleClickSelectionExtension ends the selection in the
     // tapped paragraph, so only it turns bold.
@@ -237,6 +266,20 @@ final class LexicalDemoUITests: XCTestCase {
     XCTAssertEqual(
       app.staticTexts["model-selection"].label,
       "\(Self.paragraph1)|focus \(Self.paragraph1)@\(Self.paragraph1.utf16.count)")
+  }
+
+  /// Not a check: prints the keystroke timing on 5,000 paragraphs.
+  @MainActor
+  func testReportsKeystrokeTiming() {
+    app = XCUIApplication()
+    app.launchArguments = ["-uitest", "-benchmark"]
+    app.launch()
+    let result = app.staticTexts["benchmark"]
+    let done = NSPredicate(format: "label != 'running'")
+    _ = XCTWaiter.wait(
+      for: [XCTNSPredicateExpectation(predicate: done, object: result)], timeout: 120)
+    print("BENCHMARK", result.label)
+    XCTAssertTrue(result.label.hasPrefix("p95"), result.label)
   }
 
   @MainActor

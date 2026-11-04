@@ -3,9 +3,11 @@ import LexicalSwiftUI
 import SwiftUI
 
 // The demo app: `LexicalEditor` on the demo document. Launch arguments:
-// `-empty` starts from an empty paragraph; `-uitest` shows the model probe,
+// `-empty` starts from an empty paragraph; `-text <text>`, repeated,
+// from one paragraph per argument; `-uitest` shows the model probe,
 // the editor's text content and JSON as accessibility labels, which the UI
-// tests read to check the model rather than the view.
+// tests read to check the model rather than the view; `-benchmark` times
+// keystrokes on a 5,000-paragraph document (Benchmark.swift) instead.
 
 @main
 struct LexicalDemoApp: App {
@@ -33,10 +35,21 @@ final class DemoModel {
     let arguments = ProcessInfo.processInfo.arguments
     // A demo that cannot build its editor has nothing to show.
     editor = try! makeDemoEditor()
-    if !arguments.contains("-empty") {
+    let lines = arguments.indices.dropLast().filter { arguments[$0] == "-text" }.map {
+      arguments[$0 + 1]
+    }
+    if !lines.isEmpty {
+      try? editor.update(discrete: true) {
+        let root = try getRoot().clear()
+        for line in lines {
+          try root.append(createParagraphNode().append(createTextNode(line)))
+        }
+        _ = try root.selectEnd()
+      }
+    } else if !arguments.contains("-empty") {
       try? loadDemoDocument(editor)
     }
-    if arguments.contains("-uitest") {
+    if arguments.contains("-uitest"), !arguments.contains("-benchmark") {
       removeListeners = [
         editor.registerUpdateListener { [weak self] payload in
           let state = payload.editorState
@@ -100,6 +113,8 @@ final class DemoModel {
 struct DemoView: View {
   @State private var model = DemoModel()
   private let showsProbe = ProcessInfo.processInfo.arguments.contains("-uitest")
+  private let isBenchmark = ProcessInfo.processInfo.arguments.contains("-benchmark")
+  @State private var benchmark = "running"
 
   var body: some View {
     VStack(spacing: 0) {
@@ -113,11 +128,20 @@ struct DemoView: View {
             .accessibilityLabel(model.selection)
           Text("log").accessibilityIdentifier("model-log")
             .accessibilityLabel(model.log.joined(separator: "; "))
+          if isBenchmark {
+            Text(benchmark).accessibilityIdentifier("benchmark")
+          }
         }
         .font(.caption2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(4)
       }
+    }
+    .task {
+      guard isBenchmark else { return }
+      // After the view is attached as the editor's root.
+      try? await Task.sleep(for: .seconds(1))
+      benchmark = (try? runKeystrokeBenchmark(model.editor)) ?? "failed"
     }
   }
 }

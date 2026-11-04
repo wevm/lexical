@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalLink
 import LexicalList
 import LexicalRichText
 import LexicalTesting
@@ -15,8 +16,8 @@ import Testing
 // with a ClipboardEvent carrying the HTML, and compares the DOM each node's
 // `createDOM` renders, as the reconciler mounts it (`renderedHTML`).
 //
-// Not ported: the cases that paste links or code blocks, which need
-// @lexical/link and @lexical/code (skipped in the ledger).
+// Not ported: the cases that paste code blocks, which need @lexical/code
+// (skipped in the ledger).
 
 private let theme: EditorThemeClasses = [
   "code": "editor-code",
@@ -49,6 +50,7 @@ private func createEventHelpersEditor() throws -> Editor {
   let editor = try buildEditorFromExtensions(
     defineExtension(
       name: "test", dependencies: [RichTextExtension, ListExtension],
+      nodes: { [.klass(LinkNode.self), .klass(AutoLinkNode.self)] },
       editorConfig: InitialEditorConfig(
         theme: theme,
         initialEditorState: .update { _ in
@@ -204,6 +206,54 @@ private let baselineCases: [PasteCase] = [
       #"<meta charset='utf-8'><doesnotexist><doesnotexist><ul><li>Hello</li><li>from the other</li><li>side</li></ul></doesnotexist></doesnotexist>"#,
     expectedHTML:
       #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><ul class="editor-list-ul" dir="auto"><li value="1" class="editor-listitem"><span data-lexical-text="true">Hello</span></li><li value="2" class="editor-listitem"><span data-lexical-text="true">from the other</span></li><li value="3" class="editor-listitem"><span data-lexical-text="true">side</span></li></ul></div>"#
+  ),
+  PasteCase(
+    name:
+      "should produce the correct editor state from a pasted HTML anchor element (#12)",
+    html:
+      #"<meta charset='utf-8'><a href="https://facebook.com">Facebook</a>"#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><p class="editor-paragraph" dir="auto"><a href="https://facebook.com"><span data-lexical-text="true">Facebook</span></a></p></div>"#
+  ),
+  PasteCase(
+    name:
+      "should produce the correct editor state from a pasted combination of an HTML text node followed by an anchor node (#13)",
+    html:
+      #"<meta charset='utf-8'>Welcome to<a href="https://facebook.com">Facebook!</a>"#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><p class="editor-paragraph" dir="auto"><span data-lexical-text="true">Welcome to</span><a href="https://facebook.com"><span data-lexical-text="true">Facebook!</span></a></p></div>"#
+  ),
+  PasteCase(
+    name:
+      "should produce the correct editor state from a pasted combination of HTML anchor elements and text nodes (#14)",
+    html:
+      #"<meta charset='utf-8'>Welcome to<a href="https://facebook.com">Facebook!</a>We hope you like it here."#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><p class="editor-paragraph" dir="auto"><span data-lexical-text="true">Welcome to</span><a href="https://facebook.com"><span data-lexical-text="true">Facebook!</span></a><span data-lexical-text="true">We hope you like it here.</span></p></div>"#
+  ),
+  PasteCase(
+    name:
+      "should preserve formatting from HTML tags on deeply nested text nodes. (#17)",
+    html:
+      #"<meta charset='utf-8'>Welcome to<b><a href="https://facebook.com">Facebook!</a></b>We hope you like it here."#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><p class="editor-paragraph" dir="auto"><span data-lexical-text="true">Welcome to</span><a href="https://facebook.com"><strong class="editor-text-bold" data-lexical-text="true">Facebook!</strong></a><span data-lexical-text="true">We hope you like it here.</span></p></div>"#
+  ),
+  PasteCase(
+    name:
+      "should preserve formatting from HTML tags on deeply nested and top level text nodes. (#18)",
+    html:
+      #"<meta charset='utf-8'>Welcome to<b><a href="https://facebook.com">Facebook!</a>We hope you like it here.</b>"#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><p class="editor-paragraph" dir="auto"><span data-lexical-text="true">Welcome to</span><a href="https://facebook.com"><strong class="editor-text-bold" data-lexical-text="true">Facebook!</strong></a><strong class="editor-text-bold" data-lexical-text="true">We hope you like it here.</strong></p></div>"#
+  ),
+  PasteCase(
+    name:
+      "should preserve multiple types of formatting on deeply nested text nodes and top level text nodes (#19)",
+    html:
+      #"<meta charset='utf-8'>Welcome to<b><i><a href="https://facebook.com">Facebook!</a>We hope you like it here.</i></b>"#,
+    expectedHTML:
+      #"<div contenteditable="true" style="user-select: text; white-space: pre-wrap; word-break: break-word;" data-lexical-editor="true"><p class="editor-paragraph" dir="auto"><span data-lexical-text="true">Welcome to</span><a href="https://facebook.com"><strong class="editor-text-bold editor-text-italic" data-lexical-text="true">Facebook!</strong></a><strong class="editor-text-bold editor-text-italic" data-lexical-text="true">We hope you like it here.</strong></p></div>"#
   ),
 ]
 
@@ -503,6 +553,24 @@ private let w3SpacingCases: [PasteCase] = [
     ),
     .upstream(
       "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should ignore multiple levels of DOM node types that do not have transformers, but still process their children. (#16)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML anchor element (#12)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted combination of an HTML text node followed by an anchor node (#13)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted combination of HTML anchor elements and text nodes (#14)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve formatting from HTML tags on deeply nested text nodes. (#17)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve formatting from HTML tags on deeply nested and top level text nodes. (#18)"
+    ),
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve multiple types of formatting on deeply nested text nodes and top level text nodes (#19)"
     ),
     arguments: baselineCases)
   func baseline(_ testCase: PasteCase) throws {

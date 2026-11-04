@@ -5,7 +5,19 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
+import {
+  $createCodeHighlightNode,
+  $createCodeNode,
+  CodeHighlightNode,
+  CodeNode,
+} from '@lexical/code-core';
 import {createHeadlessEditor} from '@lexical/headless';
+import {
+  $createAutoLinkNode,
+  $createLinkNode,
+  AutoLinkNode,
+  LinkNode,
+} from '@lexical/link';
 import {
   $createListItemNode,
   $createListNode,
@@ -148,6 +160,117 @@ test('serialization/list', () => {
     'serialization/list',
     'serialization',
     'Documents with @lexical/list nodes and the exact JSON text JS writes for them.',
+    cases,
+  );
+});
+
+// Documents with @lexical/link nodes: attributes set, empty and absent, and
+// unlinked autolinks.
+test('serialization/link', () => {
+  const documents: Record<string, () => void> = {
+    'autolink, unlinked autolink': () => {
+      $getRoot().append(
+        $createParagraphNode().append(
+          $createAutoLinkNode('https://a.example').append(
+            $createTextNode('a.example'),
+          ),
+          $createTextNode(' and '),
+          $createAutoLinkNode('https://b.example', {isUnlinked: true}).append(
+            $createTextNode('b.example'),
+          ),
+        ),
+      );
+    },
+    'link with every attribute': () => {
+      $getRoot().append(
+        $createParagraphNode().append(
+          $createLinkNode('https://example.com/', {
+            rel: 'noopener noreferrer',
+            target: '_blank',
+            title: 'Example',
+          }).append($createTextNode('example')),
+        ),
+      );
+    },
+    'link without attributes, formatted text': () => {
+      $getRoot().append(
+        $createParagraphNode().append(
+          $createTextNode('see '),
+          $createLinkNode('mailto:a@example.com').append(
+            $createTextNode('mail').toggleFormat('bold'),
+          ),
+        ),
+      );
+    },
+  };
+  const cases: Case[] = Object.entries(documents).map(([name, build]) => {
+    const editor = createHeadlessEditor({
+      nodes: [LinkNode, AutoLinkNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    editor.update(build, {discrete: true});
+    const state = editor.getEditorState();
+    return {
+      compact: JSON.stringify(state.toJSON(true)),
+      legacy: JSON.stringify(state.toJSON()),
+      name,
+    };
+  });
+  emitVectors(
+    'serialization/link',
+    'serialization',
+    'Documents with @lexical/link nodes and the exact JSON text JS writes for them.',
+    cases,
+  );
+});
+
+// Documents with @lexical/code-core nodes: languages, themes, highlight
+// types, tabs and line breaks.
+test('serialization/code', () => {
+  const documents: Record<string, () => void> = {
+    'code with language and highlights': () => {
+      $getRoot().append(
+        $createCodeNode('javascript').append(
+          $createCodeHighlightNode('const', 'keyword'),
+          $createCodeHighlightNode(' x = '),
+          $createCodeHighlightNode('1', 'number'),
+          $createLineBreakNode(),
+          $createTabNode(),
+          $createCodeHighlightNode('x'),
+        ),
+      );
+    },
+    'code with theme, no language': () => {
+      $getRoot().append(
+        $createCodeNode(null, 'dark').append($createCodeHighlightNode('a')),
+        $createParagraphNode(),
+      );
+    },
+    'empty code': () => {
+      $getRoot().append($createCodeNode());
+    },
+  };
+  const cases: Case[] = Object.entries(documents).map(([name, build]) => {
+    const editor = createHeadlessEditor({
+      nodes: [CodeNode, CodeHighlightNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    editor.update(build, {discrete: true});
+    const state = editor.getEditorState();
+    return {
+      compact: JSON.stringify(state.toJSON(true)),
+      legacy: JSON.stringify(state.toJSON()),
+      name,
+    };
+  });
+  emitVectors(
+    'serialization/code',
+    'serialization',
+    'Documents with @lexical/code-core nodes and the exact JSON text JS writes for them.',
     cases,
   );
 });

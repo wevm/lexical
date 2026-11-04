@@ -1,4 +1,5 @@
 import Lexical
+import LexicalLink
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -6,8 +7,7 @@ import Testing
 
 // Port of packages/lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts.
 // Upstream compares the mounted root's innerHTML; `renderedHTML` renders the
-// committed document the same way. The cases that build a LinkNode are
-// skipped until @lexical/link is ported.
+// committed document the same way.
 
 private struct NodeSpec {
   let text: String
@@ -82,10 +82,10 @@ private func committedPoints(
   return (pointString(selection.anchor), pointString(selection.focus), elementKey)
 }
 
-/// A mounted test editor with HeadingNode, the update, then the rendered
-/// HTML.
+/// A mounted test editor with HeadingNode and LinkNode, the update, then the
+/// rendered HTML.
 private func renderAfterUpdate(_ fn: @escaping () throws -> Void) throws -> String {
-  let editor = try createMountedTestEditor(nodes: [.klass(HeadingNode.self)])
+  let editor = try createMountedTestEditor(nodes: [.klass(HeadingNode.self), .klass(LinkNode.self)])
   defer { editor.dispose() }
   try update(editor, fn)
   return try renderedHTML(editor)
@@ -612,6 +612,23 @@ private func selectText(_ text: TextNode, _ anchor: Int, _ focus: Int) throws ->
 
   @Test(
     .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > with an empty paragraph node selected > link insertion without parent element"
+    ))
+  func emptyParagraphLinkWithoutParent() throws {
+    let html = try renderAfterUpdate { () throws in
+      let selection = try selectEmptyParagraph()
+      let link = try createLinkNode("https://")
+      try link.append(try createTextNode("ello worl"))
+      try selection.insertNodes([try createTextNode("h"), link, try createTextNode("d")])
+    }
+    #expect(
+      html
+        == "<p dir=\"auto\"><span data-lexical-text=\"true\">h</span><a href=\"https://\"><span data-lexical-text=\"true\">ello worl</span></a><span data-lexical-text=\"true\">d</span></p>"
+    )
+  }
+
+  @Test(
+    .upstream(
       "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > with an empty paragraph node selected > a single heading node with a child text node"
     ))
   func emptyParagraphHeading() throws {
@@ -718,7 +735,145 @@ private func selectText(_ text: TextNode, _ anchor: Int, _ focus: Int) throws ->
     #expect(html == "<p dir=\"auto\"><span data-lexical-text=\"true\">foo</span></p>")
   }
 
+  /// The fully selected "Existing text..." with a link holding "link" after
+  /// it, or before it when `linkFirst`.
+  private static func fullySelectedTextNextToLink(linkFirst: Bool) throws -> RangeSelection {
+    let paragraph = try createParagraphNode()
+    try getRoot().append(paragraph)
+    let text = try createTextNode("Existing text...")
+    let link = try createLinkNode("https://")
+    try link.append(try createTextNode("link"))
+    if linkFirst {
+      try paragraph.append(link, text)
+    } else {
+      try paragraph.append(text, link)
+    }
+    return try selectText(text, 0, "Existing text...".utf16.count)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > with a fully-selected text node followed by an inline element > a single text node"
+    ))
+  func fullySelectedBeforeLinkSingleText() throws {
+    let html = try renderAfterUpdate { () throws in
+      try Self.fullySelectedTextNextToLink(linkFirst: false).insertNodes([
+        try createTextNode("foo")
+      ])
+    }
+    #expect(
+      html
+        == "<p dir=\"auto\"><span data-lexical-text=\"true\">foo</span><a href=\"https://\"><span data-lexical-text=\"true\">link</span></a></p>"
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > with a fully-selected text node preceded by an inline element > a single text node"
+    ))
+  func fullySelectedAfterLinkSingleText() throws {
+    let html = try renderAfterUpdate { () throws in
+      try Self.fullySelectedTextNextToLink(linkFirst: true).insertNodes([
+        try createTextNode("foo")
+      ])
+    }
+    #expect(
+      html
+        == "<p dir=\"auto\"><a href=\"https://\"><span data-lexical-text=\"true\">link</span></a><span data-lexical-text=\"true\">foo</span></p>"
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > can insert a linebreak node before an inline element node"
+    ))
+  func lineBreakBeforeInlineElement() throws {
+    let html = try renderAfterUpdate { () throws in
+      let paragraph = try createParagraphNode()
+      try getRoot().append(paragraph)
+      let link = try createLinkNode("https://lexical.dev/")
+      try paragraph.append(link)
+      let text = try createTextNode("Lexical")
+      try link.append(text)
+      _ = try text.select(0, 0)
+      try insertNodes([try createLineBreakNode()])
+    }
+    // TODO #5109 ElementNode should have a way to control when other nodes can be inserted inside
+    #expect(
+      html
+        == "<p dir=\"auto\"><br><a href=\"https://lexical.dev/\"><span data-lexical-text=\"true\">Lexical</span></a></p>"
+    )
+  }
+
   // MARK: can insert block element nodes correctly
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert block element nodes correctly > with a fully-selected text node followed by an inline element > a paragraph node"
+    ))
+  func fullySelectedBeforeLinkParagraph() throws {
+    let html = try renderAfterUpdate { () throws in
+      let selection = try Self.fullySelectedTextNextToLink(linkFirst: false)
+      let paragraphToInsert = try createParagraphNode()
+      try paragraphToInsert.append(try createTextNode("foo"))
+      try selection.insertNodes([paragraphToInsert])
+    }
+    #expect(
+      html
+        == "<p dir=\"auto\"><span data-lexical-text=\"true\">foo</span><a href=\"https://\"><span data-lexical-text=\"true\">link</span></a></p>"
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert block element nodes correctly > with a fully-selected text node preceded by an inline element > a paragraph node"
+    ))
+  func fullySelectedAfterLinkParagraph() throws {
+    let html = try renderAfterUpdate { () throws in
+      let selection = try Self.fullySelectedTextNextToLink(linkFirst: true)
+      let paragraphToInsert = try createParagraphNode()
+      try paragraphToInsert.append(try createTextNode("foo"))
+      try selection.insertNodes([paragraphToInsert])
+    }
+    #expect(
+      html
+        == "<p dir=\"auto\"><a href=\"https://\"><span data-lexical-text=\"true\">link</span></a><span data-lexical-text=\"true\">foo</span></p>"
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert block element nodes correctly > Can insert link into empty paragraph"
+    ))
+  func linkIntoEmptyParagraph() throws {
+    let html = try renderAfterUpdate { () throws in
+      try getRoot().append(try createParagraphNode())
+      let linkNode = try createLinkNode("https://lexical.dev")
+      try linkNode.append(try createTextNode("Lexical"))
+      try insertNodes([linkNode])
+    }
+    #expect(
+      html
+        == "<p dir=\"auto\"><a href=\"https://lexical.dev\"><span data-lexical-text=\"true\">Lexical</span></a></p>"
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert block element nodes correctly > Can insert link into empty paragraph (2)"
+    ))
+  func linkAndTextIntoEmptyParagraph() throws {
+    let html = try renderAfterUpdate { () throws in
+      try getRoot().append(try createParagraphNode())
+      let linkNode = try createLinkNode("https://lexical.dev")
+      try linkNode.append(try createTextNode("Lexical"))
+      try insertNodes([linkNode, try createTextNode("...")])
+    }
+    #expect(
+      html
+        == "<p dir=\"auto\"><a href=\"https://lexical.dev\"><span data-lexical-text=\"true\">Lexical</span></a><span data-lexical-text=\"true\">...</span></p>"
+    )
+  }
 
   @Test(
     .upstream(
@@ -871,6 +1026,106 @@ private func selectText(_ text: TextNode, _ anchor: Int, _ focus: Int) throws ->
   }
 
   // MARK: $patchStyleText
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::$patchStyleText > can patch a selection anchored to the end of a TextNode before an inline element"
+    ))
+  func patchAtEndBeforeInlineElement() throws {
+    let editor = try createMountedTestEditor(nodes: [.klass(LinkNode.self)])
+    defer { editor.dispose() }
+    try update(editor) { () throws in
+      let paragraph = try createParagraphWithNodes(
+        editor, [NodeSpec("a", "a"), NodeSpec("b", "b")])
+      try getRoot().append(paragraph)
+      let link = try createLinkNode("https://")
+      try link.append(try createTextNode("link"))
+      try #require(try getNodeByKey("a")).insertAfter(link)
+      try setAnchorPoint("a", 1, .text)
+      try setFocusPoint("b", 1, .text)
+      let selection = try #require(try getSelection() as? RangeSelection)
+      try patchStyleText(selection, ["text-emphasis": "filled"])
+    }
+    #expect(
+      try renderedHTML(editor)
+        == "<p dir=\"auto\"><span data-lexical-text=\"true\">a</span>"
+        + "<a href=\"https://\">"
+        + "<span style=\"text-emphasis: filled;\" data-lexical-text=\"true\">link</span>"
+        + "</a>"
+        + "<span style=\"text-emphasis: filled;\" data-lexical-text=\"true\">b</span></p>")
+  }
+
+  /// "a" then a link holding "link", the selection from `anchor` to
+  /// `focus` (`nil` keys are the link), patched with text-emphasis.
+  private func patchNextToLink(
+    anchor: (NodeKey?, Int, PointType), focus: (NodeKey?, Int, PointType), withA: Bool = true
+  ) throws -> String {
+    let editor = try createMountedTestEditor(nodes: [.klass(LinkNode.self)])
+    defer { editor.dispose() }
+    try update(editor) { () throws in
+      let link = try createLinkNode("https://")
+      try link.append(try createTextNode("link"))
+      if withA {
+        try getRoot().append(try createParagraphWithNodes(editor, [NodeSpec("a", "a")]))
+        try #require(try getNodeByKey("a")).insertAfter(link)
+      } else {
+        let paragraph = try createParagraphNode()
+        try getRoot().append(paragraph)
+        try paragraph.append(link)
+      }
+      try setAnchorPoint(anchor.0 ?? link.getKey(), anchor.1, anchor.2)
+      try setFocusPoint(focus.0 ?? link.getKey(), focus.1, focus.2)
+      let selection = try #require(try getSelection() as? RangeSelection)
+      try patchStyleText(selection, ["text-emphasis": "filled"])
+    }
+    return try renderedHTML(editor)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::$patchStyleText > can patch a selection that ends on an element"
+    ))
+  func patchEndingOnElement() throws {
+    // Select to end of the link _element_
+    #expect(
+      try patchNextToLink(anchor: ("a", 0, .text), focus: (nil, 1, .element))
+        == "<p dir=\"auto\">"
+        + "<span style=\"text-emphasis: filled;\" data-lexical-text=\"true\">a</span>"
+        + "<a href=\"https://\">"
+        + "<span style=\"text-emphasis: filled;\" data-lexical-text=\"true\">link</span>"
+        + "</a>"
+        + "</p>")
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::$patchStyleText > can patch a reversed selection that ends on an element"
+    ))
+  func patchReversedEndingOnElement() throws {
+    // Select from the end of the link _element_
+    #expect(
+      try patchNextToLink(anchor: (nil, 1, .element), focus: ("a", 0, .text))
+        == "<p dir=\"auto\">"
+        + "<span style=\"text-emphasis: filled;\" data-lexical-text=\"true\">a</span>"
+        + "<a href=\"https://\">"
+        + "<span style=\"text-emphasis: filled;\" data-lexical-text=\"true\">link</span>"
+        + "</a>"
+        + "</p>")
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::$patchStyleText > can patch a selection that starts and ends on an element"
+    ))
+  func patchStartingAndEndingOnElement() throws {
+    #expect(
+      try patchNextToLink(anchor: (nil, 0, .element), focus: (nil, 1, .element), withA: false)
+        == "<p dir=\"auto\">"
+        + "<a href=\"https://\">"
+        + "<span style=\"text-emphasis: filled;\" data-lexical-text=\"true\">link</span>"
+        + "</a>"
+        + "</p>")
+  }
 
   @Test(
     .upstream(

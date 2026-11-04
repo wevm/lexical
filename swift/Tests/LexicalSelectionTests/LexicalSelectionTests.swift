@@ -1,6 +1,7 @@
 import Lexical
 import LexicalExtension
 import LexicalHistory
+import LexicalLink
 import LexicalList
 import LexicalRichText
 import LexicalSelection
@@ -21,7 +22,7 @@ import Testing
 // test utils. The HTML is compared through `renderedHTML`, and the expected
 // window selection through the DOM path of the committed selection.
 //
-// Not ported: the cases that build links, tables or markdown.
+// Not ported: the cases that build tables or markdown.
 
 private let theme: EditorThemeClasses = [
   "code": "editor-code",
@@ -423,8 +424,13 @@ private final class Fixture {
         name: "@test",
         // `HistoryPlugin`, whose default delay is 1000 ms.
         dependencies: [RichTextExtension, configExtension(HistoryExtension) { $0.delay = 1000 }],
-        // Upstream's default test nodes include the list nodes.
-        nodes: { defaultTestNodes + [.klass(ListNode.self), .klass(ListItemNode.self)] },
+        // Upstream's default test nodes include the list and link nodes.
+        nodes: {
+          defaultTestNodes + [
+            .klass(ListNode.self), .klass(ListItemNode.self), .klass(AutoLinkNode.self),
+            .klass(LinkNode.self),
+          ]
+        },
         editorConfig: InitialEditorConfig(theme: theme)))
     try editor.setRootElement(TestRootElement())
     editor.selectionMovement = movement
@@ -1948,6 +1954,50 @@ private func withStyledText(
 
   @Test(
     .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Selection correctly resolves to a sibling ElementNode that has multiple children with the correct offset when a node is removed > "
+    ))
+  func resolvesToSiblingElementWithMultipleChildren() throws {
+    let fixture = try Fixture()
+    defer { fixture.dispose() }
+    try fixture.update { () throws in
+      // Arrange
+      // Root
+      //  |- Paragraph
+      //    |- Link
+      //      |- Text
+      //      |- LineBreak
+      //      |- Text
+      //    |- Text
+      let root = try getRoot()
+      let paragraph = try createParagraphNode()
+      let link = try createLinkNode("bullet")
+      let textOne = try createTextNode("Hello")
+      let br = try createLineBreakNode()
+      let textTwo = try createTextNode("world")
+      let textThree = try createTextNode(" ")
+      try root.append(paragraph)
+      try link.append(textOne)
+      try link.append(br)
+      try link.append(textTwo)
+      try paragraph.append(link)
+      try paragraph.append(textThree)
+      _ = try textThree.select()
+      // Act
+      try textThree.remove()
+      // Assert
+      let expectedKey = link.getKey()
+      guard let selection = try getSelection() as? RangeSelection else { return }
+      let anchor = selection.anchor
+      let focus = selection.focus
+      #expect(try anchor.getNode().getKey() == expectedKey)
+      #expect(try focus.getNode().getKey() == expectedKey)
+      #expect(anchor.offset == 3)
+      #expect(focus.offset == 3)
+    }
+  }
+
+  @Test(
+    .upstream(
       "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > isBackward"
     ))
   func isBackward() throws {
@@ -2060,6 +2110,29 @@ private func withStyledText(
       try renderedHTML(testEditor)
         == "<p dir=\"auto\"><span data-lexical-text=\"true\">Hello </span><strong data-lexical-text=\"true\">awesome</strong></p><p dir=\"auto\"><span data-lexical-text=\"true\"> world</span></p>"
     )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > insertParagraph > adjust offset for inline elements text formatting"
+    ))
+  func adjustOffsetForInlineElementsFormatting() throws {
+    let fixture = try Fixture()
+    defer { fixture.dispose() }
+    try fixture.update { () throws in
+      let root = try getRoot()
+      let text1 = try createTextNode("--")
+      let text2 = try createTextNode("abc")
+      let text3 = try createTextNode("--")
+      try root.append(
+        try createParagraphNode().append(
+          text1, try createLinkNode("https://lexical.dev").append(text2), text3))
+      try setAnchorPoint(text1.getKey(), 2, .text)
+      try setFocusPoint(text3.getKey(), 0, .text)
+      guard let selection = try getSelection() as? RangeSelection else { return }
+      try selection.formatText("bold")
+      #expect(try text2.hasFormat("bold"))
+    }
   }
 
   @Test(
@@ -2442,6 +2515,67 @@ private func withStyledText(
       let selection = try text1.select().setTextNodeRange(text1, 0, text2, 0)
       try setBlocksType(selection) { try createHeadingNode("h1") }
     }
+    defer { testEditor.dispose() }
+    #expect(try rootTypes(testEditor) == ["heading", "paragraph"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Paragraph with links to heading with links"
+    ))
+  func paragraphWithLinksToHeading() throws {
+    let testEditor = try createMountedTestEditor(nodes: [
+      .klass(HeadingNode.self), .klass(ListNode.self), .klass(ListItemNode.self),
+      .klass(AutoLinkNode.self), .klass(LinkNode.self),
+    ])
+    defer { testEditor.dispose() }
+    try update(testEditor) { () throws in
+      let root = try getRoot()
+      let paragraph = try createParagraphNode()
+      let text1 = try createTextNode("Links: ")
+      let text2 = try createTextNode("link1")
+      let text3 = try createTextNode("link2")
+      try root.append(
+        try paragraph.append(
+          text1, try createLinkNode("https://lexical.dev").append(text2),
+          try createTextNode(" "),
+          try createLinkNode("https://playground.lexical.dev").append(text3)))
+      let paragraphChildrenKeys = try paragraph.getChildrenKeys()
+      let selection = createRangeSelection()
+      try setSelection(selection)
+      try setAnchorPoint(text1.getKey(), 1, .text)
+      try setFocusPoint(text3.getKey(), 1, .text)
+      try setBlocksType(selection) { try createHeadingNode("h1") }
+      let rootChildren = try root.getChildren()
+      #expect(rootChildren.count == 1)
+      let heading = try #require(rootChildren[0] as? ElementNode)
+      #expect(heading.getType() == "heading")
+      #expect(try heading.getChildrenKeys() == paragraphChildrenKeys)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Triple-click overselection: focus inside nested inline at offset 0 is skipped"
+    ))
+  func tripleClickNestedInlineOffsetZero() throws {
+    let testEditor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "@test", dependencies: [RichTextExtension, LinkExtension],
+        editorConfig: InitialEditorConfig(
+          initialEditorState: .update { _ in
+            let text1 = try createTextNode("text 1")
+            let text2 = try createTextNode("text 2")
+            try getRoot().append(
+              try createParagraphNode().append(text1),
+              try createParagraphNode().append(
+                try createLinkNode("https://lexical.dev").append(text2)))
+            // Browser triple-click: focus lands on the text node of the
+            // following block at offset 0, even though visually only
+            // paragraph1's content is selected.
+            let selection = try text1.select().setTextNodeRange(text1, 0, text2, 0)
+            try setBlocksType(selection) { try createHeadingNode("h1") }
+          })))
     defer { testEditor.dispose() }
     #expect(try rootTypes(testEditor) == ["heading", "paragraph"])
   }

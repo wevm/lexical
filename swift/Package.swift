@@ -27,6 +27,7 @@ let package = Package(
     .library(name: "LexicalA11y", targets: ["LexicalA11y"]),
     .library(name: "LexicalDevtoolsCore", targets: ["LexicalDevtoolsCore"]),
     .library(name: "LexicalList", targets: ["LexicalList"]),
+    .library(name: "LexicalLink", targets: ["LexicalLink"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -53,7 +54,8 @@ let package = Package(
       name: "LexicalExtensionTests",
       dependencies: [
         "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHeadless", "LexicalHistory",
-        "LexicalHTML", "LexicalList", "LexicalRichText", "LexicalSelection", "LexicalTesting",
+        "LexicalHTML", "LexicalLink", "LexicalList", "LexicalRichText", "LexicalSelection",
+        "LexicalTesting",
         "LexicalUtils",
       ]),
     // @lexical/selection: style patching, block conversion and wrapping.
@@ -61,7 +63,8 @@ let package = Package(
     .testTarget(
       name: "LexicalSelectionTests",
       dependencies: [
-        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalList",
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalLink",
+        "LexicalList",
         "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/utils: traversal, insertion and editing helpers.
@@ -69,7 +72,8 @@ let package = Package(
     .testTarget(
       name: "LexicalUtilsTests",
       dependencies: [
-        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalList",
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalLink",
+        "LexicalList",
         "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/html: HTML export and import over the DOM in core.
@@ -78,7 +82,8 @@ let package = Package(
     .testTarget(
       name: "LexicalHTMLTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalList", "LexicalRichText",
+        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalLink", "LexicalList",
+        "LexicalRichText",
         "LexicalTesting",
       ]),
     // @lexical/rich-text: headings, quotes and the rich text commands.
@@ -102,7 +107,17 @@ let package = Package(
       name: "LexicalListTests",
       dependencies: [
         "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalHTML",
-        "LexicalList", "LexicalRichText", "LexicalTesting", "LexicalUtils",
+        "LexicalLink", "LexicalList", "LexicalRichText", "LexicalTesting", "LexicalUtils",
+      ]),
+    // @lexical/link: link nodes, the link commands and autolinks.
+    .target(
+      name: "LexicalLink",
+      dependencies: ["Lexical", "LexicalA11y", "LexicalExtension", "LexicalHTML", "LexicalUtils"]),
+    .testTarget(
+      name: "LexicalLinkTests",
+      dependencies: [
+        "Lexical", "LexicalA11y", "LexicalExtension", "LexicalHistory", "LexicalHTML",
+        "LexicalLink", "LexicalList", "LexicalRichText", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/a11y: the live region and the announcers.
     .target(name: "LexicalA11y", dependencies: ["Lexical", "LexicalExtension"]),
@@ -197,14 +212,15 @@ let package = Package(
     .testTarget(
       name: "ConformanceTests",
       dependencies: [
-        "Lexical", "LexicalDevtoolsCore", "LexicalHTML", "LexicalList", "LexicalRichText",
-        "LexicalTesting",
+        "Lexical", "LexicalDevtoolsCore", "LexicalHTML", "LexicalLink", "LexicalList",
+        "LexicalRichText", "LexicalTesting",
       ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
     .testTarget(
       name: "LexicalTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalHTML", "LexicalList",
+        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalHTML", "LexicalLink",
+        "LexicalList",
         "LexicalRichText", "LexicalTesting",
       ]),
   ],

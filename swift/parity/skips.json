@@ -634,30 +634,6 @@
     ],
     "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
   },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a list lifted out of a link: the items …": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link"
-    ],
-    "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a list lifted out of a link: the items …": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link"
-    ],
-    "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a list lifted out of a link: the items …": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link"
-    ],
-    "note": "Lifts a bullet list (ListNode, ListItemNode) out of a LinkNode."
-  },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: assignment > markdown import assigns ids": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1034,33 +1010,12 @@
     ],
     "note": "Uses the list nodes and CodeNode."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a caret between two merged links stays between their contents": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Uses LinkNode or AutoLinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a heading inside a link becomes a heading holding the link": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Uses LinkNode or AutoLinkNode."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a paragraph in a block in a holder: the result does not depend on which is repaired first": {
     "reason": "out-of-scope-package",
     "packages": [
       "lexical-code-core"
     ],
     "note": "Uses CodeNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a subclass override of shouldMergeAdjacentLink keeps deciding": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Uses LinkNode or AutoLinkNode."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a table in a list item is lifted out of the list": {
     "reason": "out-of-scope-package",
@@ -1070,27 +1025,12 @@
     ],
     "note": "Uses the list and table nodes."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > adjacent equal links merge; different ones do not": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Uses LinkNode or AutoLinkNode."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > an OverflowNode stays in its paragraph": {
     "reason": "out-of-scope-package",
     "packages": [
       "lexical-overflow"
     ],
     "note": "Uses OverflowNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > an element caret after a lifted block stays after it": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link"
-    ],
-    "note": "Uses the list nodes and LinkNode."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > inline content in a table cell is wrapped in a paragraph": {
     "reason": "out-of-scope-package",
@@ -1142,14 +1082,6 @@
     ],
     "note": "Uses MarkNode."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty link alone in a list is removed before its holder is repaired, whatever the dirty order": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link",
-      "lexical-list"
-    ],
-    "note": "An empty LinkNode in a list."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty link in an OverflowNode before a rule in a list item is removed before its holder is repaired, whatever the dirty order": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1179,36 +1111,6 @@
     ],
     "note": "Reads the declarations of the list, link, table, code, mark and overflow nodes."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a LinkNode subclass whose isInline() returns false": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link",
-      "lexical-list"
-    ],
-    "note": "A LinkNode subclass, in an editor with the list and link extensions."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a subclass that declares the key itself is still checked": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "A LinkNode subclass."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > isInline() is synthesized only for a class that declares inline itself": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "A LinkNode subclass."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > a list item outside a list, in a link, keeps the link as it does without the extension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link"
-    ],
-    "note": "Uses the list nodes and LinkNode."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > a list, table or shadow root lifted out of a link or mark keeps them on all its text": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1219,28 +1121,6 @@
       "lexical-overflow"
     ],
     "note": "Lists, tables and quotes in links and marks, with OverflowNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > lists that merge keep what follows or precedes a nested list in an item at the seam": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link"
-    ],
-    "note": "Uses the list nodes and LinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::getDeclaredNodeStructure > an inherited inline is dropped when the subclass isInline() cannot be evaluated without an instance": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Uses LinkNode or AutoLinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > AutoLinkNode never merges": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Uses LinkNode or AutoLinkNode."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::registration > a table cell's declared children: inline content is wrapped in a paragraph": {
     "reason": "out-of-scope-package",
@@ -1336,30 +1216,9 @@
     "reason": "deviation",
     "note": "withDOM installs a happy-dom window for Node. The Swift DOM is built in and needs no host window, so withDOM is not ported (DESIGN.md, Headless)."
   },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText edits text in inline elements": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Edits the text of a LinkNode."
-  },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText is the same in the docs and the tests": {
     "reason": "deviation",
     "note": "Compares the TypeScript source of $setBlockText in the docs page, the test utils and @lexical/y; the Swift setBlockText test helper is a port, so there is no shared text to compare."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses a block or inline element that hosts a slot": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Hosts a slot on a LinkNode."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: text added at a link edge goes outside the link": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Edits text at the edges of a LinkNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: text added at the edge of a link in a mark goes outside both": {
     "reason": "out-of-scope-package",
@@ -1424,13 +1283,6 @@
     "reason": "dom-only",
     "note": "Asserts the DOM the reconciler renders into a root element (setRootElement, getElementByKey, root.innerHTML); the native views replace the DOM reconciler."
   },
-  "lexical-html/src/__tests__/unit/LineBreakRoundTrip.test.ts::trailing LineBreakNode survives an HTML round trip > a line break trailing an inline element exports unchanged": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode; @lexical/link is not ported yet."
-  },
   "lexical-html/src/__tests__/unit/compileDOMRenderConfigOverrides.test.ts::precompileDOMRenderConfigOverrides > precompiles with only type overrides": {
     "reason": "deviation",
     "note": "Asserts the precompiled override table by JS function identity (toEqual on the internal PreEditorDOMRenderConfig); Swift closures have no identity and the table is private. The ordering it pins is checked through behavior by the DOMRenderExtension type merge and decorateDOM order tests."
@@ -1463,125 +1315,6 @@
     "reason": "deviation",
     "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS. The shadowRoot flat-state behavior these tests also check is ported in QuoteNodeShadowRootTests."
   },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=false, outer=false, mutates=clone)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=false, outer=false, mutates=self)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=false, outer=true, mutates=clone)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=false, outer=true, mutates=self)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=true, outer=false, mutates=clone)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=true, outer=false, mutates=self)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=true, outer=true, mutates=clone)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=true, outer=true, mutates=self)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=false, outer=false, mutates=clone)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=false, outer=false, mutates=self)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=false, outer=true, mutates=clone)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=false, outer=true, mutates=self)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=true, outer=false, mutates=clone)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=true, outer=false, mutates=self)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=true, outer=true, mutates=clone)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=true, outer=true, mutates=self)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalIsAtEdgeOfElement.test.ts::$isAtEdgeOfElement > descends through nested inline elements": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode around the text ($createLinkNode); waits for @lexical/link."
-  },
   "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Collapsed in element inside top-element": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1603,20 +1336,6 @@
     ],
     "note": "Builds a table ($createTableNodeWithDimensions); waits for @lexical/table."
   },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Paragraph with links to heading with links": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Triple-click overselection: focus inside nested inline at offset 0 is skipped": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode); waits for @lexical/link."
-  },
   "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Ctrl+Backspace deletes list created by typing \"- \"": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1624,104 +1343,6 @@
       "lexical-markdown"
     ],
     "note": "Types \"- \" into the UNORDERED_LIST markdown shortcut, which makes a ListNode; waits for @lexical/list and @lexical/markdown."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Selection correctly resolves to a sibling ElementNode that has multiple children with the correct offset when a node is removed > ": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > insertParagraph > adjust offset for inline elements text formatting": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode); waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::$patchStyleText > can patch a reversed selection that ends on an element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::$patchStyleText > can patch a selection anchored to the end of a TextNode before an inline element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::$patchStyleText > can patch a selection that ends on an element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::$patchStyleText > can patch a selection that starts and ends on an element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert block element nodes correctly > Can insert link into empty paragraph": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert block element nodes correctly > Can insert link into empty paragraph (2)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert block element nodes correctly > with a fully-selected text node followed by an inline element > a paragraph node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert block element nodes correctly > with a fully-selected text node preceded by an inline element > a paragraph node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > can insert a linebreak node before an inline element node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > with a fully-selected text node followed by an inline element > a single text node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > with a fully-selected text node preceded by an inline element > a single text node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelectionHelpers.test.ts::LexicalSelectionHelpers tests > can insert non-element nodes correctly > with an empty paragraph node selected > link insertion without parent element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds a LinkNode ($createLinkNode) and checks its rendered <a href>; waits for @lexical/link."
   },
   "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, empty, caret in the empty scope": {
     "reason": "out-of-scope-package",
@@ -1792,216 +1413,6 @@
       "lexical-mark"
     ],
     "note": "Builds MarkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
   },
   "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret before the wrappers, in the root": {
     "reason": "out-of-scope-package",
@@ -2482,216 +1893,6 @@
       "lexical-overflow"
     ],
     "note": "Builds LinkNode and OverflowNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
   },
   "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret before the wrappers, in the root": {
     "reason": "out-of-scope-package",
@@ -4672,216 +3873,6 @@
       "lexical-overflow"
     ],
     "note": "Builds LinkNode and OverflowNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root, NodeStructureExtension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
-  },
-  "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root, with a wrapping element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Builds LinkNode."
   },
   "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret before the wrappers, in the root": {
     "reason": "out-of-scope-package",
@@ -11845,60 +10836,6 @@
     ],
     "note": "Pastes a <pre>, which imports as CodeNode from @lexical/code; ports with it."
   },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve formatting from HTML tags on deeply nested and top level text nodes. (#18)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Pastes an <a>, which imports as LinkNode from @lexical/link; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve formatting from HTML tags on deeply nested text nodes. (#17)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Pastes an <a>, which imports as LinkNode from @lexical/link; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should preserve multiple types of formatting on deeply nested text nodes and top level text nodes (#19)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Pastes an <a>, which imports as LinkNode from @lexical/link; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted HTML anchor element (#12)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Pastes an <a>, which imports as LinkNode from @lexical/link; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted combination of HTML anchor elements and text nodes (#14)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Pastes an <a>, which imports as LinkNode from @lexical/link; ports with it."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalEventHelpers.test.tsx::LexicalEventHelpers > onPasteForRichText > baseline > should produce the correct editor state from a pasted combination of an HTML text node followed by an anchor node (#13)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Pastes an <a>, which imports as LinkNode from @lexical/link; ports with it."
-  },
   "lexical-utils/src/__tests__/unit/LexicalNodeHelpers.test.ts::LexicalNodeHelpers tests > dfs order > DFS starting at last child of element node should not include parent's siblings": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -12707,33 +11644,6 @@
     ],
     "note": "Needs @lexical/code (with list/rich-text); ports with those packages."
   },
-  "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > an inline node inserted at the caret goes inside the node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > control: a splittable inline ElementNode is still split": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/__tests__/unit/Issue6477Repro.test.ts::Insertion into a custom inline ElementNode (#6477) > pasted text is inserted at the caret inside the node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-clipboard",
-      "lexical-link"
-    ],
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
   "lexical/src/__tests__/unit/Issue8922Repro.test.ts::Issue #8922: select-all with a boundary block decorator > a copy of an anchor leaves one anchor, on its edge": {
     "reason": "dom-only",
     "note": "Pins the zero-size boundary <img> anchors the DOM reconciler renders around a boundary block decorator (or the DOM selection over them); the views replace the DOM reconciler (DESIGN.md, the DOM). The two model tests are ported."
@@ -13297,22 +12207,6 @@
   "lexical/src/__tests__/unit/LexicalHandledSelectionInsertText.test.ts::macOS Safari: insertText after a handled selection command > select-all": {
     "reason": "dom-only",
     "note": "Browser-engine input handling (beforeinput, keydown, composition or platform quirks of a web engine); native input goes through the views' input controller."
-  },
-  "lexical/src/__tests__/unit/LexicalInsertParagraphEndpointRepair.test.ts::insertParagraph over a range from an empty paragraph into styled text (backward=false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-link"
-    ],
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
-  },
-  "lexical/src/__tests__/unit/LexicalInsertParagraphEndpointRepair.test.ts::insertParagraph over a range from an empty paragraph into styled text (backward=true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-rich-text",
-      "lexical-link"
-    ],
-    "note": "Needs @lexical/link (LinkNode); ports with that package."
   },
   "lexical/src/__tests__/unit/LexicalIosKoreanIME.test.ts::iOS 10-key Korean IME — deleteContentBackward with targetRange > applyDOMRange + removeText leaves only the assembled syllables": {
     "reason": "dom-only",
@@ -14672,13 +13566,6 @@
     "reason": "dom-only",
     "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
   },
-  "lexical-list/src/__tests__/unit/LexicalListNode.test.ts::LexicalListNode tests > ListNode.append() should wrap an InlineNode in a ListItemNode without converting it to TextNode": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Appends a @lexical/link LinkNode to a list; port with lexical-link."
-  },
   "lexical-list/src/__tests__/unit/formatList.test.ts::insertList > inserting with empty shadow root selection": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -14692,13 +13579,6 @@
       "lexical-table"
     ],
     "note": "Wraps an orphan list item inside a @lexical/table cell; port with lexical-table."
-  },
-  "lexical-list/src/__tests__/unit/ListSpliceKeepsFormatting.test.ts::ListNode.splice converting a block into a list item > keeps an inline node of the block it unwraps": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-link"
-    ],
-    "note": "Splices a paragraph holding a @lexical/link LinkNode; port with lexical-link."
   },
   "lexical-list/src/__tests__/unit/checkList.test.tsx::CheckListExtension mobile tap toggle > touch pointerup over the marker area toggles the item": {
     "reason": "dom-only",
@@ -14724,11 +13604,18 @@
     "reason": "dom-only",
     "note": "Dispatches pointer and click events at a check list <li> and hit-tests its ::before marker, with a touch dedup window; on the native views, toggling by the marker is the text view's work (see DESIGN.md, LexicalList)."
   },
-  "lexical-list/src/__tests__/unit/ListImportExtension.test.ts::ListItemNode block flattening > with NodeStructureExtension, a pasted link around a list item stays on its text": {
+  "lexical-link/src/__tests__/unit/LinkExtension.test.ts::Link > PASTE_COMMAND with URLs > does not convert pasted URL to link inside a code block": {
     "reason": "out-of-scope-package",
     "packages": [
-      "lexical-link"
+      "lexical-code-core"
     ],
-    "note": "Pastes HTML whose <a> wraps a list item and compares the @lexical/link LinkNode shape; port with lexical-link."
+    "note": "Pastes into a @lexical/code-core CodeNode, which is not ported; port with lexical-code-core."
+  },
+  "lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::LexicalLinkNode tests > $toggleLink correctly removes link when textnode has children(like marknode)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mark"
+    ],
+    "note": "Unlinks a link around a @lexical/mark MarkNode, which is not ported; port with lexical-mark."
   }
 }

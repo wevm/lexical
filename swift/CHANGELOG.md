@@ -14,6 +14,17 @@ workflow publishes the section headed `## <swift/VERSION>`.
   and the opt-in `WordListImportExtension` for lists pasted from MS Word.
   Lists serialize byte for byte as in JS. Toggling a checklist item from
   its marker in the views is not done yet.
+- New `LexicalLink`, a port of `@lexical/link`: `LinkNode`,
+  `AutoLinkNode`, `toggleLink`, `formatUrl`, `TOGGLE_LINK_COMMAND`,
+  `LinkExtension` (with `validateUrl`, default `attributes` and URL paste),
+  `LinkImportRules`, `AutoLinkExtension` with `autoLinkUrlMatcher`,
+  `autoLinkEmailMatcher` and `createLinkMatcherWithRegExp`,
+  `AutoLinkAnnounceExtension`, and `ClickableLinkExtension`, which opens a
+  clicked link through a `LinkWindow` the app supplies. Links serialize byte
+  for byte as in JS.
+- `DataTransfer` reads and writes the `text` format as `text/plain` and
+  `url` as `text/uri-list`, as browsers do.
+- `LexicalTesting.withLargeStack` runs a test body on an 8 MB stack.
 - `ElementNode.append(contentsOf:)` is `open`, so a subclass can override
   how it takes children, as `ListItemNode` does. Added
   `DOMNode.previousElementSibling` and `DOMNode.nextElementSibling`.

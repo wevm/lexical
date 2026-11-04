@@ -1,6 +1,7 @@
 import Lexical
 import LexicalExtension
 import LexicalHTML
+import LexicalLink
 import LexicalList
 import LexicalRichText
 import Testing
@@ -8,8 +9,7 @@ import Testing
 // Port of packages/lexical-html/src/__tests__/unit/BlockIdDocs.test.ts: the
 // code examples of the Block IDs documentation page
 // (packages/lexical-website/docs/extensions/block-ids.md). The examples that
-// need lists, links, marks or tables are skipped until those packages are
-// ported.
+// need marks or tables are skipped until those packages are ported.
 
 private struct Op {
   enum Kind { case replace, insertAfter, delete }
@@ -362,6 +362,42 @@ nonisolated(unsafe) private let EmptyInlineExtension = defineExtension(
 
   @Test(
     .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses a block or inline element that hosts a slot"
+    ))
+  func setBlockTextRefusesSlotHosts() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "set-block-text-slots",
+        dependencies: [RichTextExtension, LinkExtension, BlockIdExtension],
+        editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      // A text-only block whose caption slot holds a line break.
+      let host = try createParagraphNode().append(createTextNode("body"))
+      try setSlot(
+        host, "caption",
+        createParagraphNode().append(
+          createTextNode("a"), createLineBreakNode(), createTextNode("b")))
+      // A link, inline, that hosts a slot.
+      let link = try createLinkNode("https://example.com").append(createTextNode("link"))
+      try setSlot(link, "note", createParagraphNode().append(createTextNode("note")))
+      _ = try getRoot().clear().append(
+        host, createParagraphNode().append(createTextNode("see "), link))
+    }
+    let before = try editorJSON(editor)
+    try editor.update(discrete: true) {
+      let children = try getRoot().getChildren()
+      let (host, withLink) = (children[0], children[1])
+      #expect(try !setBlockText(host, host.getTextContent()))
+      #expect(try !setBlockText(host, "changed"))
+      #expect(try !setBlockText(withLink, withLink.getTextContent()))
+      #expect(try !setBlockText(withLink, "see changed"))
+    }
+    #expect(try editorJSON(editor) == before)
+  }
+
+  @Test(
+    .upstream(
       "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses special text nodes"
     ))
   func setBlockTextRefusesSpecialTextNodes() throws {
@@ -388,6 +424,96 @@ nonisolated(unsafe) private let EmptyInlineExtension = defineExtension(
       #expect(try !setBlockText(token, "see @Bob"))
     }
     #expect(try editorJSON(editor) == before)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: text added at a link edge goes outside the link"
+    ))
+  func textAddedAtLinkEdgeGoesOutside() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "set-block-text-link-edges",
+        dependencies: [RichTextExtension, LinkExtension, BlockIdExtension],
+        editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
+    defer { editor.dispose() }
+    // [links: before, new text, children after: [type, text]]
+    let cases: [(String, String, [[String]])] = [
+      (
+        "mid", "See the plans for Q3.",
+        [["text", "See "], ["link", "the plan"], ["text", "s for Q3."]]
+      ),
+      (
+        "mid", "See all the plan for Q3.",
+        [["text", "See all "], ["link", "the plan"], ["text", " for Q3."]]
+      ),
+      (
+        "first", "Read the plan for Q3.",
+        [["text", "Read "], ["link", "the plan"], ["text", " for Q3."]]
+      ),
+      ("last", "See the plan!", [["text", "See "], ["link", "the plan"], ["text", "!"]]),
+      // Inside the link, it stays in the link.
+      (
+        "mid", "See the new plan for Q3.",
+        [["text", "See "], ["link", "the new plan"], ["text", " for Q3."]]
+      ),
+    ]
+    for (place, next, after) in cases {
+      try editor.update(discrete: true) {
+        let link = try createLinkNode("https://example.com").append(createTextNode("the plan"))
+        let paragraph = try createParagraphNode()
+        if place == "first" {
+          try paragraph.append(link, createTextNode(" for Q3."))
+        } else if place == "last" {
+          try paragraph.append(createTextNode("See "), link)
+        } else {
+          try paragraph.append(createTextNode("See "), link, createTextNode(" for Q3."))
+        }
+        _ = try getRoot().clear().append(paragraph)
+      }
+      try editor.update(discrete: true) { () throws -> Void in
+        #expect(try setBlockText(getRoot().getFirstChildOrThrow(), next))
+      }
+      try editor.read { () throws -> Void in
+        let paragraph = try #require(try getRoot().getFirstChildOrThrow() as? ElementNode)
+        #expect(
+          try paragraph.getChildren().map {
+            [isLinkNode($0) ? "link" : "text", try $0.getTextContent()]
+          }
+            == after, "\(place) → \(next)")
+      }
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText edits text in inline elements"
+    ))
+  func setBlockTextEditsInlineElements() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "set-block-text-link",
+        dependencies: [RichTextExtension, LinkExtension, BlockIdExtension],
+        editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      _ = try getRoot().clear().append(
+        createParagraphNode().append(
+          createTextNode("See "),
+          createLinkNode("https://example.com").append(createTextNode("the plan")),
+          createTextNode(" for Q3.")))
+    }
+    for text in ["See the new plan for Q3.", "See the new plan for Q4."] {
+      try editor.update(discrete: true) { () throws -> Void in
+        #expect(try setBlockText(getRoot().getFirstChildOrThrow(), text))
+      }
+    }
+    try editor.read { () throws -> Void in
+      let paragraph = try #require(try getRoot().getFirstChildOrThrow() as? ElementNode)
+      #expect(try paragraph.getTextContent() == "See the new plan for Q4.")
+      let link = try #require(try paragraph.getChildren()[1] as? LinkNode)
+      #expect(try link.getTextContent() == "the new plan")
+    }
   }
 
   @Test(

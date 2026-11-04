@@ -15,11 +15,13 @@
     "html-entities": "node scripts/html-entities.mjs"
   },
   "devDependencies": {
+    "@lexical/code-core": "workspace:*",
     "@lexical/devtools-core": "workspace:*",
     "@lexical/extension": "workspace:*",
     "@lexical/headless": "workspace:*",
     "@lexical/history": "workspace:*",
     "@lexical/html": "workspace:*",
+    "@lexical/link": "workspace:*",
     "@lexical/list": "workspace:*",
     "@lexical/plain-text": "workspace:*",
     "@lexical/rich-text": "workspace:*",

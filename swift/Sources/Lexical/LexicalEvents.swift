@@ -388,13 +388,24 @@ public final class DataTransfer {
   /// files, as browsers report it).
   public var types: [String] { entries.map(\.type) + (files.isEmpty ? [] : ["Files"]) }
 
+  /// The format a type names: lowercased, with `text` read as
+  /// `text/plain` and `url` as `text/uri-list`, as browsers do.
+  private static func format(_ type: String) -> String {
+    switch type.lowercased() {
+    case "text": "text/plain"
+    case "url": "text/uri-list"
+    case let type: type
+    }
+  }
+
   /// `getData(type)`: the data for `type`, or `""`.
   public func getData(_ type: String) -> String {
-    entries.first { $0.type == type.lowercased() }?.data ?? ""
+    let type = Self.format(type)
+    return entries.first { $0.type == type }?.data ?? ""
   }
 
   public func setData(_ type: String, _ data: String) {
-    let type = type.lowercased()
+    let type = Self.format(type)
     if let index = entries.firstIndex(where: { $0.type == type }) {
       entries[index].data = data
     } else {
@@ -404,7 +415,8 @@ public final class DataTransfer {
 
   public func clearData(_ type: String? = nil) {
     if let type {
-      entries.removeAll { $0.type == type.lowercased() }
+      let type = Self.format(type)
+      entries.removeAll { $0.type == type }
     } else {
       entries.removeAll()
     }

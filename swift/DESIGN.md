@@ -740,6 +740,28 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   in `CheckListConfig` for that. The pointer tests are `dom-only`.
   `lexical-list` is `enforced`: every upstream test that needs only
   enforced packages is ported or carries a recorded skip.
+- **`LexicalLink`** ports `@lexical/link`. `LinkAttributes` keeps JS's
+  three states for each attribute, as `String??`: `nil` is `undefined`
+  (leave it), `.some(nil)` is `null` (clear it). `TOGGLE_LINK_COMMAND`'s
+  payload is `ToggleLinkPayload?`, with `nil` for JS `null`.
+  `LinkNode.sanitizeUrl` needs JS `new URL()`'s verdict; Foundation's URL
+  parser differs, so `whatwgURLProtocol` follows the WHATWG parser as far as
+  deciding whether a URL without a base parses (scheme, port, forbidden host
+  code points). It does not percent-decode or IDNA-map hosts. The JS regexes
+  are Swift `Regex`es matched by Unicode scalar (JS `u`), with UTF-16
+  offsets. `ClickableLinkExtension` handles `CLICK_COMMAND`, which the
+  native views send with the node under the pointer, in place of JS's root
+  `click`/`auxclick` listeners. It opens links through
+  `ClickableLinkConfig.getWindow`, which returns a `LinkWindow` (JS
+  `window.open`) and defaults to none, because there is no global window. The
+  views do not supply one yet. JS's fallback for a plain `<a>` that is not a
+  LinkNode has nothing to act on natively, so it is not ported. The
+  generated JSON functions (`LexicalLinkGeneratedJSON.ts`) are a JS speed-up
+  of the schema walk, which serializes the same bytes, so they are not
+  ported either.
+  `lexical-link` is `enforced`: 287 upstream tests, 285 ported, 2 skips
+  (a MarkNode case and a paste into a code block), and the 157 link cases in
+  other packages' tests are ported too.
 
 ## Scope of v0.1.0 (Q21)
 

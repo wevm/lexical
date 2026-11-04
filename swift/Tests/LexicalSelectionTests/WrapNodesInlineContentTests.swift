@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalLink
 import LexicalList
 import LexicalRichText
 import LexicalSelection
@@ -7,7 +8,7 @@ import LexicalTesting
 import Testing
 
 // Port of packages/lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts.
-// The cases that build a LinkNode, MarkNode, OverflowNode or list wait for
+// The cases that build a MarkNode, OverflowNode or list wait for
 // those packages, and are skipped in parity/skips.json with the packages
 // they need. The two cost cases count LexicalNode.getParent calls with a spy,
 // which has no Swift equivalent, and are skipped as deviations.
@@ -187,7 +188,382 @@ struct WrapListPointCase: Sendable, CustomTestStringConvertible {
   }
 }
 
+struct WrapInlineCase: Sendable, CustomTestStringConvertible {
+  /// How many links wrap the inner text (upstream's `link`, `link > link`,
+  /// `link > link > link`).
+  let depth: Int
+  let place: String
+  let context: String
+  let structure: Bool
+  let wrapping: Bool
+  var testDescription: String {
+    let shape = Array(repeating: "link", count: depth).joined(separator: " > ")
+    return
+      "\(shape), \(place), in the \(context)\(structureSuffix(structure))\(wrapping ? ", with a wrapping element" : "")"
+  }
+
+  /// The upstream SHAPES of links only; the ones with a MarkNode or an
+  /// OverflowNode wait for those packages.
+  static let all: [WrapInlineCase] = [false, true].flatMap { structure in
+    // Under NodeStructureExtension a quote holds inline content only, so a
+    // quote wrapping quotes is not a shape it allows.
+    (structure ? [false] : [false, true]).flatMap { wrapping in
+      ["root", "shadow root"].flatMap { context in
+        [
+          "caret before the wrappers", "caret inside the inner text", "the whole paragraph",
+          "from the inner text to the end", "this paragraph and the next",
+        ].flatMap { place in
+          [1, 2, 3].map {
+            WrapInlineCase(
+              depth: $0, place: place, context: context, structure: structure, wrapping: wrapping)
+          }
+        }
+      }
+    }
+  }
+}
+
 @Suite struct WrapNodesInlineContentTests {
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    arguments: WrapInlineCase.all)
+  func keepsInlineContentOfWrappedBlocks(_ c: WrapInlineCase) throws {
+    let editor = try buildEditor(
+      "@wrapNodes-inline-content-test", c.structure,
+      [.klass(LinkNode.self), .klass(QuoteNode.self), .klass(TestShadowRootNode.self)])
+    defer { editor.dispose() }
+    var expected = ""
+    try editor.update(discrete: true) {
+      try getRoot().clear()
+      var inner: LexicalNode = try createTextNode("inner")
+      for _ in 0..<c.depth {
+        inner = try createLinkNode("https://example.net").append(inner)
+      }
+      let first = try createParagraphNode().append(
+        try createTextNode("abc "), inner, try createTextNode(" end"))
+      let second = try createParagraphNode().append(try createTextNode("next"))
+      let holder: ElementNode = c.context == "root" ? try getRoot() : try createTestShadowRootNode()
+      try holder.append(first, second)
+      if c.context != "root" {
+        try getRoot().append(holder)
+      }
+    }
+    try editor.update(discrete: true) {
+      let holder =
+        c.context == "root"
+        ? try getRoot() : try #require(try getRoot().getFirstChildOrThrow() as? ElementNode)
+      let first = try #require(try holder.getFirstChildOrThrow() as? ElementNode)
+      let second = try #require(try first.getNextSibling() as? ElementNode)
+      let inner = try textOf(first, "inner")
+      let abc = try textOf(first, "abc ")
+      let end = try textOf(first, " end")
+      let selection = createRangeSelection()
+      switch c.place {
+      case "caret before the wrappers":
+        try selection.anchor.set(abc.getKey(), 2, .text)
+        try selection.focus.set(abc.getKey(), 2, .text)
+      case "caret inside the inner text":
+        try selection.anchor.set(inner.getKey(), 2, .text)
+        try selection.focus.set(inner.getKey(), 2, .text)
+      case "the whole paragraph":
+        try selection.anchor.set(abc.getKey(), 0, .text)
+        try selection.focus.set(end.getKey(), 4, .text)
+      case "from the inner text to the end":
+        try selection.anchor.set(inner.getKey(), 2, .text)
+        try selection.focus.set(end.getKey(), 4, .text)
+      default:
+        let next = try textOf(second, "next")
+        try selection.anchor.set(inner.getKey(), 2, .text)
+        try selection.focus.set(next.getKey(), 2, .text)
+      }
+      try setSelection(selection)
+      let wraps = c.place == "this paragraph and the next" ? [first, second] : [first]
+      let quoted = try wraps.map { block in
+        "quote(\(try block.getChildren().map(content).joined(separator: ",")))"
+      }.joined(separator: ",")
+      let rest = wraps.count == 1 ? [try content(second)] : []
+      expected = ((c.wrapping ? ["quote(\(quoted))"] : [quoted]) + rest).joined(separator: ",")
+      try wrapNodes(
+        selection, { try createQuoteNode() }, c.wrapping ? try createQuoteNode() : nil)
+    }
+    let actual = try editor.read {
+      let holder =
+        c.context == "root"
+        ? try getRoot() : try #require(try getRoot().getFirstChildOrThrow() as? ElementNode)
+      return try holder.getChildren().map(content).joined(separator: ",")
+    }
+    #expect(actual == expected)
+  }
+
   @Test(
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in the paragraph, empty, caret in the empty scope"

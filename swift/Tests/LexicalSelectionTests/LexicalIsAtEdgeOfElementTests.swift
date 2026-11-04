@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalLink
 import LexicalSelection
 import LexicalTesting
 import Testing
@@ -13,15 +14,35 @@ private func pointAt(_ node: LexicalNode, _ offset: Int, _ type: PointType) thro
 }
 
 private func runInEditor(
-  nodes: [LexicalNodeConfig] = [], _ fn: @escaping () throws -> Void
+  nodes: [LexicalNodeConfig] = [], dependencies: [any AnyLexicalExtensionArgument] = [],
+  _ fn: @escaping () throws -> Void
 ) throws {
   let editor = try buildEditorFromExtensions(
-    defineExtension(name: "@isAtEdgeOfElement-test", nodes: { nodes }))
+    defineExtension(
+      name: "@isAtEdgeOfElement-test", dependencies: dependencies, nodes: { nodes }))
   defer { editor.dispose() }
   try editor.update(discrete: true, fn)
 }
 
 @Suite struct LexicalIsAtEdgeOfElementTests {
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalIsAtEdgeOfElement.test.ts::$isAtEdgeOfElement > descends through nested inline elements"
+    ))
+  func descendsThroughNestedInlineElements() throws {
+    try runInEditor(dependencies: [LinkExtension]) { () throws in
+      let block = try createParagraphNode()
+      let link = try createLinkNode("https://lexical.dev")
+      let text = try createTextNode("link")
+      try getRoot().append(try block.append(try link.append(text)))
+      // The point is at the edge of both the inline link and the block.
+      #expect(try isAtEdgeOfElement(pointAt(text, 0, .text), block, .previous))
+      #expect(try isAtEdgeOfElement(pointAt(text, 0, .text), link, .previous))
+      #expect(try isAtEdgeOfElement(pointAt(text, 4, .text), block, .next))
+      #expect(try isAtEdgeOfElement(pointAt(text, 4, .text), link, .next))
+    }
+  }
+
   @Test(
     .upstream(
       "lexical-selection/src/__tests__/unit/LexicalIsAtEdgeOfElement.test.ts::$isAtEdgeOfElement > text point at the start/end of a block"

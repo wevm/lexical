@@ -1,14 +1,14 @@
 import Lexical
 import LexicalExtension
 import LexicalHTML
+import LexicalLink
 import LexicalRichText
 import LexicalTesting
 import Testing
 
 // Ports of packages/lexical-html/src/__tests__/unit LineBreakRoundTrip,
 // Issue8391WhitespaceAroundUnknownInline, ExportAfterFragment,
-// LexicalHtmlBackwardCompat and SlotNodeSelectionExport. The
-// LineBreakRoundTrip case with a link needs @lexical/link and is skipped.
+// LexicalHtmlBackwardCompat and SlotNodeSelectionExport.
 
 private func richTextEditor(
   nodes: [LexicalNodeConfig] = [], _ initial: InitialEditorStateType = .none
@@ -99,6 +99,30 @@ private func runImporter(_ name: String, _ editor: Editor, _ html: String) throw
     #expect(
       try exportHtml(editor)
         == #"<p><span style="white-space: pre-wrap;">a</span><br><span style="white-space: pre-wrap;">b</span></p>"#
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/LineBreakRoundTrip.test.ts::trailing LineBreakNode survives an HTML round trip > a line break trailing an inline element exports unchanged"
+    ))
+  func trailingInlineElementExport() throws {
+    // The `<br>` ends an inline `<a>`, not a block, so no importer would drop
+    // it and a terminator would import as a second LineBreakNode.
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "[html-round-trip]", dependencies: [RichTextExtension, LinkExtension],
+        editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
+    defer { editor.dispose() }
+    try seed(editor) {
+      [
+        try createLinkNode("https://lexical.dev/").append(
+          try createTextNode("a"), try createLineBreakNode())
+      ]
+    }
+    #expect(
+      try exportHtml(editor)
+        == #"<p><a href="https://lexical.dev/"><span style="white-space: pre-wrap;">a</span><br></a></p>"#
     )
   }
 

@@ -1,5 +1,6 @@
 import Lexical
 import LexicalHTML
+import LexicalLink
 import LexicalList
 import LexicalTesting
 import Testing
@@ -206,6 +207,36 @@ private var editorConfig: EditorConfig { EditorConfig(namespace: "", theme: list
       #expect(try listNode.append(paragraph) === listNode)
       #expect(try isListItemNode(listNode.getFirstChild()))
       #expect(try listNode.getFirstChild()?.getTextContent() == "Hello")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-list/src/__tests__/unit/LexicalListNode.test.ts::LexicalListNode tests > ListNode.append() should wrap an InlineNode in a ListItemNode without converting it to TextNode"
+    ))
+  func appendInlineNode() throws {
+    // Upstream's test editor registers LinkNode among its default nodes.
+    let editor = try createMountedTestEditor(nodes: listTestNodes + [.klass(LinkNode.self)])
+    try update(editor) {
+      let listNode = try createListNode("bullet", start: 1)
+      let linkNode = try createLinkNode("https://lexical.dev/")
+      try listNode.append(linkNode)
+      try getRoot().append(listNode)
+    }
+    try editor.read { () throws -> Void in
+      let listNode = try getRoot().getFirstChild()
+      #expect(listNode != nil)
+      #expect(listNode is ListNode)
+      if let listNode = listNode as? ListNode {
+        let firstChild = try listNode.getFirstChild()
+        #expect(firstChild is ListItemNode)
+        if let firstChild = firstChild as? ListItemNode {
+          let wrappedNode = try firstChild.getFirstChild()
+          #expect(wrappedNode != nil)
+          #expect(isLinkNode(wrappedNode))
+          #expect(try (wrappedNode as? LinkNode)?.getURL() == "https://lexical.dev/")
+        }
+      }
     }
   }
 

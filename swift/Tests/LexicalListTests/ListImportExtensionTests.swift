@@ -1,12 +1,14 @@
 import Lexical
+import LexicalClipboard
 import LexicalExtension
 import LexicalHTML
+import LexicalLink
 import LexicalList
+import LexicalRichText
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-list/src/__tests__/unit/ListImportExtension.test.ts.
-// The pasted link case waits for @lexical/link.
 
 private final class CustomListItemNode: ListItemNode {
   override class func config() throws -> NodeConfig? {
@@ -306,6 +308,48 @@ private func items(_ list: ListNode) throws -> [ListItemNode] {
       try editor.read { try getRoot().getChildren().map(shapeOf) } == [
         "[1, [text, linebreak, text]]", "horizontalrule", "[1, [text, linebreak, text]]",
       ])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-list/src/__tests__/unit/ListImportExtension.test.ts::ListItemNode block flattening > with NodeStructureExtension, a pasted link around a list item stays on its text"
+    ))
+  func pastedLinkAroundListItem() throws {
+    func run(_ withStructure: Bool) throws -> String {
+      let editor = try buildEditor(
+        [RichTextExtension, LinkExtension, ListExtension]
+          + (withStructure ? [NodeStructureExtension] : []),
+        name: "list-link-structure-host")
+      defer { editor.dispose() }
+      try editor.update(discrete: true) {
+        let text = try createTextNode("AB")
+        try getRoot().clear().append(createParagraphNode().append(text))
+        _ = try text.select(2, 2)
+      }
+      try editor.update(discrete: true) {
+        let data = DataTransfer()
+        data.setData("text/html", #"<a href="https://a">l<li>x</li></a>"#)
+        try insertDataTransferForRichText(data, try #require(try getSelection()), editor)
+      }
+      func shapeOf(_ node: LexicalNode) throws -> JSONValue {
+        if let link = node as? LinkNode {
+          return .array(
+            [.string("link:\(try link.getURL())")] + (try link.getChildren().map(shapeOf)))
+        }
+        if let element = node as? ElementNode {
+          return .array([.string(element.getType())] + (try element.getChildren().map(shapeOf)))
+        }
+        return .string(try node.getTextContent())
+      }
+      return try editor.read {
+        JSONValue.array(try getRoot().getChildren().map(shapeOf)).stringify()
+      }
+    }
+    #expect(try run(true) == run(false))
+    #expect(
+      try run(true)
+        == #"[["paragraph","AB",["link:https://a","l"]],["list",["listitem",["link:https://a","x"]]]]"#
+    )
   }
 
   @Test(

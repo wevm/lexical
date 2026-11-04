@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalLink
 import LexicalList
 import LexicalRichText
 import Testing
@@ -7,9 +8,7 @@ import Testing
 // Port of packages/lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts:
 // block ids in an editor that also enforces declared node structure, whose
 // normalization splits, joins, lifts and merges blocks in the same update as
-// the change that needs it. Upstream's editors register ListExtension and
-// LinkExtension too; the case that builds a link is skipped until
-// @lexical/link is ported.
+// the change that needs it.
 
 /// The order the extensions are listed in, or the structure enabled after
 /// the editor is built, or no structure at all.
@@ -42,7 +41,7 @@ private func build(
   let editor = try buildEditorFromExtensions(
     defineExtension(
       name: "[block-id-structure-test]",
-      dependencies: [RichTextExtension, ListExtension] + structure,
+      dependencies: [RichTextExtension, ListExtension, LinkExtension] + structure,
       editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
   if order == .structureEnabledLater {
     try getExtensionDependencyFromEditor(editor, NodeStructureExtension).output.disabled.set(false)
@@ -142,6 +141,17 @@ private func ul(_ children: LexicalNode...) throws -> ListNode {
 }
 
 let LIST_STRUCTURE_CASES: [BlockIdStructureCase] = [
+  BlockIdStructureCase(
+    name: "a list lifted out of a link: the items keep their ids and the link",
+    setup: { try getRoot().append(withId(p(t("z")), "A")) },
+    change: {
+      let paragraph = try block("A")
+      try paragraph.clear()
+      try paragraph.append(
+        createLinkNode("https://lexical.dev").append(
+          ul(withId(li(t("x")), "L1"), withId(li(t("y")), "L2"))))
+    },
+    expected: [#"list#A[listitem#L1[link["x"]] listitem#L2[link["y"]]]"#]),
   BlockIdStructureCase(
     name: "a heading split around a list: the list and the second piece get new ids",
     setup: { try getRoot().append(withId(createHeadingNode("h1").append(t("a")), "H")) },
@@ -284,6 +294,15 @@ let LIST_STRUCTURE_CASES: [BlockIdStructureCase] = [
     ),
     .upstream(
       "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a copy of a list merged with the equal …"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > block ids first > a list lifted out of a link: the items …"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure first > a list lifted out of a link: the items …"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.structure.test.ts::BlockIdExtension with NodeStructureExtension > structure enabled later > a list lifted out of a link: the items …"
     ),
     arguments: [BlockIdStructureOrder.blockIdsFirst, .structureFirst, .structureEnabledLater],
     LIST_STRUCTURE_CASES)

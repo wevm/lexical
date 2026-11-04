@@ -701,6 +701,9 @@ importers:
 
   packages/lexical-conformance:
     devDependencies:
+      '@lexical/code-core':
+        specifier: workspace:*
+        version: link:../lexical-code-core
       '@lexical/devtools-core':
         specifier: workspace:*
         version: link:../lexical-devtools-core
@@ -716,6 +719,9 @@ importers:
       '@lexical/html':
         specifier: workspace:*
         version: link:../lexical-html
+      '@lexical/link':
+        specifier: workspace:*
+        version: link:../lexical-link
       '@lexical/list':
         specifier: workspace:*
         version: link:../lexical-list

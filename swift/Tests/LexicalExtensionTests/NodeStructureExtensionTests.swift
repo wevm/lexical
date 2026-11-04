@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalLink
 import LexicalList
 import LexicalRichText
 import LexicalTesting
@@ -7,9 +8,9 @@ import Testing
 
 // Port of packages/lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts.
 // Upstream's `build` registers the list, link, table, code and overflow
-// nodes in every editor; the editors here register rich text, the list and
-// the horizontal rule. The tests that use the other packages are skipped
-// until they are ported.
+// nodes in every editor; the editors here register rich text, the list, the
+// link and the horizontal rule. The tests that use the other packages are
+// skipped until they are ported.
 
 private func shape(_ node: LexicalNode) throws -> JSONValue {
   if let element = node as? ElementNode {
@@ -29,7 +30,7 @@ private func build(_ initial: @escaping () throws -> Void, _ withStructure: Bool
   try buildEditorFromExtensions(
     defineExtension(
       name: "node-structure-test",
-      dependencies: [RichTextExtension, ListExtension, HorizontalRuleExtension]
+      dependencies: [RichTextExtension, ListExtension, LinkExtension, HorizontalRuleExtension]
         + (withStructure ? [NodeStructureExtension] : []),
       editorConfig: InitialEditorConfig(
         onError: { error, _ in throw error }, initialEditorState: .update { _ in try initial() })))
@@ -226,6 +227,63 @@ private final class WrapGroupNode: ElementNode {
 
 // MARK: Tests
 
+/// A LinkNode subclass written before the node-structure keys existed (JS
+/// declares no `$config`; Swift names its type in one that declares nothing
+/// else), whose `isInline()` returns false.
+private final class BlockLinkNode: LinkNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(BlockLinkNode.self, type: "test-block-link", extends: LinkNode.self)
+  }
+  override func isInline() throws -> Bool { false }
+}
+
+private final class BadOwnInlineLinkNode: LinkNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(
+      BadOwnInlineLinkNode.self, type: "test-bad-own-inline", extends: LinkNode.self,
+      inline: false)
+  }
+  override func isInline() throws -> Bool { true }
+}
+
+private class OwnChipNode: ElementNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(OwnChipNode.self, type: "test-own-chip", extends: ElementNode.self, inline: true)
+  }
+}
+
+private final class SubChipNode: OwnChipNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(SubChipNode.self, type: "test-sub-chip", extends: OwnChipNode.self)
+  }
+}
+
+private final class ModernLinkNode: LinkNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(ModernLinkNode.self, type: "test-modern-link", extends: LinkNode.self)
+  }
+}
+
+private final class PlainBoxNode: ParagraphNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(PlainBoxNode.self, type: "test-plain-box", extends: ParagraphNode.self)
+  }
+}
+
+private final class NoMergeLinkNode: LinkNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(NoMergeLinkNode.self, type: "test-nomerge-link", extends: LinkNode.self)
+  }
+  override func shouldMergeAdjacentLink(_ otherLink: LinkNode) throws -> Bool { false }
+}
+
+private final class StatefulLinkNode: LinkNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(StatefulLinkNode.self, type: "test-stateful-link", extends: LinkNode.self)
+  }
+  override func isInline() throws -> Bool { try getLatest().__url != "" }
+}
+
 @Suite struct NodeStructureDeclarationTests {
   @Test(
     .upstream(
@@ -300,6 +358,96 @@ private final class WrapGroupNode: ElementNode {
 
   @Test(
     .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a LinkNode subclass whose isInline() returns false"
+    ))
+  func blockLinkSubclass() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "block-link", dependencies: [RichTextExtension, ListExtension, LinkExtension],
+        nodes: { [.klass(BlockLinkNode.self)] },
+        editorConfig: InitialEditorConfig(
+          onError: { error, _ in throw error },
+          initialEditorState: .update { _ in
+            try getRoot().append(
+              BlockLinkNode("https://a").append(
+                createParagraphNode().append(createTextNode("x"))))
+          })))
+    defer { editor.dispose() }
+    #expect(throws: Never.self) {
+      _ = try createEditor(
+        CreateEditorArgs(nodes: [
+          .klass(LinkNode.self), .klass(ListNode.self), .klass(ListItemNode.self),
+          .klass(BlockLinkNode.self),
+        ]))
+    }
+    let declared = getDeclaredNodeStructure(BlockLinkNode.self)
+    #expect(declared.inline == nil)
+    #expect(declared.declaredBy.inline == nil)
+    // The other inherited keys stay (they agree with the class).
+    #expect(declared.children == .inline)
+    #expect(
+      declared.mergeAdjacent?.by == [
+        .field("url"), .field("target"), .field("rel"), .field("title"),
+      ])
+    try editor.read { () throws -> Void in
+      #expect(try getRoot().getFirstChildOrThrow().isInline() == false)
+    }
+    // LinkNode itself still declares it.
+    #expect(getDeclaredNodeStructure(LinkNode.self).inline == true)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a subclass that declares the key itself is still checked"
+    ))
+  func ownInlineDeclarationChecked() {
+    expectError("isInline") {
+      _ = try createEditor(
+        CreateEditorArgs(nodes: [.klass(LinkNode.self), .klass(BadOwnInlineLinkNode.self)]))
+    }
+  }
+
+  // JS checks which prototypes own an `isInline()`; Swift cannot ask whether
+  // a class overrides a method, so the port asserts what each class's
+  // `isInline()` returns, which is what the synthesized method decides.
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > isInline() is synthesized only for a class that declares inline itself"
+    ))
+  func isInlineSynthesizedForDeclaringClass() throws {
+    let editor = try createEditor(
+      CreateEditorArgs(
+        nodes: [
+          .klass(OwnChipNode.self), .klass(SubChipNode.self), .klass(LinkNode.self),
+          .klass(ModernLinkNode.self), .klass(PlainBoxNode.self), .klass(BlockLinkNode.self),
+        ], onError: { error in throw error }))
+    try editor.update(discrete: true) { () throws -> Void in
+      #expect(try create(OwnChipNode.self).isInline() == true)
+      // Inherited, not synthesized again: the same answers as the parent.
+      #expect(try create(SubChipNode.self).isInline() == true)
+      #expect(try create(ModernLinkNode.self).isInline() == true)
+      #expect(try create(PlainBoxNode.self).isInline() == false)
+      #expect(try createParagraphNode().isInline() == false)
+      // BlockLinkNode's own isInline() is untouched.
+      #expect(try BlockLinkNode().isInline() == false)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::getDeclaredNodeStructure > an inherited inline is dropped when the subclass isInline() cannot be evaluated without an instance"
+    ))
+  func inheritedInlineDroppedWithoutInstance() {
+    #expect(throws: Never.self) {
+      _ = try createEditor(
+        CreateEditorArgs(nodes: [.klass(LinkNode.self), .klass(StatefulLinkNode.self)]))
+    }
+    #expect(getDeclaredNodeStructure(StatefulLinkNode.self).inline == nil)
+    #expect(getDeclaredNodeStructure(LinkNode.self).inline == true)
+  }
+
+  @Test(
+    .upstream(
       "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > an inherited mergeAdjacent that does not fit the subclass is dropped"
     ))
   func inheritedMergeAdjacentDropped() throws {
@@ -327,6 +475,166 @@ private final class WrapGroupNode: ElementNode {
 }
 
 @Suite struct NodeStructureExtensionTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a heading inside a link becomes a heading holding the link"
+    ))
+  func headingInsideLink() throws {
+    let editor = try build(
+      {
+        try getRoot().append(
+          createParagraphNode().append(
+            createLinkNode("https://a").append(
+              createHeadingNode("h1").append(createTextNode("Lexical")))))
+      }, true)
+    defer { editor.dispose() }
+    #expect(try rootShape(editor) == #"[["heading",["link","Lexical"]]]"#)
+    #expect(
+      try editor.read {
+        try (getRoot().getAllTextNodes()[0].getParent() as! LinkNode).getURL()
+      } == "https://a")
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a caret between two merged links stays between their contents"
+    ))
+  func caretBetweenMergedLinks() throws {
+    let editor = try build(
+      {
+        let p = try createParagraphNode().append(
+          createLinkNode("https://a").append(createTextNode("one")),
+          createLinkNode("https://a").append(createTextNode("two")))
+        try getRoot().append(p)
+        _ = try p.select(1, 1)
+      }, true)
+    defer { editor.dispose() }
+    try editor.read { () throws -> Void in
+      let selection = try #require(try getSelection() as? RangeSelection)
+      let point = selection.anchor
+      let node = try point.getNode()
+      // At the boundary: after "one", not after "onetwo".
+      let text = try node.getTextContent().jsSlice(0, point.offset)
+      #expect((["one", "onetwo"].contains(text) ? text : point.type.rawValue) != "onetwo")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > adjacent equal links merge; different ones do not"
+    ))
+  func adjacentEqualLinksMerge() throws {
+    let editor = try build(
+      {
+        try getRoot().append(
+          createParagraphNode().append(
+            createLinkNode("https://a").append(createTextNode("1")),
+            createLinkNode("https://a").append(createTextNode("2")),
+            createLinkNode("https://b").append(createTextNode("3"))))
+      }, true)
+    defer { editor.dispose() }
+    #expect(try rootShape(editor) == #"[["paragraph",["link","12"],["link","3"]]]"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a subclass override of shouldMergeAdjacentLink keeps deciding"
+    ))
+  func subclassShouldMergeAdjacentLink() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "override",
+        dependencies: [RichTextExtension, LinkExtension, NodeStructureExtension],
+        nodes: { [.klass(NoMergeLinkNode.self)] },
+        editorConfig: InitialEditorConfig(
+          initialEditorState: .update { _ in
+            try getRoot().append(
+              createParagraphNode().append(
+                create(NoMergeLinkNode.self).setURL("https://a").append(createTextNode("1")),
+                create(NoMergeLinkNode.self).setURL("https://a").append(createTextNode("2"))))
+          })))
+    defer { editor.dispose() }
+    #expect(
+      try rootShape(editor)
+        == #"[["paragraph",["test-nomerge-link","1"],["test-nomerge-link","2"]]]"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > an element caret after a lifted block stays after it"
+    ))
+  func elementCaretAfterLiftedBlock() throws {
+    // What is before and after the caret in its element, and where that
+    // element is. A point at an end of a text node (where the normalization
+    // puts an element point next to it) reads as the point next to the node.
+    func caret(_ editor: Editor) throws -> JSONValue {
+      try editor.read {
+        let selection = try #require(try getSelection() as? RangeSelection)
+        let anchor = selection.anchor
+        let node = try anchor.getNode()
+        if let text = node as? TextNode {
+          let content = try text.getTextContent()
+          return .array([
+            .string(
+              anchor.offset > 0
+                ? content.jsSlice(0, anchor.offset)
+                : try text.getPreviousSibling()?.getTextContent() ?? "^"),
+            .string(
+              anchor.offset < content.utf16.count
+                ? content.jsSlice(anchor.offset)
+                : try text.getNextSibling()?.getTextContent() ?? "$"),
+            .number(Double(try text.getParentOrThrow().getIndexWithinParent())),
+          ])
+        }
+        let element = try #require(node as? ElementNode)
+        return .array([
+          .string(try element.getChildAtIndex(anchor.offset - 1)?.getTextContent() ?? "^"),
+          .string(try element.getChildAtIndex(anchor.offset)?.getTextContent() ?? "$"),
+          .number(Double(try element.getIndexWithinParent())),
+        ])
+      }
+    }
+    func split(_ offset: Int) throws -> Editor {
+      try build(
+        {
+          let p = try createParagraphNode().append(
+            createTextNode("a"), createHorizontalRuleNode(), createTextNode("b"))
+          try getRoot().append(p)
+          _ = try p.select(offset, offset)
+        }, true)
+    }
+    // At the end of a paragraph split around a rule: after "b".
+    let end = try split(3)
+    defer { end.dispose() }
+    #expect(try caret(end) == ["b", "$", 2])
+    // Right after the rule: at the start of the second part.
+    let after = try split(2)
+    defer { after.dispose() }
+    #expect(try caret(after) == ["^", "b", 2])
+    // Right before it: at the end of the first part.
+    let before = try split(1)
+    defer { before.dispose() }
+    #expect(try caret(before) == ["a", "$", 0])
+    // In a list item, after a link that follows the rule.
+    let item = try build(
+      {
+        let li = try createListItemNode()
+        try getRoot().append(createListNode("number").append(li))
+        try put(
+          li,
+          [
+            try createTextNode("x"), try createHorizontalRuleNode(),
+            try createLinkNode("https://a").append(createTextNode("y")),
+          ])
+        _ = try li.select(3, 3)
+      }, true)
+    defer { item.dispose() }
+    #expect(
+      try rootShape(item)
+        == #"[["list",["listitem","x"]],"horizontalrule",["list",["listitem",["link","y"]]]]"#)
+    #expect(try caret(item) == ["y", "$", 0])
+  }
+
   @Test(
     .upstream(
       "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a shadow root quote keeps its blocks"
@@ -628,16 +936,16 @@ private func buildCaretEditor(_ withStructure: Bool = true) throws -> Editor {
   try buildEditorFromExtensions(
     defineExtension(
       name: "node-structure-carets",
-      dependencies: [RichTextExtension, ListExtension, HorizontalRuleExtension]
+      dependencies: [RichTextExtension, ListExtension, LinkExtension, HorizontalRuleExtension]
         + (withStructure ? [NodeStructureExtension] : []),
       editorConfig: InitialEditorConfig(onError: { error, _ in throw error })))
 }
 
 /// Load a document as an update applied with skipTransforms leaves it (not
-/// normalized), then mark every node dirty, outer first.
+/// normalized), then mark every node dirty in `order`.
 private func loadThenNormalize(
   _ editor: Editor, _ build: @escaping () throws -> [LexicalNode],
-  _ select: @escaping () throws -> Void = {}
+  _ select: @escaping () throws -> Void = {}, order: String = "outer first"
 ) throws {
   try editor.update(discrete: true, skipTransforms: true) {
     try getRoot().clear().append(contentsOf: build())
@@ -646,9 +954,14 @@ private func loadThenNormalize(
   try editor.update(discrete: true) {
     var nodes: [LexicalNode] = []
     func walk(_ node: LexicalNode) throws {
-      nodes.append(node)
+      if order == "outer first" {
+        nodes.append(node)
+      }
       if let element = node as? ElementNode {
         try element.getChildren().forEach(walk)
+      }
+      if order == "inner first" {
+        nodes.append(node)
       }
     }
     try getRoot().getChildren().forEach(walk)
@@ -675,6 +988,26 @@ private func content(_ editor: Editor) throws -> String {
 }
 
 @Suite struct NodeStructureCaretTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty link alone in a list is removed before its holder is repaired, whatever the dirty order"
+    ))
+  func emptyLinkAloneInList() throws {
+    for order in ["outer first", "inner first"] {
+      let editor = try buildCaretEditor()
+      defer { editor.dispose() }
+      try loadThenNormalize(
+        editor,
+        {
+          [
+            try put(createListNode("bullet"), [try createLinkNode("https://a")]),
+            try put(createParagraphNode(), [try createTextNode("z")]),
+          ]
+        }, order: order)
+      #expect(try rootShape(editor) == #"[["paragraph","z"]]"#)
+    }
+  }
+
   @Test(
     .upstream(
       "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an element caret after a paragraph split around a rule keeps its place in the content"
@@ -1047,6 +1380,27 @@ private final class SubListNode: ListNode {
 @Suite struct NodeStructureListMergingTests {
   @Test(
     .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > AutoLinkNode never merges"
+    ))
+  func autoLinkNeverMerges() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "autolink",
+        dependencies: [RichTextExtension, LinkExtension, NodeStructureExtension],
+        nodes: { [.klass(AutoLinkNode.self)] },
+        editorConfig: InitialEditorConfig(
+          initialEditorState: .update { _ in
+            try getRoot().append(
+              createParagraphNode().append(
+                createAutoLinkNode("https://a").append(createTextNode("1")),
+                createAutoLinkNode("https://a").append(createTextNode("2"))))
+          })))
+    defer { editor.dispose() }
+    #expect(try rootShape(editor) == #"[["paragraph",["autolink","1"],["autolink","2"]]]"#)
+  }
+
+  @Test(
+    .upstream(
       "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > a ListNode subclass merges as it does without the extension"
     ))
   func subclassMergesAsWithout() throws {
@@ -1124,6 +1478,136 @@ private final class SubListNode: ListNode {
 }
 
 @Suite struct NodeStructureListCaretTests {
+  /// The shape of the document, with each link's URL.
+  private func annotated(_ editor: Editor) throws -> String {
+    func walk(_ node: LexicalNode) throws -> JSONValue {
+      if let link = node as? LinkNode {
+        return .array([.string("link:\(try link.getURL())")] + (try link.getChildren().map(walk)))
+      }
+      if let element = node as? ElementNode {
+        return .array([.string(element.getType())] + (try element.getChildren().map(walk)))
+      }
+      return try shape(node)
+    }
+    return try editor.read { JSONValue.array(try getRoot().getChildren().map(walk)).stringify() }
+  }
+
+  private func load(_ editor: Editor, _ build: @escaping () throws -> [LexicalNode]) throws {
+    try editor.update(discrete: true) { try put(getRoot().clear(), build()) }
+  }
+
+  private func li(_ children: LexicalNode...) throws -> ListItemNode {
+    try put(createListItemNode(), children)
+  }
+
+  private func ul(_ children: LexicalNode...) throws -> ListNode {
+    try put(createListNode("bullet"), children)
+  }
+
+  private func nested(_ text: String, _ rest: LexicalNode...) throws -> ListItemNode {
+    try put(
+      createListItemNode(),
+      [try put(createListNode("number"), [try li(createTextNode(text))])] + rest)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > a list item outside a list, in a link, keeps the link as it does without the extension"
+    ))
+  func orphanItemInLink() throws {
+    // The shape pasting <a href="https://a">l<li>x</li></a> builds.
+    let build: () throws -> [LexicalNode] = {
+      [
+        try createParagraphNode().append(
+          put(createLinkNode("https://a"), [try createTextNode("l"), try li(createTextNode("x"))]))
+      ]
+    }
+    let on = try buildCaretEditor()
+    defer { on.dispose() }
+    let off = try buildCaretEditor(false)
+    defer { off.dispose() }
+    try load(on, build)
+    try load(off, build)
+    #expect(
+      try annotated(on)
+        == #"[["paragraph",["link:https://a","l"]],["list",["listitem",["link:https://a","x"]]]]"#)
+    #expect(try annotated(on) == annotated(off))
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > lists that merge keep what follows or precedes a nested list in an item at the seam"
+    ))
+  func mergingListsKeepSeamContent() throws {
+    // That content moves into an item of its own (a list item holding a
+    // nested list holds nothing else), so the wrapper items that then meet
+    // join their nested lists.
+    // Removing what separated them.
+    do {
+      let editor = try buildCaretEditor()
+      defer { editor.dispose() }
+      try load(editor) {
+        [
+          try ul(nested("a")), try createParagraphNode().append(createTextNode("sep")),
+          try ul(nested("b", try createTextNode("tail"))),
+        ]
+      }
+      try editor.update(discrete: true) { try getRoot().getChildAtIndex(1)!.remove() }
+      #expect(
+        try rootShape(editor)
+          == #"[["list",["listitem",["list",["listitem","a"],["listitem","b"]]],["listitem","tail"]]]"#
+      )
+    }
+    // Loaded next to each other, the first item at the seam holding more.
+    do {
+      let editor = try buildCaretEditor()
+      defer { editor.dispose() }
+      try load(editor) {
+        [try ul(nested("a", try createTextNode("x"))), try ul(nested("b"))]
+      }
+      #expect(
+        try rootShape(editor)
+          == #"[["list",["listitem",["list",["listitem","a"]]],["listitem","x"],["listitem",["list",["listitem","b"]]]]]"#
+      )
+    }
+    // A list lifted out of a link next to an equal one.
+    do {
+      let editor = try buildCaretEditor()
+      defer { editor.dispose() }
+      try load(editor) {
+        [
+          try createParagraphNode().append(
+            put(createLinkNode("https://a"), [try ul(nested("a"))])),
+          try ul(nested("b", try createTextNode("tail"))),
+        ]
+      }
+      #expect(
+        try annotated(editor)
+          == #"[["list",["listitem",["list",["listitem",["link:https://a","a"]],["listitem","b"]]],["listitem","tail"]]]"#
+      )
+    }
+    // Items that only wrap a nested list still join, as without the
+    // extension.
+    let chain: () throws -> [LexicalNode] = {
+      [
+        try ul(nested("a")),
+        try ul(nested("b"), nested("c"), li(createTextNode("d"))),
+      ]
+    }
+    let on = try buildCaretEditor()
+    defer { on.dispose() }
+    let off = try buildCaretEditor(false)
+    defer { off.dispose() }
+    try load(on, chain)
+    try load(off, chain)
+    #expect(
+      try rootShape(on)
+        == #"[["list",["listitem",["list",["listitem","a"],["listitem","b"]]],["listitem",["list",["listitem","c"]]],["listitem","d"]]]"#
+    )
+    #expect(
+      try on.getEditorState().toJSON().stringify() == off.getEditorState().toJSON().stringify())
+  }
+
   private func typeAtElementCaret(
     _ build: @escaping () throws -> [LexicalNode], _ path: [Int], _ offset: Int
   ) throws -> String {

@@ -826,11 +826,18 @@ upstream playground (Q31, Q39). Then `LexicalList`, `LexicalLink`,
 - Work happens in `swift/` of [wevm/lexical](https://github.com/wevm/lexical),
   a fork of meta/lexical. [wevm/lexical-swift](https://github.com/wevm/lexical-swift)
   is a read-only mirror filled by `git subtree split --prefix=swift` (Q9, Q19).
-- `.github/workflows/swift-release.yml` publishes when a change to
-  `VERSION` naming an unreleased version lands on main. The `swift-release`
-  environment has no required reviewer (tmm's decision after v0.1.0); it
-  only limits deployments to `main`, so landing the bump is the release. It
-  gets a mirror token from GitHub STS, authorized by
+- Changesets version the package, as in wevm/zero: each user-facing pull
+  request adds a changeset in `swift/.changeset/` (the root `.changeset/` is
+  upstream Lexical's npm changesets, so the Swift ones live apart, and
+  `swift/scripts/version-packages.sh` runs `changeset version` in a
+  temporary root holding only `lexical-swift`). On main,
+  `.github/workflows/swift-release.yml` keeps a
+  `chore(swift): version packages` pull request open that bumps `VERSION`
+  and adds the version's `CHANGELOG.md` section, naming `UPSTREAM_VERSION`.
+  Merging it is the release: with no changesets pending and `VERSION`
+  unreleased, the workflow publishes. The `swift-release` environment has no
+  required reviewer (tmm's decision after v0.1.0); it only limits
+  deployments to `main`. It gets a mirror token from GitHub STS, authorized by
   `.github/sts/mirror.sts.yaml` on the mirror's main (Q36). The first mirror
   push is made by hand, because the policy must already be there.
 - Independent semver from 0.1.0. Release notes come from `CHANGELOG.md` and
@@ -841,9 +848,14 @@ upstream playground (Q31, Q39). Then `LexicalList`, `LexicalLink`,
   runs `swift package diagnose-api-breaking-changes`, and also compares the
   public symbols of both sides' symbol graphs, because the digester counts
   `package` declarations as API and misses a public declaration made
-  `package`. A break fails CI unless `## Unreleased` in `CHANGELOG.md` has
-  a `- **Breaking:**` entry, which then needs a minor version (major from
-  1.0). Before the first tag the check passes.
-- Until v0.1.0, commits go straight to main after the checks in AGENTS.md;
-  afterwards, PRs and Changesets (Q38, Q42, Q43).
+  `package`. A break fails CI unless a pending changeset bumps by a minor
+  (major from 1.0), or, on the version pull request, `VERSION` already does.
+  Before the first tag the check passes.
+- Until v0.1.0, commits went straight to main after the checks in
+  AGENTS.md. From v0.1.0, every change is a pull request (Q38, Q42, Q43):
+  squash-merged by its author once CI is green, with no human review
+  required (tmm's decision). Upstream syncs are merge commits named
+  `Merge upstream vX.Y.Z`, merged as merge commits. A weekly schedule in
+  the maintaining Amp thread checks meta/lexical for new release tags and
+  opens the sync pull request.
 - MIT, keeping Meta's notice (Q47).

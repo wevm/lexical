@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Fails when the public API of swift/ breaks compatibility with the newest
-# release tag on the mirror (wevm/lexical-swift), unless the changelog's
-# `## Unreleased` section has a `- **Breaking:**` entry (DESIGN.md, Repos
-# and releases). Before the first release there is no tag, and the check
-# passes.
+# release tag on the mirror (wevm/lexical-swift), unless the break is
+# declared: a pending changeset in swift/.changeset, or the version being
+# released, bumps lexical-swift enough for it (a minor below 1.0, a major
+# from 1.0; DESIGN.md, Repos and releases). Before the first release there
+# is no tag, and the check passes.
 #
 # Usage: swift/scripts/api-breaks.sh [mirror-url]
 # `package` declarations are internals (swift/AGENTS.md); a `public`
@@ -76,11 +77,27 @@ if [ "$status" -eq 0 ]; then
   exit 0
 fi
 
-if awk '/^## Unreleased/ {f = 1; next} /^## / {f = 0} f' \
-  "$swift_dir/CHANGELOG.md" | grep -q '^- \*\*Breaking:\*\*'; then
-  echo "API breaks since $tag are listed as breaking in CHANGELOG.md."
+case $tag in
+  0.*) needed=minor levels='minor|major' ;;
+  *) needed=major levels=major ;;
+esac
+# A pending changeset that declares the break.
+if grep -lqE "^['\"]lexical-swift['\"]: *($levels)\$" "$swift_dir"/.changeset/*.md 2>/dev/null; then
+  echo "Allowed: a pending changeset bumps lexical-swift by a $needed or more."
   exit 0
 fi
-echo "API breaks since $tag. Keep the API compatible, or add a" >&2
-echo "'- **Breaking:**' entry under '## Unreleased' in swift/CHANGELOG.md." >&2
+# The version pull request, or main after it merged: the changesets are
+# gone, and the version being released declares the break.
+version="$(tr -d '[:space:]' <"$swift_dir/VERSION")"
+old_major=${tag%%.*} old_minor=${tag#*.} old_minor=${old_minor%%.*}
+new_major=${version%%.*} new_minor=${version#*.} new_minor=${new_minor%%.*}
+if [ "$new_major" -gt "$old_major" ] ||
+  { [ "$needed" = minor ] && [ "$new_major" -eq "$old_major" ] &&
+    [ "$new_minor" -gt "$old_minor" ]; }; then
+  echo "Allowed: $version is a $needed or more after $tag."
+  exit 0
+fi
+echo "API breaks since $tag. Keep the API compatible (deprecate the old one)," >&2
+echo "or add a changeset in swift/.changeset that bumps lexical-swift by a" >&2
+echo "$needed and tells apps what to change." >&2
 exit 1

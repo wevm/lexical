@@ -6,6 +6,8 @@ name: Swift
 # swift-macos.yml.
 
 on:
+  # The release workflow starts these on its version pull request's branch.
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:

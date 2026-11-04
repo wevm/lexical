@@ -2474,75 +2474,47 @@
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a click or keydown outside the editor cancels it": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a keydown cancels it": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a modifier key on its own does not cancel it": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a pointerdown cancels it, even without a mousedown": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
-  },
-  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a single or double click cancels it": {
-    "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
-  },
-  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a triple click outside the editor does not arm it": {
-    "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does not trim a selection change made by code": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does not trim a selection set by code after the mouseup": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does not trim a selection set by code once it reaches the DOM": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does not trim a selection set by code while the button is held": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
-  },
-  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > does nothing without a triple click": {
-    "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
-  },
-  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > only trims the first selection change": {
-    "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > still trims the triple click after a selection change made by code": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims a native selection reported after the mouseup": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
-  },
-  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims a triple click on formatted text": {
-    "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
-  },
-  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims after a fourth click": {
-    "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims the selection change however late it arrives": {
     "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
-  },
-  "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > trims the selection change that follows a triple click": {
-    "reason": "dom-only",
-    "note": "Arming on a triple click's mousedown and matching the DOM selection is DOM event ordering; the native triple-click handling ports with the TextKit views (M3)."
+    "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
   },
   "lexical-extension/src/__tests__/unit/SelectBlockExtension.test.ts::PreventSelectAllExtension > does not intercept select all from an input inside the editor": {
     "reason": "dom-only",

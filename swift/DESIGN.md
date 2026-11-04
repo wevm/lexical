@@ -283,11 +283,12 @@ Reversible choices made porting `@lexical/extension` under Q18.
   across a bundler's hot module replacement (`import.meta.hot`), which
   Swift has no equivalent of; its tests are `deviation` skips.
 - **Extensions that only touch the DOM wait for the views.**
-  `NodeSelectionDataSelectedExtension` (a host element attribute),
-  `NormalizeTripleClickSelectionExtension` (DOM event ordering) and
+  `NodeSelectionDataSelectedExtension` (a host element attribute) and
   `IMEExtension` (a `compositionend` listener around
   `COMPOSITION_START_COMMAND`) have no model part; they port with the
   native host views in M3, and their tests are `dom-only` until then.
+  `NormalizeTripleClickSelectionExtension` is ported (see Native surface
+  conventions).
 - **`PreventSelectAllExtension` registers nothing.** In JS it stops a
   `keydown` inside a decorator's DOM from reaching Lexical; key events reach
   the views, never a control inside a decorator, so only its config and
@@ -460,6 +461,17 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `@lexical/headless/dom` is not ported.
 
 ## Native surface conventions (decided during M3, for tmm to review)
+
+- **A triple click is trimmed when the view reports it.**
+  `NormalizeTripleClickSelectionExtension` handles `CLICK_COMMAND` with a
+  `detail` (click count) of 3 or more and moves the focus of the block
+  selection back into the clicked block. JS arms on the triple click's
+  `mousedown` and trims the next `selectionchange` that matches the DOM,
+  because the browser reports its selection asynchronously; a native view
+  has synced its selection when it reports the click (`NSTextView` tracks
+  the mouse inside `mouseDown(with:)`), so there is nothing to arm, cancel
+  or match. The views report the click count as `detail`. The
+  deprecated `thresholdMsec` and `dateNow` options are not ported.
 
 - **Modules.** `LexicalAppKit` (`LexicalNSTextView`) and `LexicalUIKit`
   (`LexicalUITextView`) hold the views; `LexicalSwiftUI`'s `LexicalEditor`

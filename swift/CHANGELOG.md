@@ -5,6 +5,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `NormalizeTripleClickSelectionExtension`: a triple (or later) click's
+  block selection ends inside the clicked block instead of at the start of
+  the next one, so formatting it no longer reaches the next block. It acts
+  on `CLICK_COMMAND` with the click count as `detail`, which the views
+  report after syncing their selection.
 - `LexicalNSTextView` and `LexicalUITextView` host the editor's live
   region (`LiveRegionHost`): the `LexicalA11y` announcers' messages are
   spoken by VoiceOver as accessibility announcements, at high priority when

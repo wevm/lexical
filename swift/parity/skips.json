@@ -1145,27 +1145,6 @@
     "reason": "dom-only",
     "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block decorator in the first or last item of an ordered list": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block decorator put in a list item later splits the same way": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block decorator splits an ordered list wherever it sits in the item; numbering continues": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block in a mark keeps the mark on its content": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1202,20 +1181,6 @@
     ],
     "note": "Uses LinkNode or AutoLinkNode."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a list item holding a paragraph and a nested list gets no stray line break": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a list item inside a paragraph is lifted without throwing": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a paragraph in a block in a holder: the result does not depend on which is repaired first": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1238,26 +1203,12 @@
     ],
     "note": "Uses the list and table nodes."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a text caret survives the split of its node": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > adjacent equal links merge; different ones do not": {
     "reason": "out-of-scope-package",
     "packages": [
       "lexical-link"
     ],
     "note": "Uses LinkNode or AutoLinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > adjacent lists of one type merge, whatever their start": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > an OverflowNode stays in its paragraph": {
     "reason": "out-of-scope-package",
@@ -1303,13 +1254,6 @@
     ],
     "note": "The document holds a table."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > paragraphs in a list item become lines of the item": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > paragraphs in other blocks that hold inline content become lines": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1330,20 +1274,6 @@
       "lexical-mark"
     ],
     "note": "Uses MarkNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an element caret after a quote lifted out of a list item and split around a rule keeps its place in the content": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an element caret before a list whose first item starts with a rule keeps its place in the content": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty link alone in a list is removed before its holder is repaired, whatever the dirty order": {
     "reason": "out-of-scope-package",
@@ -1370,13 +1300,6 @@
     ],
     "note": "An empty MarkNode in a table cell."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > items a list renumbers are not visited; what changed still is": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::declarations > Lexical's own nodes": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1389,13 +1312,6 @@
     ],
     "note": "Reads the declarations of the list, link, table, code, mark and overflow nodes."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::declarations > derived fields": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Reads ListItemNode's derived fields."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a LinkNode subclass whose isInline() returns false": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1403,13 +1319,6 @@
       "lexical-list"
     ],
     "note": "A LinkNode subclass, in an editor with the list and link extensions."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a ListNode subclass with an extra field and a legacy exportJSON": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "A ListNode subclass."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a subclass that declares the key itself is still checked": {
     "reason": "out-of-scope-package",
@@ -1424,13 +1333,6 @@
       "lexical-link"
     ],
     "note": "A LinkNode subclass."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > a caret next to a list item outside a list keeps its place": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > a list item outside a list, in a link, keeps the link as it does without the extension": {
     "reason": "out-of-scope-package",
@@ -1451,13 +1353,6 @@
     ],
     "note": "Lists, tables and quotes in links and marks, with OverflowNode."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > items the seam joins are still normalized: the result is a fixed point": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > lists that merge keep what follows or precedes a nested list in an item at the seam": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -1473,40 +1368,12 @@
     ],
     "note": "Uses LinkNode or AutoLinkNode."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::getDeclaredNodeStructure > returns immutable results": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > AutoLinkNode never merges": {
     "reason": "out-of-scope-package",
     "packages": [
       "lexical-link"
     ],
     "note": "Uses LinkNode or AutoLinkNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > ListNode: the extension and the list transform merge the same lists": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > ListNode: the extension merges lists exactly as the list transform does, nested lists at the seam included": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > a ListNode subclass merges as it does without the extension": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list"
-    ],
-    "note": "Uses the list nodes."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::registration > a table cell's declared children: inline content is wrapped in a paragraph": {
     "reason": "out-of-scope-package",

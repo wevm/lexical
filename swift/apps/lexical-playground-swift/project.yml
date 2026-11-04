@@ -51,6 +51,8 @@ targets:
         product: LexicalSelection
       - package: Lexical
         product: LexicalSwiftUI
+      - package: Lexical
+        product: LexicalUtils
   LexicalPlaygroundUITests:
     type: bundle.ui-testing
     supportedDestinations: [iOS]

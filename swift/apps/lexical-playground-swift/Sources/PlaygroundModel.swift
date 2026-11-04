@@ -6,6 +6,7 @@ import LexicalHistory
 import LexicalPlainText
 import LexicalRichText
 import LexicalSelection
+import LexicalUtils
 import Observation
 
 /// The block types the toolbar offers (the playground's `blockTypeToBlockName`
@@ -236,18 +237,51 @@ final class PlaygroundModel {
     }
   }
 
-  /// Removes the text formats and styles of the selection (the
-  /// playground's Clear Formatting, for the v0.1.0 nodes).
+  /// The playground's Clear Formatting (`$clearFormatting` in
+  /// ToolbarPlugin/utils.ts): the selected text loses its formats and
+  /// styles, fully selected blocks their alignment and indent, and selected
+  /// headings and quotes become paragraphs. A caret clears its block's
+  /// alignment and indent.
   func clearFormatting() {
     try? editor.update {
       guard let selection = try getSelection() as? RangeSelection else { return }
-      for node in try selection.extract() {
+      let anchor = selection.anchor
+      let focus = selection.focus
+      let extractedNodes = try selection.extract()
+      if anchor.key == focus.key, anchor.offset == focus.offset {
+        try clearBlockFormat(getNearestBlockElementAncestorOrThrow(anchor.getNode()))
+        return
+      }
+      // Which blocks are fully selected, before the replacements below
+      // detach nodes the selection's carets refer to.
+      var fullySelectedBlocks: Set<NodeKey>?
+      if let postExtract = try getSelection() as? RangeSelection {
+        var blocks = Set<NodeKey>()
+        for node in extractedNodes where node is TextNode {
+          let block = try getNearestBlockElementAncestorOrThrow(node)
+          if !blocks.contains(block.getKey()), try isBlockFullySelected(block, postExtract) {
+            blocks.insert(block.getKey())
+          }
+        }
+        fullySelectedBlocks = blocks
+      }
+      for node in extractedNodes {
         if let text = node as? TextNode {
-          _ = try text.setFormat(0).setStyle("")
+          if try text.getStyle() != "" { _ = try text.setStyle("") }
+          if try text.getFormat() != 0 { _ = try text.setFormat(0) }
+          let block = try getNearestBlockElementAncestorOrThrow(text)
+          if fullySelectedBlocks?.contains(block.getKey()) ?? true {
+            try clearBlockFormat(block)
+          }
+        } else if node is HeadingNode || node is QuoteNode {
+          _ = try node.replace(createParagraphNode(), includeChildren: true)
         }
       }
-      selection.format = 0
-      selection.style = ""
+      // The toolbar reads the selection's cached format (#8881).
+      if let cleared = try getSelection() as? RangeSelection {
+        cleared.setFormat(0)
+        cleared.setStyle("")
+      }
     }
   }
 
@@ -292,6 +326,12 @@ final class PlaygroundModel {
     try? loadWelcomeDocument(editor)
     _ = try? editor.dispatchCommand(CLEAR_HISTORY_COMMAND)
   }
+}
+
+/// `$clearBlockFormat`: a block's alignment and indent, reset.
+private func clearBlockFormat(_ block: ElementNode) throws {
+  if try block.getFormat() != 0 { _ = try block.setFormat("") }
+  if try block.getIndent() != 0 { _ = try block.setIndent(0) }
 }
 
 /// `JSON.stringify(value, null, 2)`.

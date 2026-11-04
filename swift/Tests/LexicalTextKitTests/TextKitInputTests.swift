@@ -1,6 +1,7 @@
 import Lexical
 import LexicalExtension
 import LexicalHistory
+import LexicalList
 import LexicalPlainText
 import LexicalRichText
 import LexicalTextKit
@@ -275,5 +276,63 @@ private func key(
       #expect(try empty.origin.is(getRoot().getLastChild()))
     }
     #expect(c.nodeKey(at: 0) != "root")
+  }
+}
+
+@Suite struct TextKitCheckboxTests {
+  private func makeListController(_ listType: ListType) throws -> TextKitInputController {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(name: "test", dependencies: [RichTextExtension, CheckListExtension]))
+    let controller = TextKitInputController(editor: editor)
+    try controller.setSelectedRange(location: 0, length: 0)
+    try controller.insertText("a")
+    try editor.update(discrete: true) { try insertList(listType) }
+    return controller
+  }
+
+  @Test func aClickInTheBoxColumnTogglesTheItem() throws {
+    let c = try makeListController("check")
+    let item = try #require(c.listMarkers.first?.key)
+    // The default theme: a 16pt item indented 32, so its 14.4pt box starts 8 in.
+    #expect(c.listMarkers[item]?.marker == .checkbox(checked: false))
+    #expect(c.checkboxItem(at: 9, location: 0, lineWidth: 600) == item)
+    #expect(c.checkboxItem(at: 23, location: 0, lineWidth: 600) == nil)
+    #expect(c.checkboxItem(at: 7, location: 0, lineWidth: 600) == nil)
+    var restyled: [TextKitStyledRun] = []
+    c.onRender = { restyled = $0.restyled }
+    try c.toggleChecked(item)
+    #expect(c.listMarkers[item]?.marker == .checkbox(checked: true))
+    // The item's text, left in place, takes the checked item's strikethrough.
+    #expect(restyled.map(\.range) == [TextKitRange(location: 0, length: 1)])
+    #expect(restyled.first?.attributes.strikethrough == true)
+    #expect(
+      try c.editor.read(.latest) { try (getNodeByKey(item) as? ListItemNode)?.getChecked() }
+        == true)
+    try c.toggleChecked(item)
+    #expect(c.listMarkers[item]?.marker == .checkbox(checked: false))
+    #expect(restyled.first?.attributes.strikethrough == false)
+  }
+
+  @Test func aClickTogglesTheInnermostItem() throws {
+    let c = try makeListController("check")
+    _ = try c.keyDown(KeyboardEvent(key: "Enter"))
+    try c.insertText("b")
+    try c.editor.update(discrete: true) {
+      _ = try dispatchCommand(c.editor, INDENT_CONTENT_COMMAND, ())
+    }
+    // "a\nb": the nested item's box is one indent level further in.
+    let nested = try #require(c.listMarkers.first { $0.value.headIndent > 32 }?.key)
+    let indent = try #require(c.listMarkers[nested]?.headIndent) - 32
+    #expect(c.checkboxItem(at: 9, location: 2, lineWidth: 600) == nil)
+    #expect(c.checkboxItem(at: 9 + indent, location: 2, lineWidth: 600) == nested)
+    try c.toggleChecked(nested)
+    let checked = c.listMarkers.values.map(\.marker).filter { $0 == .checkbox(checked: true) }
+    #expect(checked.count == 1)
+    #expect(c.listMarkers[nested]?.marker == .checkbox(checked: true))
+  }
+
+  @Test func aBulletHasNoBox() throws {
+    let c = try makeListController("bullet")
+    #expect(c.checkboxItem(at: 9, location: 0, lineWidth: 600) == nil)
   }
 }

@@ -43,6 +43,10 @@ public struct TextKitUpdate: Sendable {
   public var edits: [TextKitStyledEdit] = []
   /// The paragraphs to style again, after the edits.
   public var paragraphs: [TextKitStyledParagraph] = []
+  /// Text the edits leave in place whose block changed what it passes down
+  /// (a check list item's strikethrough, a list's type), to style again
+  /// after the edits: the view replaces the look these attributes set.
+  public var restyled: [TextKitStyledRun] = []
   /// The decorators to attach again, after the edits.
   public var decorators: [TextKitDecoratorSpan] = []
   /// The look of text outside any paragraph (the root's), for the
@@ -92,12 +96,16 @@ extension TextKitTheme {
 
     var blocks: [ElementNode] = []
     var seen: Set<NodeKey> = []
+    // Blocks under an element changed itself, whose text may inherit
+    // something new.
+    var restyle: Set<NodeKey> = []
     func collectLeafBlocks(_ element: ElementNode, deep: Bool) throws {
       if element is RootNode && !deep { return }
       let children = try element.getChildren()
       let hasBlockChild = try children.contains { try TextKitDocument.isBlock($0) }
       if !(element is RootNode), try !element.isInline(), !hasBlockChild {
         if seen.insert(element.getKey()).inserted { blocks.append(element) }
+        if deep { restyle.insert(element.getKey()) }
         return
       }
       guard deep else { return }
@@ -133,6 +141,21 @@ extension TextKitTheme {
           text: textAttributes(
             format: try block.getTextFormat(), style: try block.getTextStyle(),
             ancestors: ancestors)))
+    }
+
+    if !restyle.isEmpty {
+      let spans = restyle.compactMap { document.span($0) }
+      for run in document.runs
+      where run.length > 0
+        && spans.contains(where: { $0.location <= run.location && run.location < $0.end })
+        && !finalRanges.contains(where: { $0.location <= run.location && run.location < $0.end })
+      {
+        guard let node = try getNodeByKey(run.key) as? TextNode else { continue }
+        update.restyled.append(
+          TextKitStyledRun(
+            range: TextKitRange(location: run.location, length: run.length),
+            attributes: try textAttributes(for: node)))
+      }
     }
 
     for key in editor.getDecorators().keys.sorted() {

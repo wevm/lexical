@@ -35,6 +35,10 @@
     private let history = HistoryUndoManager()
     public override var undoManager: UndoManager? { history }
     private let blockBarsView = BlockBarsView()
+    /// A control over each check list item's box, which toggles the item:
+    /// a tap on a control does not reach the text view's own taps, so the
+    /// caret stays where it was, as checkList.ts leaves it.
+    private var checkboxes: [NodeKey: CheckboxControl] = [:]
     /// Character edits the text view made to its own text, bypassing
     /// UITextInput (the Korean keyboard merges jamo into a syllable that
     /// way), oldest first: the range each replaced and its text.
@@ -178,6 +182,20 @@
           with: edit.attributedString(base: base, contentSize: contentSize))
       }
       let length = textStorage.length
+      // Text whose block changed what it inherits: the theme's keys are
+      // replaced, so a look the block no longer gives goes away.
+      for run in update.restyled {
+        let range = NSIntersectionRange(
+          NSRange(location: run.range.location, length: run.range.length),
+          NSRange(location: 0, length: length))
+        for key: NSAttributedString.Key in [
+          .font, .foregroundColor, .backgroundColor, .underlineStyle, .strikethroughStyle,
+          .baselineOffset,
+        ] {
+          textStorage.removeAttribute(key, range: range)
+        }
+        textStorage.addAttributes(run.attributes.uiAttributes(contentSize), range: range)
+      }
       for paragraph in update.paragraphs {
         let range = NSIntersectionRange(
           NSRange(location: paragraph.range.location, length: paragraph.range.length),
@@ -235,16 +253,77 @@
       }
     }
 
-    /// Lays out the quote bars behind the text.
+    /// Puts a `CheckboxControl` over each check box in `markers`, and
+    /// removes those of items that no longer have one.
+    private func layoutCheckboxes(_ markers: [(NodeKey, CGRect, TextKitListMarkerLayout)]) {
+      var keep: Set<NodeKey> = []
+      for (key, line, layout) in markers {
+        guard case .checkbox = layout.marker else { continue }
+        let (start, side) = layout.checkboxOffset(fontSize: layout.text.fontSize)
+        let box = CGRect(
+          x: layout.isRightToLeft ? line.maxX - start - side : line.minX + start,
+          y: line.minY, width: side, height: line.height)
+        let target = max(44, side)
+        let control = checkboxes[key] ?? CheckboxControl()
+        if checkboxes[key] == nil {
+          control.onToggle = { [weak self] key in
+            self?.perform { try self?.controller.toggleChecked(key) }
+          }
+          checkboxes[key] = control
+          addSubview(control)
+        }
+        control.key = key
+        control.frame = box.insetBy(dx: (side - target) / 2, dy: min(0, (line.height - target) / 2))
+        keep.insert(key)
+      }
+      for (key, control) in checkboxes where !keep.contains(key) {
+        control.removeFromSuperview()
+        checkboxes[key] = nil
+      }
+    }
+
+    /// Lays out the quote bars and list markers behind the text.
     public override func layoutSubviews() {
       super.layoutSubviews()
       blockBarsView.frame = CGRect(origin: .zero, size: contentSize).union(bounds)
       guard let layoutManager = textLayoutManager else { return }
       let document = controller.document
+      let padding = textContainer.lineFragmentPadding
+      var markers: [(NodeKey, CGRect, TextKitListMarkerLayout)] = []
+      for (key, layout) in controller.listMarkers {
+        guard let span = document.span(key),
+          let range = textRange(
+            NSRange(
+              location: span.location,
+              length: min(max(span.length, 1), document.length - span.location)))
+        else { continue }
+        var line: CGRect?
+        layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
+          _, segment, _, _ in
+          if let first = line, segment.minY >= first.maxY { return false }
+          line = line.map { $0.union(segment) } ?? segment
+          return true
+        }
+        guard let line else { continue }
+        markers.append(
+          (
+            key,
+            CGRect(
+              x: textContainerInset.left + padding, y: textContainerInset.top + line.minY,
+              width: textContainer.size.width - 2 * padding, height: line.height),
+            layout
+          ))
+      }
+      blockBarsView.contentSizeCategory = traitCollection.preferredContentSizeCategory
+      blockBarsView.markers = markers.map { ($0.1, $0.2) }
+      layoutCheckboxes(markers)
       var bars: [(CGRect, UIColor)] = []
       for (key, blockBars) in controller.blockBars {
         guard let span = document.span(key),
-          let range = textRange(NSRange(location: span.location, length: max(span.length, 1)))
+          let range = textRange(
+            NSRange(
+              location: span.location,
+              length: min(max(span.length, 1), document.length - span.location)))
         else { continue }
         var frame: CGRect?
         layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
@@ -557,16 +636,93 @@
     }
   }
 
-  /// Draws quote bars behind the text.
+  /// The tap target over a check list item's box (`BlockBarsView` draws
+  /// the box): at least 44 points square, as the HIG asks of a control.
+  final class CheckboxControl: UIControl {
+    var key: NodeKey = ""
+    var onToggle: ((NodeKey) -> Void)?
+
+    override init(frame: CGRect) {
+      super.init(frame: frame)
+      addTarget(self, action: #selector(toggle), for: .touchUpInside)
+      isAccessibilityElement = false
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    @objc private func toggle() { onToggle?(key) }
+  }
+
+  /// Draws quote bars and list markers behind the text.
   final class BlockBarsView: UIView {
     var bars: [(CGRect, UIColor)] = [] {
       didSet { setNeedsDisplay() }
     }
+    /// Each list item's first line, with its marker.
+    var markers: [(CGRect, TextKitListMarkerLayout)] = [] {
+      didSet { setNeedsDisplay() }
+    }
+    var contentSizeCategory = UIContentSizeCategory.large
 
     override func draw(_ rect: CGRect) {
       for (frame, color) in bars where frame.intersects(rect) {
         color.setFill()
         UIRectFill(frame)
+      }
+      for (line, layout) in markers where line.intersects(rect) {
+        draw(layout, line: line)
+      }
+    }
+
+    /// Where text in `font` sits in its first line `line`: a line height
+    /// above the font's adds its space above the text, so the glyphs end at
+    /// the line's bottom.
+    private func glyphBox(_ font: UIFont, _ line: CGRect) -> CGRect {
+      let height = min(line.height, font.ascender - font.descender)
+      return CGRect(x: line.minX, y: line.maxY - height, width: line.width, height: height)
+    }
+
+    /// `layout`'s marker on the item's first line, `line`: a text marker
+    /// in the item's font ending `TextKitListMarker.gap` before the text,
+    /// or the playground theme's check box.
+    private func draw(_ layout: TextKitListMarkerLayout, line: CGRect) {
+      let isRTL = layout.isRightToLeft
+      // The marker's font scales with Dynamic Type as the text's does; its
+      // place does not, as the paragraph's indent does not.
+      let font = layout.text.uiFont(contentSizeCategory)
+      switch layout.marker {
+      case .text(let marker):
+        let string = NSAttributedString(
+          string: marker,
+          attributes: [.font: font, .foregroundColor: layout.text.foregroundColor.uiColor])
+        let width = string.size().width
+        let end = layout.headIndent - TextKitListMarker.gap
+        let x = isRTL ? line.maxX - end : line.minX + end - width
+        string.draw(at: CGPoint(x: x, y: glyphBox(font, line).minY))
+      case .checkbox(let checked):
+        let (start, side) = layout.checkboxOffset(fontSize: layout.text.fontSize)
+        let box = CGRect(
+          x: isRTL ? line.maxX - start - side : line.minX + start,
+          y: glyphBox(font, line).midY - side / 2, width: side, height: side)
+        if checked {
+          ListMarkerColors.checked.setFill()
+          UIBezierPath(roundedRect: box, cornerRadius: 2).fill()
+          let mark = UIBezierPath()
+          mark.move(to: CGPoint(x: box.minX + 0.27 * box.width, y: box.minY + 0.52 * box.height))
+          mark.addLine(to: CGPoint(x: box.minX + 0.43 * box.width, y: box.minY + 0.68 * box.height))
+          mark.addLine(to: CGPoint(x: box.minX + 0.74 * box.width, y: box.minY + 0.32 * box.height))
+          mark.lineWidth = max(1.5, 0.12 * box.width)
+          mark.lineCapStyle = .round
+          mark.lineJoinStyle = .round
+          UIColor.white.setStroke()
+          mark.stroke()
+        } else {
+          ListMarkerColors.unchecked.setStroke()
+          let border = UIBezierPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 2)
+          border.lineWidth = 1
+          border.stroke()
+        }
       }
     }
   }

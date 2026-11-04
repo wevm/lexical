@@ -360,10 +360,17 @@ public struct TextKitElement: Hashable, Sendable {
   public var indent: Int
   /// `getDirection()`: `ltr`, `rtl` or `nil`.
   public var direction: ElementDirection?
+  /// A list's `listType`: `bullet`, `number` or `check`.
+  public var listType: String?
+  /// A list item's `value`, its number in its list.
+  public var value: Int?
+  /// A check list item's `checked`; `nil` outside a check list.
+  public var checked: Bool?
 
   public init(
     type: String, tag: String? = nil, isInline: Bool = false, format: ElementFormatType = "",
-    indent: Int = 0, direction: ElementDirection? = nil
+    indent: Int = 0, direction: ElementDirection? = nil, listType: String? = nil,
+    value: Int? = nil, checked: Bool? = nil
   ) {
     self.type = type
     self.tag = tag
@@ -371,22 +378,126 @@ public struct TextKitElement: Hashable, Sendable {
     self.format = format
     self.indent = indent
     self.direction = direction
+    self.listType = listType
+    self.value = value
+    self.checked = checked
   }
 
-  /// Reads `element` (call it in a read or update). The tag is the `tag` of
-  /// its JSON, so headings need no dependency on LexicalRichText.
+  /// Reads `element` (call it in a read or update). The heading tag and the
+  /// list properties are read from its JSON, so headings and lists need no
+  /// dependency on LexicalRichText or LexicalList. The indent is the
+  /// element's own `__indent`, which the JS reconciler pads by: a list item
+  /// derives `getIndent()` from its nesting, which the list's own margins
+  /// already show.
   public init(_ element: ElementNode) throws {
     let type = element.getType()
+    let json =
+      type == "heading" || type == "list" || type == "listitem"
+      ? try element.exportJSON() : nil
     self.init(
       type: type,
-      tag: type == "heading" ? try element.exportJSON()["tag"]?.stringValue : nil,
+      tag: type == "heading" ? json?["tag"]?.stringValue : nil,
       isInline: try element.isInline(), format: try element.getFormatType(),
-      indent: try element.getIndent(), direction: try element.getDirection())
+      indent: try element.getLatest().__indent, direction: try element.getDirection(),
+      listType: type == "list" ? json?["listType"]?.stringValue : nil,
+      value: type == "listitem" ? json?["value"]?.numberValue.map { Int($0) } : nil,
+      checked: type == "listitem" ? json?["checked"]?.boolValue : nil)
   }
 
   /// The `EditorThemeClasses` key the JS node reads in `createDOM`.
   public var themeKey: String {
-    if type == "heading", let tag { "heading.\(tag)" } else { type }
+    if type == "heading", let tag {
+      "heading.\(tag)"
+    } else if type == "autolink" {
+      // AutoLinkNode is a LinkNode, whose createDOM takes `theme.link`.
+      "link"
+    } else {
+      type
+    }
+  }
+}
+
+/// Where and how a view draws a list item's marker.
+public struct TextKitListMarkerLayout: Hashable, Sendable {
+  public var marker: TextKitListMarker
+  /// Points from the inline start to where the item's text starts.
+  public var headIndent: Double
+  /// The look of the item's text, which the marker takes.
+  public var text: TextKitTextAttributes
+  /// The inline start is the right edge.
+  public var isRightToLeft: Bool
+
+  /// The check box's frame in the line, as points from the inline start and
+  /// a side length, for a font of `fontSize`: the playground theme's
+  /// `::before` box, `0.9em` square at the start of the item's `1.5em`
+  /// padding.
+  public func checkboxOffset(fontSize: Double) -> (start: Double, side: Double) {
+    (headIndent - 1.5 * fontSize, 0.9 * fontSize)
+  }
+}
+
+/// What a list item's paragraph draws before its text: a bullet or number
+/// (`list-style-position: outside`), or a check box.
+public enum TextKitListMarker: Hashable, Sendable {
+  /// `•`, `1.`, `B.`, `iv.`…, drawn to end `gap` points before the text.
+  case text(String)
+  case checkbox(checked: Bool)
+
+  /// The space between a text marker and the text.
+  public static let gap: Double = 8
+
+  /// The marker of an item with `value` in a list of `listType` that is
+  /// `depth` lists deep (0 at the top), as the playground theme draws it:
+  /// bullets disc, circle, then square, and numbers by `olDepth` (decimal,
+  /// upper-alpha, lower-alpha, upper-roman, lower-roman, repeating).
+  public static func marker(
+    listType: String, depth: Int, value: Int, checked: Bool?
+  )
+    -> TextKitListMarker
+  {
+    switch listType {
+    case "check": return .checkbox(checked: checked ?? false)
+    case "number":
+      let n = max(value, 1)
+      switch depth % 5 {
+      case 1: return .text(alphabetic(n, upper: true) + ".")
+      case 2: return .text(alphabetic(n, upper: false) + ".")
+      case 3: return .text(roman(n).uppercased() + ".")
+      case 4: return .text(roman(n) + ".")
+      default: return .text("\(value).")
+      }
+    default: return .text(depth == 0 ? "•" : depth == 1 ? "◦" : "▪")
+    }
+  }
+
+  /// CSS `lower-alpha`/`upper-alpha`: a, b… z, aa, ab…
+  private static func alphabetic(_ n: Int, upper: Bool) -> String {
+    var n = n
+    var out = ""
+    while n > 0 {
+      n -= 1
+      out = String(UnicodeScalar(UInt8((upper ? 65 : 97) + n % 26))) + out
+      n /= 26
+    }
+    return out
+  }
+
+  /// CSS `lower-roman`, for 1…3999 (decimal past that, as browsers do).
+  private static func roman(_ n: Int) -> String {
+    guard n < 4000 else { return "\(n)" }
+    let numerals: [(Int, String)] = [
+      (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"), (100, "c"), (90, "xc"), (50, "l"),
+      (40, "xl"), (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i"),
+    ]
+    var n = n
+    var out = ""
+    for (value, numeral) in numerals {
+      while n >= value {
+        out += numeral
+        n -= value
+      }
+    }
+    return out
   }
 }
 
@@ -453,6 +564,8 @@ public struct TextKitParagraphAttributes: Hashable, Sendable {
   public var backgroundColor: TextKitColor?
   /// Quote bars, outermost first, offsets from the inline start.
   public var blockBars: [TextKitBlockBar] = []
+  /// A list item's marker, drawn before `headIndent`.
+  public var listMarker: TextKitListMarker?
 
   public init() {}
 }
@@ -495,6 +608,10 @@ public struct TextKitTheme: Hashable, Sendable {
       fontFamily: ["Menlo", "Consolas", "Monaco", "monospace"], fontSize: .points(13),
       backgroundColor: codeBackground, headIndent: 52, spacingBefore: 8,
       spacingAfter: 8, lineHeightMultiple: 1.53),
+    // `__listItem { margin: 0 32px }`; a check list item's `margin-left:
+    // 0.5em; padding-left: 1.5em` comes to the same 32 points at 16.
+    "listitem": TextKitStyle(headIndent: 32),
+    "listitemChecked": TextKitStyle(strikethrough: true),
     "link": TextKitStyle(
       foregroundColor: TextKitColor(33, 111, 219).withDark(TextKitColor(88, 166, 255)),
       underline: false),
@@ -528,6 +645,9 @@ public struct TextKitTheme: Hashable, Sendable {
   /// The keys an element applies, in cascade order.
   private func styles(of element: TextKitElement) -> [TextKitStyle] {
     var keys = [element.themeKey]
+    if let checked = element.checked {
+      keys.append(checked ? "listitemChecked" : "listitemUnchecked")
+    }
     if element.direction == "ltr" || element.direction == "rtl" { keys.append(element.direction!) }
     if element.indent > 0 { keys.append("indent") }
     return keys.compactMap { styles[$0] }
@@ -578,6 +698,14 @@ public struct TextKitTheme: Hashable, Sendable {
     for element in blocks where element.type != "root" && !element.isInline {
       chain.append(styles(of: element))
       elements.append(element)
+    }
+    // A list item whose text this paragraph is (not one that only wraps a
+    // nested list, which is no paragraph) shows its list's marker.
+    let lists = elements.compactMap { $0 }.filter { $0.type == "list" }
+    if let item = elements.last ?? nil, item.type == "listitem", let list = lists.last {
+      attributes.listMarker = .marker(
+        listType: list.listType ?? "bullet", depth: lists.count - 1, value: item.value ?? 1,
+        checked: item.checked)
     }
     for (element, layer) in zip(elements, chain) {
       for style in layer {

@@ -12,8 +12,7 @@ workflow publishes the section headed `## <swift/VERSION>`.
   `CheckListExtension` with `INSERT_CHECK_LIST_COMMAND`, `ListImportRules`
   (which `ListExtension` contributes to `DOMImportExtension`), `ListSchema`
   and the opt-in `WordListImportExtension` for lists pasted from MS Word.
-  Lists serialize byte for byte as in JS. Toggling a checklist item from
-  its marker in the views is not done yet.
+  Lists serialize byte for byte as in JS.
 - New `LexicalLink`, a port of `@lexical/link`: `LinkNode`,
   `AutoLinkNode`, `toggleLink`, `formatUrl`, `TOGGLE_LINK_COMMAND`,
   `LinkExtension` (with `validateUrl`, default `attributes` and URL paste),
@@ -39,6 +38,18 @@ workflow publishes the section headed `## <swift/VERSION>`.
   `JSRegExp`, which runs JS regex source on ICU with UTF-16 indices. Import
   and export match JS byte for byte on all 149 cases of upstream's
   import/export table.
+- The views draw list markers as the playground theme does: bullets by
+  depth (•, ◦, ▪), numbers by depth (1., A., a., I., i.), and check boxes,
+  with a checked item struck through. A click (AppKit) or a tap (UIKit) on
+  a check box toggles the item without moving the selection. New
+  `TextKitInputController.listMarkers`, `toggleChecked(_:)` and
+  `checkboxItem(at:location:lineWidth:)`, `TextKitListMarker`,
+  `TextKitListMarkerLayout` and `TextKitParagraphAttributes.listMarker`.
+- `TextKitUpdate.restyled` lists text a commit leaves in place whose block
+  changed what it passes down (a check list item checked, a list's type),
+  so the views restyle it; until now such text kept its old look.
+- An autolink takes the theme's `link` style, as `AutoLinkNode.createDOM`
+  takes `theme.link`; it was drawn as plain text.
 - `DataTransfer` reads and writes the `text` format as `text/plain` and
   `url` as `text/uri-list`, as browsers do.
 - `LexicalTesting.withLargeStack` runs a test body on an 8 MB stack.

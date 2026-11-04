@@ -18,6 +18,14 @@
     }
   }
 
+  /// The playground theme's check box colors (`#3d87f5` filled when
+  /// checked, a `#999` border when not).
+  enum ListMarkerColors {
+    static let checked = NSColor(srgbRed: 0x3d / 255, green: 0x87 / 255, blue: 0xf5 / 255, alpha: 1)
+    static let unchecked = NSColor(
+      srgbRed: 0x99 / 255, green: 0x99 / 255, blue: 0x99 / 255, alpha: 1)
+  }
+
   /// CSS weights as `NSFont.Weight`.
   private func nsFontWeight(_ weight: Int) -> NSFont.Weight {
     switch weight {

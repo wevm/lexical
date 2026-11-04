@@ -108,6 +108,20 @@
           with: edit.attributedString(base: base))
       }
       let length = textStorage.length
+      // Text whose block changed what it inherits: the theme's keys are
+      // replaced, so a look the block no longer gives goes away.
+      for run in update.restyled {
+        let range = NSIntersectionRange(
+          NSRange(location: run.range.location, length: run.range.length),
+          NSRange(location: 0, length: length))
+        for key: NSAttributedString.Key in [
+          .font, .foregroundColor, .backgroundColor, .underlineStyle, .strikethroughStyle,
+          .baselineOffset,
+        ] {
+          textStorage.removeAttribute(key, range: range)
+        }
+        textStorage.addAttributes(run.attributes.nsAttributes, range: range)
+      }
       for paragraph in update.paragraphs {
         let range = NSIntersectionRange(
           NSRange(location: paragraph.range.location, length: paragraph.range.length),
@@ -157,17 +171,36 @@
       }
     }
 
-    /// Quote bars, behind the text.
+    /// Quote bars and list markers, behind the text.
     public override func drawBackground(in rect: NSRect) {
       super.drawBackground(in: rect)
       guard let layoutManager = textLayoutManager else { return }
       let origin = textContainerOrigin
       let padding = textContainer?.lineFragmentPadding ?? 0
       let document = controller.document
+      let lineWidth = (textContainer?.size.width ?? bounds.width) - 2 * padding
+      for (key, layout) in controller.listMarkers {
+        guard let span = document.span(key),
+          let line = firstLineFrame(
+            layoutManager,
+            NSRange(
+              location: span.location,
+              length: min(max(span.length, 1), document.length - span.location)))
+        else { continue }
+        // The line in view coordinates, starting where line fragments do.
+        drawListMarker(
+          layout,
+          line: NSRect(
+            x: origin.x + padding, y: origin.y + line.minY, width: lineWidth,
+            height: line.height))
+      }
       for (key, bars) in controller.blockBars {
         guard let span = document.span(key),
           let frame = segmentsFrame(
-            layoutManager, NSRange(location: span.location, length: max(span.length, 1)))
+            layoutManager,
+            NSRange(
+              location: span.location,
+              length: min(max(span.length, 1), document.length - span.location)))
         else { continue }
         for bar in bars {
           bar.color.nsColor.setFill()
@@ -175,6 +208,72 @@
             x: origin.x + padding + bar.offset, y: origin.y + frame.minY, width: bar.width,
             height: frame.height
           ).fill()
+        }
+      }
+    }
+
+    /// The first line of `range`, in container coordinates.
+    private func firstLineFrame(_ layoutManager: NSTextLayoutManager, _ range: NSRange) -> NSRect? {
+      guard let textRange = textRange(range) else { return nil }
+      var frame: NSRect?
+      layoutManager.enumerateTextSegments(in: textRange, type: .standard, options: []) {
+        _, segment, _, _ in
+        if let first = frame, segment.minY >= first.maxY { return false }
+        frame = frame.map { $0.union(segment) } ?? segment
+        return true
+      }
+      return frame
+    }
+
+    /// Where the item's text sits in its first line `line`: a line height
+    /// above the font's adds its space above the text, so the glyphs end at
+    /// the line's bottom.
+    private func glyphBox(_ layout: TextKitListMarkerLayout, _ line: NSRect) -> NSRect {
+      let font = layout.text.nsFont
+      let height = min(line.height, font.ascender - font.descender)
+      return NSRect(x: line.minX, y: line.maxY - height, width: line.width, height: height)
+    }
+
+    /// Draws `layout`'s marker on the item's first line, `line`: a text
+    /// marker in the item's font ending `TextKitListMarker.gap` before the
+    /// text, or the playground theme's check box.
+    private func drawListMarker(_ layout: TextKitListMarkerLayout, line: NSRect) {
+      let isRTL = layout.isRightToLeft
+      switch layout.marker {
+      case .text(let marker):
+        var attributes = layout.text.nsAttributes
+        attributes[.strikethroughStyle] = nil
+        attributes[.underlineStyle] = nil
+        attributes[.backgroundColor] = nil
+        let string = NSAttributedString(string: marker, attributes: attributes)
+        let width = string.size().width
+        let end = layout.headIndent - TextKitListMarker.gap
+        let x = isRTL ? line.maxX - end : line.minX + end - width
+        string.draw(at: NSPoint(x: x, y: glyphBox(layout, line).minY))
+      case .checkbox(let checked):
+        let (start, side) = layout.checkboxOffset(fontSize: layout.text.fontSize)
+        let box = NSRect(
+          x: isRTL ? line.maxX - start - side : line.minX + start,
+          y: glyphBox(layout, line).midY - side / 2, width: side, height: side)
+        let path = NSBezierPath(roundedRect: box, xRadius: 2, yRadius: 2)
+        if checked {
+          ListMarkerColors.checked.setFill()
+          path.fill()
+          let mark = NSBezierPath()
+          mark.move(to: NSPoint(x: box.minX + 0.27 * side, y: box.minY + 0.52 * side))
+          mark.line(to: NSPoint(x: box.minX + 0.43 * side, y: box.minY + 0.68 * side))
+          mark.line(to: NSPoint(x: box.minX + 0.74 * side, y: box.minY + 0.32 * side))
+          mark.lineWidth = max(1.5, 0.12 * side)
+          mark.lineCapStyle = .round
+          mark.lineJoinStyle = .round
+          NSColor.white.setStroke()
+          mark.stroke()
+        } else {
+          ListMarkerColors.unchecked.setStroke()
+          let inset = NSBezierPath(
+            roundedRect: box.insetBy(dx: 0.5, dy: 0.5), xRadius: 2, yRadius: 2)
+          inset.lineWidth = 1
+          inset.stroke()
         }
       }
     }
@@ -389,8 +488,20 @@
     }
 
     public override func mouseDown(with event: NSEvent) {
-      super.mouseDown(with: event)
       let point = convert(event.locationInWindow, from: nil)
+      // A click in a check list item's box toggles it and leaves the
+      // selection alone, as checkList.ts's pointer handlers do.
+      let padding = textContainer?.lineFragmentPadding ?? 0
+      if event.clickCount == 1,
+        let item = controller.checkboxItem(
+          at: point.x - textContainerOrigin.x - padding,
+          location: characterIndexForInsertion(at: point),
+          lineWidth: (textContainer?.size.width ?? bounds.width) - 2 * padding)
+      {
+        perform { try controller.toggleChecked(item) }
+        return
+      }
+      super.mouseDown(with: event)
       let mouseEvent = MouseEvent(
         "click", clientX: point.x, clientY: point.y, detail: event.clickCount,
         altKey: event.modifierFlags.contains(.option),

@@ -210,6 +210,8 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     var linkText = plain
     linkText.foregroundColor = TextKitColor(33, 111, 219).withDark(TextKitColor(88, 166, 255))
     #expect(text(in: [paragraph, link]) == linkText)
+    // An autolink takes the link's look, as its createDOM takes theme.link.
+    #expect(text(in: [paragraph, TextKitElement(type: "autolink", isInline: true)]) == linkText)
     // Text formats come after the link: an underline format still shows.
     #expect(text(IS_UNDERLINE, in: [paragraph, link]).underline)
     let mark = TextKitElement(type: "mark", isInline: true)
@@ -252,6 +254,57 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     let p = theme.paragraphAttributes(blocks: [outer, inner, paragraph])
     #expect(p.blockBars.map(\.offset) == [20, 40 + 20])
     #expect(p.headIndent == 40 + 40 + 40)
+  }
+
+  @Test func listItemsShowTheirListsMarker() {
+    let bullets = TextKitElement(type: "list", listType: "bullet")
+    let numbers = TextKitElement(type: "list", listType: "number")
+    let item = TextKitElement(type: "listitem", value: 3)
+    let wrapper = TextKitElement(type: "listitem", value: 4)
+
+    let top = theme.paragraphAttributes(blocks: [root, bullets, item])
+    #expect(top.listMarker == .text("•"))
+    #expect(top.headIndent == 32)
+    #expect(theme.paragraphAttributes(blocks: [root, numbers, item]).listMarker == .text("3."))
+
+    // A nested item: its wrapper item's margin adds up with its own, and
+    // the depth picks the style.
+    let nested = theme.paragraphAttributes(blocks: [root, numbers, wrapper, numbers, item])
+    #expect(nested.listMarker == .text("C."))
+    #expect(nested.headIndent == 64)
+    #expect(
+      theme.paragraphAttributes(blocks: [root, bullets, wrapper, bullets, item]).listMarker
+        == .text("◦"))
+    // A paragraph outside a list has none.
+    #expect(theme.paragraphAttributes(blocks: [root, paragraph]).listMarker == nil)
+
+    #expect(
+      TextKitListMarker.marker(listType: "number", depth: 2, value: 28, checked: nil)
+        == .text("ab."))
+    #expect(
+      TextKitListMarker.marker(listType: "number", depth: 3, value: 1994, checked: nil)
+        == .text("MCMXCIV."))
+    #expect(
+      TextKitListMarker.marker(listType: "number", depth: 4, value: 9, checked: nil) == .text("ix.")
+    )
+    #expect(
+      TextKitListMarker.marker(listType: "number", depth: 5, value: 9, checked: nil) == .text("9."))
+    #expect(
+      TextKitListMarker.marker(listType: "bullet", depth: 7, value: 1, checked: nil) == .text("▪"))
+  }
+
+  @Test func checkListItemsShowABoxAndStrikeThroughWhenChecked() {
+    let checks = TextKitElement(type: "list", listType: "check")
+    let done = TextKitElement(type: "listitem", value: 1, checked: true)
+    let open = TextKitElement(type: "listitem", value: 2, checked: false)
+    #expect(
+      theme.paragraphAttributes(blocks: [root, checks, done]).listMarker == .checkbox(checked: true)
+    )
+    #expect(
+      theme.paragraphAttributes(blocks: [root, checks, open]).listMarker
+        == .checkbox(checked: false))
+    #expect(text(in: [checks, done]).strikethrough)
+    #expect(!text(in: [checks, open]).strikethrough)
   }
 
   @Test func inlineStyleWinsOverTheme() {

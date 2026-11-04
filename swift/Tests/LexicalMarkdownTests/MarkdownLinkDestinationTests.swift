@@ -199,7 +199,9 @@ private func expectLinks(_ testCase: MarkdownLinkImportCase) throws {
   // A pattern that leaves the whitespace runs on either side of an absent
   // destination neighbouring each other walks every split of a run before
   // giving up, so the work grows with the square of the input. Upstream's
-  // time limit (5 s) is the assertion.
+  // time limit (5 s) is the assertion. Here it is 30 s: a debug build takes
+  // about 3 s for the tab run alone (it makes 200,000 TabNodes, as JS does),
+  // while a quadratic walk of these runs would take minutes.
   static let run = 200000
 
   @Test(
@@ -227,7 +229,7 @@ private func expectLinks(_ testCase: MarkdownLinkImportCase) throws {
     try editor.update(discrete: true) { try convertFromMarkdownString("[x](" + rest, TRANSFORMERS) }
     // None of them is a link, and the point is that saying so is quick.
     #expect(try editor.read(.latest) { try linksOfTextNodes() }.isEmpty)
-    #expect(ContinuousClock.now - start < .seconds(5))
+    #expect(ContinuousClock.now - start < .seconds(30))
   }
 }
 

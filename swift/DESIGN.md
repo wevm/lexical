@@ -734,10 +734,18 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   `registerCheckList` and `CheckListExtension`. The rest of it moves DOM
   focus onto a check list `<li>` so that Space, the arrows and Escape
   operate the checkbox, and hit-tests pointer events against the `::before`
-  marker. On the native views, toggling an item from its marker (a tap or a
-  click in the marker's rect) and an accessibility toggle action belong to
-  the text views, with the marker drawing; `disableTakeFocusOnClick` is kept
-  in `CheckListConfig` for that. The pointer tests are `dom-only`.
+  marker. On the native views, the markers are drawn by the text views,
+  from `TextKitInputController.listMarkers` (the playground theme's look,
+  which TextKit reads from each item's JSON so that it need not depend on
+  `LexicalList`), and toggling belongs to them too: AppKit hit-tests a
+  click against the box column, as `handleClick` does for a mouse (no
+  padding), and UIKit puts a 44-point `UIControl` over each box: a tap on a
+  control does not reach the text view's own taps, so it does not move the
+  caret. Either way the selection stays put, as JS prevents the pointer's
+  default.
+  `toggleChecked` writes the flipped `checked` through the item's JSON.
+  An accessibility toggle action is still to do; `disableTakeFocusOnClick`
+  is kept in `CheckListConfig` for it. The pointer tests are `dom-only`.
   `lexical-list` is `enforced`: every upstream test that needs only
   enforced packages is ported or carries a recorded skip.
 - **`LexicalLink`** ports `@lexical/link`. `LinkAttributes` keeps JS's

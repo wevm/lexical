@@ -35,6 +35,8 @@ public final class TextKitInputController {
   public var document: TextKitDocument { reconciler.document }
   /// The quote bars of the blocks that have them, by block key.
   public private(set) var blockBars: [NodeKey: [TextKitBlockBar]] = [:]
+  /// The list markers of the list items, by block key.
+  public private(set) var listMarkers: [NodeKey: TextKitListMarkerLayout] = [:]
   /// The IME's marked text in the rendered string, while it composes.
   public private(set) var markedRange: TextKitRange?
   /// Called after every commit with what changed: the reconciler's edits,
@@ -119,11 +121,22 @@ public final class TextKitInputController {
       return update
     }
     update.tags = tags
-    if update.isFull { blockBars = [:] }
+    if update.isFull {
+      blockBars = [:]
+      listMarkers = [:]
+    }
     for paragraph in update.paragraphs {
       blockBars[paragraph.key] =
         paragraph.attributes.blockBars.isEmpty ? nil : paragraph.attributes.blockBars
+      listMarkers[paragraph.key] = paragraph.attributes.listMarker.map {
+        TextKitListMarkerLayout(
+          marker: $0, headIndent: paragraph.attributes.headIndent, text: paragraph.text,
+          isRightToLeft: paragraph.attributes.writingDirection == .rightToLeft)
+      }
     }
+    // A block that left the document takes its marker and bars with it.
+    for key in listMarkers.keys where document.span(key) == nil { listMarkers[key] = nil }
+    for key in blockBars.keys where document.span(key) == nil { blockBars[key] = nil }
     if let marked = markedRange, marked.end > document.length {
       markedRange = nil
     }
@@ -489,6 +502,39 @@ public final class TextKitInputController {
   /// node under the pointer (`"root"` past the last block).
   public func click(_ event: MouseEvent) throws {
     try run { [self] in _ = try dispatchCommand(editor, CLICK_COMMAND, event) }
+  }
+
+  /// Toggles check list item `key`, as `checkList.ts`'s click on its
+  /// `::before` box does. TextKit reads list items through their JSON
+  /// (it does not depend on `LexicalList`), so the toggle writes the
+  /// flipped `checked` back the same way.
+  public func toggleChecked(_ key: NodeKey) throws {
+    try run {
+      guard let node = try getNodeByKey(key) else { return }
+      var json = try node.exportJSON()
+      guard let checked = json["checked"]?.boolValue else { return }
+      json["checked"] = .bool(!checked)
+      _ = try node.getWritable().updateFromJSON(json)
+    }
+  }
+
+  /// The check list item whose check box column contains `x`, for a click
+  /// at UTF-16 `location` of the rendered text: the innermost item there,
+  /// as `checkList.ts` takes the `<li>` under the pointer. `x` is in line
+  /// coordinates, where a line starts at 0 and is `lineWidth` wide. (A
+  /// touch view puts a control over each box instead.)
+  public func checkboxItem(at x: Double, location: Int, lineWidth: Double) -> NodeKey? {
+    var best: (key: NodeKey, length: Int, layout: TextKitListMarkerLayout)?
+    for (key, layout) in listMarkers {
+      guard let span = document.span(key), span.location <= location, location <= span.end,
+        best.map({ span.length < $0.length }) ?? true
+      else { continue }
+      best = (key, span.length, layout)
+    }
+    guard let best, case .checkbox = best.layout.marker else { return nil }
+    let (start, side) = best.layout.checkboxOffset(fontSize: best.layout.text.fontSize)
+    let minX = best.layout.isRightToLeft ? lineWidth - start - side : start
+    return x > minX && x < minX + side ? best.key : nil
   }
 
   /// The caret at `location` of the rendered text (call it in a read or

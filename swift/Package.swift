@@ -227,7 +227,7 @@ let package = Package(
     .target(name: "LexicalDevtoolsCore", dependencies: ["Lexical", "LexicalHTML"]),
     // Test support: the `.upstream(...)` trait the parity ledger reads.
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
-    // Reported, not gating: `swift run -c release LexicalBenchmarks`.
+    // Gating in CI: `swift run -c release LexicalBenchmarks`.
     .executableTarget(
       name: "LexicalBenchmarks",
       dependencies: [

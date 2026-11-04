@@ -68,13 +68,12 @@ jobs:
       - name: Test
         run: swift test --skip-build
 
-  # Reported, not gating (swift/DESIGN.md, Benchmarks): the numbers go to the
-  # job summary, and a slow run never fails the workflow.
+  # Gating (swift/DESIGN.md, Benchmarks): the numbers go to the job summary,
+  # and a missed keystroke p95 target fails the job (load is reported only).
   benchmarks:
-    name: Benchmarks (reported)
+    name: Benchmarks
     runs-on: ubuntu-latest
     container: swift:6.4.2-bookworm
-    continue-on-error: true
     defaults:
       run:
         working-directory: swift

@@ -291,7 +291,11 @@
     /// Lays out the quote bars and list markers behind the text.
     public override func layoutSubviews() {
       super.layoutSubviews()
-      blockBarsView.frame = CGRect(origin: .zero, size: contentSize).union(bounds)
+      // The bars are in content coordinates, so the view starts at the
+      // content's origin even while the content is pulled past its top.
+      blockBarsView.frame = CGRect(
+        x: 0, y: 0, width: max(contentSize.width, bounds.maxX),
+        height: max(contentSize.height, bounds.maxY))
       guard let layoutManager = textLayoutManager else { return }
       let document = controller.document
       let padding = textContainer.lineFragmentPadding

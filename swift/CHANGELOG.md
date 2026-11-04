@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Deleting a character no longer renders the whole document again to find
+  where the caret moves: a caret move made before the update changes any
+  node reuses the view's rendering. At 5,000 blocks a delete went from 81
+  ms to 14 ms p95 (release).
 - The package supports iOS 26 and macOS 26 (it required iOS 27 and macOS
   27). CI also tests on the iOS 26 simulator.
 - `LexicalUITextView` reports a triple (or later) tap as `CLICK_COMMAND`

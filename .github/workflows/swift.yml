@@ -60,8 +60,25 @@ jobs:
         with:
           persist-credentials: false
       - name: Format
-        run: swift format lint --strict --recursive Sources Tests Package.swift
+        run: swift format lint --strict --recursive Sources Tests Benchmarks Package.swift
       - name: Build
         run: swift build --build-tests
       - name: Test
         run: swift test --skip-build
+
+  # Reported, not gating (swift/DESIGN.md, Benchmarks): the numbers go to the
+  # job summary, and a slow run never fails the workflow.
+  benchmarks:
+    name: Benchmarks (reported)
+    runs-on: ubuntu-latest
+    container: swift:6.4.2-bookworm
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: swift
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Run
+        run: swift run -c release LexicalBenchmarks --markdown "$GITHUB_STEP_SUMMARY"

@@ -44,7 +44,7 @@ it they fail when the checked-in files are stale. Generate with the Node in
 Rebase onto `origin/main`, then run:
 
 ```sh
-(cd swift && swift format lint --strict --recursive Sources Tests Package.swift \
+(cd swift && swift format lint --strict --recursive Sources Tests Benchmarks Package.swift \
   && swift build --build-tests && swift test --skip-build)
 pnpm --filter lexical-conformance run test
 pnpm --filter lexical-conformance run check-ledger

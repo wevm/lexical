@@ -318,12 +318,23 @@ public struct TextKitDocument: Sendable {
 /// boundary is a paragraph or line break edge. The views replace the line
 /// step with visual lines when they lay text out.
 public final class TextKitMovement: SelectionMovement {
+  /// A rendering of the editor's committed state, kept up to date by the
+  /// controller's reconciler; `nil` when there is none.
+  var committedDocument: (() -> TextKitDocument?)?
+
   public init() {}
 
   public func landedPoint(
     from point: Point, isBackward: Bool, granularity: SelectionGranularity
   ) throws -> (NodeKey, Int, PointType)? {
-    let document = try TextKitDocument(root: getRoot())
+    // Until the update changes a node, the pending state renders as the
+    // committed one, so a keystroke's move needs no render of its own.
+    let editor = try getActiveEditor()
+    let isClean =
+      editor._dirtyType == NO_DIRTY_NODES && editor._dirtyLeaves.size == 0
+      && editor._dirtyElements.size == 0
+    let document =
+      try (isClean ? committedDocument?() : nil) ?? TextKitDocument(root: getRoot())
     guard let location = document.location(for: point) else { return nil }
     let target = document.move(location, isBackward: isBackward, granularity: granularity)
     return target == location ? nil : document.point(at: target)

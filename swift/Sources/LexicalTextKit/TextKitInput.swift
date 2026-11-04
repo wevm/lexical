@@ -46,6 +46,12 @@ public final class TextKitInputController {
   public init(editor: Editor) {
     self.editor = editor
     editor.selectionMovement = movement
+    movement.committedDocument = { [weak self, weak editor] in
+      guard let self, let editor, reconciler.editorState === editor.getEditorState() else {
+        return nil
+      }
+      return reconciler.document
+    }
     removeListener = editor.registerUpdateListener { [weak self] payload in
       try self?.render(payload)
     }

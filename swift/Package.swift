@@ -169,6 +169,13 @@ let package = Package(
       ]),
     // Test support: the `.upstream(...)` trait the parity ledger reads.
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
+    // Reported, not gating: `swift run -c release LexicalBenchmarks`.
+    .executableTarget(
+      name: "LexicalBenchmarks",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalRichText", "LexicalTextKit",
+      ],
+      path: "Benchmarks/LexicalBenchmarks"),
     // Replays packages/lexical-conformance/vectors, which only the monorepo
     // carries; skipped elsewhere.
     .testTarget(

@@ -60,7 +60,8 @@ final class LexicalDemoUITests: XCTestCase {
     if result != .completed { attachScreenshot() }
     XCTAssertEqual(
       result, .completed,
-      "model JSON is \(probe.label), log \(app.staticTexts["model-log"].label)", file: file,
+      "model JSON is \(probe.label), selection \(app.staticTexts["model-selection"].label.debugDescription), log \(app.staticTexts["model-log"].label)",
+      file: file,
       line: line)
   }
 
@@ -199,6 +200,43 @@ final class LexicalDemoUITests: XCTestCase {
       app.keyboards.keys[jamo].tap()
     }
     expectText("한")
+  }
+
+  /// A first paragraph long enough to cover the editor's center, where
+  /// `tap(withNumberOfTaps:)` taps.
+  private static let paragraph1 =
+    "Paragraph 1" + String(repeating: " and more words", count: 40) + "."
+
+  /// Pastes two paragraphs, triple-taps the first and bolds with Cmd-B.
+  @MainActor
+  private func tripleTapAndBold() {
+    UIPasteboard.general.string = Self.paragraph1 + "\nParagraph 2"
+    startHardwareKeyboard()
+    editor.typeKey("v", modifierFlags: .command)
+    expectText(Self.paragraph1 + "\n\nParagraph 2")
+    editor.tap(withNumberOfTaps: 3, numberOfTouches: 1)
+    sleep(1)
+    editor.typeKey("b", modifierFlags: .command)
+  }
+
+  @MainActor
+  func testTripleTapSelectsOnlyTheTappedParagraph() {
+    launch()
+    tripleTapAndBold()
+    // NormalizeTripleClickSelectionExtension ends the selection in the
+    // tapped paragraph, so only it turns bold.
+    expectJSON(#"{"type":"text","format":1,"text":"Paragraph 1"#)
+    expectJSON(#"{"type":"text","text":"Paragraph 2"}"#)
+    // The view reported the triple tap, after its paragraph selection.
+    XCTAssertTrue(
+      app.staticTexts["model-log"].label.contains("click 3"),
+      app.staticTexts["model-log"].label)
+    // The selection ends at the end of the tapped paragraph. (UITextView's
+    // own paragraph selection already stops before the newline, unlike
+    // NSTextView's, so the extension has nothing to trim here.)
+    XCTAssertEqual(
+      app.staticTexts["model-selection"].label,
+      "\(Self.paragraph1)|focus \(Self.paragraph1)@\(Self.paragraph1.utf16.count)")
   }
 
   @MainActor

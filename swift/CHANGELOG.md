@@ -5,6 +5,9 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `LexicalUITextView` reports a triple (or later) tap as `CLICK_COMMAND`
+  with the tap count as `detail`, after its paragraph selection, so
+  `NormalizeTripleClickSelectionExtension` works on iOS.
 - `IMEExtension`: `compositionKey` and `composingTextNode` signals for the
   IME composition in progress, set from the views' marked text.
 - `NormalizeTripleClickSelectionExtension`: a triple (or later) click's

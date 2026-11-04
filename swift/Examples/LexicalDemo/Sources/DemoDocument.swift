@@ -57,7 +57,8 @@ final class CardNode: DecoratorNode {
 func makeDemoEditor() throws -> Editor {
   try buildEditorFromExtensions(
     defineExtension(
-      name: "demo", dependencies: [RichTextExtension, HistoryExtension],
+      name: "demo",
+      dependencies: [RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension],
       nodes: { [.klass(BadgeNode.self), .klass(CardNode.self)] }))
 }
 

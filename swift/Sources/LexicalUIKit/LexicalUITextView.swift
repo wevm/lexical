@@ -87,6 +87,14 @@
       decorators.onClick = { [weak self] key in
         self?.perform { try self?.controller.click(MouseEvent("click", targetKey: key)) }
       }
+      // A triple (or later) tap is a click with the tap count as `detail`,
+      // after the text view has applied the paragraph selection it makes,
+      // as AppKit's `mouseDown(with:)` reports one after tracking.
+      let tapCount = TapCountRecognizer()
+      tapCount.onTap = { [weak self] count, location in
+        DispatchQueue.main.async { self?.click(count: count, at: location) }
+      }
+      addGestureRecognizer(tapCount)
       // Attaching commits what is pending; the view starts from the full
       // render below, so it renders nothing before then.
       controller.report { try editor.setRootElement(self) }
@@ -382,6 +390,21 @@
     public func textViewDidChange(_ textView: UITextView) {
       if isRendering { return }
       perform {}
+    }
+
+    private func click(count: Int, at point: CGPoint) {
+      let targetKey =
+        point.y > textContainerInset.top
+          + (textLayoutManager?.usageBoundsForTextContainer.maxY ?? 0)
+        ? "root"
+        : closestPosition(to: point).map {
+          controller.nodeKey(at: offset(from: beginningOfDocument, to: $0))
+        } ?? "root"
+      perform {
+        try controller.click(
+          MouseEvent(
+            "click", clientX: point.x, clientY: point.y, detail: count, targetKey: targetKey))
+      }
     }
 
     public func textViewDidChangeSelection(_ textView: UITextView) {

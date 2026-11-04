@@ -468,7 +468,13 @@ Reversible choices made porting `@lexical/extension` under Q18.
   because the browser reports its selection asynchronously; a native view
   has synced its selection when it reports the click (`NSTextView` tracks
   the mouse inside `mouseDown(with:)`), so there is nothing to arm, cancel
-  or match. The views report the click count as `detail`. The
+  or match. The views report the click count as `detail`. On iOS a
+  gesture recognizer that never recognizes (so it cannot block the text
+  view's own taps) reads each tap's `tapCount`, and a third or later tap
+  is reported on the next main-queue turn, after `UITextView` has applied
+  its paragraph selection. `NSTextView`'s paragraph selection includes the
+  trailing newline, which the extension trims; `UITextView`'s already
+  stops before it, so there it changes nothing. The
   deprecated `thresholdMsec` and `dateNow` options are not ported.
 - **`IMEExtension` ends a composition on `COMPOSITION_END_COMMAND`.** JS
   clears its `compositionKey` on the root element's `compositionend` event;

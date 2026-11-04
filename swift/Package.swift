@@ -53,7 +53,8 @@ let package = Package(
       name: "LexicalExtensionTests",
       dependencies: [
         "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHeadless", "LexicalHistory",
-        "LexicalHTML", "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
+        "LexicalHTML", "LexicalList", "LexicalRichText", "LexicalSelection", "LexicalTesting",
+        "LexicalUtils",
       ]),
     // @lexical/selection: style patching, block conversion and wrapping.
     .target(name: "LexicalSelection", dependencies: ["Lexical"]),

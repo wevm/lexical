@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalList
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -18,7 +19,7 @@ private final class PlainBoxNode: ElementNode {
   }
 }
 
-private final class DeclaredBoxNode: ElementNode {
+private class DeclaredBoxNode: ElementNode {
   override class func config() -> NodeConfig? {
     NodeConfig(
       DeclaredBoxNode.self, type: "test_declared_box", extends: ElementNode.self, children: .block)
@@ -94,6 +95,9 @@ private func describeNode(_ n: LexicalNode) throws -> String {
   var extra: [String] = []
   if let element = n as? ElementNode, type != "listitem", try element.getIndent() > 0 {
     extra.append("indent\(try element.getIndent())")
+  }
+  if let list = n as? ListNode {
+    extra.append(try list.getListType())
   }
   let slots = try getSlotNames(n).map { "\($0):\(try describeNode(getSlot(n, $0)!))" }
     .joined(separator: " ")
@@ -181,9 +185,43 @@ nonisolated(unsafe) private let CMDS: [String: Cmd] = [
       createHeadingNode("h2").append(createTextNode("H"))
     ])
   },
+  "enter-empty-last-listitem": Cmd(inner: {
+    [
+      try createListNode("bullet").append(
+        createListItemNode().append(createTextNode("abc")), createListItemNode())
+    ]
+  }) { editor in
+    let list = try findText("abc").getParentOrThrow().getParentOrThrow()
+    _ = try (list.getLastChildOrThrow() as! ElementNode).select()
+    try editor.dispatchCommand(INSERT_PARAGRAPH_COMMAND)
+  },
+  "insertList-collapsed": Cmd(inner: twoParagraphs) { _ in
+    _ = try findText("abc").select(1, 1)
+    try insertList("bullet")
+  },
+  "insertList-quote-in-container": Cmd(inner: {
+    [try createQuoteNode().append(createTextNode("abc")), try p("def")]
+  }) { _ in
+    _ = try findText("abc").select(1, 1)
+    try insertList("bullet")
+  },
+  "insertList-range": Cmd(inner: twoParagraphs) { _ in
+    try selectRange(findText("abc"), 1, findText("def"), 1)
+    try insertList("number")
+  },
   "outdent": Cmd(inner: { [try p("abc").setIndent(1), try p("def")] }) { editor in
     _ = try findText("abc").select(1, 1)
     try editor.dispatchCommand(OUTDENT_CONTENT_COMMAND)
+  },
+  "removeList": Cmd(inner: {
+    [
+      try createListNode("bullet").append(
+        createListItemNode().append(createTextNode("abc")),
+        createListItemNode().append(createTextNode("def")))
+    ]
+  }) { _ in
+    _ = try findText("abc").select(1, 1)
+    try removeList()
   },
   "setBlocksType-heading": Cmd(inner: twoParagraphs) { _ in
     _ = try findText("abc").select(1, 1)
@@ -606,7 +644,7 @@ private func buildEditor(_ structure: Bool) throws -> Editor {
   try buildEditorFromExtensions(
     defineExtension(
       name: "block-containers",
-      dependencies: [RichTextExtension, HorizontalRuleExtension]
+      dependencies: [RichTextExtension, ListExtension, HorizontalRuleExtension]
         + (structure ? [NodeStructureExtension] : []),
       nodes: {
         [
@@ -1495,6 +1533,367 @@ struct StructuralCase: Sendable, CustomTestStringConvertible {
     #expect(try run(CMDS[c.cmd]!, c.ctx, c.structure) == want)
   }
 
+  // The list commands, which need LexicalList.
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in declared (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in declared (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in declared2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in declared2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in plain (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in plain (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in plain2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in plain2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in root (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in shadow2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in shadow2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in slot-bare (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in slot-bare (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in slot-shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > enter-empty-last-listitem in slot-shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in declared (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in declared (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in declared2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in declared2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in plain (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in plain (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in plain2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in plain2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in root (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in shadow2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in shadow2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in slot-bare (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in slot-bare (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in slot-shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-collapsed in slot-shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in declared (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in declared (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in declared2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in declared2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in plain (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in plain (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in plain2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in plain2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in root (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in shadow2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in shadow2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in slot-bare (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in slot-bare (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in slot-shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-quote-in-container in slot-shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in declared (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in declared (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in declared2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in declared2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in plain (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in plain (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in plain2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in plain2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in root (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in shadow2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in shadow2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in slot-shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > insertList-range in slot-shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in declared (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in declared (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in declared2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in declared2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in plain (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in plain (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in plain2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in plain2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in root (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in shadow2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in shadow2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in slot-bare (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in slot-bare (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in slot-shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > removeList in slot-shadow (NodeStructureExtension: true)"
+    ),
+    arguments: [
+      StructuralCase("enter-empty-last-listitem", "declared", false),
+      StructuralCase("enter-empty-last-listitem", "declared", true),
+      StructuralCase("enter-empty-last-listitem", "declared2", false),
+      StructuralCase("enter-empty-last-listitem", "declared2", true),
+      StructuralCase("enter-empty-last-listitem", "plain", false),
+      StructuralCase("enter-empty-last-listitem", "plain", true),
+      StructuralCase("enter-empty-last-listitem", "plain2", false),
+      StructuralCase("enter-empty-last-listitem", "plain2", true),
+      StructuralCase("enter-empty-last-listitem", "root", false),
+      StructuralCase("enter-empty-last-listitem", "root", true),
+      StructuralCase("enter-empty-last-listitem", "shadow", false),
+      StructuralCase("enter-empty-last-listitem", "shadow", true),
+      StructuralCase("enter-empty-last-listitem", "shadow2", false),
+      StructuralCase("enter-empty-last-listitem", "shadow2", true),
+      StructuralCase("enter-empty-last-listitem", "slot-bare", false),
+      StructuralCase("enter-empty-last-listitem", "slot-bare", true),
+      StructuralCase("enter-empty-last-listitem", "slot-shadow", false),
+      StructuralCase("enter-empty-last-listitem", "slot-shadow", true),
+      StructuralCase("insertList-collapsed", "declared", false),
+      StructuralCase("insertList-collapsed", "declared", true),
+      StructuralCase("insertList-collapsed", "declared2", false),
+      StructuralCase("insertList-collapsed", "declared2", true),
+      StructuralCase("insertList-collapsed", "plain", false),
+      StructuralCase("insertList-collapsed", "plain", true),
+      StructuralCase("insertList-collapsed", "plain2", false),
+      StructuralCase("insertList-collapsed", "plain2", true),
+      StructuralCase("insertList-collapsed", "root", false),
+      StructuralCase("insertList-collapsed", "root", true),
+      StructuralCase("insertList-collapsed", "shadow", false),
+      StructuralCase("insertList-collapsed", "shadow", true),
+      StructuralCase("insertList-collapsed", "shadow2", false),
+      StructuralCase("insertList-collapsed", "shadow2", true),
+      StructuralCase("insertList-collapsed", "slot-bare", false),
+      StructuralCase("insertList-collapsed", "slot-bare", true),
+      StructuralCase("insertList-collapsed", "slot-shadow", false),
+      StructuralCase("insertList-collapsed", "slot-shadow", true),
+      StructuralCase("insertList-quote-in-container", "declared", false),
+      StructuralCase("insertList-quote-in-container", "declared", true),
+      StructuralCase("insertList-quote-in-container", "declared2", false),
+      StructuralCase("insertList-quote-in-container", "declared2", true),
+      StructuralCase("insertList-quote-in-container", "plain", false),
+      StructuralCase("insertList-quote-in-container", "plain", true),
+      StructuralCase("insertList-quote-in-container", "plain2", false),
+      StructuralCase("insertList-quote-in-container", "plain2", true),
+      StructuralCase("insertList-quote-in-container", "root", false),
+      StructuralCase("insertList-quote-in-container", "root", true),
+      StructuralCase("insertList-quote-in-container", "shadow", false),
+      StructuralCase("insertList-quote-in-container", "shadow", true),
+      StructuralCase("insertList-quote-in-container", "shadow2", false),
+      StructuralCase("insertList-quote-in-container", "shadow2", true),
+      StructuralCase("insertList-quote-in-container", "slot-bare", false),
+      StructuralCase("insertList-quote-in-container", "slot-bare", true),
+      StructuralCase("insertList-quote-in-container", "slot-shadow", false),
+      StructuralCase("insertList-quote-in-container", "slot-shadow", true),
+      StructuralCase("insertList-range", "declared", false),
+      StructuralCase("insertList-range", "declared", true),
+      StructuralCase("insertList-range", "declared2", false),
+      StructuralCase("insertList-range", "declared2", true),
+      StructuralCase("insertList-range", "plain", false),
+      StructuralCase("insertList-range", "plain", true),
+      StructuralCase("insertList-range", "plain2", false),
+      StructuralCase("insertList-range", "plain2", true),
+      StructuralCase("insertList-range", "root", false),
+      StructuralCase("insertList-range", "root", true),
+      StructuralCase("insertList-range", "shadow", false),
+      StructuralCase("insertList-range", "shadow", true),
+      StructuralCase("insertList-range", "shadow2", false),
+      StructuralCase("insertList-range", "shadow2", true),
+      StructuralCase("insertList-range", "slot-shadow", false),
+      StructuralCase("insertList-range", "slot-shadow", true),
+      StructuralCase("removeList", "declared", false),
+      StructuralCase("removeList", "declared", true),
+      StructuralCase("removeList", "declared2", false),
+      StructuralCase("removeList", "declared2", true),
+      StructuralCase("removeList", "plain", false),
+      StructuralCase("removeList", "plain", true),
+      StructuralCase("removeList", "plain2", false),
+      StructuralCase("removeList", "plain2", true),
+      StructuralCase("removeList", "root", false),
+      StructuralCase("removeList", "root", true),
+      StructuralCase("removeList", "shadow", false),
+      StructuralCase("removeList", "shadow", true),
+      StructuralCase("removeList", "shadow2", false),
+      StructuralCase("removeList", "shadow2", true),
+      StructuralCase("removeList", "slot-bare", false),
+      StructuralCase("removeList", "slot-bare", true),
+      StructuralCase("removeList", "slot-shadow", false),
+      StructuralCase("removeList", "slot-shadow", true),
+    ])
+  func listStructuralCommand(_ c: StructuralCase) throws {
+    let want = try #require(expected(c.cmd, c.ctx)).with(c.structure)
+    #expect(try run(CMDS[c.cmd]!, c.ctx, c.structure) == want)
+  }
+
   @Test(
     .upstream(
       "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > a declared container behaves like a shadow root for every command but the joins at its edges"
@@ -1809,4 +2208,315 @@ private func pointAt(_ point: Point) throws -> String {
     }
     #expect(points == ["text:2", "heading:0"])
   }
+}
+
+// MARK: list cases (LexicalList)
+
+private func selectNodes(_ nodes: LexicalNode...) throws {
+  let selection = createNodeSelection()
+  for node in nodes { selection.add(node.getKey()) }
+  try setSelection(selection)
+}
+
+private func hrInShadow() throws {
+  let hr = try createHorizontalRuleNode()
+  try getRoot().clear().append(create(ShadowBoxNode.self).append(p("abc"), hr))
+  try selectNodes(hr)
+}
+
+private func emptyInRange(_ make: () throws -> ElementNode) throws {
+  try rangeAround(make)
+}
+
+@Suite struct BlockContainersListTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::fixes every editor gets > $insertList over an empty shadow root in a range (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::fixes every editor gets > $insertList over an empty shadow root in a range (NodeStructureExtension: true)"
+    ), arguments: [false, true])
+  func insertListOverEmptyShadowRoot(_ structure: Bool) throws {
+    let shape = try act(structure) {
+      try emptyInRange { try create(ShadowBoxNode.self) }
+      try insertList("bullet")
+    }
+    #expect(shape == #"list[bullet](li("before")) / sbox() / list[bullet](li("after"))"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::fixes every editor gets > $insertList with a horizontal rule selected in a shadow root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::fixes every editor gets > $insertList with a horizontal rule selected in a shadow root (NodeStructureExtension: true)"
+    ), arguments: [false, true])
+  func insertListHorizontalRuleInShadowRoot(_ structure: Bool) throws {
+    let shape = try act(structure) {
+      try hrInShadow()
+      try insertList("bullet")
+    }
+    #expect(shape == #"sbox(p("abc") horizontalrule())"#)
+  }
+
+  // MARK: selections that pass over or sit on a container (NodeStructureExtension)
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > an empty declared box in a range: $insertList (NodeStructureExtension)"
+    ))
+  func emptyDeclaredBoxInRange() throws {
+    let shape = try act(true) {
+      try emptyInRange { try create(DeclaredBoxNode.self) }
+      try insertList("bullet")
+    }
+    #expect(shape == #"list[bullet](li("before")) / dbox() / list[bullet](li("after"))"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > an empty shadow root in a range: $insertList (NodeStructureExtension)"
+    ))
+  func emptyShadowRootInRange() throws {
+    let shape = try act(true) {
+      try emptyInRange { try create(ShadowBoxNode.self) }
+      try insertList("bullet")
+    }
+    #expect(shape == #"list[bullet](li("before")) / sbox() / list[bullet](li("after"))"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > an element point on a declared box: $insertList (NodeStructureExtension)"
+    ))
+  func elementPointOnDeclaredBox() throws {
+    let shape = try act(true) {
+      try inBox(0)
+      try insertList("bullet")
+    }
+    #expect(shape == #"dbox(list[bullet](li("abc")))"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > a range from before a declared box into it: $insertList (NodeStructureExtension)"
+    ))
+  func rangeIntoDeclaredBox() throws {
+    let shape = try act(true) {
+      let a = try createTextNode("before")
+      let b = try createTextNode("in")
+      try getRoot().clear().append(
+        createParagraphNode().append(a),
+        create(DeclaredBoxNode.self).append(createParagraphNode().append(b)))
+      try selectRange(a, 1, b, 1)
+      try insertList("bullet")
+    }
+    #expect(shape == #"list[bullet](li("before")) / dbox(list[bullet](li("in")))"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > a horizontal rule selected in a declared box: $insertList (NodeStructureExtension)"
+    ))
+  func horizontalRuleInDeclaredBox() throws {
+    let shape = try act(true) {
+      let hr = try createHorizontalRuleNode()
+      try getRoot().clear().append(create(DeclaredBoxNode.self).append(p("abc"), hr))
+      try selectNodes(hr)
+      try insertList("bullet")
+    }
+    #expect(shape == #"dbox(p("abc") horizontalrule())"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > a horizontal rule selected in a shadow root: $insertList (NodeStructureExtension)"
+    ))
+  func horizontalRuleInShadowRoot() throws {
+    let shape = try act(true) {
+      try hrInShadow()
+      try insertList("bullet")
+    }
+    #expect(shape == #"sbox(p("abc") horizontalrule())"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > a range over a horizontal rule in a declared box: $insertList (NodeStructureExtension)"
+    ))
+  func rangeOverRuleInDeclaredBox() throws {
+    let shape = try act(true) {
+      try getRoot().clear().append(
+        create(DeclaredBoxNode.self).append(p("abc"), createHorizontalRuleNode(), p("def")))
+      try selectRange(findText("abc"), 1, findText("def"), 1)
+      try insertList("bullet")
+    }
+    #expect(
+      shape == #"dbox(list[bullet](li("abc")) horizontalrule() list[bullet](li("def")))"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > a range over a quote and a paragraph in a box that declares nothing: $insertList (NodeStructureExtension)"
+    ))
+  func rangeOverQuoteInPlainBox() throws {
+    let shape = try act(true) {
+      try getRoot().clear().append(
+        create(PlainBoxNode.self).append(createQuoteNode().append(createTextNode("y")), p("x")))
+      try selectRange(findText("y"), 0, findText("x"), 1)
+      try insertList("bullet")
+    }
+    #expect(shape == #"box(list[bullet](li("y") li("x")))"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > an empty declared box with a slot, node selected: $insertList (NodeStructureExtension)"
+    ))
+  func emptyDeclaredBoxWithSlotNodeSelected() throws {
+    let shape = try act(true) {
+      let box = try create(DeclaredBoxNode.self)
+      _ = try setSlot(box, "aside", p("slot"))
+      try getRoot().clear().append(p("before"), box, p("after"))
+      try selectNodes(box)
+      try insertList("bullet")
+    }
+    #expect(shape == #"p("before") / dbox{aside:p("slot")}() / p("after")"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > a declared box holding only a block decorator, element point: $insertList (NodeStructureExtension)"
+    ))
+  func declaredBoxHoldingDecorator() throws {
+    let shape = try act(true) {
+      let box = try create(DeclaredBoxNode.self).append(create(ComponentNode.self))
+      try getRoot().clear().append(p("before"), box, p("after"))
+      _ = try box.select(0, 0)
+      try insertList("bullet")
+    }
+    #expect(shape == #"p("before") / dbox(component()) / p("after")"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::selections that pass over or sit on a container > an empty quote and a paragraph of a box that declares nothing, node selected: $insertList (NodeStructureExtension)"
+    ))
+  func emptyQuoteAndParagraphNodeSelected() throws {
+    let shape = try act(true) {
+      let quote = try createQuoteNode()
+      let text = try createTextNode("x")
+      let box = try create(PlainBoxNode.self).append(quote, createParagraphNode().append(text))
+      _ = try setSlot(box, "aside", p("slot"))
+      try getRoot().clear().append(box)
+      try selectNodes(quote, text)
+      try insertList("bullet")
+    }
+    #expect(shape == #"box{aside:p("slot")}(list[bullet](li() li("x")))"#)
+  }
+
+  // MARK: #9570: $insertList in a box inside a box
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::#9570: $insertList in a box inside a box > box (NodeStructureExtension: false) makes a list and keeps both boxes where the structure is enforced"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::#9570: $insertList in a box inside a box > box (NodeStructureExtension: true) makes a list and keeps both boxes where the structure is enforced"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::#9570: $insertList in a box inside a box > dbox (NodeStructureExtension: false) makes a list and keeps both boxes where the structure is enforced"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::#9570: $insertList in a box inside a box > dbox (NodeStructureExtension: true) makes a list and keeps both boxes where the structure is enforced"
+    ),
+    arguments: [
+      ("box", false, #"list[bullet](li(box(p("abc"))))"#),
+      ("box", true, #"box(box(list[bullet](li("abc"))))"#),
+      ("dbox", false, #"list[bullet](li(dbox(p("abc"))))"#),
+      ("dbox", true, #"dbox(dbox(list[bullet](li("abc"))))"#),
+    ])
+  func boxInsideBox(_ kind: String, _ structure: Bool, _ expected: String) throws {
+    func make() throws -> ElementNode {
+      kind == "box" ? try create(PlainBoxNode.self) : try create(DeclaredBoxNode.self)
+    }
+    let shape = try act(structure) {
+      let text = try createTextNode("abc")
+      try getRoot().clear().append(make().append(make().append(createParagraphNode().append(text))))
+      _ = try text.select(1, 1)
+      try insertList("bullet")
+    }
+    #expect(shape == expected)
+  }
+
+  // MARK: $isBlockContainer
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::$isBlockContainer > reads a children: block declaration only where NodeStructureExtension enforces it (absent)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::$isBlockContainer > reads a children: block declaration only where NodeStructureExtension enforces it (disabled)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::$isBlockContainer > reads a children: block declaration only where NodeStructureExtension enforces it (enforced)"
+    ), arguments: [("absent", false), ("disabled", false), ("enforced", true)])
+  func isBlockContainerReadsDeclaration(_ mode: String, _ structure: Bool) throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "is-block-container",
+        dependencies: [RichTextExtension, ListExtension]
+          + (mode == "absent"
+            ? [] : [configExtension(NodeStructureExtension) { $0.disabled = mode == "disabled" }]),
+        nodes: {
+          [
+            .klass(PlainBoxNode.self), .klass(DeclaredBoxNode.self),
+            .klass(DeclaredBoxSubclassNode.self), .klass(InlineDeclaredBoxNode.self),
+            .klass(ShadowBoxNode.self),
+          ]
+        }))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      let list = try createListNode("bullet").append(
+        createListItemNode().append(createTextNode("x")))
+      let nodes: [(String, LexicalNode)] = [
+        ("declared", try create(DeclaredBoxNode.self)),
+        ("inherited", try create(DeclaredBoxSubclassNode.self)),
+        ("inline", try create(InlineDeclaredBoxNode.self)),
+        ("list", list),
+        ("listItem", try list.getFirstChildOrThrow()),
+        ("paragraph", try createParagraphNode()),
+        ("plain", try create(PlainBoxNode.self)),
+        ("quote", try createQuoteNode()),
+        ("root", try getRoot()),
+        ("shadow", try create(ShadowBoxNode.self)),
+        ("shadowQuote", try createQuoteNode(shadowRoot: true)),
+        ("text", try createTextNode("x")),
+      ]
+      let result = try nodes.map { "\($0.0)=\(try isBlockContainer($0.1))" }
+      #expect(
+        result == [
+          "declared=\(structure)", "inherited=\(structure)", "inline=false", "list=false",
+          "listItem=false", "paragraph=false", "plain=false", "quote=false", "root=true",
+          "shadow=true", "shadowQuote=true", "text=false",
+        ])
+      #expect(try isBlockContainer(nil) == false)
+    }
+  }
+}
+
+private final class DeclaredBoxSubclassNode: DeclaredBoxNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(
+      DeclaredBoxSubclassNode.self, type: "test_declared_box_subclass",
+      extends: DeclaredBoxNode.self)
+  }
+}
+
+private final class InlineDeclaredBoxNode: DeclaredBoxNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(
+      InlineDeclaredBoxNode.self, type: "test_inline_declared_box", extends: DeclaredBoxNode.self)
+  }
+  override func isInline() throws -> Bool { true }
 }

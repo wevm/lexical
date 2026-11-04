@@ -99,8 +99,8 @@ let package = Package(
     .testTarget(
       name: "LexicalListTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalHTML", "LexicalList",
-        "LexicalRichText", "LexicalTesting", "LexicalUtils",
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalHTML",
+        "LexicalList", "LexicalRichText", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/a11y: the live region and the announcers.
     .target(name: "LexicalA11y", dependencies: ["Lexical", "LexicalExtension"]),

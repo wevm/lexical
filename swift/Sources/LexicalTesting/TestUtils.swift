@@ -42,16 +42,16 @@ public func update(_ editor: Editor, _ updateFn: @escaping () throws -> Void) th
 
 /// `TestDecoratorNode` from the upstream test utils: inline unless
 /// `setIsInline(false)`.
-public final class TestDecoratorNode: DecoratorNode {
+open class TestDecoratorNode: DecoratorNode {
   var __block = false
-  public override class func config() -> NodeConfig? {
+  open override class func config() -> NodeConfig? {
     NodeConfig(TestDecoratorNode.self, type: "test_decorator", extends: DecoratorNode.self)
   }
-  public override func afterCloneFrom(_ prevNode: LexicalNode) throws {
+  open override func afterCloneFrom(_ prevNode: LexicalNode) throws {
     try super.afterCloneFrom(prevNode)
     __block = (prevNode as! TestDecoratorNode).__block
   }
-  public override func isInline() throws -> Bool { try !getLatest().__block }
+  open override func isInline() throws -> Bool { try !getLatest().__block }
   @discardableResult
   public func setIsInline(_ inline: Bool) throws -> Self {
     let writable = try getWritable()
@@ -65,23 +65,23 @@ public final class TestDecoratorNode: DecoratorNode {
       }
     ]
   }
-  public override func exportDOM(_ editor: Editor) throws -> DOMExportOutput {
+  open override func exportDOM(_ editor: Editor) throws -> DOMExportOutput {
     DOMExportOutput(element: getDocument().createElement("test-decorator"))
   }
-  public override func getTextContent() throws -> String { "Hello world" }
-  public override func createDOM(
+  open override func getTextContent() throws -> String { "Hello world" }
+  open override func createDOM(
     _ config: EditorConfig, _ editor: Editor? = nil
   ) throws
     -> DOMElement
   {
     getDocument().createElement(__block ? "div" : "span")
   }
-  public override func updateDOM(
+  open override func updateDOM(
     _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
   ) throws -> Bool {
     __block != (prevNode as! TestDecoratorNode).__block
   }
-  public override func decorate(_ editor: Editor) throws -> Any? { "test-decorator" }
+  open override func decorate(_ editor: Editor) throws -> Any? { "test-decorator" }
 }
 
 public func createTestDecoratorNode() throws -> TestDecoratorNode { try TestDecoratorNode() }

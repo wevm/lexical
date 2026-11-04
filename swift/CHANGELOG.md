@@ -14,6 +14,8 @@ workflow publishes the section headed `## <swift/VERSION>`.
 - `ElementNode.append(contentsOf:)` is `open`, so a subclass can override
   how it takes children, as `ListItemNode` does. Added
   `DOMNode.previousElementSibling`.
+- `LexicalTesting.TestDecoratorNode` is `open`, so a test can subclass it
+  as upstream's tests do.
 
 ## 0.1.0
 

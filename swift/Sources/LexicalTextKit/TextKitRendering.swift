@@ -72,16 +72,57 @@ extension TextKitTheme {
   ) throws -> TextKitUpdate {
     var update = TextKitUpdate()
     update.base = textAttributes(format: 0, style: "", ancestors: [])
+    // Within one state, an element's chain and a block's text styles are
+    // the same for every run, and most blocks share their chain with
+    // others, so a full render computes each look once.
+    var chains: [NodeKey: (chain: [TextKitElement], id: Int)] = [:]
+    var chainIDs: [[TextKitElement]: Int] = [:]
+    func chain(_ element: ElementNode) throws -> (chain: [TextKitElement], id: Int) {
+      if let chain = chains[element.getKey()] { return chain }
+      var chain = try element.getParent().map { try chain($0).chain } ?? []
+      chain.append(try TextKitElement(element))
+      let id = chainIDs[chain] ?? chainIDs.count
+      chainIDs[chain] = id
+      chains[element.getKey()] = (chain, id)
+      return (chain, id)
+    }
+    struct TextKey: Hashable {
+      var chain: Int
+      var format: Int
+      var style: String
+    }
+    var texts: [TextKey: TextKitTextAttributes] = [:]
+    func attributes(
+      format: Int, style: String, parent: ElementNode?
+    ) throws -> TextKitTextAttributes {
+      try attributes(format: format, style: style, chain: parent.map(chain) ?? ([], -1))
+    }
+    func attributes(
+      format: Int, style: String, chain: (chain: [TextKitElement], id: Int)
+    ) throws -> TextKitTextAttributes {
+      let (ancestors, id) = chain
+      let key = TextKey(chain: id, format: format, style: style)
+      if let attributes = texts[key] { return attributes }
+      let attributes = textAttributes(format: format, style: style, ancestors: ancestors)
+      texts[key] = attributes
+      return attributes
+    }
+    func attributes(for node: TextNode) throws -> TextKitTextAttributes {
+      try attributes(format: node.getFormat(), style: node.getStyle(), parent: node.getParent())
+    }
     update.isFull = dirtyElements == nil
     update.edits = try edits.map { edit in
       TextKitStyledEdit(
         edit: edit,
         runs: try edit.runs.map { run in
-          let node = try getNodeByKey(run.key) as? TextNode
+          // The run carries its node's format and style, and the document
+          // its parent.
+          let parent = try document.entries[run.key]?.parent.flatMap {
+            try getNodeByKey($0) as? ElementNode
+          }
           return TextKitStyledRun(
             range: TextKitRange(location: run.location, length: run.length),
-            attributes: try node.map(textAttributes(for:))
-              ?? textAttributes(format: run.format, style: run.style, ancestors: []))
+            attributes: try attributes(format: run.format, style: run.style, parent: parent))
         })
     }
     // Where each edit ends up: the edits after it, lower in the text, shift
@@ -126,24 +167,35 @@ extension TextKitTheme {
     } else {
       try collectLeafBlocks(getRoot(), deep: true)
     }
-    let units = document.string.utf16
+    // Whether a "\n" follows each block: a full render looks at every block,
+    // so it reads the units from an array rather than walking the string.
+    let utf16 = document.string.utf16
+    let units = blocks.count > 64 ? Array(utf16) : nil
+    func isNewline(at location: Int) -> Bool {
+      if let units { return location < units.count && units[location] == 0x0A }
+      return location < utf16.count
+        && utf16[utf16.index(utf16.startIndex, offsetBy: location)] == 0x0A
+    }
+    var paragraphLooks: [Int: TextKitParagraphAttributes] = [:]
     for block in blocks {
       guard let span = document.span(block.getKey()) else { continue }
       var length = span.length
-      if span.end < units.count, units[units.index(units.startIndex, offsetBy: span.end)] == 0x0A {
+      if isNewline(at: span.end) {
         length += 1
       }
-      let ancestors = try ([block] + block.getParents()).reversed().map(TextKitElement.init)
+      let (ancestors, id) = try chain(block)
+      let paragraph = paragraphLooks[id] ?? paragraphAttributes(blocks: ancestors)
+      paragraphLooks[id] = paragraph
       update.paragraphs.append(
         TextKitStyledParagraph(
           key: block.getKey(), range: TextKitRange(location: span.location, length: length),
-          attributes: paragraphAttributes(blocks: ancestors),
-          text: textAttributes(
-            format: try block.getTextFormat(), style: try block.getTextStyle(),
-            ancestors: ancestors)))
+          attributes: paragraph,
+          text: try attributes(
+            format: block.getTextFormat(), style: block.getTextStyle(), chain: (ancestors, id))))
     }
 
-    if !restyle.isEmpty {
+    // A full render's one edit styles every run already.
+    if !restyle.isEmpty && !update.isFull {
       // Only the restyled blocks' text: they are leaf blocks, so none holds
       // another, and in document order their runs are too.
       let restyled = restyle.compactMap { key in document.span(key).map { (key, $0.location) } }
@@ -155,7 +207,7 @@ extension TextKitTheme {
         update.restyled.append(
           TextKitStyledRun(
             range: TextKitRange(location: run.location, length: run.length),
-            attributes: try textAttributes(for: node)))
+            attributes: try attributes(for: node)))
       }
     }
 

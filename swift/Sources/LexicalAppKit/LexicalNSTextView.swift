@@ -40,6 +40,9 @@
     /// (`AriaLiveRegionExtension`); its announcements are spoken.
     public internal(set) var liveRegion: LiveRegion?
 
+    /// The text and paragraph look of the last block.
+    private var lastBlockAttributes: [NSAttributedString.Key: Any]?
+
     /// Kept here because the layout manager refers to it weakly.
     private let contentStorage: NSTextContentStorage
     /// The layout manager's delegate, kept for the same reason.
@@ -135,10 +138,17 @@
         let range = NSIntersectionRange(
           NSRange(location: paragraph.range.location, length: paragraph.range.length),
           NSRange(location: 0, length: length))
-        textStorage.addAttribute(
-          .paragraphStyle,
-          value: paragraph.attributes.nsParagraphStyle(fontSize: paragraph.text.nsFont.pointSize),
-          range: range)
+        let style = paragraph.attributes.nsParagraphStyle(
+          fontSize: paragraph.text.nsFont.pointSize)
+        textStorage.addAttribute(.paragraphStyle, value: style, range: range)
+        // The last block, unless it ends before an empty one.
+        if paragraph.range.end == length,
+          range.length == 0 || (textStorage.string as NSString).character(at: length - 1) != 0x0A
+        {
+          var attributes = paragraph.text.nsAttributes
+          attributes[.paragraphStyle] = style
+          lastBlockAttributes = attributes
+        }
         // The separator after the text takes the block's own look, so an
         // empty block's line has its height.
         if range.length > 0,
@@ -163,10 +173,23 @@
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange() != selected { setSelectedRange(selected) }
       }
+      showLastBlockAtCaret()
       if update.tags.contains(FOCUS_TAG), !hasFocus {
         focus()
       }
       needsDisplay = true
+    }
+
+    /// An empty last block's line is TextKit's extra line fragment, which
+    /// no character carries: it, and the caret on it, take their look from
+    /// the typing attributes. With the caret there, they are the last
+    /// block's, so the caret moves when only the block's look changes (a
+    /// list item that becomes a paragraph), and not once something is typed.
+    private func showLastBlockAtCaret() {
+      guard let lastBlockAttributes,
+        selectedRange() == NSRange(location: textStorage?.length ?? 0, length: 0)
+      else { return }
+      typingAttributes = lastBlockAttributes
     }
 
     /// Underlines the marked text, as rendering attributes so the storage
@@ -553,6 +576,7 @@
           range: NSRange(location: last.location, length: last.length - 1))
       }
       super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+      showLastBlockAtCaret()
       guard !isRendering, !stillSelecting, let range = ranges.first?.rangeValue else { return }
       if let current = try? controller.selectedRange(),
         current == TextKitRange(location: range.location, length: range.length)

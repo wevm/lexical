@@ -642,7 +642,10 @@ Reversible choices made porting `@lexical/extension` under Q18.
   then the paragraphs the commit touched (every leaf block of an element
   marked dirty itself, and each dirty leaf block) get their
   `NSParagraphStyle` again, and their separator the block's own text look,
-  so an empty block's line has its height. A theme `lineHeightMultiple` is
+  so an empty block's line has its height. An empty last block has no
+  separator: its line is TextKit's extra line fragment, which takes its
+  look from the typing attributes, so on macOS they are the last block's
+  while the caret is at the end. A theme `lineHeightMultiple` is
   CSS `line-height`: the line is at least that many times the block's font
   size (its `minimumLineHeight`), and each paragraph's layout fragment
   (`CenteredLineLayoutFragment`) draws its lines' text centered in them,

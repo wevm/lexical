@@ -52,6 +52,38 @@
     try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(name))
   }
 
+  /// Whether `view`, drawn into an sRGB bitmap, has a pixel within 6 of
+  /// `rgb` (0...255) in `rect` (view coordinates).
+  @MainActor
+  private func draws(_ view: NSView, _ rgb: (Int, Int, Int), in rect: NSRect) -> Bool {
+    guard
+      let rep = NSBitmapImageRep(
+        bitmapDataPlanes: nil, pixelsWide: Int(view.bounds.width) * 2,
+        pixelsHigh: Int(view.bounds.height) * 2, bitsPerSample: 8, samplesPerPixel: 4,
+        hasAlpha: true, isPlanar: false, colorSpaceName: .calibratedRGB, bytesPerRow: 0,
+        bitsPerPixel: 0)?.retagging(with: .sRGB)
+    else { return false }
+    rep.size = view.bounds.size
+    view.cacheDisplay(in: view.bounds, to: rep)
+    let scale = CGFloat(rep.pixelsWide) / view.bounds.width
+    let rect = rect.intersection(view.bounds)
+    for y in stride(from: rect.minY, to: rect.maxY, by: 1) {
+      for x in stride(from: rect.minX, to: rect.maxX, by: 1) {
+        // The bitmap's rows run top-down, as a flipped view's do.
+        let row = view.isFlipped ? y : view.bounds.height - y
+        // The components as stored: sRGB, which `usingColorSpace` would
+        // convert again from the rep's calibrated color space name.
+        guard let color = rep.colorAt(x: Int(x * scale), y: Int(row * scale)) else { continue }
+        let (r, g, b) = (
+          Int(color.redComponent * 255), Int(color.greenComponent * 255),
+          Int(color.blueComponent * 255)
+        )
+        if abs(r - rgb.0) <= 6 && abs(g - rgb.1) <= 6 && abs(b - rgb.2) <= 6 { return true }
+      }
+    }
+    return false
+  }
+
   @MainActor
   @Suite struct DecoratorAndDemoTests {
     @Test func rendersDecoratorsAsSwiftUIViews() throws {
@@ -70,7 +102,7 @@
       var hosted: [NSView] = []
       func collect(_ view: NSView) {
         for subview in view.subviews {
-          if String(describing: type(of: subview)).contains("NSHostingView") {
+          if subview is NSHostingView<AnyView> {
             hosted.append(subview)
           } else {
             collect(subview)
@@ -82,6 +114,13 @@
       // The block card takes the line's width; the badge its own.
       let widths = hosted.map(\.frame.width).sorted()
       #expect(widths[0] < 120 && widths[1] > 400)
+      // VoiceOver's label for a decorator is its text content when the
+      // SwiftUI view gives none (as here: SwiftUI builds its accessibility
+      // elements only for an assistive technology). The card has no text.
+      let labels = hosted.sorted { $0.frame.width < $1.frame.width }.map {
+        $0.accessibilityLabel()
+      }
+      #expect(labels == ["SwiftUI", nil])
       // Editing next to a decorator keeps its view.
       let before = Set(hosted.map(ObjectIdentifier.init))
       view.insertText(" More.", replacementRange: NSRange(location: NSNotFound, length: 0))
@@ -116,6 +155,31 @@
           as? NSParagraphStyle)
       #expect(style.headIndent == 40)
       try writePNG(view, "appkit-demo.png")
+      _ = window
+    }
+
+    @Test func followsTheAppearance() throws {
+      let (view, window) = try showDemo()
+      let text = view.string as NSString
+      func rect(_ string: String) -> NSRect {
+        let screen = view.firstRect(forCharacterRange: text.range(of: string), actualRange: nil)
+        return view.convert(window.convertFromScreen(screen), from: nil)
+      }
+      // The quote's bar is left of its text; the code's background behind it.
+      let quote = rect("A quote")
+      let bar = NSRect(x: 0, y: quote.midY - 2, width: quote.minX, height: 4)
+      let code = rect("inline")
+      #expect(draws(view, (206, 208, 212), in: bar))
+      #expect(draws(view, (240, 242, 245), in: code))
+      window.appearance = NSAppearance(named: .darkAqua)
+      settle(view)
+      #expect(draws(view, (84, 86, 92), in: bar))
+      #expect(!draws(view, (206, 208, 212), in: bar))
+      #expect(draws(view, (44, 46, 51), in: code))
+      try writePNG(view, "appkit-demo-dark.png")
+      window.appearance = NSAppearance(named: .aqua)
+      settle(view)
+      #expect(draws(view, (206, 208, 212), in: bar))
       _ = window
     }
 

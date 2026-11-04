@@ -102,6 +102,12 @@
         MainActor.assumeIsolated { self?.apply(update) }
       }
       controller.report { try controller.renderAll(replacing: textStorage.length) }
+      // Dynamic Type: the theme's fonts scale with the content size
+      // category, so a change renders the document again.
+      registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) {
+        (self: Self, _: UITraitCollection) in
+        self.controller.report { try self.controller.renderAll(replacing: self.textStorage.length) }
+      }
     }
 
     @available(*, unavailable)
@@ -164,11 +170,12 @@
       isRendering = true
       defer { isRendering = false }
       textStorage.beginEditing()
-      let base = update.base.uiAttributes
+      let contentSize = traitCollection.preferredContentSizeCategory
+      let base = update.base.uiAttributes(contentSize)
       for edit in update.edits {
         textStorage.replaceCharacters(
           in: NSRange(location: edit.edit.location, length: edit.edit.length),
-          with: edit.attributedString(base: base))
+          with: edit.attributedString(base: base, contentSize: contentSize))
       }
       let length = textStorage.length
       for paragraph in update.paragraphs {
@@ -181,7 +188,8 @@
           (textStorage.string as NSString).character(at: range.upperBound - 1) == 0x0A
         {
           textStorage.addAttributes(
-            paragraph.text.uiAttributes, range: NSRange(location: range.upperBound - 1, length: 1))
+            paragraph.text.uiAttributes(contentSize),
+            range: NSRange(location: range.upperBound - 1, length: 1))
         }
       }
       for decorator in update.decorators where decorator.location < length {

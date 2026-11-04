@@ -494,6 +494,27 @@ Reversible choices made porting `@lexical/extension` under Q18.
   handler takes it. A composition that starts on an element point gets its
   `composingTextNode` from the update that inserts the first marked text,
   which carries `COMPOSITION_START_TAG` as JS's empty-space heuristic does.
+- **Dynamic Type scales every theme size as body text.** On iOS each
+  font the theme describes is scaled with
+  `UIFontMetrics(forTextStyle: .body)` for the view's content size
+  category, headings included, so a heading keeps its ratio to the body
+  text (24 and 16 points stay 1.5 to 1 at every size) instead of following
+  the title styles' own curves. A change of category renders the document
+  again. Indents, spacing and quote bars keep their sizes, and a
+  decorator's SwiftUI view scales only if it uses text styles. AppKit has
+  no Dynamic Type.
+- **A decorator's VoiceOver label is its view's, or else its text.** The
+  attachment's `accessibilityLabel` (iOS), or its hosting view's
+  `accessibilityLabel()` (macOS), is the labels of the SwiftUI view's
+  accessibility elements, joined with ", " as VoiceOver reads combined
+  children, and when it has none, the node's `getTextContent()` (empty is
+  no label). SwiftUI builds those elements only while an assistive
+  technology is running, so the label is read when VoiceOver asks; a test
+  sees only the text content.
+- **Tab leaves the editor when no extension takes it.** As Tab does out of
+  a `contenteditable`, a Tab or Shift-Tab that no `KEY_TAB_COMMAND`
+  handler takes (no `TabIndentationExtension`) moves the focus to the next
+  or previous key view, so the editor is one stop of full keyboard access.
 
 - **Modules.** `LexicalAppKit` (`LexicalNSTextView`) and `LexicalUIKit`
   (`LexicalUITextView`) hold the views; `LexicalSwiftUI`'s `LexicalEditor`

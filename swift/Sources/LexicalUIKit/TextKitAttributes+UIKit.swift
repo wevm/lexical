@@ -41,15 +41,19 @@
     var size: Double
     var weight: Int
     var italic: Bool
+    var contentSize: UIContentSizeCategory
   }
 
   extension TextKitTextAttributes {
     /// The first family of the list the system has, at the weight and
-    /// slant; the system font when none is.
+    /// slant; the system font when none is. Its size is the theme's at the
+    /// default content size category, scaled for `contentSize` as body text
+    /// is (Dynamic Type): a heading keeps its ratio to the body text.
     @MainActor
-    var uiFont: UIFont {
+    func uiFont(_ contentSize: UIContentSizeCategory) -> UIFont {
       let key = TextKitFontKey(
-        family: fontFamily, size: fontSize, weight: fontWeight, italic: italic)
+        family: fontFamily, size: fontSize, weight: fontWeight, italic: italic,
+        contentSize: contentSize)
       if let font = fontCache[key] { return font }
       let size = CGFloat(fontSize)
       let weight = uiFontWeight(fontWeight)
@@ -80,14 +84,16 @@
       {
         result = UIFont(descriptor: descriptor, size: size)
       }
+      result = UIFontMetrics(forTextStyle: .body).scaledFont(
+        for: result, compatibleWith: UITraitCollection(preferredContentSizeCategory: contentSize))
       fontCache[key] = result
       return result
     }
 
     @MainActor
-    var uiAttributes: [NSAttributedString.Key: Any] {
+    func uiAttributes(_ contentSize: UIContentSizeCategory) -> [NSAttributedString.Key: Any] {
       var attributes: [NSAttributedString.Key: Any] = [
-        .font: uiFont, .foregroundColor: foregroundColor.uiColor,
+        .font: uiFont(contentSize), .foregroundColor: foregroundColor.uiColor,
       ]
       if let backgroundColor { attributes[.backgroundColor] = backgroundColor.uiColor }
       if underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
@@ -130,11 +136,13 @@
     /// The edit's text with its runs' attributes, and `base` elsewhere (the
     /// separators).
     @MainActor
-    func attributedString(base: [NSAttributedString.Key: Any]) -> NSAttributedString {
+    func attributedString(
+      base: [NSAttributedString.Key: Any], contentSize: UIContentSizeCategory
+    ) -> NSAttributedString {
       let result = NSMutableAttributedString(string: edit.string, attributes: base)
       for run in runs where run.range.length > 0 {
         result.addAttributes(
-          run.attributes.uiAttributes,
+          run.attributes.uiAttributes(contentSize),
           range: NSRange(location: run.range.location - edit.location, length: run.range.length))
       }
       return result

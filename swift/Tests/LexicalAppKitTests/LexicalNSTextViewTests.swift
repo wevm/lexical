@@ -80,6 +80,34 @@
       _ = window
     }
 
+    @Test func tabMovesFocusThroughTheKeyViewLoop() throws {
+      // Full keyboard access: the editor is in the window's key view loop,
+      // and Tab, which no KEY_TAB_COMMAND handler takes here, moves the
+      // focus on, as it does out of a contenteditable.
+      let view = LexicalNSTextView(
+        editor: try makeRichTextEditor(), frame: NSRect(x: 0, y: 0, width: 400, height: 260))
+      let field = NSTextField(frame: NSRect(x: 0, y: 270, width: 400, height: 24))
+      let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled],
+        backing: .buffered, defer: false)
+      window.contentView?.addSubview(view)
+      window.contentView?.addSubview(field)
+      view.nextKeyView = field
+      field.nextKeyView = view
+      #expect(view.canBecomeKeyView)
+      window.makeFirstResponder(view)
+      #expect(view.hasFocus)
+      view.keyDown(with: key("\t", 48))
+      #expect((window.firstResponder as? NSText)?.delegate === field)
+      #expect(!view.hasFocus)
+      #expect(view.string.isEmpty)
+      window.selectKeyView(following: field)
+      #expect(window.firstResponder === view)
+      #expect(view.hasFocus)
+      view.keyDown(with: key("\u{19}", 48, .shift, ignoringModifiers: "\t"))
+      #expect((window.firstResponder as? NSText)?.delegate === field)
+    }
+
     @Test func typesWithKeyEvents() throws {
       let (view, window) = try makeView()
       for (character, code) in [("H", UInt16(0x04)), ("i", 0x22)] {

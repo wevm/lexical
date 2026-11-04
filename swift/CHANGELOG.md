@@ -5,6 +5,11 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Dynamic Type on iOS: `LexicalUITextView` scales the theme's fonts with
+  the content size category, as body text, and renders again when it
+  changes.
+- VoiceOver reads a decorator as its SwiftUI view's accessibility labels,
+  or else its `getTextContent()`, on iOS and macOS.
 - Dark Mode: `TextKitColor` can carry a dark variant (`withDark`), which
   the views resolve as a dynamic system color, and `TextKitTheme.default`
   has dark values. Before, every editor showed black text on a dark

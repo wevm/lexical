@@ -37,7 +37,7 @@
   }
 
   @MainActor
-  private func writePNG(_ view: UIView, _ name: String) throws {
+  private func writePNG(_ view: UIView, _ name: String, background: UIColor = .white) throws {
     guard let directory = ProcessInfo.processInfo.environment["LEXICAL_SCREENSHOT_DIR"] else {
       return
     }
@@ -46,12 +46,39 @@
     // The test bundle has no host app, so there is no screen to snapshot;
     // the layers render themselves.
     let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { context in
-      UIColor.white.setFill()
+      background.setFill()
       context.fill(view.bounds)
       view.layer.render(in: context.cgContext)
     }
     let data = try #require(image.pngData())
     try data.write(to: URL(fileURLWithPath: directory).appendingPathComponent(name))
+  }
+
+  /// Whether `view`, as drawn, has a pixel within 6 of `rgb` (0...255) in
+  /// `rect`.
+  @MainActor
+  private func draws(_ view: UIView, _ rgb: (Int, Int, Int), in rect: CGRect) -> Bool {
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { context in
+      view.layer.render(in: context.cgContext)
+    }
+    guard let cgImage = image.cgImage, let data = cgImage.dataProvider?.data,
+      let bytes = CFDataGetBytePtr(data)
+    else { return false }
+    let rect = rect.integral.intersection(view.bounds)
+    for y in Int(rect.minY)..<Int(rect.maxY) {
+      for x in Int(rect.minX)..<Int(rect.maxX) {
+        let pixel = bytes + y * cgImage.bytesPerRow + x * cgImage.bitsPerPixel / 8
+        // BGRA or RGBA: compare both orders.
+        let (a, b, c) = (Int(pixel[0]), Int(pixel[1]), Int(pixel[2]))
+        func near(_ p: Int, _ q: Int, _ r: Int) -> Bool {
+          abs(p - rgb.0) <= 6 && abs(q - rgb.1) <= 6 && abs(r - rgb.2) <= 6
+        }
+        if near(a, b, c) || near(c, b, a) { return true }
+      }
+    }
+    return false
   }
 
   /// The views hosting SwiftUI content under `view`.
@@ -73,6 +100,19 @@
       // The block card takes the line's width; the badge its own.
       let widths = hosted.map(\.frame.width).sorted()
       #expect(widths.count == 2 && widths[0] < 120 && widths[1] > 300)
+      // VoiceOver's label for a decorator's character is its text content
+      // when the SwiftUI view gives none (as here: SwiftUI builds its
+      // accessibility elements only for an assistive technology). The card
+      // has no text.
+      var labels: [String?] = []
+      view.textStorage.enumerateAttribute(
+        .attachment, in: NSRange(location: 0, length: view.textStorage.length)
+      ) { value, _, _ in
+        if let attachment = value as? NSTextAttachment {
+          labels.append(attachment.accessibilityLabel)
+        }
+      }
+      #expect(labels == ["SwiftUI", nil])
       // Editing next to a decorator keeps its view.
       let before = Set(hosted.map(ObjectIdentifier.init))
       view.insertText(" More.")
@@ -102,6 +142,63 @@
         view.textStorage.attribute(.font, at: code.location, effectiveRange: nil) as? UIFont)
       #expect(codeFont.fontDescriptor.symbolicTraits.contains(.traitMonoSpace))
       try writePNG(view, "uikit-demo.png")
+      _ = window
+    }
+
+    @Test func followsTheAppearance() throws {
+      let (view, window) = try showDemo()
+      let text = view.text as NSString
+      func rect(_ string: String) throws -> CGRect {
+        let range = text.range(of: string)
+        let start = try #require(
+          view.position(from: view.beginningOfDocument, offset: range.location))
+        let end = try #require(view.position(from: start, offset: range.length))
+        return view.firstRect(for: try #require(view.textRange(from: start, to: end)))
+      }
+      // The quote's bar is left of its text; the code's background behind it.
+      let quote = try rect("A quote")
+      let bar = CGRect(x: 0, y: quote.midY - 2, width: quote.minX, height: 4)
+      let code = try rect("inline")
+      #expect(draws(view, (206, 208, 212), in: bar))
+      #expect(draws(view, (240, 242, 245), in: code))
+      // Switching to dark while shown redraws the bars and the text.
+      window.overrideUserInterfaceStyle = .dark
+      settle(view)
+      #expect(draws(view, (84, 86, 92), in: bar))
+      #expect(!draws(view, (206, 208, 212), in: bar))
+      #expect(draws(view, (44, 46, 51), in: code))
+      try writePNG(view, "uikit-demo-dark.png", background: .black)
+      window.overrideUserInterfaceStyle = .light
+      settle(view)
+      #expect(draws(view, (206, 208, 212), in: bar))
+      #expect(draws(view, (240, 242, 245), in: code))
+    }
+
+    @Test func scalesFontsWithDynamicType() throws {
+      let (view, window) = try showDemo()
+      func size(_ text: String) throws -> CGFloat {
+        let location = (view.text as NSString).range(of: text).location
+        let font = view.textStorage.attribute(.font, at: location, effectiveRange: nil) as? UIFont
+        return try #require(font).pointSize
+      }
+      #expect(try size("Lexical for Swift") == 24)
+      #expect(try size("Native editing") == 16)
+      window.traitOverrides.preferredContentSizeCategory = .extraExtraExtraLarge
+      settle(view)
+      try writePNG(view, "uikit-demo-xxxl.png")
+      window.traitOverrides.preferredContentSizeCategory = .accessibilityExtraExtraExtraLarge
+      settle(view)
+      try writePNG(view, "uikit-demo-ax5.png")
+      // The body text style grows about threefold at the largest
+      // accessibility size (16 to 45 points), and every theme size scales
+      // as body text, so a heading keeps its ratio to the body text.
+      let body = try size("Native editing")
+      #expect(body > 40)
+      #expect(abs(try size("Lexical for Swift") / body - 1.5) < 0.05)
+      window.traitOverrides.preferredContentSizeCategory = .large
+      settle(view)
+      #expect(try size("Lexical for Swift") == 24)
+      #expect(try size("Native editing") == 16)
       _ = window
     }
 

@@ -27,6 +27,8 @@
         attachments[span.key]
         ?? LexicalDecoratorAttachment(key: span.key) { [weak self] key in self?.onClick?(key) }
       attachment.update(AnyView(view), isInline: span.isInline)
+      attachment.hostingView.textContent =
+        (try? editor.getEditorState().read { try getNodeByKey(span.key)?.getTextContent() }) ?? ""
       attachments[span.key] = attachment
       return attachment
     }
@@ -40,7 +42,7 @@
   /// A decorator's attachment: a hosting view for its SwiftUI view.
   final class LexicalDecoratorAttachment: NSTextAttachment {
     let key: NodeKey
-    nonisolated(unsafe) let hostingView: NSHostingView<AnyView>
+    let hostingView: DecoratorHostingView
     /// Read by layout, which TextKit runs on the main thread.
     nonisolated(unsafe) private var size = CGSize.zero
     nonisolated(unsafe) private var isInline = true
@@ -48,7 +50,7 @@
     @MainActor
     init(key: NodeKey, onClick: @escaping (NodeKey) -> Void) {
       self.key = key
-      hostingView = NSHostingView(rootView: AnyView(EmptyView()))
+      hostingView = DecoratorHostingView(rootView: AnyView(EmptyView()))
       super.init(data: nil, ofType: nil)
       allowsTextAttachmentView = true
       // What TextKit draws where it does not show the view, in place of
@@ -88,6 +90,27 @@
         return CGRect(origin: .zero, size: size)
       }
       return CGRect(x: 0, y: 0, width: max(proposedLineFragment.width, 1), height: size.height)
+    }
+  }
+
+  /// The hosting view of a decorator's SwiftUI view. VoiceOver's label for
+  /// it is the labels of the SwiftUI view's accessibility elements, which
+  /// SwiftUI builds only while an assistive technology is running, or else
+  /// the decorator's text content.
+  final class DecoratorHostingView: NSHostingView<AnyView> {
+    /// The decorator's `getTextContent()`.
+    var textContent = ""
+
+    override func accessibilityLabel() -> String? {
+      func labels(_ element: Any) -> [String] {
+        guard let element = element as? NSAccessibilityProtocol & NSObject else { return [] }
+        if let label = element.accessibilityLabel(), !label.isEmpty { return [label] }
+        return (element.accessibilityChildren() ?? []).flatMap(labels)
+      }
+      if let own = super.accessibilityLabel(), !own.isEmpty { return own }
+      let found = (accessibilityChildren() ?? []).flatMap(labels)
+      if !found.isEmpty { return found.joined(separator: ", ") }
+      return textContent.isEmpty ? nil : textContent
     }
   }
 

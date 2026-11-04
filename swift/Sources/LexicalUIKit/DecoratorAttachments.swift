@@ -27,6 +27,8 @@
         attachments[span.key]
         ?? LexicalDecoratorAttachment(key: span.key) { [weak self] key in self?.onClick?(key) }
       attachment.update(AnyView(view), isInline: span.isInline)
+      attachment.textContent =
+        (try? editor.getEditorState().read { try getNodeByKey(span.key)?.getTextContent() }) ?? ""
       attachments[span.key] = attachment
       return attachment
     }
@@ -44,6 +46,8 @@
     /// Read by layout, which TextKit runs on the main thread.
     nonisolated(unsafe) private var size = CGSize.zero
     nonisolated(unsafe) private var isInline = true
+    /// The decorator's `getTextContent()`.
+    nonisolated(unsafe) var textContent = ""
 
     @MainActor
     init(key: NodeKey, onClick: @escaping (NodeKey) -> Void) {
@@ -70,6 +74,18 @@
       self.isInline = isInline
     }
 
+    /// What VoiceOver says for the decorator's character: the labels of
+    /// the hosted SwiftUI view's accessibility elements, which SwiftUI
+    /// builds only while an assistive technology is running, or else the
+    /// decorator's text content.
+    override var accessibilityLabel: String? {
+      get {
+        MainActor.assumeIsolated { hostedAccessibilityLabel(host.view) }
+          ?? (textContent.isEmpty ? nil : textContent)
+      }
+      set {}
+    }
+
     override func viewProvider(
       for parentView: UIView?, location: any NSTextLocation, textContainer: NSTextContainer?
     ) -> NSTextAttachmentViewProvider? {
@@ -90,6 +106,23 @@
       }
       return CGRect(x: 0, y: 0, width: max(proposedLineFragment.width, 1), height: size.height)
     }
+  }
+
+  /// The labels of the accessibility elements under `object`, joined as
+  /// VoiceOver reads combined children; `nil` when they have none.
+  @MainActor
+  func hostedAccessibilityLabel(_ object: NSObject) -> String? {
+    func labels(_ object: NSObject) -> [String] {
+      if object.isAccessibilityElement {
+        return object.accessibilityLabel.map { [$0] }?.filter { !$0.isEmpty } ?? []
+      }
+      if let elements = object.accessibilityElements as? [NSObject] {
+        return elements.flatMap(labels)
+      }
+      return (object as? UIView)?.subviews.flatMap(labels) ?? []
+    }
+    let found = labels(object)
+    return found.isEmpty ? nil : found.joined(separator: ", ")
   }
 
   // The bounds are the provider's: TextKit 2 skips an attachment's view

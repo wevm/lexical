@@ -5,8 +5,16 @@
   // The theme's platform-neutral descriptors as AppKit attributes.
 
   extension TextKitColor {
+    /// The color, or with a dark variant, a dynamic color that resolves to
+    /// it in a dark appearance.
     var nsColor: NSColor {
-      NSColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
+      let (r, g, b, a) = (red, green, blue, alpha)
+      guard let dark else { return NSColor(srgbRed: r, green: g, blue: b, alpha: a) }
+      return NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+          ? NSColor(srgbRed: dark.red, green: dark.green, blue: dark.blue, alpha: dark.alpha)
+          : NSColor(srgbRed: r, green: g, blue: b, alpha: a)
+      }
     }
   }
 

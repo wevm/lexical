@@ -30,13 +30,34 @@ private let plain: TextKitTextAttributes = {
   var a = TextKitTextAttributes()
   a.fontSize = 16
   a.fontWeight = 400
-  a.foregroundColor = TextKitColor(0, 0, 0)
+  a.foregroundColor = TextKitColor(0, 0, 0).withDark(TextKitColor(235, 235, 240))
   return a
 }()
+
+/// The default theme's secondary text and code background.
+private let secondary = TextKitColor(101, 103, 107).withDark(TextKitColor(160, 163, 170))
+private let codeBackground = TextKitColor(240, 242, 245).withDark(TextKitColor(44, 46, 51))
 
 private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
 
 @Suite struct TextKitColorTests {
+  @Test func darkVariant() {
+    let color = TextKitColor(0, 0, 0).withDark(TextKitColor(235, 235, 240))
+    #expect(color.darkAppearance == TextKitColor(235, 235, 240))
+    #expect(color != TextKitColor(0, 0, 0))
+    // A CSS color has no variant: it looks the same in both appearances.
+    #expect(TextKitColor(css: "#123456")!.darkAppearance == TextKitColor(css: "#123456"))
+  }
+
+  /// The default theme's text is readable on a dark background: every
+  /// foreground it sets is light in a dark appearance.
+  @Test func defaultThemeHasDarkText() {
+    for key in ["root", "quote", "link", "heading.h1", "heading.h2"] {
+      let dark = try! #require(TextKitTheme.default[key]?.foregroundColor).darkAppearance
+      #expect(0.2126 * dark.red + 0.7152 * dark.green + 0.0722 * dark.blue > 0.5, "\(key)")
+    }
+  }
+
   @Test func parsesHex() {
     #expect(TextKitColor(css: "#f00") == TextKitColor(255, 0, 0))
     #expect(TextKitColor(css: "#F0A8") == TextKitColor(255, 0, 170, alpha: 136.0 / 255))
@@ -108,7 +129,7 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     with(IS_CODE) {
       $0.fontFamily = codeFamily
       $0.fontSize = 16 * 0.94
-      $0.backgroundColor = TextKitColor(240, 242, 245)
+      $0.backgroundColor = codeBackground
     }
     with(IS_HIGHLIGHT) {
       $0.backgroundColor = TextKitColor(255, 212, 0, alpha: 0.14)
@@ -139,11 +160,11 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     }
     var h1 = plain
     h1.fontSize = 24
-    h1.foregroundColor = TextKitColor(5, 5, 5)
+    h1.foregroundColor = TextKitColor(5, 5, 5).withDark(TextKitColor(245, 245, 250))
     #expect(heading("h1") == h1)
     var h2 = plain
     h2.fontWeight = 700
-    h2.foregroundColor = TextKitColor(101, 103, 107)
+    h2.foregroundColor = secondary
     h2.textTransform = .uppercase
     #expect(heading("h2") == h2)
     var h3 = plain
@@ -158,14 +179,15 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     }
 
     var quote = plain
-    quote.foregroundColor = TextKitColor(101, 103, 107)
+    quote.foregroundColor = secondary
     #expect(text(in: [TextKitElement(type: "quote")]) == quote)
     var quoteParagraph = TextKitParagraphAttributes()
     quoteParagraph.headIndent = 40
     quoteParagraph.spacingAfter = 10
     quoteParagraph.lineHeightMultiple = 1.7
     quoteParagraph.blockBars = [
-      TextKitBlockBar(offset: 20, width: 4, color: TextKitColor(206, 208, 212))
+      TextKitBlockBar(
+        offset: 20, width: 4, color: TextKitColor(206, 208, 212).withDark(TextKitColor(84, 86, 92)))
     ]
     #expect(theme.paragraphAttributes(blocks: [TextKitElement(type: "quote")]) == quoteParagraph)
 
@@ -180,13 +202,13 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     codeParagraph.spacingBefore = 8
     codeParagraph.spacingAfter = 8
     codeParagraph.lineHeightMultiple = 1.53
-    codeParagraph.backgroundColor = TextKitColor(240, 242, 245)
+    codeParagraph.backgroundColor = codeBackground
     #expect(theme.paragraphAttributes(blocks: [code]) == codeParagraph)
 
     // Inline elements color the text and are skipped for the paragraph.
     let link = TextKitElement(type: "link", isInline: true)
     var linkText = plain
-    linkText.foregroundColor = TextKitColor(33, 111, 219)
+    linkText.foregroundColor = TextKitColor(33, 111, 219).withDark(TextKitColor(88, 166, 255))
     #expect(text(in: [paragraph, link]) == linkText)
     // Text formats come after the link: an underline format still shows.
     #expect(text(IS_UNDERLINE, in: [paragraph, link]).underline)
@@ -208,8 +230,8 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     expected.fontSize = 16 * 0.94
     expected.fontWeight = 700
     expected.italic = true
-    expected.foregroundColor = TextKitColor(101, 103, 107)
-    expected.backgroundColor = TextKitColor(240, 242, 245)
+    expected.foregroundColor = secondary
+    expected.backgroundColor = codeBackground
     expected.textTransform = .uppercase
     #expect(a == expected)
     // Lowercase on the text beats the heading's uppercase.

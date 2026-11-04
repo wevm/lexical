@@ -8,18 +8,44 @@ import Lexical
 // inline `style`, which wins as an inline style does. It holds no UI types;
 // the views map the descriptors to platform fonts and attributes.
 
-/// An sRGB color, components in 0...1.
+/// An sRGB color, components in 0...1, with an optional variant for a dark
+/// appearance. The views turn a color with a dark variant into a dynamic
+/// system color; a color without one (such as an inline CSS `color`) looks
+/// the same in both appearances, as it does on the web.
 public struct TextKitColor: Hashable, Sendable {
   public var red: Double
   public var green: Double
   public var blue: Double
   public var alpha: Double
+  /// The components in a dark appearance, when they differ.
+  public var dark: Components?
+
+  /// A color's sRGB components, in 0...1.
+  public struct Components: Hashable, Sendable {
+    public var red: Double
+    public var green: Double
+    public var blue: Double
+    public var alpha: Double
+  }
 
   public init(red: Double, green: Double, blue: Double, alpha: Double = 1) {
     self.red = red
     self.green = green
     self.blue = blue
     self.alpha = alpha
+  }
+
+  /// This color, shown as `dark` in a dark appearance.
+  public func withDark(_ dark: TextKitColor) -> TextKitColor {
+    var color = self
+    color.dark = Components(red: dark.red, green: dark.green, blue: dark.blue, alpha: dark.alpha)
+    return color
+  }
+
+  /// The color in a dark appearance (the color itself without a variant).
+  public var darkAppearance: TextKitColor {
+    guard let dark else { return self }
+    return TextKitColor(red: dark.red, green: dark.green, blue: dark.blue, alpha: dark.alpha)
   }
 
   /// A color from 0...255 channels, as CSS `rgb(r, g, b)` writes it.
@@ -87,6 +113,10 @@ public struct TextKitColor: Hashable, Sendable {
     self = named
   }
 }
+
+/// The default theme's secondary text (quotes, `h2`) and code background.
+private let secondaryText = TextKitColor(101, 103, 107).withDark(TextKitColor(160, 163, 170))
+private let codeBackground = TextKitColor(240, 242, 245).withDark(TextKitColor(44, 46, 51))
 
 /// The CSS basic color keywords, plus `orange`, `grey` and `transparent`.
 private let namedColors: [String: TextKitColor] = [
@@ -447,25 +477,33 @@ public struct TextKitTheme: Hashable, Sendable {
   }
 
   /// The upstream playground's look (`PlaygroundEditorTheme.css`), with the
-  /// browser's defaults for `h4`...`h6`.
+  /// browser's defaults for `h4`...`h6`. The playground is light only; the
+  /// colors here have dark variants, so the text stays readable in a dark
+  /// appearance.
   public static let `default` = TextKitTheme(styles: [
     "root": TextKitStyle(
-      fontSize: .points(16), fontWeight: 400, foregroundColor: TextKitColor(0, 0, 0),
+      fontSize: .points(16), fontWeight: 400,
+      foregroundColor: TextKitColor(0, 0, 0).withDark(TextKitColor(235, 235, 240)),
       lineHeightMultiple: 1.7),
     "paragraph": TextKitStyle(spacingBefore: 0, spacingAfter: 0),
     "quote": TextKitStyle(
-      foregroundColor: TextKitColor(101, 103, 107), headIndent: 40, spacingAfter: 10,
-      blockBar: TextKitBlockBar(offset: 20, width: 4, color: TextKitColor(206, 208, 212))),
+      foregroundColor: secondaryText, headIndent: 40, spacingAfter: 10,
+      blockBar: TextKitBlockBar(
+        offset: 20, width: 4, color: TextKitColor(206, 208, 212).withDark(TextKitColor(84, 86, 92)))
+    ),
     "code": TextKitStyle(
       fontFamily: ["Menlo", "Consolas", "Monaco", "monospace"], fontSize: .points(13),
-      backgroundColor: TextKitColor(240, 242, 245), headIndent: 52, spacingBefore: 8,
+      backgroundColor: codeBackground, headIndent: 52, spacingBefore: 8,
       spacingAfter: 8, lineHeightMultiple: 1.53),
-    "link": TextKitStyle(foregroundColor: TextKitColor(33, 111, 219), underline: false),
+    "link": TextKitStyle(
+      foregroundColor: TextKitColor(33, 111, 219).withDark(TextKitColor(88, 166, 255)),
+      underline: false),
     "mark": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
     "heading.h1": TextKitStyle(
-      fontSize: .points(24), fontWeight: 400, foregroundColor: TextKitColor(5, 5, 5)),
+      fontSize: .points(24), fontWeight: 400,
+      foregroundColor: TextKitColor(5, 5, 5).withDark(TextKitColor(245, 245, 250))),
     "heading.h2": TextKitStyle(
-      fontSize: .points(16), fontWeight: 700, foregroundColor: TextKitColor(101, 103, 107),
+      fontSize: .points(16), fontWeight: 700, foregroundColor: secondaryText,
       textTransform: .uppercase),
     "heading.h3": TextKitStyle(fontSize: .points(12), textTransform: .uppercase),
     "heading.h4": TextKitStyle(fontSize: .scale(1), fontWeight: 700),
@@ -478,7 +516,7 @@ public struct TextKitTheme: Hashable, Sendable {
     "text.underlineStrikethrough": TextKitStyle(underline: true, strikethrough: true),
     "text.code": TextKitStyle(
       fontFamily: ["Menlo", "Consolas", "Monaco", "monospace"], fontSize: .scale(0.94),
-      backgroundColor: TextKitColor(240, 242, 245)),
+      backgroundColor: codeBackground),
     "text.highlight": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
     "text.subscript": TextKitStyle(fontSize: .scale(0.8), baselineShift: -0.2),
     "text.superscript": TextKitStyle(fontSize: .scale(0.8), baselineShift: 0.33),

@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Dark Mode: `TextKitColor` can carry a dark variant (`withDark`), which
+  the views resolve as a dynamic system color, and `TextKitTheme.default`
+  has dark values. Before, every editor showed black text on a dark
+  background in Dark Mode.
 - `apps/lexical-playground-swift`: the Swift playground for iOS and macOS,
   with a toolbar (undo and redo, block type, text formats, clear
   formatting, alignment, indent), the tree view, JSON and HTML import and

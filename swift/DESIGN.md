@@ -123,6 +123,12 @@ note pointing here; fuzz vectors keep offsets off pair interiors.
   in the DOM's cascade order (root, ancestors outside in, `text.*` keys as one
   element's classes, then the inline `style`) into platform-neutral
   descriptors that the views map to fonts.
+  A theme color can carry a dark variant (`TextKitColor.withDark`), which
+  the views turn into a dynamic system color. The playground is light only,
+  so the default theme's dark values are the port's own: light text,
+  dimmed secondary text and bars, a dark code background and a lighter
+  link. Colors from inline CSS have no variant and look the same in both
+  appearances, as on the web.
 - **Accessibility** (Q41): VoiceOver, Dynamic Type, RTL and `direction`, full
   keyboard access on macOS.
 - **Collaboration** (Q14, Q20): deferred. NodeKeys, update tags, and dirty

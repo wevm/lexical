@@ -5,8 +5,16 @@
   // The theme's platform-neutral descriptors as UIKit attributes.
 
   extension TextKitColor {
+    /// The color, or with a dark variant, a dynamic color that resolves to
+    /// it in the dark user interface style.
     var uiColor: UIColor {
-      UIColor(red: red, green: green, blue: blue, alpha: alpha)
+      let (r, g, b, a) = (red, green, blue, alpha)
+      guard let dark else { return UIColor(red: r, green: g, blue: b, alpha: a) }
+      return UIColor { traits in
+        traits.userInterfaceStyle == .dark
+          ? UIColor(red: dark.red, green: dark.green, blue: dark.blue, alpha: dark.alpha)
+          : UIColor(red: r, green: g, blue: b, alpha: a)
+      }
     }
   }
 

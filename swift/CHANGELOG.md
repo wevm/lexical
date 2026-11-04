@@ -6,7 +6,7 @@ workflow publishes the section headed `## <swift/VERSION>`.
 ## Unreleased
 
 - The package supports iOS 26 and macOS 26 (it required iOS 27 and macOS
-  27). CI also tests on the iOS 26 simulator and macOS 26.
+  27). CI also tests on the iOS 26 simulator.
 - `LexicalUITextView` reports a triple (or later) tap as `CLICK_COMMAND`
   with the tap count as `detail`, after its paragraph selection, so
   `NormalizeTripleClickSelectionExtension` works on iOS.

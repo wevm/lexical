@@ -60,48 +60,41 @@ jobs:
         env:
           IOS_MAJOR: ${{ matrix.ios }}
         run: |
-          # An iPhone on the newest installed runtime of this major version.
-          device="$(xcrun simctl list devices available -j | python3 -c '
-          import json, os, re, sys
+          # The newest installed runtime of this major version, downloading
+          # one when the image has none (the xcode-27 image may carry only
+          # iOS 27), and an iPhone on it, created when there is none.
+          pick_runtime() {
+            xcrun simctl list runtimes available -j | python3 -c '
+          import json, os, sys
           major = os.environ["IOS_MAJOR"]
-          runtimes = []
-          for key, devices in json.load(sys.stdin)["devices"].items():
-              m = re.search(r"iOS-(\d+)-(\d+)", key)
-              phones = [d for d in devices if d["name"].startswith("iPhone")]
-              if m and m.group(1) == major and phones:
-                  runtimes.append(((int(m.group(1)), int(m.group(2))), phones[0]["udid"], key))
-          if not runtimes:
-              sys.exit(f"no iPhone simulator on an iOS {major} runtime")
-          version, udid, key = max(runtimes)
-          print(key, file=sys.stderr)
-          print(udid)
+          found = [r for r in json.load(sys.stdin)["runtimes"]
+                   if r["platform"] == "iOS" and r["version"].split(".")[0] == major]
+          if found:
+              print(max(found, key=lambda r: [int(x) for x in r["version"].split(".")])["identifier"])
+          '
+          }
+          runtime="$(pick_runtime)"
+          if [ -z "$runtime" ]; then
+            xcodebuild -downloadPlatform iOS -buildVersion "$IOS_MAJOR" ||
+              { echo "::error::No iOS $IOS_MAJOR simulator runtime could be installed"; exit 1; }
+            runtime="$(pick_runtime)"
+          fi
+          [ -n "$runtime" ] || { echo "::error::No iOS $IOS_MAJOR simulator runtime"; exit 1; }
+          echo "Runtime: $runtime"
+          device="$(xcrun simctl list devices available -j | RUNTIME="$runtime" python3 -c '
+          import json, os, sys
+          phones = [d for d in json.load(sys.stdin)["devices"].get(os.environ["RUNTIME"], [])
+                    if d["name"].startswith("iPhone")]
+          print(phones[0]["udid"] if phones else "")
           ')"
+          if [ -z "$device" ]; then
+            type="$(xcrun simctl list devicetypes -j | python3 -c '
+          import json, sys
+          print([t["identifier"] for t in json.load(sys.stdin)["devicetypes"] if t["name"].startswith("iPhone")][-1])
+          ')"
+            device="$(xcrun simctl create "iPhone (iOS $IOS_MAJOR)" "$type" "$runtime")"
+          fi
           # The macro expansion tests link swift-syntax for the host; they run
           # in the macOS job and cannot load in the simulator.
           xcodebuild test -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
             -skip-testing:LexicalMacrosTests
-
-  # macOS 26, the deployment target, with Xcode 27 (the package needs Swift
-  # 6.4). Not gating until the macos-26 image is known to carry Xcode 27.
-  macos-26:
-    name: Swift (macOS 26)
-    runs-on: macos-26
-    timeout-minutes: 45
-    continue-on-error: true
-    defaults:
-      run:
-        working-directory: swift
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
-      - name: Select Xcode 27
-        run: |
-          xcode="$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)"
-          if [ -z "$xcode" ]; then
-            echo "::error::The macos-26 image has no Xcode 27"; ls -d /Applications/Xcode*.app; exit 1
-          fi
-          sudo xcode-select -s "$xcode"
-          sw_vers; swift --version
-      - name: Build and test (macOS 26)
-        run: swift test

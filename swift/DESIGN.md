@@ -10,7 +10,8 @@ means updating this file in the same commit.
   AppKit, and SwiftUI editor views, so native apps behave like a Lexical web
   app. (Q4 first set iOS 27 and macOS 27; tmm lowered it once the package,
   its tests and the demo built and passed on iOS 26.5 and macOS 26.7 with
-  no 27-only API. CI runs the iOS 26 simulator and macOS 26 as well.)
+  no 27-only API. CI runs the iOS 26 simulator as well; macOS 26 is verified on
+  tmm's Mac only, since no hosted macOS 26 image has Xcode 27.)
 - Open source, community quality; not meant to be upstreamed (Q1).
 - Conforms to the upstream code on this fork's main, whose version is
   recorded in `UPSTREAM_VERSION`. The fork started from upstream main just

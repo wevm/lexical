@@ -16960,5 +16960,12 @@
       "lexical-table"
     ],
     "note": "Wraps an orphan list item inside a @lexical/table cell; port with lexical-table."
+  },
+  "lexical-list/src/__tests__/unit/ListSpliceKeepsFormatting.test.ts::ListNode.splice converting a block into a list item > keeps an inline node of the block it unwraps": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-link"
+    ],
+    "note": "Splices a paragraph holding a @lexical/link LinkNode; port with lexical-link."
   }
 }

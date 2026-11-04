@@ -59,9 +59,23 @@ private func parseAttribute(_ value: String?) -> String? {
   blockIdState.parse(value.map { .string($0) })
 }
 
+/// The per-editor state of `BlockIdHTMLExtension`, opaque outside this
+/// module (`unknown` in JS).
+package final class BlockIdHTMLRuntime {
+  /// The keys of the blocks that got an id from HTML in this update.
+  let imported = JSSet<NodeKey>()
+  /// How many waiting wrapper ids the resolve rule looked at, for the tests
+  /// of its cost (JS spies on `ElementNode.prototype.getParent`).
+  package var wrapperIdLookups = 0
+}
+
+private func runtime() throws -> BlockIdHTMLRuntime {
+  try getExtensionDependency(BlockIdHTMLExtension).initResult as! BlockIdHTMLRuntime
+}
+
 /// The keys of the blocks that got an id from HTML in this update.
 private func importedKeys() throws -> JSSet<NodeKey> {
-  try getExtensionDependency(BlockIdHTMLExtension).initResult as! JSSet<NodeKey>
+  try runtime().imported
 }
 
 nonisolated(unsafe) private let BlockIdImportRule = defineImportRule(
@@ -139,7 +153,9 @@ nonisolated(unsafe) private let BlockWrapperIdResolveRule = defineImportRule(
     return nodes
   }
   var kept = from
+  let runtime = try runtime()
   for k in from..<waiting.active.count {
+    runtime.wrapperIdLookups += 1
     let entry = waiting.active[k]
     guard let id = waiting.pending.get(entry.key) else {
       continue
@@ -258,12 +274,10 @@ public let BlockIdHTMLExtension:
         configExtension(DOMRenderExtension) { $0.overrides = [BlockIdExportOverride] },
         configExtension(DOMImportExtension) { $0.preprocess = [installBlockIdImportOverlay] },
       ],
-      // The keys of the blocks that got an id from HTML in this update, opaque
-      // outside this module (`unknown` in JS).
-      init: { _, _, _ -> AnyObject in JSSet<NodeKey>() },
+      init: { _, _, _ -> AnyObject in BlockIdHTMLRuntime() },
       build: { _, config, _ in namedSignals(config) },
       register: { editor, _, state in
-        let imported = try state.getInitResult() as! JSSet<NodeKey>
+        let imported = (try state.getInitResult() as! BlockIdHTMLRuntime).imported
         // Root transforms run after the other transforms of a pass, once the
         // imported blocks are inserted, so the predicate can see where they are.
         return try editor.registerNodeTransform(RootNode.self) { _ in

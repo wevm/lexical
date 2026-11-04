@@ -1,13 +1,12 @@
 import Lexical
 import LexicalExtension
 import LexicalHTML
+import LexicalList
 import LexicalRichText
 import Testing
 
 // Port of packages/lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts.
-// Upstream's editors register ListExtension too; the tests that import or
-// export lists are skipped until @lexical/list is ported, and the rest need
-// no list.
+// The editors register ListExtension, as upstream's do.
 
 private func counter(_ prefix: String) -> () -> String {
   var n = 0
@@ -42,14 +41,18 @@ private func asEdited(_ editor: Editor) throws -> Editor {
 /// `build(options)`. `html: nil` leaves BlockIdHTMLExtension out.
 private func build(
   fresh: Bool = false, ids: [String] = [], html: BlockIdHTMLConfig? = BlockIdHTMLConfig(),
-  prefix: String = "b"
+  prefix: String = "b", rootOnly: Bool = false
 ) throws -> Editor {
   let editor = try buildEditorFromExtensions(
     defineExtension(
       name: "[block-id-html]",
       dependencies: [
-        RichTextExtension,
-        configExtension(BlockIdExtension) { $0.generateId = withIds(ids, counter(prefix)) },
+        RichTextExtension, ListExtension,
+        configExtension(BlockIdExtension) {
+          $0.generateId = withIds(ids, counter(prefix))
+          // Identify the root's children only.
+          if rootOnly { $0.isIdentifiedBlock = isRootChildBlock }
+        },
       ]
         + (html.map { config in
           [
@@ -420,5 +423,258 @@ private let IDS = [
     try editor.read { () throws in
       #expect(try getBlockById("p2cs")?.getTextContent() == "Not shown to the model.")
     }
+  }
+}
+
+// MARK: lists
+
+/// The ids in `entries` (`type:id`), without the blocks that have none.
+private func idsIn(_ entries: [String]) -> [String] {
+  entries.map(idOf).filter { $0 != "null" }
+}
+
+@Suite struct BlockIdHTMLListTests {
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > exports data-block-id on identified blocks only"
+    ))
+  func exportsOnIdentifiedBlocks() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try append(editor, parseFixture("<h1>Title</h1><p>Text</p><ul><li>a</li><li>b</li></ul>"))
+    #expect(
+      try tree(editor) == [
+        "heading:b1", "paragraph:b2", "list:b3", "listitem:b4", "listitem:b5",
+      ])
+    #expect(
+      try exportHTML(editor)
+        == [
+          #"<h1 data-block-id="b1"><span style="white-space: pre-wrap;">Title</span></h1>"#,
+          #"<p data-block-id="b2"><span style="white-space: pre-wrap;">Text</span></p>"#,
+          #"<ul data-block-id="b3">"#,
+          #"<li value="1" data-block-id="b4"><span style="white-space: pre-wrap;">a</span></li>"#,
+          #"<li value="2" data-block-id="b5"><span style="white-space: pre-wrap;">b</span></li>"#,
+          "</ul>",
+        ].joined())
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > a root-only predicate exports no list item ids"
+    ))
+  func rootOnlyPredicate() throws {
+    let editor = try build(rootOnly: true)
+    defer { editor.dispose() }
+    try append(editor, parseFixture("<ul><li>a</li><li>b</li></ul>"))
+    #expect(try tree(editor) == ["list:b1", "listitem:null", "listitem:null"])
+    #expect(
+      try exportHTML(editor)
+        == [
+          #"<ul data-block-id="b1">"#,
+          #"<li value="1"><span style="white-space: pre-wrap;">a</span></li>"#,
+          #"<li value="2"><span style="white-space: pre-wrap;">b</span></li>"#,
+          "</ul>",
+        ].joined())
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > round-trips ids through HTML"
+    ))
+  func roundTrips() throws {
+    let source = try build(prefix: "s")
+    defer { source.dispose() }
+    try append(
+      source,
+      parseFixture("<h2>Title</h2><p>Text</p><ul><li>a</li></ul><blockquote>q</blockquote>"))
+    let exported = try exportDocument(source)
+    #expect(withAttribute(exported, "data-block-id").count == 5)
+    let target = try build(prefix: "t")
+    defer { target.dispose() }
+    try append(target, exported)
+    #expect(try tree(target) == tree(source))
+    #expect(
+      try tree(target) == ["heading:s1", "paragraph:s2", "list:s3", "listitem:s4", "quote:s5"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > an imported id is dropped from a block that is not identified"
+    ))
+  func importedIdDroppedFromUnidentified() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try append(
+      editor,
+      parseFixture(
+        #"<ul data-block-id="outer"><li data-block-id="item">a"#
+          + #"<ul data-block-id="nested"><li>b</li></ul></li></ul>"#))
+    let outline = try tree(editor)
+    #expect(outline[0] == "list:outer")
+    #expect(outline[1] == "listitem:item")
+    // The nested list is not identified: it keeps no id.
+    #expect(outline.contains("list:null"))
+    #expect(!(try editor.getEditorState().toJSON().stringify().contains(#""nested""#)))
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > exports data-block-handle instead of data-block-id"
+    ))
+  func exportsHandles() throws {
+    let editor = try build(ids: IDS, html: BlockIdHTMLConfig(handles: true))
+    defer { editor.dispose() }
+    try append(
+      editor,
+      parseFixture("<h2>Q3 plan</h2><p>Revenue grew 4% in Q3.</p><ul><li>a</li><li>b</li></ul>"))
+    #expect(
+      try exportHTML(editor)
+        == [
+          #"<h2 data-block-handle="2bNoq"><span style="white-space: pre-wrap;">Q3 plan</span></h2>"#,
+          #"<p data-block-handle="gTtF"><span style="white-space: pre-wrap;">Revenue grew 4% in Q3.</span></p>"#,
+          #"<ul data-block-handle="xt6z">"#,
+          #"<li value="1" data-block-handle="2bNoV"><span style="white-space: pre-wrap;">a</span></li>"#,
+          #"<li value="2" data-block-handle="Wbjb"><span style="white-space: pre-wrap;">b</span></li>"#,
+          "</ul>",
+        ].joined())
+    #expect(BLOCK_HANDLE_ATTRIBUTE == "data-block-handle")
+    #expect(BLOCK_ID_ATTRIBUTE == "data-block-id")
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: handles: true > export: true and export: false are unchanged"
+    ))
+  func exportTrueAndFalseUnchanged() throws {
+    let fixture = "<h2>Q3 plan</h2><p>Revenue grew 4% in Q3.</p><ul><li>a</li><li>b</li></ul>"
+    var html: [String: String] = [:]
+    let configs: [(String, BlockIdHTMLConfig?)] = [
+      ("default", BlockIdHTMLConfig()), ("true", BlockIdHTMLConfig(export: true)),
+      ("false", BlockIdHTMLConfig(export: false)), ("without", nil),
+    ]
+    for (name, config) in configs {
+      let editor = try build(ids: IDS, html: config)
+      defer { editor.dispose() }
+      try append(editor, parseFixture(fixture))
+      html[name] = try exportHTML(editor)
+    }
+    #expect(html["true"] == html["default"])
+    #expect(
+      html["true"]
+        == [
+          #"<h2 data-block-id="V1StGXR8_Z5jdHi6B-myT"><span style="white-space: pre-wrap;">Q3 plan</span></h2>"#,
+          #"<p data-block-id="9xQeLm2Pq0aK7cTb_wYuA"><span style="white-space: pre-wrap;">Revenue grew 4% in Q3.</span></p>"#,
+          #"<ul data-block-id="Rk8pZc41Uo-HsVd2NnFjB">"#,
+          #"<li value="1" data-block-id="qfapyr"><span style="white-space: pre-wrap;">a</span></li>"#,
+          #"<li value="2" data-block-id="u7NnPz2Kq0aK7cTb_wYuA"><span style="white-space: pre-wrap;">b</span></li>"#,
+          "</ul>",
+        ].joined())
+    #expect(html["false"] == html["without"])
+    #expect(html["false"]?.contains("data-block") == false)
+  }
+}
+
+private let NESTED =
+  "<ul><li>first</li><li>second<ul><li>inner one</li>"
+  + "<li>inner two<ol><li>deep</li></ol></li></ul></li><li>third</li></ul>"
+
+@Suite struct BlockIdHTMLWrapperTests {
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > exports its id on the nested list, and round-trips it"
+    ))
+  func exportsOnTheNestedList() throws {
+    let source = try build(prefix: "s")
+    defer { source.dispose() }
+    try append(source, parseFixture(NESTED))
+    let outline = try tree(source)
+    // first, second, the inner list's wrapper, inner one, inner two, the
+    // deep list's wrapper, deep, third.
+    #expect(outline.filter { $0.hasPrefix("listitem:") }.count == 8)
+    let exported = try exportDocument(source)
+    let wrapped = withAttribute(exported, BLOCK_WRAPPER_ID_ATTRIBUTE)
+    #expect(wrapped.map(\.tagName) == ["UL", "OL"])
+    // Every identified block's id is in the HTML exactly once.
+    let written = exported.body!.descendantElements().flatMap { element in
+      [BLOCK_ID_ATTRIBUTE, BLOCK_WRAPPER_ID_ATTRIBUTE].compactMap { element.getAttribute($0) }
+    }
+    #expect(written.sorted() == idsIn(outline).sorted())
+    let target = try build(prefix: "t")
+    defer { target.dispose() }
+    try append(target, exported)
+    #expect(try tree(target) == outline)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > pasted twice, the second copy gets fresh ids, the wrapper items too"
+    ))
+  func pastedTwice() throws {
+    let source = try build(prefix: "s")
+    defer { source.dispose() }
+    try append(source, parseFixture(NESTED))
+    let exported = try exportDocument(source)
+    let target = try build(prefix: "t")
+    defer { target.dispose() }
+    try append(target, exported)
+    try append(target, exported)
+    let ids = idsIn(try tree(target))
+    #expect(Set(ids).count == ids.count)
+    let sourceTree = try tree(source)
+    #expect(Array(try tree(target).prefix(sourceTree.count)) == sourceTree)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > export: false writes no wrapper id; import: false reads none"
+    ))
+  func exportFalseImportFalse() throws {
+    let off = try build(html: BlockIdHTMLConfig(export: false), prefix: "s")
+    defer { off.dispose() }
+    try append(off, parseFixture(NESTED))
+    #expect(withAttribute(try exportDocument(off), BLOCK_WRAPPER_ID_ATTRIBUTE).isEmpty)
+    let source = try build(prefix: "s")
+    defer { source.dispose() }
+    try append(source, parseFixture(NESTED))
+    let target = try build(html: BlockIdHTMLConfig(import: false), prefix: "t")
+    defer { target.dispose() }
+    try append(target, exportDocument(source))
+    #expect(!(try tree(target).contains { $0.contains(":s") }))
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > a wrapper id goes only on a block that holds that list alone"
+    ))
+  func wrapperIdOnlyOnALoneHolder() throws {
+    let editor = try build(prefix: "e")
+    defer { editor.dispose() }
+    try append(
+      editor,
+      parseFixture(
+        // A top-level list: its parent is the root, which takes no id.
+        #"<ul data-block-wrapper-id="top"><li>a</li></ul>"#
+          // A nested list after the item's text: the importer wraps it in an
+          // item of its own, which takes the id.
+          + #"<ul><li data-block-id="item">text"#
+          + #"<ul data-block-wrapper-id="w"><li>inner</li></ul></li></ul>"#))
+    let outline = try tree(editor)
+    #expect(outline.contains("listitem:item"))
+    #expect(outline.contains("listitem:w"))
+    #expect(!outline.contains { $0.hasSuffix(":top") })
+    #expect(!(try editor.getEditorState().toJSON().stringify().contains(#""top""#)))
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension: a list item that only wraps a nested list > handles: true writes no wrapper id"
+    ))
+  func handlesWriteNoWrapperId() throws {
+    let editor = try build(html: BlockIdHTMLConfig(handles: true), prefix: "h")
+    defer { editor.dispose() }
+    try append(editor, parseFixture(NESTED))
+    let (doc, _) = try exportWithHandles(editor)
+    #expect(withAttribute(doc, BLOCK_WRAPPER_ID_ATTRIBUTE).isEmpty)
+    #expect(withAttribute(doc, BLOCK_ID_ATTRIBUTE).isEmpty)
   }
 }

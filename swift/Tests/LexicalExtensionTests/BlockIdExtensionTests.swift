@@ -2,6 +2,7 @@ import Lexical
 import LexicalClipboard
 import LexicalExtension
 import LexicalHistory
+import LexicalList
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -9,9 +10,9 @@ import Testing
 
 // Port of packages/lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts.
 // Upstream's `build` registers the list and table nodes in every editor; the
-// tests here use neither, so their editors register rich text and the
-// horizontal rule only. The tests that build lists, tables, code, links or
-// markdown are skipped until those packages are ported.
+// editors here register rich text, the list and the horizontal rule. The
+// tests that build tables, code, links or markdown are skipped until those
+// packages are ported.
 
 private struct BuildOptions {
   var generateId: (() throws -> String)?
@@ -26,7 +27,7 @@ private func build(_ options: BuildOptions = BuildOptions()) throws -> Editor {
   var clock = 0.0
   let generateId = options.generateId ?? counter()
   var dependencies: [any AnyLexicalExtensionArgument] = [
-    RichTextExtension, HorizontalRuleExtension,
+    RichTextExtension, ListExtension, HorizontalRuleExtension,
   ]
   if options.history {
     dependencies.append(
@@ -1366,5 +1367,347 @@ private func enter(_ editor: Editor, _ index: Int, _ offset: Int) throws {
     defer { again.dispose() }
     try load(again, once.stringify())
     #expect(try again.getEditorState().toJSON() == once)
+  }
+}
+
+// MARK: lists
+
+/// `outline(editor)`: every element and decorator below the root as
+/// `type`, with `:id` when it has one (positional ids aliased), indented by
+/// depth.
+private func outline(_ editor: Editor) throws -> [String] {
+  let shown = try aliases(editor)
+  return try editor.read {
+    var out: [String] = []
+    func walk(_ node: LexicalNode, _ depth: Int) throws {
+      if node is TextNode { return }
+      if depth >= 0 {
+        let id = try getBlockId(node)
+        out.append(
+          String(repeating: "  ", count: depth) + node.getType()
+            + (id.map { ":\(shown[$0] ?? $0)" } ?? ""))
+      }
+      if let element = node as? ElementNode {
+        for child in try element.getChildren() { try walk(child, depth + 1) }
+      }
+    }
+    try walk(getRoot(), -1)
+    return out
+  }
+}
+
+private func bulletList(_ texts: String...) throws -> ListNode {
+  try createListNode("bullet").append(
+    contentsOf: texts.map { try createListItemNode().append(createTextNode($0)) })
+}
+
+@Suite struct BlockIdExtensionListTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: split and merge > Enter at the start of a list item (nested ids)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: split and merge > Enter at the middle of a list item (nested ids)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: split and merge > Enter at the end of a list item (nested ids)"
+    ),
+    arguments: [
+      (0, [":b4", "one:b1"]),
+      (1, ["o:b1", "ne:b4"]),
+      (3, ["one:b1", ":b4"]),
+    ])
+  func enterInAListItem(_ offset: Int, _ expected: [String]) throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try seed(editor, ["one", "two"])
+    try discrete(editor) {
+      try selectBlocks(0, 1)
+      try editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND)
+    }
+    func items() throws -> [String] {
+      try editor.read {
+        try nth(0).getChildren().map {
+          "\(try $0.getTextContent()):\(try getBlockId($0) ?? "null")"
+        }
+      }
+    }
+    // The items took the paragraphs' content, and with it their ids; the
+    // list is a new block.
+    #expect(try ids(editor) == ["b3"])
+    #expect(try items() == ["one:b1", "two:b2"])
+    try discrete(editor) {
+      let item = try #require(try nth(0).getFirstChildOrThrow() as? ElementNode)
+      let text = try #require(try item.getFirstDescendant() as? TextNode)
+      _ = try text.select(offset, offset)
+      try editor.dispatchCommand(INSERT_PARAGRAPH_COMMAND)
+    }
+    #expect(try items() == expected + ["two:b2"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: type changes and moves > paragraph to list: the item keeps the id, the list is new"
+    ))
+  func paragraphToList() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try seed(editor, ["one", "two"])
+    try discrete(editor) {
+      try caret(1, 0)
+      try editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND)
+    }
+    #expect(try outline(editor) == ["paragraph:b1", "list:b3", "  listitem:b2"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: type changes and moves > paragraph to list with $isRootChildBlock keeps the id on the list"
+    ))
+  func paragraphToListRootChildBlock() throws {
+    let editor = try build(isIdentifiedBlock: isRootChildBlock)
+    defer { editor.dispose() }
+    try seed(editor, ["one", "two"])
+    try discrete(editor) {
+      try caret(1, 0)
+      try editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND)
+    }
+    #expect(try outline(editor) == ["paragraph:b1", "list:b2", "  listitem"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a list given an id with $setState before it is inserted"
+    ))
+  func listGivenAnIdBeforeInsert() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try seed(editor, ["p"])
+    try discrete(editor) {
+      let block = try bulletList("item")
+      try setState(block, blockIdState, "my-block")
+      try getRoot().append(block)
+    }
+    #expect(try ids(editor) == ["b1", "my-block"])
+    try expectAllIndexed(editor)
+    try editor.read { () throws -> Void in
+      #expect(try getBlockById("my-block") === nth(1).getLatest())
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a copy of a list whose items got ids alongside it yields to it"
+    ))
+  func copyOfListYields() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try discrete(editor) {
+      let list = try bulletList("item")
+      try setState(list, blockIdState, "my-list")
+      try getRoot().append(paragraph("before"), list, paragraph("after"))
+    }
+    try discrete(editor) {
+      let item = try #require(try nth(1).getFirstChildOrThrow() as? ElementNode)
+      try #require(try item.getFirstChildOrThrow() as? TextNode).setTextContent("item!")
+    }
+    let originalKey = try editor.read { try nth(1).getKey() }
+    try discrete(editor) { try nth(0).insertBefore(deepCopy(nth(1))) }
+    try expectUnique(editor)
+    try expectAllIndexed(editor)
+    try editor.read { () throws -> Void in
+      #expect(try getBlockById("my-list")?.getKey() == originalKey)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > setEditorState of a list whose items repeat an id"
+    ))
+  func listItemsRepeatAnId() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try seed(editor, ["one"])
+    var json = try editor.getEditorState().toJSON()
+    func item(_ text: String) -> JSONValue {
+      .object(
+        JSONObject([
+          ("$", .object(JSONObject([("blockId", "X")]))),
+          (
+            "children",
+            [
+              .object(
+                JSONObject([
+                  ("detail", 0), ("format", 0), ("mode", "normal"), ("style", ""),
+                  ("text", .string(text)), ("type", "text"), ("version", 1),
+                ]))
+            ]
+          ),
+          ("direction", .null), ("format", ""), ("indent", 0), ("type", "listitem"),
+          ("value", 1), ("version", 1),
+        ]))
+    }
+    var root = try #require(json["root"]?.objectValue)
+    var children = try #require(root["children"]?.arrayValue)
+    children.append(
+      .object(
+        JSONObject([
+          ("$", .object(JSONObject([("blockId", "L")]))), ("children", [item("a"), item("b")]),
+          ("direction", .null), ("format", ""), ("indent", 0), ("listType", "bullet"),
+          ("start", 1), ("tag", "ul"), ("type", "list"), ("version", 1),
+        ])))
+    root["children"] = .array(children)
+    json["root"] = .object(root)
+    try editor.setEditorState(editor.parseEditorState(json))
+    try expectAllIndexed(editor)
+    try editor.read { () throws -> Void in
+      #expect(try getBlockById("L")?.getType() == "list")
+      #expect(try getBlockById("X")?.getTextContent() == "a")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: copies of lists that merge > pasting copies, one of them right above the original: the merged list keeps the id"
+    ))
+  func copyRightAboveOriginal() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try discrete(editor) { try getRoot().append(paragraph("p"), bulletList("a")) }
+    let (listId, itemId) = try editor.read {
+      (try getBlockId(nth(1))!, try getBlockId(nth(1).getFirstChildOrThrow())!)
+    }
+    try discrete(editor) {
+      let list = try nth(1)
+      try nth(0).insertBefore(deepCopy(list))
+      // ListNode merges the original into this adjacent copy.
+      try list.insertBefore(deepCopy(list))
+    }
+    try expectUnique(editor)
+    try expectAllIndexed(editor)
+    try editor.read { () throws -> Void in
+      let holder = try #require(try getBlockById(listId) as? ElementNode)
+      // The list that holds the original item keeps the list's id.
+      #expect(try holder.getChildren().contains { try getBlockId($0) == itemId })
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: copies of lists that merge > copies on both sides of the original, merged over several transform passes: the merged list keeps the id"
+    ))
+  func copiesOnBothSides() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try discrete(editor) { try getRoot().append(paragraph("p"), bulletList("a")) }
+    let (listId, itemId) = try editor.read {
+      (try getBlockId(nth(1))!, try getBlockId(nth(1).getFirstChildOrThrow())!)
+    }
+    try discrete(editor) {
+      let list = try nth(1)
+      try list.insertBefore(deepCopy(list))
+      try list.insertBefore(deepCopy(list))
+      try list.insertAfter(deepCopy(list))
+    }
+    // ListNode merges the four lists one pair per transform pass. The copies
+    // yield the id to the original in the first pass; once the original is
+    // merged into the first copy, that copy continues it.
+    #expect(try ids(editor) == ["b1", listId])
+    try expectUnique(editor)
+    try expectAllIndexed(editor)
+    try editor.read { () throws -> Void in
+      #expect(try nth(1).getChildren().map { try getBlockId($0) }.contains(itemId))
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: a copy of a list pasted above another list > the list it merges into keeps its id"
+    ))
+  func copyAboveAnotherList() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try discrete(editor) {
+      try getRoot().append(bulletList("l"), paragraph("sep"), bulletList("m"))
+    }
+    let (copiedId, copiedItemId, listId, itemId) = try editor.read {
+      (
+        try getBlockId(nth(0))!, try getBlockId(nth(0).getFirstChildOrThrow())!,
+        try getBlockId(nth(2))!, try getBlockId(nth(2).getFirstChildOrThrow())!
+      )
+    }
+    try discrete(editor) {
+      // ListNode merges the list below into the copy, which yields the
+      // copied ids: the merged list continues the list below, as a new list
+      // without an id does.
+      try nth(2).insertBefore(deepCopy(nth(0)))
+    }
+    try expectUnique(editor)
+    try expectAllIndexed(editor)
+    try editor.read { () throws -> Void in
+      #expect(try getBlockId(nth(0)) == copiedId)
+      #expect(try getBlockId(nth(0).getFirstChildOrThrow()) == copiedItemId)
+      let merged = try nth(2)
+      #expect(try getBlockId(merged) == listId)
+      let itemIds = try merged.getChildren().map { try getBlockId($0) }
+      #expect(itemIds.count == 2)
+      #expect(itemIds.first! != copiedItemId)
+      #expect(itemIds.first! != nil)
+      #expect(itemIds.last! == itemId)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > copy and paste of nested list items through the Lexical clipboard"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > cut and paste of nested list items through the Lexical clipboard"
+    ),
+    arguments: ["copy", "cut"])
+  func pasteNestedListItems(_ mode: String) throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try discrete(editor) { try getRoot().append(bulletList("one", "two"), createParagraphNode()) }
+    func itemIds() throws -> [String] {
+      try editor.read {
+        try getRoot().getChildren().flatMap { block -> [String] in
+          guard let list = block as? ElementNode, block.getType() == "list" else { return [] }
+          return try list.getChildren().map {
+            "\(try $0.getTextContent()):\(try getBlockId($0) ?? "null")"
+          }
+        }
+      }
+    }
+    let before = try itemIds()
+    var copied: SerializedSelectedNodes?
+    try discrete(editor) {
+      let list = try nth(0)
+      let first = try #require(try list.getFirstChildOrThrow() as? ElementNode)
+      let last = try #require(try list.getLastChildOrThrow() as? ElementNode)
+      let selection = try first.select(0, 0)
+      try selection.focus.set(last.getKey(), last.getChildrenSize(), .element)
+      copied = try generateJSONFromSelectedNodes(editor, getSelection())
+      if mode == "cut" {
+        try list.remove()
+      }
+    }
+    try discrete(editor) {
+      _ = try getRoot().getLastChildOrThrow().selectEnd()
+      let selection = try #require(try getSelection() as? RangeSelection)
+      try insertGeneratedNodes(
+        editor, generateNodesFromSerializedNodes(#require(copied).nodes), selection)
+    }
+    let after = try itemIds()
+    let all = after.map { $0.split(separator: ":").last.map(String.init) ?? "" }
+    #expect(Set(all).count == all.count)
+    if mode == "copy" {
+      // The originals keep their ids; the copies get new ones.
+      #expect(Array(after.prefix(2)) == before)
+      #expect(after.count == 4)
+    } else {
+      #expect(after == before)
+    }
+    try expectAllIndexed(editor)
   }
 }

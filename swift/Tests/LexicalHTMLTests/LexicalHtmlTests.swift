@@ -1,12 +1,13 @@
 import Lexical
 import LexicalHTML
+import LexicalList
 import LexicalRichText
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-html/src/__tests__/unit/LexicalHtml.test.ts.
-// Upstream registers list, code and link nodes it never uses outside the
-// list cases; the Swift editors register the rich-text nodes only.
+// Upstream registers list, code and link nodes; the Swift editors register
+// the rich-text and list nodes (code and links are not ported).
 
 private func headlessEditor(
   nodes: [LexicalNodeConfig] = [], html: HTMLConfig? = nil
@@ -16,7 +17,10 @@ private func headlessEditor(
 }
 
 private func richTextNodes() -> [LexicalNodeConfig] {
-  [.klass(HeadingNode.self), .klass(QuoteNode.self)]
+  [
+    .klass(HeadingNode.self), .klass(ListNode.self), .klass(ListItemNode.self),
+    .klass(QuoteNode.self),
+  ]
 }
 
 private func twoParagraphs() throws -> (TextNode, TextNode) {
@@ -43,6 +47,29 @@ private func importHTML(_ editor: Editor, _ html: String) throws {
     let editor = try headlessEditor(nodes: richTextNodes())
     try editor.update(discrete: true) { try getRoot().append(createParagraphNode()) }
     #expect(try editor.read(.latest) { try generateHtmlFromNodes(editor) } == "<p><br></p>")
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/LexicalHtml.test.ts::HTML > [Lexical -> HTML]: Nested ordered list numbering (Regression #7207)"
+    ))
+  func nestedOrderedListNumbering() throws {
+    let editor = try headlessEditor(nodes: richTextNodes())
+    try editor.update(discrete: true) {
+      func item(_ text: String) throws -> ListItemNode {
+        try createListItemNode().append(createTextNode(text))
+      }
+      let nestedWrapper = try createListItemNode().append(
+        createListNode("number").append(item("LA"), item("TX")))
+      try getRoot().append(
+        createListNode("number").append(
+          item("Canada"), item("USA"), nestedWrapper, item("Germany")))
+    }
+    // #7207: the nested list is inside its parent <li>, not a separate <li>.
+    #expect(
+      try editor.read(.latest) { try generateHtmlFromNodes(editor) }
+        == #"<ol><li value="1"><span style="white-space: pre-wrap;">Canada</span></li><li value="2"><span style="white-space: pre-wrap;">USA</span><ol><li value="1"><span style="white-space: pre-wrap;">LA</span></li><li value="2"><span style="white-space: pre-wrap;">TX</span></li></ol></li><li value="3"><span style="white-space: pre-wrap;">Germany</span></li></ol>"#
+    )
   }
 
   @Test(
@@ -158,12 +185,16 @@ private func importHTML(_ editor: Editor, _ html: String) throws {
     .upstream(
       "lexical-html/src/__tests__/unit/LexicalHtml.test.ts::HTML > importDOM preserves dir attribute > blockquote with dir=\"rtl\""
     ),
+    .upstream(
+      "lexical-html/src/__tests__/unit/LexicalHtml.test.ts::HTML > importDOM preserves dir attribute > list with dir=\"rtl\""
+    ),
     arguments: [
       (#"<p dir="rtl">مرحبا</p>"#, "rtl"),
       (#"<p dir="ltr">Hello</p>"#, "ltr"),
       ("<p>Hello</p>", nil),
       (#"<h1 dir="rtl">عنوان</h1>"#, "rtl"),
       (#"<blockquote dir="rtl">اقتباس</blockquote>"#, "rtl"),
+      (#"<ul dir="rtl"><li>عنصر</li></ul>"#, "rtl"),
     ] as [(String, String?)])
   func importPreservesDir(html: String, expected: String?) throws {
     let editor = try headlessEditor(nodes: richTextNodes())

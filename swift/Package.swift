@@ -78,7 +78,8 @@ let package = Package(
     .testTarget(
       name: "LexicalHTMLTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalRichText", "LexicalTesting",
+        "Lexical", "LexicalExtension", "LexicalHTML", "LexicalList", "LexicalRichText",
+        "LexicalTesting",
       ]),
     // @lexical/rich-text: headings, quotes and the rich text commands.
     .target(

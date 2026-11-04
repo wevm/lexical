@@ -1,6 +1,7 @@
 import Lexical
 import LexicalExtension
 import LexicalHTML
+import LexicalList
 import LexicalRichText
 import Testing
 
@@ -60,6 +61,17 @@ private func seedSevenEightNine(_ editor: Editor) throws {
     _ = try getRoot().clear().append(contentsOf: ["seven", "eight", "nine"].map(paragraph))
   }
 }
+
+private final class EmptyInlineNode: DecoratorNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(
+      EmptyInlineNode.self, type: "block-id-docs-empty-inline", extends: DecoratorNode.self)
+  }
+  override func isInline() throws -> Bool { true }
+}
+
+nonisolated(unsafe) private let EmptyInlineExtension = defineExtension(
+  name: "block-id-docs/empty-inline", nodes: { [.klass(EmptyInlineNode.self)] })
 
 @Suite struct BlockIdDocsTests {
   @Test(
@@ -303,6 +315,49 @@ private func seedSevenEightNine(_ editor: Editor) throws {
     try editor.read { () throws in
       #expect(try getBlockById(ids[0])?.getTextContent() == "Q4 plan\n")
     }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText refuses blocks that are not just text"
+    ))
+  func setBlockTextRefusesBlocksNotJustText() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "set-block-text-refuses",
+        dependencies: [RichTextExtension, ListExtension, BlockIdExtension, EmptyInlineExtension],
+        editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      func item(_ text: String) throws -> ListItemNode {
+        try createListItemNode().append(createTextNode(text))
+      }
+      _ = try getRoot().clear().append(
+        createParagraphNode().append(
+          createTextNode("a"), createLineBreakNode(), createTextNode("b")),
+        createListNode("bullet").append(item("one"), item("two")),
+        // One item: the list's text is its item's text.
+        createListNode("number").append(item("one")),
+        // An inline decorator without text.
+        createParagraphNode().append(
+          createTextNode("left"), EmptyInlineNode(), createTextNode("right")))
+    }
+    let before = try editorJSON(editor)
+    try editor.update(discrete: true) {
+      let children = try getRoot().getChildren()
+      let (lineBreak, list, oneItem, decorated) = (
+        children[0], children[1], children[2], children[3]
+      )
+      #expect(try !setBlockText(lineBreak, "a\nb"))
+      #expect(try !setBlockText(lineBreak, ""))
+      #expect(try !setBlockText(list, "one\n\ntwo"))
+      #expect(try oneItem.getTextContent() == "one")
+      #expect(try !setBlockText(oneItem, "rewritten"))
+      #expect(try decorated.getTextContent() == "leftright")
+      #expect(try !setBlockText(decorated, "changed"))
+    }
+    // Nothing changed.
+    #expect(try editorJSON(editor) == before)
   }
 
   @Test(

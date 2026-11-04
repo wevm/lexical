@@ -84,6 +84,22 @@ public struct TextKitDocument: Sendable {
     return runs
   }
 
+  /// The text nodes under the node at `key`, in document order, or none
+  /// when it isn't shown. Walks only that subtree.
+  func runs(under key: NodeKey) -> [TextKitRun] {
+    guard let location = start(of: key) else { return [] }
+    var runs: [TextKitRun] = []
+    walk(from: key, at: location) { key, entry, location in
+      if entry.kind == .text {
+        runs.append(
+          TextKitRun(
+            key: key, location: location, length: entry.length, format: entry.format,
+            style: entry.style))
+      }
+    }
+    return runs
+  }
+
   /// Every node's span, its descendants and separators included.
   public var spans: [NodeKey: TextKitSpan] {
     var spans: [NodeKey: TextKitSpan] = [:]
@@ -100,7 +116,9 @@ public struct TextKitDocument: Sendable {
     return TextKitSpan(location: location, length: entry.length)
   }
 
-  private func walk(_ visit: (NodeKey, Entry, Int) -> Void) {
+  private func walk(
+    from key: NodeKey = "root", at location: Int = 0, _ visit: (NodeKey, Entry, Int) -> Void
+  ) {
     func visitNode(_ key: NodeKey, _ location: Int) {
       guard let entry = entries[key] else { return }
       visit(key, entry, location)
@@ -108,7 +126,7 @@ public struct TextKitDocument: Sendable {
         visitNode(kid.key, location + kid.start)
       }
     }
-    visitNode("root", 0)
+    visitNode(key, location)
   }
 
   /// Where the node at `key` starts.

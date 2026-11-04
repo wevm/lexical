@@ -1,4 +1,5 @@
 import Lexical
+import LexicalList
 import LexicalTesting
 import Testing
 
@@ -507,7 +508,7 @@ private func helloWorld() throws -> (TextNode, TextNode, ParagraphNode, Paragrap
   ) throws
     -> Editor
   {
-    let editor = try createTestEditor()
+    let editor = try createTestEditor(nodes: [.klass(ListNode.self), .klass(ListItemNode.self)])
     try editor.update(discrete: true) {
       try getRoot().clear().append(createTestDecoratorNode().setIsInline(false), last())
     }
@@ -543,6 +544,43 @@ private func helloWorld() throws -> (TextNode, TextNode, ParagraphNode, Paragrap
       #expect(try root.getChildrenSize() == 1)
       #expect(try root.getFirstChild() is ParagraphNode)
       #expect(try root.getTextContent() == "")
+    }
+  }
+
+  private func bulletList() throws -> LexicalNode {
+    try createListNode("bullet").append(createListItemNode().append(createTextNode("item")))
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a list is replaced with an empty paragraph"
+    ))
+  func selectAllDeleteReplacesList() throws {
+    let editor = try selectAllDeleteAfterDecorator(bulletList)
+    try editor.read { () throws in
+      let root = try getRoot()
+      #expect(try root.getChildrenSize() == 1)
+      #expect(try root.getFirstChild() is ParagraphNode)
+      #expect(try root.getTextContent() == "")
+    }
+  }
+
+  // The leftover list is not merely untidy: it has no block ancestor, so the
+  // next inline insert raises an uncaught invariant.
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > an inline insert after the list deletion does not throw"
+    ))
+  func insertAfterListDeletion() throws {
+    let editor = try selectAllDeleteAfterDecorator(bulletList)
+    #expect(throws: Never.self) {
+      try editor.update(discrete: true) {
+        try #require(try getSelection() as? RangeSelection).insertNodes([try createLineBreakNode()])
+      }
+    }
+    try editor.read { () throws in
+      let paragraph = try #require(try getRoot().getFirstChild() as? ParagraphNode)
+      #expect(try paragraph.getFirstChild() is LineBreakNode)
     }
   }
 }

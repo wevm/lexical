@@ -1,3 +1,4 @@
+import LexicalList
 import LexicalTesting
 import Testing
 
@@ -686,5 +687,39 @@ private func textContents() throws -> [String] {
       _ = try editor.dispatchCommand(command)
       #expect(warnings.isEmpty)
     }
+  }
+}
+
+@Suite struct LexicalEditorListTransformTests {
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > transforms do not discard unintentional dirtyElements"
+    ))
+  func transformsKeepUnintentionalDirtyElements() throws {
+    // See https://github.com/meta/lexical/issues/7333. ListNode registers a
+    // transform that merges adjacent lists.
+    let editor = try initEditor(nodes: [.klass(ListItemNode.self), .klass(ListNode.self)])
+    func nestedList(_ text: String) throws -> LexicalNode {
+      try createListNode("bullet").append(
+        createListItemNode().append(
+          createListNode("bullet").append(createListItemNode().append(createTextNode(text)))))
+    }
+    try editor.update(discrete: true) {
+      try getRoot().clear().append(nestedList("1"), createParagraphNode(), nestedList("2"))
+    }
+    #expect(
+      try shape(editor)
+        == "<list><listitem><list><listitem>[1]</listitem></list></listitem></list>"
+        + "<paragraph></paragraph>"
+        + "<list><listitem><list><listitem>[2]</listitem></list></listitem></list>")
+    try editor.update(discrete: true) {
+      for node in try getRoot().getChildren() where node is ParagraphNode {
+        try node.remove()
+      }
+    }
+    #expect(
+      try shape(editor)
+        == "<list><listitem><list><listitem>[1]</listitem><listitem>[2]</listitem></list>"
+        + "</listitem></list>")
   }
 }

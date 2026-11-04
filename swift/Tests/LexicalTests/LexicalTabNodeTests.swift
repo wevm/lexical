@@ -1,15 +1,22 @@
 import Lexical
+import LexicalExtension
+import LexicalList
+import LexicalRichText
 import LexicalTesting
 import Testing
 
 // Port of nodes/__tests__/unit/LexicalTabNode.test.tsx. The paste tests,
-// which need @lexical/clipboard, are in LexicalClipboardTests; the
-// indentation tests need @lexical/list and the tab indentation plugin, so
-// they wait for those packages.
+// which need @lexical/clipboard, are in LexicalClipboardTests. Upstream
+// compares the reconciled HTML; the indentation tests compare the shape and
+// each block's indent, which is what the HTML's padding shows.
 
-/// `beforeEach`: an empty, selected paragraph.
+/// `beforeEach`: an empty, selected paragraph, in an editor that also
+/// registers upstream's default heading, quote and list nodes.
 private func tabNodeEditor() throws -> Editor {
-  let editor = try createTestEditor()
+  let editor = try createTestEditor(nodes: [
+    .klass(HeadingNode.self), .klass(QuoteNode.self), .klass(ListNode.self),
+    .klass(ListItemNode.self),
+  ])
   try update(editor) {
     let paragraph = try createParagraphNode()
     try getRoot().append(paragraph)
@@ -124,5 +131,113 @@ struct TabBoundaryCase: Sendable, CustomTestStringConvertible {
         #expect(try tabNode.getTextContent() == "\t")
       }
     }
+  }
+
+  /// `registerRichText`, `registerTabIndentation`, `setup`, then Tab.
+  private func tab(_ setup: @escaping () throws -> Void) throws -> Editor {
+    let editor = try tabNodeEditor()
+    _ = registerRichText(editor)
+    _ = registerTabIndentation(editor)
+    try update(editor, setup)
+    try editor.dispatchCommand(KEY_TAB_COMMAND, KeyboardEvent("keydown"))
+    drainMicrotasks()
+    return editor
+  }
+
+  private func indents(_ editor: Editor) throws -> [Int] {
+    try editor.read(.latest) {
+      try getRoot().getChildren().map { try ($0 as! ElementNode).getIndent() }
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element indents when selection at the start of the block"
+    ))
+  func indentsAtTheStart() throws {
+    let editor = try tab {
+      try #require(try getSelection()).insertText("foo")
+      _ = try getRoot().selectStart()
+    }
+    #expect(try shape(editor) == "<paragraph>[foo]</paragraph>")
+    #expect(try indents(editor) == [1])
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > elements indent when selection spans across multiple blocks"
+    ))
+  func indentsAcrossBlocks() throws {
+    let editor = try tab {
+      let root = try getRoot()
+      let paragraph = try #require(try root.getFirstChild() as? ElementNode)
+      let paragraphText = try createTextNode("foo")
+      let headingText = try createTextNode("bar")
+      let listItemText = try createTextNode("xyz")
+      try root.append(
+        createHeadingNode("h1").append(headingText),
+        createListNode("number").append(createListItemNode().append(listItemText)))
+      try paragraph.append(paragraphText)
+      let selection = createRangeSelection()
+      try selection.focus.set(paragraphText.getKey(), 1, .text)
+      try selection.anchor.set(listItemText.getKey(), 1, .text)
+      try setSelection(selection)
+    }
+    #expect(
+      try shape(editor)
+        == "<paragraph>[foo]</paragraph><heading>[bar]</heading>"
+        + "<list><listitem><list><listitem>[xyz]</listitem></list></listitem></list>")
+    // The list item is indented by nesting it, which leaves the list at 0.
+    #expect(try indents(editor) == [1, 1, 0])
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (1)"
+    ))
+  func tabsAtTheEnd() throws {
+    let editor = try tab { try #require(try getSelection()).insertText("foo") }
+    #expect(try shape(editor) == "<paragraph>[foo][\t]</paragraph>")
+    #expect(try indents(editor) == [0])
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (2)"
+    ))
+  func tabsInTheMiddle() throws {
+    let editor = try tab {
+      try #require(try getSelection()).insertText("foo")
+      _ = try #require(try getRoot().getLastDescendant() as? TextNode).select(1, 1)
+    }
+    #expect(try shape(editor) == "<paragraph>[f][\t][oo]</paragraph>")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > element tabs when selection is not at the start (3)"
+    ))
+  func tabReplacesARange() throws {
+    let editor = try tab {
+      try #require(try getSelection()).insertText("foo")
+      _ = try #require(try getRoot().getLastDescendant() as? TextNode).select(1, 2)
+    }
+    #expect(try shape(editor) == "<paragraph>[f][\t][o]</paragraph>")
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/nodes/__tests__/unit/LexicalTabNode.test.tsx::LexicalTabNode tests > elements tabs when selection is not at the start and overlaps another tab"
+    ))
+  func tabOverAnotherTab() throws {
+    let editor = try tab {
+      try #require(try getSelection()).insertRawText("hello\tworld")
+      let root = try getRoot()
+      let selection = createRangeSelection()
+      try selection.anchor.set(try #require(try root.getFirstDescendant()).getKey(), 4, .text)
+      try selection.focus.set(try #require(try root.getLastDescendant()).getKey(), 2, .text)
+      try setSelection(selection)
+    }
+    #expect(try shape(editor) == "<paragraph>[hell][\t][rld]</paragraph>")
   }
 }

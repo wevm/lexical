@@ -1,4 +1,5 @@
 import Lexical
+import LexicalList
 import LexicalTesting
 import Testing
 
@@ -944,6 +945,60 @@ private func expectRemainingNodes(
       #expect(try originalEndParent.isAttached() == false)
       #expect(try !focus.origin.isAttached() || originalStartParent.is(focus.origin.getParent()))
       try expectRemainingNodes(c, originalNodes, startCaret, endCaret)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported File e2e tests > $selectAll() with nesting and a trailing decorator"
+    ))
+  func selectAllWithNestingAndTrailingDecorator() throws {
+    let editor = try createTestEditor(nodes: [.klass(ListNode.self), .klass(ListItemNode.self)])
+    try editor.update(discrete: true) {
+      let paragraphNode = try createParagraphNode().append(
+        createTextNode("Hello").setFormat("bold"), createTextNode("World"))
+      let listNode = try createListNode("number").append(
+        createListItemNode().append(createTextNode("one")),
+        createListItemNode().append(createTextNode("two")),
+        createListItemNode().append(createTestDecoratorNode()))
+      try getRoot().clear().append(paragraphNode, listNode)
+      #expect(try getRoot().getChildrenSize() == 2)
+      let resultRange = try removeTextFromCaretRange(caretRangeFromSelection(selectAll()))
+      #expect(try getRoot().getAllTextNodes().isEmpty)
+      #expect(try sameNodes(getRoot().getChildren(), [paragraphNode]))
+      #expect(resultRange.anchor.direction == .next)
+      #expect(resultRange.anchor.origin === paragraphNode)
+      #expect(resultRange.anchor.isChild)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > multiple blocks > remove range between list and nested list"
+    ))
+  func removeRangeBetweenListAndNestedList() throws {
+    let editor = try createTestEditor(nodes: [.klass(ListNode.self), .klass(ListItemNode.self)])
+    try editor.update(discrete: true) {
+      let listTextNode = try createTextNode("list node")
+      let listNode = try createListNode().append(createListItemNode().append(listTextNode))
+      let nestedTextNode = try createTextNode("be nested")
+      let nestedListNode = try createListNode().append(
+        createListItemNode().append(nestedTextNode))
+      try listNode.append(createListItemNode().append(nestedListNode))
+      try getRoot().clear().append(listNode)
+      let sel = createRangeSelection()
+      try sel.anchor.set(listTextNode.getKey(), "list".utf16.count, .text)
+      try sel.focus.set(nestedTextNode.getKey(), "be ".utf16.count, .text)
+      try setSelection(sel)
+      let resultRange = try removeTextFromCaretRange(caretRangeFromSelection(sel))
+      _ = try setSelectionFromCaretRange(resultRange)
+      #expect(
+        try getRoot().getAllTextNodes().map { try $0.getTextContent() } == ["list", "nested"])
+      #expect(try listNode.getLatest().getChildren().count == 1)
+    }
+    try editor.read(.latest) { () throws in
+      // These get merged in reconciliation.
+      #expect(try getRoot().getAllTextNodes().map { try $0.getTextContent() } == ["listnested"])
     }
   }
 }

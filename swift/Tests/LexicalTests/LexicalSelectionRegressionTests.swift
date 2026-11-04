@@ -1,4 +1,5 @@
 import Lexical
+import LexicalList
 import LexicalTesting
 import Testing
 
@@ -455,7 +456,7 @@ private func blockDecorator() throws -> TestDecoratorNode {
 private func pasteEditor(
   _ text: String, _ caretOffset: Int, _ makeNodes: @escaping () throws -> [LexicalNode]
 ) throws -> Editor {
-  let editor = try createTestEditor()
+  let editor = try createTestEditor(nodes: [.klass(ListNode.self), .klass(ListItemNode.self)])
   try editor.update(discrete: true) {
     try getRoot().clear().append(createParagraphNode().append(createTextNode(text)))
     let paragraph = try #require(try getRoot().getFirstChild() as? ParagraphNode)
@@ -470,7 +471,9 @@ private func pasteEditor(
 private func rootSummary(_ editor: Editor) throws -> [String] {
   try editor.read {
     try getRoot().getChildren().map { child in
-      let kind = child is ParagraphNode ? "p" : child is DecoratorNode ? "d" : child.getType()
+      let kind =
+        child is ParagraphNode
+        ? "p" : child is DecoratorNode ? "d" : child is ListNode ? "list" : child.getType()
       return child is DecoratorNode ? kind : "\(kind):\(try child.getTextContent())"
     }
   }
@@ -502,6 +505,37 @@ private func rootSummary(_ editor: Editor) throws -> [String] {
   func blockDecoratorAtStart() throws {
     let editor = try pasteEditor("hello", 0) { [try blockDecorator()] }
     #expect(try rootSummary(editor) == ["d", "p:hello"])
+  }
+
+  private func makeList() throws -> LexicalNode {
+    try createListNode("bullet").append(createListItemNode().append(createTextNode("item")))
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list at the end of a paragraph leaves no empty paragraph"
+    ))
+  func listAtEnd() throws {
+    let editor = try pasteEditor("hello", 5) { [try makeList()] }
+    #expect(try rootSummary(editor) == ["p:hello", "list:item"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list in the middle of a paragraph keeps the trailing text"
+    ))
+  func listInMiddle() throws {
+    let editor = try pasteEditor("helloworld", 5) { [try makeList()] }
+    #expect(try rootSummary(editor) == ["p:hello", "list:item", "p:world"])
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/__tests__/unit/LexicalSelection.test.ts::Regression tests for #9095 > pasting a list at the start of a paragraph keeps the paragraph after it"
+    ))
+  func listAtStart() throws {
+    let editor = try pasteEditor("hello", 0) { [try makeList()] }
+    #expect(try rootSummary(editor) == ["list:item", "p:hello"])
   }
 
   @Test(

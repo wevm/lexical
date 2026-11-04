@@ -122,8 +122,8 @@ let package = Package(
     .testTarget(
       name: "LexicalClipboardTests",
       dependencies: [
-        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalRichText",
-        "LexicalSelection", "LexicalTesting",
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalList",
+        "LexicalRichText", "LexicalSelection", "LexicalTesting",
       ]),
     // @lexical/history: undo and redo.
     .target(name: "LexicalHistory", dependencies: ["Lexical", "LexicalExtension", "LexicalUtils"]),
@@ -204,8 +204,8 @@ let package = Package(
     .testTarget(
       name: "LexicalTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalHTML", "LexicalRichText",
-        "LexicalTesting",
+        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalHTML", "LexicalList",
+        "LexicalRichText", "LexicalTesting",
       ]),
   ],
   swiftLanguageModes: [.v6]

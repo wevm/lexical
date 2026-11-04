@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- Serializing an editor state to JSON is linear in its size: each string
+  was appended through `String.UnicodeScalarView.append(contentsOf:)`,
+  which copied the whole output so far. Stringifying a 3 MB document went
+  from about 34 s to well under a second (release).
 - Deleting a character no longer renders the whole document again to find
   where the caret moves: a caret move made before the update changes any
   node reuses the view's rendering. At 5,000 blocks a delete went from 81

@@ -203,7 +203,7 @@ func writeJSONString(_ s: String, to out: inout String) {
     default: escape = nil
     }
     if let escape {
-      out.unicodeScalars.append(contentsOf: scalars[run..<i])
+      out += Substring(scalars[run..<i])
       out += escape
       i = scalars.index(after: i)
       run = i
@@ -211,7 +211,8 @@ func writeJSONString(_ s: String, to out: inout String) {
       i = scalars.index(after: i)
     }
   }
-  out.unicodeScalars.append(contentsOf: scalars[run..<scalars.endIndex])
+  // Appending to `out.unicodeScalars` would copy all of `out` each time.
+  out += Substring(scalars[run..<scalars.endIndex])
   out += "\""
 }
 

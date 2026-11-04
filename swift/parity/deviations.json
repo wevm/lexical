@@ -56,7 +56,7 @@
   },
   "native/word-move-from-range": {
     "category": "platform-selection",
-    "description": "With a range selected, WebKit's Option-Left and Option-Right first collapse the range to its edge and do not move further when that edge is a word boundary. The Linux scenario replay moves a word from the edge, as it models NSTextView's moveWordLeft: and moveWordRight:. Unverified: whether a real NSTextView or UITextView collapses as WebKit does is being checked on macOS; if it does, the replay changes and this entry goes.",
+    "description": "With a range selected, Option-Left and Option-Right move a word from the range's edge, as NSTextView's moveWordLeft: and moveWordRight: and UITextView's Option-arrows do (verified on macOS 27 with NSTextView and LexicalNSTextView, and on the iOS 27 simulator with LexicalUITextView: with 15..<17 selected in \"  123 abc 456  def  \", left lands at 10 and right at 18). WebKit first collapses the range to its edge and stops there when the edge is a word boundary (15 and 17).",
     "scenarios": [
       "Navigation > native navigation > can navigate through the formatted text word by word (rich)"
     ]

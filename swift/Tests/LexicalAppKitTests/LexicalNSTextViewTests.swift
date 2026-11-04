@@ -3,6 +3,7 @@
   import Lexical
   import LexicalA11y
   import LexicalAppKit
+  import LexicalCodeCore
   import LexicalExtension
   import LexicalHistory
   import LexicalRichText
@@ -575,6 +576,64 @@
         return true
       }
       #expect(highlighted.isEmpty, "\(highlighted)")
+      _ = window
+    }
+
+    @Test func drawsACodeBlocksBoxAndGutter() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension, CodeExtension]))
+      let (view, window) = try makeView(editor)
+      window.appearance = NSAppearance(named: .aqua)
+      try editor.update(discrete: true) {
+        // TextKit leaves out the spacing before the first paragraph.
+        try getRoot().clear().append(
+          createParagraphNode().append(createTextNode("x")),
+          createCodeNode().append(createTextNode("a"), createLineBreakNode(), createTextNode("b")))
+      }
+      let layoutManager = try #require(view.textLayoutManager)
+      layoutManager.ensureLayout(for: layoutManager.documentRange)
+      view.layoutSubtreeIfNeeded()
+      let rep = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+      view.cacheDisplay(in: view.bounds, to: rep)
+      let scale = CGFloat(rep.pixelsHigh) / view.bounds.height
+      func color(_ x: CGFloat, _ y: CGFloat) -> [Int] {
+        let pixel = rep.colorAt(x: Int(x * scale), y: Int(y * scale))?.usingColorSpace(.sRGB)
+        return [pixel?.redComponent, pixel?.greenComponent, pixel?.blueComponent].map {
+          Int((($0 ?? 0) * 255).rounded())
+        }
+      }
+      // The offscreen bitmap's color space shifts the colors a little.
+      func near(_ a: [Int], _ b: [Int]) -> Bool { zip(a, b).allSatisfy { abs($0 - $1) <= 12 } }
+      // The playground's `__code`: an 8-point margin, then the box, whose
+      // 8-point padding is above two 1.53 × 13-point lines and below them.
+      let padding = try #require(view.textContainer).lineFragmentPadding
+      let left = view.textContainerInset.width + padding
+      let top = view.textContainerInset.height + 27.2 + 8
+      let line = 1.53 * 13
+      let bottom = top + 8 + 2 * line + 8
+      let background = [240, 242, 245]
+      #expect(near(color(left + 200, top + 1), background), "\(color(left + 200, top + 1))")
+      #expect(near(color(left + 200, bottom - 1), background), "\(color(left + 200, bottom - 1))")
+      #expect(!near(color(left + 200, top - 1), background))
+      #expect(!near(color(left + 200, bottom + 1), background))
+      // The 41-point gutter and its 1-point border at the box's start.
+      #expect(near(color(left + 2, top + 2), [238, 238, 238]), "\(color(left + 2, top + 2))")
+      #expect(near(color(left + 41.5, top + 2), [204, 204, 204]), "\(color(left + 41.5, top + 2))")
+      #expect(color(left + 41.5, top + 2)[0] < color(left + 2, top + 2)[0] - 10)
+      // A number on each line, centered in it like the line's text.
+      var inked: [CGFloat] = []
+      for row in Int(top * scale)..<Int(bottom * scale) {
+        let dark = stride(from: left + 8, to: left + 41 - 4, by: 0.5).contains { x in
+          color(x, CGFloat(row) / scale)[0] < 180
+        }
+        if dark { inked.append(CGFloat(row) / scale) }
+      }
+      for index in 0..<2 {
+        let middle = top + 8 + line * (CGFloat(index) + 0.5)
+        let ink = inked.filter { abs($0 - middle) < line / 2 }
+        try #require(!ink.isEmpty, "line \(index): \(inked)")
+        #expect(abs((ink.min()! + ink.max()!) / 2 - middle) <= 2, "line \(index): \(ink)")
+      }
       _ = window
     }
   }

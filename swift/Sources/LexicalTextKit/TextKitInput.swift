@@ -37,6 +37,9 @@ public final class TextKitInputController {
   public private(set) var blockBars: [NodeKey: [TextKitBlockBar]] = [:]
   /// The list markers of the list items, by block key.
   public private(set) var listMarkers: [NodeKey: TextKitListMarkerLayout] = [:]
+  /// The boxes of the blocks with a background, such as code blocks, by
+  /// block key.
+  public private(set) var blockBoxes: [NodeKey: TextKitBlockBoxLayout] = [:]
   /// The IME's marked text in the rendered string, while it composes.
   public private(set) var markedRange: TextKitRange?
   /// Called after every commit with what changed: the reconciler's edits,
@@ -128,6 +131,7 @@ public final class TextKitInputController {
     if update.isFull {
       blockBars = [:]
       listMarkers = [:]
+      blockBoxes = [:]
     }
     for paragraph in update.paragraphs {
       blockBars[paragraph.key] =
@@ -137,10 +141,17 @@ public final class TextKitInputController {
           marker: $0, headIndent: paragraph.attributes.headIndent, text: paragraph.text,
           isRightToLeft: paragraph.attributes.writingDirection == .rightToLeft)
       }
+      blockBoxes[paragraph.key] = paragraph.attributes.blockBox.map {
+        TextKitBlockBoxLayout(
+          box: $0, text: paragraph.text,
+          isRightToLeft: paragraph.attributes.writingDirection == .rightToLeft)
+      }
     }
-    // A block that left the document takes its marker and bars with it.
+    // A block that left the document takes its marker, bars and box with
+    // it.
     for key in listMarkers.keys where document.span(key) == nil { listMarkers[key] = nil }
     for key in blockBars.keys where document.span(key) == nil { blockBars[key] = nil }
+    for key in blockBoxes.keys where document.span(key) == nil { blockBoxes[key] = nil }
     if let marked = markedRange, marked.end > document.length {
       markedRange = nil
     }

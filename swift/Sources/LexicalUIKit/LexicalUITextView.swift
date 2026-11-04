@@ -205,8 +205,7 @@
           NSRange(location: 0, length: length))
         textStorage.addAttribute(
           .paragraphStyle,
-          value: paragraph.attributes.uiParagraphStyle(
-            fontSize: paragraph.text.uiFont(contentSize).pointSize),
+          value: paragraph.attributes.uiParagraphStyle(font: paragraph.text.uiFont(contentSize)),
           range: range)
         if range.length > 0,
           (textStorage.string as NSString).character(at: range.upperBound - 1) == 0x0A
@@ -354,7 +353,87 @@
         }
       }
       blockBarsView.bars = bars
+      blockBarsView.boxes = controller.blockBoxes.compactMap { key, layout in
+        guard let span = document.span(key),
+          let range = textRange(
+            NSRange(
+              location: span.location,
+              length: min(max(span.length, 1), document.length - span.location)))
+        else { return nil }
+        var frame: CGRect?
+        layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
+          _, segment, _, _ in
+          frame = frame.map { $0.union(segment) } ?? segment
+          return true
+        }
+        guard let frame else { return nil }
+        return blockBox(
+          layout, span: span, layoutManager,
+          lines: CGRect(
+            x: textContainerInset.left + padding, y: textContainerInset.top + frame.minY,
+            width: textContainer.size.width - 2 * padding, height: frame.height))
+      }
       sendSubviewToBack(blockBarsView)
+    }
+
+    /// `layout`'s box behind the block's lines, `lines` (starting where line
+    /// fragments do), and its gutter with a number on the first line of each
+    /// of the block's lines (the text after each line break).
+    private func blockBox(
+      _ layout: TextKitBlockBoxLayout, span: TextKitSpan, _ layoutManager: NSTextLayoutManager,
+      lines: CGRect
+    ) -> BlockBarsView.Box {
+      let box = layout.box
+      let isRTL = layout.isRightToLeft
+      let frame = CGRect(
+        x: isRTL ? lines.minX : lines.minX + box.offset, y: lines.minY - box.paddingTop,
+        width: lines.width - box.offset, height: lines.height + box.paddingTop + box.paddingBottom)
+      var drawing = BlockBarsView.Box(frame: frame, color: box.color.uiColor)
+      guard let gutter = box.gutter else { return drawing }
+      let gutterFrame = CGRect(
+        x: isRTL ? frame.maxX - gutter.width : frame.minX, y: frame.minY, width: gutter.width,
+        height: frame.height)
+      drawing.gutter = (gutterFrame, gutter.backgroundColor.uiColor)
+      drawing.border = (
+        CGRect(
+          x: isRTL ? gutterFrame.minX - gutter.borderWidth : gutterFrame.maxX, y: frame.minY,
+          width: gutter.borderWidth, height: frame.height),
+        gutter.borderColor.uiColor
+      )
+      let font = layout.text.uiFont(traitCollection.preferredContentSizeCategory)
+      let attributes: [NSAttributedString.Key: Any] = [
+        .font: font, .foregroundColor: gutter.foregroundColor.uiColor,
+      ]
+      let text = textStorage.string as NSString
+      var start = span.location
+      var number = 1
+      while start <= span.end {
+        let end = text.range(
+          of: "\u{2028}", range: NSRange(location: start, length: span.end - start)
+        ).location
+        var line: CGRect?
+        if let range = textRange(
+          NSRange(location: start, length: min(1, max(0, text.length - start))))
+        {
+          layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
+            _, segment, _, _ in
+            line = segment
+            return false
+          }
+        }
+        if let line {
+          let string = NSAttributedString(string: "\(number)", attributes: attributes)
+          let width = string.size().width
+          let y = textContainerInset.top + line.midY - (font.ascender - font.descender) / 2
+          let x =
+            isRTL ? gutterFrame.minX + gutter.padding : gutterFrame.maxX - gutter.padding - width
+          drawing.numbers.append((string, CGPoint(x: x, y: y)))
+        }
+        guard end != NSNotFound else { break }
+        start = end + 1
+        number += 1
+      }
+      return drawing
     }
 
     // MARK: Keys
@@ -751,6 +830,18 @@
 
   /// Draws quote bars and list markers behind the text.
   final class BlockBarsView: UIView {
+    /// A block's box, with its gutter, its border and the gutter's numbers.
+    struct Box {
+      var frame: CGRect
+      var color: UIColor
+      var gutter: (CGRect, UIColor)?
+      var border: (CGRect, UIColor)?
+      var numbers: [(NSAttributedString, CGPoint)] = []
+    }
+
+    var boxes: [Box] = [] {
+      didSet { setNeedsDisplay() }
+    }
     var bars: [(CGRect, UIColor)] = [] {
       didSet { setNeedsDisplay() }
     }
@@ -761,6 +852,15 @@
     var contentSizeCategory = UIContentSizeCategory.large
 
     override func draw(_ rect: CGRect) {
+      for box in boxes where box.frame.intersects(rect) {
+        box.color.setFill()
+        UIRectFill(box.frame)
+        for (frame, color) in [box.gutter, box.border].compactMap({ $0 }) {
+          color.setFill()
+          UIRectFill(frame)
+        }
+        for (string, point) in box.numbers { string.draw(at: point) }
+      }
       for (frame, color) in bars where frame.intersects(rect) {
         color.setFill()
         UIRectFill(frame)

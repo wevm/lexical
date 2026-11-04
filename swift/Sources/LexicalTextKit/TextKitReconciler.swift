@@ -251,90 +251,174 @@ extension TextKitDocument {
   /// `$reconcileChildren`: the children before the first change and after
   /// the last are reconciled in place; the ones between, with the
   /// separators around them, are replaced by a fresh rendering.
+  ///
+  /// The clean children around the change are skipped, neither walked nor
+  /// reconciled: a child that isn't dirty kept its siblings, so the
+  /// element's dirty children bound the window that can have changed
+  /// (`changedWindow`). Only the window is compared from both ends, and the
+  /// children after it are shifted.
   mutating func reconcileChildren(
     _ key: NodeKey, _ element: ElementNode, at start: Int, _ context: inout ReconcileContext
   ) throws -> Int {
-    let nextKeys = try createChildrenArray(element, context.nextNodeMap)
     guard let oldKids = entries[key]?.kids, let oldLength = entries[key]?.length else {
       throw TextKitMismatch()
     }
     let prevCount = oldKids.count
-    let nextCount = nextKeys.count
+    let window =
+      try changedWindow(key, element, oldKids, context)
+      ?? (0, 0, try createChildrenArray(element, context.nextNodeMap))
+    let (cleanPrefix, cleanSuffix, nextWindow) = window
+    let windowEnd = prevCount - cleanSuffix
+    let oldWindow = oldKids[cleanPrefix..<windowEnd]
+    let nextCount = cleanPrefix + nextWindow.count + cleanSuffix
+
     func isKept(_ kid: Kid, _ nextKey: NodeKey) throws -> Bool {
       guard kid.key == nextKey, let node = context.nextNodeMap.get(nextKey) else { return false }
       return try context.isUnchanged(nextKey, node) || Self.isBlock(node) == kid.isBlock
     }
+    let count = min(oldWindow.count, nextWindow.count)
     var prefix = 0
-    while prefix < min(prevCount, nextCount), try isKept(oldKids[prefix], nextKeys[prefix]) {
+    while prefix < count,
+      try isKept(oldKids[cleanPrefix + prefix], nextWindow[prefix])
+    {
       prefix += 1
     }
     var suffix = 0
-    while suffix < min(prevCount, nextCount) - prefix,
-      try isKept(oldKids[prevCount - 1 - suffix], nextKeys[nextCount - 1 - suffix])
+    while suffix < count - prefix,
+      try isKept(oldKids[windowEnd - 1 - suffix], nextWindow[nextWindow.count - 1 - suffix])
     {
       suffix += 1
     }
-    var lengths = [Int](repeating: 0, count: nextCount)
+    // Global indices: kept children are [0, keptPrefix) and the last
+    // `keptSuffix`; the new ones between are [keptPrefix, middleEnd).
+    let keptPrefix = cleanPrefix + prefix
+    let keptSuffix = cleanSuffix + suffix
+    let middleEnd = nextCount - keptSuffix
     var blocks = [Bool](repeating: false, count: nextCount)
-    for i in 0..<prefix { blocks[i] = oldKids[i].isBlock }
-    for s in 0..<suffix { blocks[nextCount - 1 - s] = oldKids[prevCount - 1 - s].isBlock }
+    for i in 0..<keptPrefix { blocks[i] = oldKids[i].isBlock }
+    for s in 0..<keptSuffix { blocks[nextCount - 1 - s] = oldKids[prevCount - 1 - s].isBlock }
 
-    for s in 0..<suffix {
+    for s in cleanSuffix..<keptSuffix {
       let kid = oldKids[prevCount - 1 - s]
-      lengths[nextCount - 1 - s] = try reconcileNode(kid.key, at: start + kid.start, &context)
+      _ = try reconcileNode(kid.key, at: start + kid.start, &context)
     }
-    let middleEnd = nextCount - suffix
-    if prefix < prevCount - suffix || prefix < middleEnd {
+    if keptPrefix < prevCount - keptSuffix || keptPrefix < middleEnd {
       let regionStart =
-        prefix > 0 ? oldKids[prefix - 1].start + entries[oldKids[prefix - 1].key]!.length : 0
-      let regionEnd = suffix > 0 ? oldKids[prevCount - suffix].start : oldLength
-      for kid in oldKids[prefix..<(prevCount - suffix)] {
+        keptPrefix > 0
+        ? oldKids[keptPrefix - 1].start + entries[oldKids[keptPrefix - 1].key]!.length : 0
+      let regionEnd = keptSuffix > 0 ? oldKids[prevCount - keptSuffix].start : oldLength
+      for kid in oldKids[keptPrefix..<(prevCount - keptSuffix)] {
         removeSubtree(kid.key, parent: key)
       }
       var text = ""
       var runs: [TextKitRun] = []
       var offset = 0
-      var previousIsBlock = prefix > 0 && blocks[prefix - 1]
-      for i in prefix..<middleEnd {
-        guard let node = context.nextNodeMap.get(nextKeys[i]) else { throw TextKitMismatch() }
+      var previousIsBlock = keptPrefix > 0 && blocks[keptPrefix - 1]
+      for i in keptPrefix..<middleEnd {
+        let nextKey = nextWindow[i - cleanPrefix]
+        guard let node = context.nextNodeMap.get(nextKey) else { throw TextKitMismatch() }
         let isBlock = try Self.isBlock(node)
         if i > 0, previousIsBlock || isBlock {
           text += "\n"
           offset += 1
         }
-        let length = try build(
+        offset += try build(
           node, parent: key, index: i, at: start + regionStart + offset, into: &text, runs: &runs)
-        lengths[i] = length
         blocks[i] = isBlock
-        offset += length
         previousIsBlock = isBlock
       }
-      if suffix > 0, middleEnd > 0, previousIsBlock || blocks[middleEnd] {
+      if keptSuffix > 0, middleEnd > 0, previousIsBlock || blocks[middleEnd] {
         text += "\n"
       }
       replace(start + regionStart, regionEnd - regionStart, with: text, runs: runs, &context)
     }
-    for i in (0..<prefix).reversed() {
-      lengths[i] = try reconcileNode(oldKids[i].key, at: start + oldKids[i].start, &context)
+    for i in (cleanPrefix..<keptPrefix).reversed() {
+      _ = try reconcileNode(oldKids[i].key, at: start + oldKids[i].start, &context)
     }
 
-    var kids: [Kid] = []
-    kids.reserveCapacity(nextCount)
-    var offset = 0
-    for i in 0..<nextCount {
+    // Lay out the window again; the clean children before it keep their
+    // starts and the ones after it move by how much it grew.
+    var windowKids: [Kid] = []
+    windowKids.reserveCapacity(nextWindow.count)
+    var offset =
+      cleanPrefix > 0
+      ? oldKids[cleanPrefix - 1].start + entries[oldKids[cleanPrefix - 1].key]!.length : 0
+    for (j, nextKey) in nextWindow.enumerated() {
+      let i = cleanPrefix + j
       if i > 0, blocks[i - 1] || blocks[i] {
         offset += 1
       }
-      kids.append(Kid(key: nextKeys[i], start: offset, isBlock: blocks[i]))
-      offset += lengths[i]
+      windowKids.append(Kid(key: nextKey, start: offset, isBlock: blocks[i]))
+      offset += entries[nextKey]!.length
     }
-    entries[key]!.kids = kids
-    entries[key]!.length = offset
+    let length: Int
+    if cleanSuffix > 0 {
+      let i = cleanPrefix + nextWindow.count
+      if i > 0, blocks[i - 1] || blocks[i] {
+        offset += 1
+      }
+      let delta = offset - oldKids[windowEnd].start
+      length = oldLength + delta
+      entries[key]!.kids = []
+      var kids = oldKids
+      kids.replaceSubrange(cleanPrefix..<windowEnd, with: windowKids)
+      if delta != 0 {
+        for i in (cleanPrefix + nextWindow.count)..<nextCount { kids[i].start += delta }
+      }
+      entries[key]!.kids = kids
+    } else {
+      length = offset
+      entries[key]!.kids = []
+      var kids = oldKids
+      kids.replaceSubrange(cleanPrefix..<windowEnd, with: windowKids)
+      entries[key]!.kids = kids
+    }
+    entries[key]!.length = length
     if prevCount != nextCount {
       for i in middleEnd..<nextCount {
-        entries[nextKeys[i]]!.index = i
+        entries[entries[key]!.kids[i].key]!.index = i
       }
     }
-    return offset
+    return length
+  }
+
+  /// The window of an element's children that can have changed, bounded by
+  /// its dirty children: a child that isn't dirty has the same siblings as
+  /// before, so the children before the first dirty one and after the last
+  /// are as they were, except removed children next to the window
+  /// (removing a node dirties its siblings, and the removed node leaves the
+  /// map). Returns how many old children are kept before and after it and
+  /// the new children in it, or `nil` when the dirty children don't bound
+  /// it, as for an element that had no children.
+  func changedWindow(
+    _ key: NodeKey, _ element: ElementNode, _ oldKids: [Kid], _ context: ReconcileContext
+  ) throws -> (Int, Int, [NodeKey])? {
+    guard !oldKids.isEmpty, let dirty = context.dirtyChildren[key] else { return nil }
+    var low = oldKids.count
+    var high = -1
+    for child in dirty {
+      guard let entry = entries[child], entry.parent == key, entry.index < oldKids.count,
+        oldKids[entry.index].key == child
+      else { continue }
+      low = min(low, entry.index)
+      high = max(high, entry.index)
+    }
+    guard high >= 0 else { return nil }
+    func isStill(_ kid: Kid) -> Bool {
+      context.nextNodeMap.get(kid.key)?.__parent == key && !context.isDirty(kid.key)
+    }
+    while low > 0, !isStill(oldKids[low - 1]) { low -= 1 }
+    while high < oldKids.count - 1, !isStill(oldKids[high + 1]) { high += 1 }
+    var window: [NodeKey] = []
+    let stop = high + 1 < oldKids.count ? oldKids[high + 1].key : nil
+    var nextKey =
+      low > 0 ? context.nextNodeMap.get(oldKids[low - 1].key)?.__next : element.__first
+    while let current = nextKey, current != stop {
+      guard let node = context.nextNodeMap.get(current), node.__parent == key else { return nil }
+      window.append(current)
+      nextKey = node.__next
+    }
+    guard nextKey == stop else { return nil }
+    return (low, oldKids.count - 1 - high, window)
   }
 }

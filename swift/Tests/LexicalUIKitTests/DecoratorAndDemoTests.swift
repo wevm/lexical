@@ -66,7 +66,9 @@
     guard let cgImage = image.cgImage, let data = cgImage.dataProvider?.data,
       let bytes = CFDataGetBytePtr(data)
     else { return false }
-    let rect = rect.integral.intersection(view.bounds)
+    // The image starts at the bounds' origin, which a scroll moves.
+    let rect = rect.integral.intersection(view.bounds).offsetBy(
+      dx: -view.bounds.minX, dy: -view.bounds.minY)
     for y in Int(rect.minY)..<Int(rect.maxY) {
       for x in Int(rect.minX)..<Int(rect.maxX) {
         let pixel = bytes + y * cgImage.bytesPerRow + x * cgImage.bitsPerPixel / 8
@@ -172,6 +174,22 @@
       settle(view)
       #expect(draws(view, (206, 208, 212), in: bar))
       #expect(draws(view, (240, 242, 245), in: code))
+    }
+
+    @Test func keepsQuoteBarsBesideTheirTextWhenPulledPastTheTop() throws {
+      let (view, window) = try showDemo()
+      // A pull down past the top, as while rubber-banding.
+      view.contentOffset = CGPoint(x: 0, y: -80)
+      settle(view)
+      #expect(view.bounds.minY == -80)
+      let range = (view.text as NSString).range(of: "A quote")
+      let start = try #require(
+        view.position(from: view.beginningOfDocument, offset: range.location))
+      let end = try #require(view.position(from: start, offset: range.length))
+      let quote = view.firstRect(for: try #require(view.textRange(from: start, to: end)))
+      let bar = CGRect(x: 0, y: quote.midY - 2, width: quote.minX, height: 4)
+      #expect(draws(view, (206, 208, 212), in: bar))
+      _ = window
     }
 
     @Test func scalesFontsWithDynamicType() throws {

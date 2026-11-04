@@ -74,29 +74,21 @@ note pointing here; fuzz vectors keep offsets off pair interiors.
   text view through `UITextInput` / `NSTextInputClient`. A small XCUITest set
   covers real keyboard, IME, dictation, and Writing Tools. v0.1.0 covers every
   in-scope rich-text and plain-text spec.
-- **Benchmarks** (Q32): reported, not gating, until stable. Targets: under
-  8 ms p95 keystroke-to-reconcile on 5,000 paragraphs, under 300 ms load.
-  Typing, deleting and caret moves meet it (Linux release p95 1.6–1.7 ms;
-  7.64 ms on an iPhone 15 Pro in release, which includes the UIKit
-  storage edit). Enter (11.6 ms) and joining paragraphs (15.3 ms) don't,
-  and neither does load (1.0 s). These need structural work, planned here
-  and deferred past v0.1.0:
-  - **Enter and join.** Inserting or removing a root child clones the root,
-    so `TextKitDocument.reconcileChildren` handles it, and a gdb sample of
-    Enter puts 12 of 14 stacks there. It is linear in the root's children
-    four times over: `createChildrenArray`, the prefix and suffix `isKept`
-    scans, a `reconcileNode` call per kept child, and rebuilding `kids` with
-    absolute starts and re-indexing every entry after the change. The plan:
-    (1) find the changed run from the dirty children and the removed keys
-    (`dirtyChildren`, and children whose parent or presence changed) instead
-    of scanning from both ends; (2) keep each element's kids in a balanced
-    tree of lengths (a B-tree or Fenwick tree keyed by position), so a start
-    offset and an index are O(log n) and a splice doesn't shift the rest.
-    Then core's `normalizeShadowRootChildren` (which JS also runs, so it
-    stays) is the remaining O(n) pass, a cheap `getChildren` walk.
-  - **Load.** The profile is flat (JSON parse about 20%, node creation and
-    splicing about 40%, transforms about 10%, render about 7%). It needs
-    cheaper node keys and fewer thread-context reads per node, not one fix.
+- **Benchmarks** (Q32). Targets, on 5,000 paragraphs: under 8 ms p95 from
+  keystroke to reconcile, and under 300 ms p95 from JSON to rendered
+  storage. The rows time Lexical's share (a plain UTF-16 storage without
+  layout); a real `NSTextStorage` adds its own layout cost, measured on
+  devices rather than gated. On the Linux CI runner in release:
+  - **Keystrokes gate** (the `Benchmarks` job of `swift.yml` fails on a
+    miss): typing and deleting 1.5–2.2 ms p95, Enter and joining
+    paragraphs 3.3–4.2 ms.
+  - **Load is reported, not gating yet**: 253 and 306 ms p95 on two runs
+    of one commit (parse 150–180 ms of it), so a gate would fail at
+    random. Trimming instructions doesn't move it (10% fewer instructions
+    gave about 2.5% less time): it is bound by allocation, about 330,000
+    nodes plus the intermediate JSON tree. It gates once it holds with
+    margin, which needs building nodes from the JSON bytes without that
+    tree.
 
 ## Architecture
 

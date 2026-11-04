@@ -1,4 +1,4 @@
-// Reported, not gating (DESIGN.md, Benchmarks; Q32): the editor the native
+// Gating (DESIGN.md, Benchmarks; Q32): the editor the native
 // views build (rich text and history) with a TextKit controller rendering
 // into a plain UTF-16 storage, so the numbers are Lexical's share of a
 // keystroke or a load; a real NSTextStorage adds its own layout cost.
@@ -8,7 +8,8 @@
 // `--markdown` appends the results as a table (CI's job summary).
 //
 // Targets: keystroke to reconcile under 8 ms p95 and load under 300 ms, both
-// on 5,000 paragraphs.
+// on 5,000 paragraphs. A missed keystroke target exits with status 1, after
+// the report; load is reported against its target but does not gate yet.
 
 import Foundation
 import Lexical
@@ -90,16 +91,23 @@ struct Result {
   var p50: Double
   var p95: Double
   var target: Double?
+  /// Whether missing `target` fails the run.
+  var gating: Bool
 }
 
 var results: [Result] = []
 
-@MainActor func report(_ name: String, _ samples: [Duration], target: Double? = nil) {
+@MainActor func report(
+  _ name: String, _ samples: [Duration], target: Double? = nil, gating: Bool = true
+) {
   let result = Result(
-    name: name, p50: percentile(samples, 50), p95: percentile(samples, 95), target: target)
+    name: name, p50: percentile(samples, 50), p95: percentile(samples, 95), target: target,
+    gating: gating)
   results.append(result)
   let goal =
-    target.map { " (target \($0) ms p95\(result.p95 <= $0 ? ", met" : ", NOT met"))" } ?? ""
+    target.map {
+      " (target \($0) ms p95\(result.p95 <= $0 ? ", met" : ", NOT met")\(gating ? "" : ", not gating"))"
+    } ?? ""
   print(
     String(format: "%-44@ p50 %8.3f ms  p95 %8.3f ms", name as NSString, result.p50, result.p95)
       + goal)
@@ -125,7 +133,8 @@ for _ in 0..<(selected("load") ? 10 : 0) {
 }
 if selected("load") {
   report("load: parseEditorState", parses)
-  report("load: JSON to rendered storage", loads, target: 300)
+  // Not gating yet: CI runners measured 253 and 306 ms p95 on one commit.
+  report("load: JSON to rendered storage", loads, target: 300, gating: false)
 }
 
 // Keystrokes in the middle of the document, as the views send them.
@@ -188,7 +197,7 @@ if let index = CommandLine.arguments.firstIndex(of: "--markdown"),
   index + 1 < CommandLine.arguments.count
 {
   var table = """
-    ### Benchmarks (\(paragraphCount) blocks, reported, not gating)
+    ### Benchmarks (\(paragraphCount) blocks)
 
     | Benchmark | p50 (ms) | p95 (ms) | Target p95 (ms) |
     | --- | ---: | ---: | ---: |
@@ -198,6 +207,7 @@ if let index = CommandLine.arguments.firstIndex(of: "--markdown"),
     let target =
       result.target.map {
         "\($0 == $0.rounded() ? String(Int($0)) : String($0))\(result.p95 <= $0 ? " ✅" : " ❌")"
+          + (result.gating ? "" : " (not gating)")
       } ?? ""
     table += String(
       format: "| %@ | %.3f | %.3f | %@ |\n", result.name, result.p50, result.p95, target)
@@ -210,4 +220,12 @@ if let index = CommandLine.arguments.firstIndex(of: "--markdown"),
   } else {
     try table.write(to: url, atomically: true, encoding: .utf8)
   }
+}
+
+let missed = results.filter { result in
+  result.gating && result.target.map { result.p95 > $0 } ?? false
+}
+if !missed.isEmpty {
+  print("Missed the p95 target: \(missed.map(\.name).joined(separator: ", "))")
+  exit(1)
 }

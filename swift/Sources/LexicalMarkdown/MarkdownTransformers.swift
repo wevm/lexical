@@ -1131,7 +1131,8 @@ nonisolated(unsafe) public let TRANSFORMERS: [any Transformer] = concatTransform
   TEXT_MATCH_TRANSFORMERS)
 
 /// `normalizeMarkdown(input, shouldMergeAdjacentLines)`.
-package func normalizeMarkdown(_ input: String, _ shouldMergeAdjacentLines: Bool = false) -> String {
+package func normalizeMarkdown(_ input: String, _ shouldMergeAdjacentLines: Bool = false) -> String
+{
   let lines = input.jsSplit("\n")
   var codeBlockFenceLength = 0
   var sanitizedLines: [String] = []

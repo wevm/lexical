@@ -287,6 +287,37 @@ export const TEXT_FORMATTING: Scenario[] = [
       {press: 'Shift+ArrowRight', times: 7},
     ],
   },
+  // The playground's TextFormatting browser test
+  // (src/__tests__/browser/TextFormatting.test.ts), its core shortcuts.
+  {
+    modes: ['rich'],
+    name: 'TextFormatting > Can create italic text using the shortcut',
+    steps: [
+      {type: 'Hello'},
+      {press: 'Meta+i'},
+      {type: ' World'},
+      {press: 'Meta+i'},
+      {type: '!'},
+    ],
+  },
+  ...(
+    [
+      ['boldify', 'Meta+b'],
+      ['italicify', 'Meta+i'],
+    ] as const
+  ).map(
+    ([verb, chord]): Scenario => ({
+      modes: ['rich'],
+      name: `TextFormatting > Can select text and ${verb} it with the shortcut`,
+      steps: [
+        {type: 'Hello world!'},
+        {press: 'ArrowLeft'},
+        {press: 'Shift+ArrowLeft', times: 5},
+        {press: chord},
+        {press: chord},
+      ],
+    }),
+  ),
 ];
 
 const threeLines: ScenarioStep[] = [
@@ -431,6 +462,29 @@ export const NAVIGATION: Scenario[] = [
     name: 'Navigation > can type and navigate several paragraphs',
     steps: [
       ...typeParagraphs(['one', 'two', 'three']),
+      {press: 'Meta+ArrowUp'},
+      {press: 'Meta+ArrowDown'},
+    ],
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can type several paragraphs',
+    steps: typeParagraphs([
+      'First paragraph.',
+      'Second paragraph.',
+      'Third paragraph.',
+    ]),
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can move to the top of the editor',
+    steps: [...longParagraphs, {press: 'Meta+ArrowUp'}],
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can move to the bottom of the editor',
+    steps: [
+      ...longParagraphs,
       {press: 'Meta+ArrowUp'},
       {press: 'Meta+ArrowDown'},
     ],

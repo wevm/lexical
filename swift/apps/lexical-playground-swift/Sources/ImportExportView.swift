@@ -41,7 +41,11 @@ struct ImportExportView: View {
         }
       }
     }
-    .frame(minWidth: 560, minHeight: 480)
+    #if os(macOS)
+      // A macOS sheet sizes to its content; an iOS sheet has the screen's
+      // width, which a minimum wider than an iPhone would overflow.
+      .frame(minWidth: 560, minHeight: 480)
+    #endif
     .onAppear {
       text = format == .json ? model.exportJSON() : model.exportHTML()
     }

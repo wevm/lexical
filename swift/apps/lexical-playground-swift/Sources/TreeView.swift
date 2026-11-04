@@ -30,6 +30,8 @@ struct TreeView: View {
           .padding(.bottom, 10)
           .accessibilityIdentifier("tree-view")
       }
+      // A short tree starts at the top, not centered in the pane.
+      .defaultScrollAnchor(.topLeading, for: .alignment)
     }
     .background(Color(red: 0.13, green: 0.13, blue: 0.14))
     .environment(\.colorScheme, .dark)

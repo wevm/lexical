@@ -8,20 +8,28 @@ final class LexicalPlaygroundUITests: XCTestCase {
 
   override func setUp() {
     continueAfterFailure = false
+  }
+
+  @MainActor
+  private func launch() {
     app = XCUIApplication()
     app.launch()
   }
 
-  private var tree: String { app.staticTexts["tree-view"].label }
+  @MainActor private var tree: String { app.staticTexts["tree-view"].label }
 
+  @MainActor
   func testShowsTheWelcomeDocumentInTheTreeView() {
+    launch()
     XCTAssertTrue(app.textViews["editor"].waitForExistence(timeout: 10))
     XCTAssertTrue(tree.contains(") heading"), tree)
     XCTAssertTrue(tree.contains("\"Welcome to the playground\""), tree)
     XCTAssertTrue(tree.contains(" selection: range"), tree)
   }
 
+  @MainActor
   func testBoldButtonFormatsTheSelection() {
+    launch()
     let editor = app.textViews["editor"]
     XCTAssertTrue(editor.waitForExistence(timeout: 10))
     editor.tap()
@@ -34,7 +42,9 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForExpectations(timeout: 5)
   }
 
+  @MainActor
   func testExportsTheDocumentAsJSON() {
+    launch()
     XCTAssertTrue(app.textViews["editor"].waitForExistence(timeout: 10))
     app.buttons["JSON"].tap()
     let text = app.textViews["import-export-text"]

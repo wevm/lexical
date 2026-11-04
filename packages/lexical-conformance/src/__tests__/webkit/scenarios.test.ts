@@ -8,6 +8,7 @@
 import {
   buildEditorFromExtensions,
   getExtensionDependencyFromEditor,
+  TabIndentationExtension,
 } from '@lexical/extension';
 import {HistoryExtension} from '@lexical/history';
 import {PlainTextExtension} from '@lexical/plain-text';
@@ -31,6 +32,7 @@ import {
   linuxWebKitChord,
   type Scenario,
   SCENARIO_FILES,
+  type ScenarioExtension,
   type ScenarioMode,
   type ScenarioStep,
 } from '../../scenarios';
@@ -66,6 +68,7 @@ type ScenarioCase = {
   name: string;
   mode: ScenarioMode;
   steps: ScenarioStep[];
+  extensions?: ScenarioExtension[];
   /** The editor after each step. */
   after: Snapshot[];
 };
@@ -122,6 +125,12 @@ async function record(
         // Every step merges into the same history entry unless something
         // else separates it, wherever the steps run.
         configExtension(HistoryExtension, {now: () => 0}),
+        ...(scenario.extensions ?? []).map(extension => {
+          switch (extension) {
+            case 'tab-indentation':
+              return TabIndentationExtension;
+          }
+        }),
       ],
       name: '[scenario]',
     }),
@@ -165,7 +174,13 @@ async function record(
       await settle();
       after.push(snapshot(editor));
     }
-    return {after, mode, name: scenario.name, steps: scenario.steps};
+    return {
+      after,
+      ...(scenario.extensions ? {extensions: scenario.extensions} : {}),
+      mode,
+      name: scenario.name,
+      steps: scenario.steps,
+    };
   } finally {
     editor.dispose();
     root.remove();

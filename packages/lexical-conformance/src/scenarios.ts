@@ -31,11 +31,18 @@ export type ScenarioStep =
 
 export type ScenarioMode = 'rich' | 'plain';
 
+/**
+ * Extensions a scenario's editor adds to the views' set, for specs that
+ * depend on a playground plugin with a Lexical extension equivalent.
+ */
+export type ScenarioExtension = 'tab-indentation';
+
 export type Scenario = {
   /** `<spec file name> > <test title>`, with the describe titles. */
   name: string;
   modes: ScenarioMode[];
   steps: ScenarioStep[];
+  extensions?: ScenarioExtension[];
 };
 
 const both: ScenarioMode[] = ['rich', 'plain'];
@@ -553,12 +560,23 @@ export const NAVIGATION: Scenario[] = [
   },
 ];
 
+/** Tab.spec.mjs, with the playground's TabIndentationPlugin. */
+export const TAB: Scenario[] = [
+  {
+    extensions: ['tab-indentation'],
+    modes: ['rich'],
+    name: 'Tab > can go to start of line after a tab character',
+    steps: [{type: 'Foo'}, {press: 'Tab'}, {press: 'Meta+ArrowLeft'}],
+  },
+];
+
 export const SCENARIO_FILES: {name: string; scenarios: Scenario[]}[] = [
   {name: 'text-entry', scenarios: TEXT_ENTRY},
   {name: 'history', scenarios: HISTORY},
   {name: 'text-formatting', scenarios: TEXT_FORMATTING},
   {name: 'selection', scenarios: SELECTION},
   {name: 'navigation', scenarios: NAVIGATION},
+  {name: 'tab', scenarios: TAB},
 ];
 
 /**

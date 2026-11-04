@@ -30,7 +30,7 @@ private enum ScenarioVectors {
     return FileManager.default.fileExists(atPath: url.path) ? url : nil
   }()
 
-  static let files = ["text-entry", "history", "text-formatting", "selection", "navigation"]
+  static let files = ["text-entry", "history", "text-formatting", "selection", "navigation", "tab"]
 
   /// `swift/parity/deviations.json`: the deviation listing each scenario
   /// (`<name> (<mode>)`) that may differ from WebKit.
@@ -114,14 +114,19 @@ private final class ScenarioRunner {
   /// keeps its goal x until the caret moves another way.
   private var goalColumn: Int?
 
-  init(mode: String) throws {
+  init(mode: String, extensions: [String]) throws {
+    var dependencies: [any AnyLexicalExtensionArgument] = [
+      mode == "rich" ? RichTextExtension : PlainTextExtension,
+      configExtension(HistoryExtension) { $0.now = { 0 } },
+    ]
+    for name in extensions {
+      switch name {
+      case "tab-indentation": dependencies.append(TabIndentationExtension)
+      default: Issue.record("unknown scenario extension \(name)")
+      }
+    }
     editor = try buildEditorFromExtensions(
-      defineExtension(
-        name: "[scenario]",
-        dependencies: [
-          mode == "rich" ? RichTextExtension : PlainTextExtension,
-          configExtension(HistoryExtension) { $0.now = { 0 } },
-        ]))
+      defineExtension(name: "[scenario]", dependencies: dependencies))
     controller = TextKitInputController(editor: editor)
     try editor.setRootElement(root)
     try editor.update(discrete: true) {
@@ -334,7 +339,9 @@ struct ScenarioTests {
     let after = object["after"]?.arrayValue ?? []
     let replay = {
       try withIsApple(true) {
-        let runner = try ScenarioRunner(mode: mode)
+        let runner = try ScenarioRunner(
+          mode: mode,
+          extensions: object["extensions"]?.arrayValue?.compactMap(\.stringValue) ?? [])
         for (i, step) in steps.enumerated() {
           try runner.run(try #require(step.objectValue))
           let actual = try runner.snapshot()

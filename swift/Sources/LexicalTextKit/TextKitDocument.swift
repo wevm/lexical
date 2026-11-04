@@ -55,7 +55,7 @@ public struct TextKitDocument: Sendable {
   /// The rendered text.
   public internal(set) var string = ""
   /// Every rendered node, by key.
-  var entries: [NodeKey: Entry] = [:]
+  var entries: [FastHashKey<NodeKey>: Entry] = [:]
 
   public init() {}
 

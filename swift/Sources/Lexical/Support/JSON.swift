@@ -99,7 +99,7 @@ public struct JSONObject: Equatable, Sendable, Sequence {
   // linear scan finds sooner than a hash table, and without allocating one;
   // larger objects also get `index`.
   private var entries: [(key: String, value: JSONValue?)] = []
-  private var index: [String: Int]?
+  private var index: [FastHashKey<String>: Int]?
 
   private static let indexThreshold = 16
 
@@ -113,14 +113,15 @@ public struct JSONObject: Equatable, Sendable, Sequence {
   public var keys: [String] { entries.map(\.key) }
 
   private func position(of key: String) -> Int? {
-    if let index { return index[key] }
-    return entries.firstIndex { $0.key == key }
+    if let index { return index[FastHashKey(key)] }
+    let probe = FastHashKey(key)
+    return entries.firstIndex { FastHashKey($0.key) == probe }
   }
 
   private mutating func append(_ key: String, _ value: JSONValue?) {
     entries.append((key, value))
     if index != nil {
-      index![key] = entries.count - 1
+      index![FastHashKey(key)] = entries.count - 1
     } else if entries.count > Self.indexThreshold {
       reindex()
     }
@@ -131,9 +132,9 @@ public struct JSONObject: Equatable, Sendable, Sequence {
       index = nil
       return
     }
-    var index: [String: Int] = [:]
+    var index: [FastHashKey<String>: Int] = [:]
     index.reserveCapacity(entries.count)
-    for (i, entry) in entries.enumerated() { index[entry.key] = i }
+    for (i, entry) in entries.enumerated() { index[FastHashKey(entry.key)] = i }
     self.index = index
   }
 

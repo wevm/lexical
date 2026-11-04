@@ -14,13 +14,22 @@
   // the model the editor's extensions produce.
 
   @MainActor
-  private func makeView(delay: Double = 300) throws -> (LexicalUITextView, UIWindow) {
+  /// `frozenClock` stops history's clock, so changes merge however long a
+  /// loaded simulator takes between them.
+  private func makeView(
+    delay: Double = 300, frozenClock: Bool = false
+  ) throws -> (
+    LexicalUITextView, UIWindow
+  ) {
     let editor = try buildEditorFromExtensions(
       defineExtension(
         name: "test",
         dependencies: [
           RichTextExtension,
-          configExtension(HistoryExtension) { $0.delay = delay },
+          configExtension(HistoryExtension) {
+            $0.delay = delay
+            if frozenClock { $0.now = { 0 } }
+          },
         ]))
     let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
     let view = LexicalUITextView(editor: editor, frame: window.bounds)
@@ -145,7 +154,9 @@
     }
 
     @Test func mergesKeysTypedAsReplacementsOfTheSelection() throws {
-      let (view, window) = try makeView()
+      // With the wall clock, a key more than 300 ms after the previous one
+      // starts a new undo entry, which a loaded full-suite run can hit.
+      let (view, window) = try makeView(frozenClock: true)
       // The iOS keyboard types each key by replacing the selection.
       for key in ["O", "n", "e"] {
         view.replace(try #require(view.selectedTextRange), withText: key)

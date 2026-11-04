@@ -2,3 +2,4 @@
 .swiftpm/
 *.xcodeproj/xcuserdata/
 Package.resolved
+apps/lexical-playground-swift/LexicalPlayground.xcodeproj/

@@ -5,6 +5,10 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `apps/lexical-playground-swift`: the Swift playground for iOS and macOS,
+  with a toolbar (undo and redo, block type, text formats, clear
+  formatting, alignment, indent), the tree view, JSON and HTML import and
+  export, and settings (rich or plain text, debug view, editable).
 - New `LexicalDevtoolsCore`: `generateContent`, the text of the playground's
   tree view (the tree with its selection, the commands and the editor's
   settings), or the state's HTML, indented. It matches

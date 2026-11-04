@@ -1,0 +1,70 @@
+# The Swift playground: the editor with a toolbar, the tree view, JSON and
+# HTML import and export and debug settings, laid out like the upstream
+# playground (packages/lexical-playground). Generate the Xcode project with
+# `xcodegen generate` (it is not checked in); signing takes DEVELOPMENT_TEAM
+# from the xcodebuild command line, never from this file.
+name: LexicalPlayground
+options:
+  bundleIdPrefix: dev.lexical.swift
+  deploymentTarget:
+    iOS: '26.0'
+    macOS: '26.0'
+packages:
+  Lexical:
+    path: ../..
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: YES
+    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    LEXICAL_BUNDLE_PREFIX: dev.lexical.swift
+targets:
+  LexicalPlayground:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground
+        INFOPLIST_KEY_CFBundleDisplayName: Lexical Playground
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight'
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+    dependencies:
+      - package: Lexical
+        product: Lexical
+      - package: Lexical
+        product: LexicalDevtoolsCore
+      - package: Lexical
+        product: LexicalExtension
+      - package: Lexical
+        product: LexicalHistory
+      - package: Lexical
+        product: LexicalHTML
+      - package: Lexical
+        product: LexicalPlainText
+      - package: Lexical
+        product: LexicalRichText
+      - package: Lexical
+        product: LexicalSelection
+      - package: Lexical
+        product: LexicalSwiftUI
+  LexicalPlaygroundUITests:
+    type: bundle.ui-testing
+    supportedDestinations: [iOS]
+    sources: [UITests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground.uitests
+    dependencies:
+      - target: LexicalPlayground
+schemes:
+  LexicalPlayground:
+    build:
+      targets:
+        LexicalPlayground: all
+        LexicalPlaygroundUITests: [test]
+    test:
+      targets: [LexicalPlaygroundUITests]

@@ -204,6 +204,57 @@
       _ = window
     }
 
+    @Test func centersTextInCSSLineBoxes() throws {
+      let (view, window) = try makeView()
+      // Lines of capitals, whose ink runs from the cap height to the
+      // baseline.
+      view.insertText(String(repeating: "HHHH ", count: 16))
+      view.layoutIfNeeded()
+      let layoutManager = try #require(view.textLayoutManager)
+      layoutManager.ensureLayout(for: layoutManager.documentRange)
+      view.layoutIfNeeded()
+      let format = UIGraphicsImageRendererFormat()
+      format.scale = 2
+      let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { context in
+        UIColor.white.setFill()
+        context.fill(view.bounds)
+        view.layer.render(in: context.cgContext)
+      }
+      let cgImage = try #require(image.cgImage)
+      let bytes = try #require(cgImage.dataProvider?.data.flatMap(CFDataGetBytePtr))
+      var lines: [(top: CGFloat, bottom: CGFloat)] = []
+      for row in 0..<cgImage.height {
+        let dark = (0..<min(cgImage.width, 200)).contains { column in
+          let pixel = bytes + row * cgImage.bytesPerRow + column * cgImage.bitsPerPixel / 8
+          // The black text, not the blue caret.
+          return max(pixel[0], pixel[1], pixel[2]) < 100
+        }
+        guard dark else { continue }
+        if let last = lines.last, last.bottom == CGFloat(row) / 2 {
+          lines[lines.count - 1].bottom = CGFloat(row + 1) / 2
+        } else {
+          lines.append((CGFloat(row) / 2, CGFloat(row + 1) / 2))
+        }
+      }
+      // The playground's `line-height: 1.7` at 16 points: 27.2-point line
+      // boxes, each with half the space the font leaves above its text.
+      let font = UIFont.systemFont(ofSize: 16)
+      let halfLeading = (27.2 - (font.ascender - font.descender)) / 2
+      try #require(lines.count >= 2, "\(lines)")
+      for (index, line) in lines.enumerated() {
+        let baseline =
+          view.textContainerInset.top + 27.2 * CGFloat(index) + halfLeading + font.ascender
+        #expect(abs(line.bottom - baseline) <= 1, "line \(index): \(line), baseline \(baseline)")
+        #expect(abs(line.top - (baseline - font.capHeight)) <= 1, "line \(index): \(line)")
+      }
+      // The caret is as tall as the font, on the centered text.
+      let position = try #require(view.position(from: view.beginningOfDocument, offset: 2))
+      let caret = view.caretRect(for: position)
+      #expect(abs(caret.minY - (view.textContainerInset.top + halfLeading)) <= 0.5, "\(caret)")
+      #expect(abs(caret.height - (font.ascender - font.descender)) <= 0.5, "\(caret)")
+      _ = window
+    }
+
     @Test func hitTestsCarets() throws {
       let (view, window) = try makeView()
       view.insertText("Hello")

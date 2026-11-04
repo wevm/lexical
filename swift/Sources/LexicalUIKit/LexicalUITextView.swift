@@ -35,6 +35,8 @@
     private let history = HistoryUndoManager()
     public override var undoManager: UndoManager? { history }
     private let blockBarsView = BlockBarsView()
+    /// The layout manager's delegate, kept here because it is held weakly.
+    private let layoutDelegate = CenteredLineLayoutDelegate()
     /// A control over each check list item's box, which toggles the item:
     /// a tap on a control does not reach the text view's own taps, so the
     /// caret stays where it was, as checkList.ts leaves it.
@@ -50,6 +52,7 @@
       controller = TextKitInputController(editor: editor)
       super.init(frame: frame, textContainer: nil)
       delegate = self
+      textLayoutManager?.delegate = layoutDelegate
       allowsEditingTextAttributes = false
       textDragDelegate = self
       for interaction in interactions where interaction is UIDropInteraction {
@@ -201,7 +204,10 @@
           NSRange(location: paragraph.range.location, length: paragraph.range.length),
           NSRange(location: 0, length: length))
         textStorage.addAttribute(
-          .paragraphStyle, value: paragraph.attributes.uiParagraphStyle, range: range)
+          .paragraphStyle,
+          value: paragraph.attributes.uiParagraphStyle(
+            fontSize: paragraph.text.uiFont(contentSize).pointSize),
+          range: range)
         if range.length > 0,
           (textStorage.string as NSString).character(at: range.upperBound - 1) == 0x0A
         {
@@ -473,6 +479,40 @@
 
     // MARK: Selection
 
+    /// The caret is as tall as the font before it, on its line's centered
+    /// text, as a browser draws it: `UITextView` makes it as tall as the
+    /// line, from where TextKit put the text.
+    public override func caretRect(for position: UITextPosition) -> CGRect {
+      let caret = super.caretRect(for: position)
+      let offset = self.offset(from: beginningOfDocument, to: position)
+      guard let layoutManager = textLayoutManager,
+        let location = textRange(NSRange(location: offset, length: 0))?.location,
+        let fragment = layoutManager.textLayoutFragment(for: location)
+      else { return caret }
+      let frame = fragment.layoutFragmentFrame
+      let top = textContainerInset.top + frame.minY
+      // The line the caret is on, which `UITextView` put it beside.
+      guard
+        let line = fragment.textLineFragments.first(where: { line in
+          let bounds = line.typographicBounds
+          return top + bounds.minY <= caret.midY && caret.midY < top + bounds.maxY
+        }) ?? fragment.textLineFragments.last
+      else { return caret }
+      // The text before the caret, or at the start of a line the text after.
+      let string = textStorage.string as NSString
+      let index = offset > 0 && string.character(at: offset - 1) != 0x0A ? offset - 1 : offset
+      let font =
+        index < string.length
+        ? textStorage.attribute(.font, at: index, effectiveRange: nil) as? UIFont
+        : typingAttributes[.font] as? UIFont
+      let ascent = font?.ascender ?? line.fontExtents?.ascent ?? 0
+      let descent = font.map { -$0.descender } ?? line.fontExtents?.descent ?? 0
+      guard ascent + descent > 0 else { return caret }
+      let baseline = top + line.typographicBounds.minY + line.glyphOrigin.y - line.textOffset
+      return CGRect(
+        x: caret.minX, y: baseline - ascent, width: caret.width, height: ascent + descent)
+    }
+
     /// The text view edited its own text: the edits replay as input.
     public func textViewDidChange(_ textView: UITextView) {
       if isRendering { return }
@@ -675,12 +715,11 @@
       }
     }
 
-    /// Where text in `font` sits in its first line `line`: a line height
-    /// above the font's adds its space above the text, so the glyphs end at
-    /// the line's bottom.
+    /// Where text in `font` sits in its first line `line`: centered, as
+    /// `CenteredLineLayoutFragment` draws it.
     private func glyphBox(_ font: UIFont, _ line: CGRect) -> CGRect {
-      let height = min(line.height, font.ascender - font.descender)
-      return CGRect(x: line.minX, y: line.maxY - height, width: line.width, height: height)
+      let height = font.ascender - font.descender
+      return CGRect(x: line.minX, y: line.midY - height / 2, width: line.width, height: height)
     }
 
     /// `layout`'s marker on the item's first line, `line`: a text marker

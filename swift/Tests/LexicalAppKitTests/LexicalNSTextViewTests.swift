@@ -190,6 +190,46 @@
       _ = window
     }
 
+    @Test func centersTextInCSSLineBoxes() throws {
+      let (view, window) = try makeView()
+      // Lines of capitals, whose ink runs from the cap height to the
+      // baseline.
+      insert(view, String(repeating: "HHHH ", count: 16))
+      let layoutManager = try #require(view.textLayoutManager)
+      layoutManager.ensureLayout(for: layoutManager.documentRange)
+      view.layoutSubtreeIfNeeded()
+      let rep = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+      view.cacheDisplay(in: view.bounds, to: rep)
+      let scale = CGFloat(rep.pixelsHigh) / view.bounds.height
+      var inked: [Int] = []
+      for row in 0..<rep.pixelsHigh {
+        let dark = (0..<min(rep.pixelsWide, 200)).contains { column in
+          (rep.colorAt(x: column, y: row)?.brightnessComponent ?? 1) < 0.5
+        }
+        if dark { inked.append(row) }
+      }
+      var lines: [(top: CGFloat, bottom: CGFloat)] = []
+      for row in inked {
+        if let last = lines.last, last.bottom == CGFloat(row) / scale {
+          lines[lines.count - 1].bottom = CGFloat(row + 1) / scale
+        } else {
+          lines.append((CGFloat(row) / scale, CGFloat(row + 1) / scale))
+        }
+      }
+      // The playground's `line-height: 1.7` at 16 points: 27.2-point line
+      // boxes, each with half the space the font leaves above its text.
+      let font = NSFont.systemFont(ofSize: 16)
+      let halfLeading = (27.2 - (font.ascender - font.descender)) / 2
+      try #require(lines.count >= 2, "\(lines)")
+      for (index, line) in lines.enumerated() {
+        let baseline =
+          view.textContainerInset.height + 27.2 * CGFloat(index) + halfLeading + font.ascender
+        #expect(abs(line.bottom - baseline) <= 1, "line \(index): \(line), baseline \(baseline)")
+        #expect(abs(line.top - (baseline - font.capHeight)) <= 1, "line \(index): \(line)")
+      }
+      _ = window
+    }
+
     @Test func shiftArrowsExtendBackwardAndProgramsSelectForward() throws {
       let (view, window) = try makeView()
       insert(view, "abc")

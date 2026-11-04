@@ -14,11 +14,11 @@ public typealias TextDetailType = String
 
 /// A run of text with one format and style.
 open class TextNode: LexicalNode {
-  package var __text = ""
-  package var __format = 0
-  package var __style = ""
-  package var __mode = 0
-  package var __detail = 0
+  @exclusivity(unchecked) package var __text = ""
+  @exclusivity(unchecked) package var __format = 0
+  @exclusivity(unchecked) package var __style = ""
+  @exclusivity(unchecked) package var __mode = 0
+  @exclusivity(unchecked) package var __detail = 0
 
   open override class func config() throws -> NodeConfig? {
     try NodeConfig(

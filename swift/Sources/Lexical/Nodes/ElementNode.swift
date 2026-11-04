@@ -9,16 +9,16 @@ public typealias ElementDirection = String
 
 /// A node with children, held as a doubly linked list of keys.
 open class ElementNode: LexicalNode, SlotNode {
-  package var __first: NodeKey?
-  package var __last: NodeKey?
-  package var __size = 0
-  package var __format = 0
-  package var __style = ""
-  package var __indent = 0
-  package var __dir: ElementDirection?
-  package var __textFormat = 0
-  package var __textStyle = ""
-  package var __slotHost: NodeKey?
+  @exclusivity(unchecked) package var __first: NodeKey?
+  @exclusivity(unchecked) package var __last: NodeKey?
+  @exclusivity(unchecked) package var __size = 0
+  @exclusivity(unchecked) package var __format = 0
+  @exclusivity(unchecked) package var __style = ""
+  @exclusivity(unchecked) package var __indent = 0
+  @exclusivity(unchecked) package var __dir: ElementDirection?
+  @exclusivity(unchecked) package var __textFormat = 0
+  @exclusivity(unchecked) package var __textStyle = ""
+  @exclusivity(unchecked) package var __slotHost: NodeKey?
   /// What the node-structure normalization last recorded about this
   /// version's rule inputs (JS keeps it in a `WeakMap` keyed by version);
   /// never cloned.

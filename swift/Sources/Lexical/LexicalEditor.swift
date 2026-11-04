@@ -442,11 +442,11 @@ public final class Editor {
   /// attached (see LexicalReconciler.swift).
   package let _keyToDOMMap = JSMap<NodeKey, ReconciledNode>()
   package var _config: EditorConfig
-  package var _dirtyType = NO_DIRTY_NODES
-  package var _cloneNotNeeded = JSMap<NodeKey, LexicalNode>()
-  package var _dirtyLeaves = JSSet<NodeKey>()
-  package var _dirtyElements = JSMap<NodeKey, Bool>()
-  package var _normalizedNodes = JSSet<NodeKey>()
+  @exclusivity(unchecked) package var _dirtyType = NO_DIRTY_NODES
+  @exclusivity(unchecked) package var _cloneNotNeeded = JSMap<NodeKey, LexicalNode>()
+  @exclusivity(unchecked) package var _dirtyLeaves = JSSet<NodeKey>()
+  @exclusivity(unchecked) package var _dirtyElements = JSMap<NodeKey, Bool>()
+  @exclusivity(unchecked) package var _normalizedNodes = JSSet<NodeKey>()
   package var _updateTags = JSSet<UpdateTag>()
   package var _inputState = InputState()
   /// `_keyDownShortcuts`: the compiled key-down bindings, for the platform

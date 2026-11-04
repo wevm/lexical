@@ -10,16 +10,19 @@ public typealias NodeKey = String
 /// `$config()` in JS, and needs `required init(key:)`. `@LexicalNode`
 /// generates both.
 open class LexicalNode {
+  // The `__` fields are read and assigned whole, never passed inout, so
+  // their dynamic exclusivity checks, a large share of an update's time, are
+  // off (as for the subclasses' fields).
   /// The node's type. Assigned once, in `init`.
-  public package(set) var __type: String = ""
+  @exclusivity(unchecked) public package(set) var __type: String = ""
   /// The key every version of this node shares.
-  public package(set) var __key: NodeKey = ""
-  package var __parent: NodeKey?
-  package var __prev: NodeKey?
-  package var __next: NodeKey?
-  package var __state: NodeState?
+  @exclusivity(unchecked) public package(set) var __key: NodeKey = ""
+  @exclusivity(unchecked) package var __parent: NodeKey?
+  @exclusivity(unchecked) package var __prev: NodeKey?
+  @exclusivity(unchecked) package var __next: NodeKey?
+  @exclusivity(unchecked) package var __state: NodeState?
   /// See `$markEphemeral`.
-  package var __ephemeral = false
+  @exclusivity(unchecked) package var __ephemeral = false
 
   // MARK: Static configuration
 

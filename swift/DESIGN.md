@@ -512,9 +512,11 @@ Reversible choices made porting `@lexical/extension` under Q18.
   gesture recognizer that never recognizes (so it cannot block the text
   view's own taps) reads each tap's `tapCount`, and a third or later tap
   is reported on the next main-queue turn, after `UITextView` has applied
-  its paragraph selection. `NSTextView`'s paragraph selection includes the
-  trailing newline, which the extension trims; `UITextView`'s already
-  stops before it, so there it changes nothing. The
+  its paragraph selection. Neither view's paragraph selection takes the
+  trailing newline (`LexicalNSTextView` drops it from the ranges
+  `NSTextView` selects while it tracks a triple click, since it draws them
+  as it goes and one with the newline would flash across the line's
+  width), so on a native view the extension changes nothing. The
   deprecated `thresholdMsec` and `dateNow` options are not ported.
 - **`IMEExtension` ends a composition on `COMPOSITION_END_COMMAND`.** JS
   clears its `compositionKey` on the root element's `compositionend` event;

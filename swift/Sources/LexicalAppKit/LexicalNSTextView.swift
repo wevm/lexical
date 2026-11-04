@@ -34,6 +34,8 @@
     let decorators = DecoratorAttachments()
     /// Set while a shifted key the text view handles is pressed.
     private var isExtendingSelection = false
+    /// Set while the mouse tracks a triple (or later) click.
+    private var isSelectingParagraphs = false
     /// The editor's live region, while this view hosts it
     /// (`AriaLiveRegionExtension`); its announcements are spoken.
     public internal(set) var liveRegion: LiveRegion?
@@ -538,6 +540,18 @@
     public override func setSelectedRanges(
       _ ranges: [NSValue], affinity: NSSelectionAffinity, stillSelecting: Bool
     ) {
+      var ranges = ranges
+      // A triple click's paragraph selection stops before the paragraph's
+      // newline, as `UITextView`'s does. `NSTextView` draws it while it
+      // tracks the mouse, so one that took the newline would cover the
+      // line's whole width until the click is reported and
+      // `NormalizeTripleClickSelectionExtension` trims it.
+      if isSelectingParagraphs, let last = ranges.last?.rangeValue, last.length > 1,
+        (string as NSString).character(at: last.upperBound - 1) == 0x0A
+      {
+        ranges[ranges.count - 1] = NSValue(
+          range: NSRange(location: last.location, length: last.length - 1))
+      }
       super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
       guard !isRendering, !stillSelecting, let range = ranges.first?.rangeValue else { return }
       if let current = try? controller.selectedRange(),
@@ -567,7 +581,9 @@
         perform { try controller.toggleChecked(item) }
         return
       }
+      isSelectingParagraphs = event.clickCount >= 3
       super.mouseDown(with: event)
+      isSelectingParagraphs = false
       let mouseEvent = MouseEvent(
         "click", clientX: point.x, clientY: point.y, detail: event.clickCount,
         altKey: event.modifierFlags.contains(.option),

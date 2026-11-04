@@ -29,6 +29,16 @@ workflow publishes the section headed `## <swift/VERSION>`.
   (`getFirstCodeNodeOfLine`, `getStartOfCodeInLine`, `plainifyCodeContent`,
   `outdentLeadingSpaces`, …). Code blocks serialize byte for byte as in JS.
   There is no highlighter yet, and no gutter.
+- New `LexicalMarkdown`, a port of `@lexical/markdown`:
+  `convertFromMarkdownString`, `convertToMarkdownString`,
+  `convertSelectionToMarkdownString`, `generateNodesFromMarkdownString`,
+  `registerMarkdownShortcuts`, the built-in transformers (`HEADING`,
+  `QUOTE`, `CODE`, the three lists, `LINK`, the text formats, `TRANSFORMERS`
+  and its groups), the transformer types for custom ones, and
+  `isTableRowDivider`. Transformers keep their JS regular expressions as
+  `JSRegExp`, which runs JS regex source on ICU with UTF-16 indices. Import
+  and export match JS byte for byte on all 149 cases of upstream's
+  import/export table.
 - `DataTransfer` reads and writes the `text` format as `text/plain` and
   `url` as `text/uri-list`, as browsers do.
 - `LexicalTesting.withLargeStack` runs a test body on an 8 MB stack.

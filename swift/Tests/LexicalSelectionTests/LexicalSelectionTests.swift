@@ -3,6 +3,7 @@ import LexicalExtension
 import LexicalHistory
 import LexicalLink
 import LexicalList
+import LexicalMarkdown
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -22,7 +23,7 @@ import Testing
 // test utils. The HTML is compared through `renderedHTML`, and the expected
 // window selection through the DOM path of the committed selection.
 //
-// Not ported: the cases that build tables or markdown.
+// Not ported: the cases that build tables.
 
 private let theme: EditorThemeClasses = [
   "code": "editor-code",
@@ -422,8 +423,10 @@ private final class Fixture {
     editor = try buildEditorFromExtensions(
       defineExtension(
         name: "@test",
-        // `HistoryPlugin`, whose default delay is 1000 ms.
-        dependencies: [RichTextExtension, configExtension(HistoryExtension) { $0.delay = 1000 }],
+        // `HistoryPlugin`, whose default delay is 1000 ms; `ListPlugin`.
+        dependencies: [
+          RichTextExtension, configExtension(HistoryExtension) { $0.delay = 1000 }, ListExtension,
+        ],
         // Upstream's default test nodes include the list and link nodes.
         nodes: {
           defaultTestNodes + [
@@ -431,7 +434,9 @@ private final class Fixture {
             .klass(LinkNode.self),
           ]
         },
-        editorConfig: InitialEditorConfig(theme: theme)))
+        editorConfig: InitialEditorConfig(theme: theme),
+        // `MarkdownShortcutPlugin transformers={[UNORDERED_LIST]}`.
+        register: { editor, _, _ in try registerMarkdownShortcuts(editor, [UNORDERED_LIST]) }))
     try editor.setRootElement(TestRootElement())
     editor.selectionMovement = movement
     drainMicrotasks()
@@ -1224,6 +1229,36 @@ private func withStyledText(
       #expect(selection.anchor.key == paragraphNodeKey)
       #expect(selection.focus.key == paragraphNodeKey)
     }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Ctrl+Backspace deletes list created by typing \"- \""
+    ))
+  func ctrlBackspaceDeletesTypedList() throws {
+    let fixture = try Fixture()
+    defer { fixture.dispose() }
+    let emptyItem = { (value: Int) in "<li value=\"\(value)\">\(emptyParagraph)</li>" }
+    let list = { (items: String) in "<ul class=\"editor-list-ul\" dir=\"auto\">\(items)</ul>" }
+    let preceding = "<p class=\"editor-paragraph\" dir=\"auto\">\(span("preceding paragraph"))</p>"
+    try fixture.apply([.insertText("-"), .insertText(" ")])
+    #expect(try fixture.html() == rootOpen + list(emptyItem(1)) + "</div>")
+
+    try fixture.apply([.deleteWordBackward(1)])
+    #expect(try fixture.html() == paragraphs(emptyParagraph))
+
+    try fixture.apply([
+      .insertText("preceding paragraph"), .insertParagraph, .insertText("-"), .insertText(" "),
+      .insertParagraph,
+    ])
+    #expect(
+      try fixture.html() == rootOpen + preceding + list(emptyItem(1) + emptyItem(2)) + "</div>")
+
+    try fixture.apply([.deleteWordBackward(1)])
+    #expect(try fixture.html() == rootOpen + preceding + list(emptyItem(1)) + "</div>")
+
+    try fixture.apply([.deleteWordBackward(1)])
+    #expect(try fixture.html() == rootOpen + preceding + "</div>")
   }
 
   @Test(

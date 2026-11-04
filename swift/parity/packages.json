@@ -13,5 +13,5 @@
   "lexical-list": "enforced",
   "lexical-link": "enforced",
   "lexical-code-core": "enforced",
-  "lexical-markdown": "pending"
+  "lexical-markdown": "enforced"
 }

@@ -48,6 +48,14 @@ package final class ThreadContext {
   /// The active render and import context of LexicalHTML
   /// (`ContextRecord.ts`'s `activeContext`).
   package var htmlContext: AnyObject?
+  /// The export in progress of LexicalMarkdown (`MarkdownExport.ts`'s
+  /// `bracketContext`).
+  package var markdownBracketContext: AnyObject?
+  /// The list columns of the markdown import in progress
+  /// (`MarkdownTransformers.ts`'s `importListColumns` and
+  /// `importJoinsLooseLists`).
+  package var markdownImportListColumns: [Int]?
+  package var markdownImportJoinsLooseLists = false
   /// `withIsApple`: overrides `IS_APPLE` on this thread.
   package var isAppleOverride: Bool?
   /// Runs before each `getParent()` of an element on this thread: a test's

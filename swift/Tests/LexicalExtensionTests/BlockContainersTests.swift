@@ -1,7 +1,9 @@
 import Lexical
 import LexicalCodeCore
 import LexicalExtension
+import LexicalLink
 import LexicalList
+import LexicalMarkdown
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -9,9 +11,6 @@ import LexicalUtils
 import Testing
 
 // Port of packages/lexical-extension/src/__tests__/unit/BlockContainers.test.ts.
-// Upstream's editor also has the link extension and the markdown
-// shortcuts. The cases ported here use neither; the ones that do are
-// skipped until those packages are ported.
 
 private final class PlainBoxNode: ElementNode {
   override class func config() -> NodeConfig? {
@@ -144,6 +143,8 @@ private func p(_ t: String) throws -> ParagraphNode {
 
 private struct Cmd {
   let inner: () throws -> [LexicalNode]
+  /// Typed a character per discrete update after `run`.
+  var type = ""
   /// Run in the same update as the build (after it).
   let run: (Editor) throws -> Void
 }
@@ -184,6 +185,15 @@ nonisolated(unsafe) private let CMDS: [String: Cmd] = [
     try (getSelection() as! RangeSelection).insertNodes([
       createHeadingNode("h2").append(createTextNode("H"))
     ])
+  },
+  "markdown-heading": Cmd(inner: { [try createParagraphNode(), try p("def")] }, type: "# x") { _ in
+    // caret in the empty first paragraph of the container
+    let def = try findText("def")
+    _ = try (def.getParentOrThrow().getPreviousSibling() as! ElementNode).select()
+  },
+  "markdown-list": Cmd(inner: { [try createParagraphNode(), try p("def")] }, type: "- x") { _ in
+    let def = try findText("def")
+    _ = try (def.getParentOrThrow().getPreviousSibling() as! ElementNode).select()
   },
   "enter-empty-last-listitem": Cmd(inner: {
     [
@@ -648,14 +658,17 @@ private func buildEditor(_ structure: Bool) throws -> Editor {
   try buildEditorFromExtensions(
     defineExtension(
       name: "block-containers",
-      dependencies: [RichTextExtension, ListExtension, CodeExtension, HorizontalRuleExtension]
+      dependencies: [
+        RichTextExtension, ListExtension, LinkExtension, CodeExtension, HorizontalRuleExtension,
+      ]
         + (structure ? [NodeStructureExtension] : []),
       nodes: {
         [
           .klass(PlainBoxNode.self), .klass(DeclaredBoxNode.self), .klass(ShadowBoxNode.self),
           .klass(ComponentNode.self),
         ]
-      }, editorConfig: InitialEditorConfig(onError: { error, _ in throw error })))
+      }, editorConfig: InitialEditorConfig(onError: { error, _ in throw error }),
+      register: { editor, _, _ in try registerMarkdownShortcuts(editor) }))
 }
 
 private func run(_ cmd: Cmd, _ ctx: String, _ structure: Bool) throws -> String {
@@ -665,6 +678,13 @@ private func run(_ cmd: Cmd, _ ctx: String, _ structure: Bool) throws -> String 
   defer { try? editor.setRootElement(nil) }
   try editor.update(discrete: true) { try build(ctx, cmd.inner) }
   try editor.update(discrete: true) { try cmd.run(editor) }
+  for ch in cmd.type.unicodeScalars {
+    try editor.update(discrete: true) {
+      if let selection = try getSelection() as? RangeSelection {
+        try selection.insertText(String(ch))
+      }
+    }
+  }
   return strip(try editor.read(shapeOfRoot))
 }
 
@@ -1969,6 +1989,151 @@ struct StructuralCase: Sendable, CustomTestStringConvertible {
   func codeStructuralCommand(_ c: StructuralCase) throws {
     let want = try #require(expected(c.cmd, c.ctx)).with(c.structure)
     #expect(try run(CMDS[c.cmd]!, c.ctx, c.structure) == want)
+  }
+
+  // The markdown shortcut commands, which need LexicalMarkdown.
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in root (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in plain (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in plain (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in plain2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in plain2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in declared (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in declared (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in declared2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in declared2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in shadow2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in shadow2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in slot-shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in slot-shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in root (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in root (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in plain (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in plain (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in plain2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in plain2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in declared (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in declared (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in declared2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in declared2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in shadow (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in shadow2 (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in shadow2 (NodeStructureExtension: true)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in slot-shadow (NodeStructureExtension: false)"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in slot-shadow (NodeStructureExtension: true)"
+    ),
+    arguments: [
+      StructuralCase("markdown-heading", "root", false),
+      StructuralCase("markdown-heading", "root", true),
+      StructuralCase("markdown-heading", "plain", false),
+      StructuralCase("markdown-heading", "plain", true),
+      StructuralCase("markdown-heading", "plain2", false),
+      StructuralCase("markdown-heading", "plain2", true),
+      StructuralCase("markdown-heading", "declared", false),
+      StructuralCase("markdown-heading", "declared", true),
+      StructuralCase("markdown-heading", "declared2", false),
+      StructuralCase("markdown-heading", "declared2", true),
+      StructuralCase("markdown-heading", "shadow", false),
+      StructuralCase("markdown-heading", "shadow", true),
+      StructuralCase("markdown-heading", "shadow2", false),
+      StructuralCase("markdown-heading", "shadow2", true),
+      StructuralCase("markdown-heading", "slot-shadow", false),
+      StructuralCase("markdown-heading", "slot-shadow", true),
+      StructuralCase("markdown-list", "root", false),
+      StructuralCase("markdown-list", "root", true),
+      StructuralCase("markdown-list", "plain", false),
+      StructuralCase("markdown-list", "plain", true),
+      StructuralCase("markdown-list", "plain2", false),
+      StructuralCase("markdown-list", "plain2", true),
+      StructuralCase("markdown-list", "declared", false),
+      StructuralCase("markdown-list", "declared", true),
+      StructuralCase("markdown-list", "declared2", false),
+      StructuralCase("markdown-list", "declared2", true),
+      StructuralCase("markdown-list", "shadow", false),
+      StructuralCase("markdown-list", "shadow", true),
+      StructuralCase("markdown-list", "shadow2", false),
+      StructuralCase("markdown-list", "shadow2", true),
+      StructuralCase("markdown-list", "slot-shadow", false),
+      StructuralCase("markdown-list", "slot-shadow", true),
+    ])
+  func markdownStructuralCommand(_ c: StructuralCase) throws {
+    let want = try #require(expected(c.cmd, c.ctx)).with(c.structure)
+    #expect(try run(CMDS[c.cmd]!, c.ctx, c.structure) == want)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > every command has a row of cases"
+    ))
+  func everyCommandHasARow() {
+    #expect(EXPECTED.map(\.0).sorted() == CMDS.keys.sorted())
   }
 
   @Test(

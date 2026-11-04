@@ -3,6 +3,7 @@ import LexicalClipboard
 import LexicalExtension
 import LexicalHistory
 import LexicalList
+import LexicalMarkdown
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -11,7 +12,7 @@ import Testing
 // Port of packages/lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts.
 // Upstream's `build` registers the list and table nodes in every editor; the
 // editors here register rich text, the list and the horizontal rule. The
-// tests that build tables, code, links or markdown are skipped until those
+// tests that build tables, code or links are skipped until those
 // packages are ported.
 
 private struct BuildOptions {
@@ -349,6 +350,32 @@ private func childIds(_ state: EditorState) throws -> [String?] {
     #expect(seen.count == 1000)
     // Every character carries 6 bits: all 64 symbols show up.
     #expect(used.count == 64)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: assignment > markdown import assigns ids"
+    ))
+  func markdownImportAssignsIds() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try discrete(editor) {
+      try convertFromMarkdownString(
+        "# Title\n\nText\n\n> Quote\n\n- one\n- two\n\n1. first",
+        [HEADING, QUOTE, UNORDERED_LIST, ORDERED_LIST])
+    }
+    #expect(
+      try outline(editor).map { $0.replacing(/:b\d+$/, with: ":id") } == [
+        "heading:id",
+        "paragraph:id",
+        "quote:id",
+        "list:id",
+        "  listitem:id",
+        "  listitem:id",
+        "list:id",
+        "  listitem:id",
+      ])
+    try expectAllIndexed(editor)
   }
 }
 
@@ -1349,6 +1376,37 @@ private func enter(_ editor: Editor, _ index: Int, _ offset: Int) throws {
       #expect(
         try read.map { try getBlockById($0)?.getTextContent() } == ["Intro", "Body", "Outro"])
     }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: documents stored without ids > nested blocks are named by their path among identified blocks"
+    ))
+  func nestedBlocksNamedByPath() throws {
+    let plain = try buildWith(
+      "[plain]", [RichTextExtension, ListExtension],
+      .update { _ in
+        try convertFromMarkdownString("Title\n\n- one\n- two\n\nEnd", [UNORDERED_LIST])
+      })
+    defer { plain.dispose() }
+    try plain.read {}
+    let json = try plain.getEditorState().toJSON().stringify()
+    let editor = try reader()
+    defer { editor.dispose() }
+    try load(editor, json)
+    let key = try editor.read { try documentKey() }
+    let expected = ["0", "1", "1.0", "1.1", "2"].map { derivePositionalId(key, $0) }
+    let actual = try editor.read { () throws -> [String?] in
+      var out: [String?] = []
+      for block in try getRoot().getChildren() {
+        out.append(try getBlockId(block))
+        if let element = block as? ElementNode, element.getType() == "list" {
+          out.append(contentsOf: try element.getChildren().map { try getBlockId($0) })
+        }
+      }
+      return out
+    }
+    #expect(actual == expected)
   }
 
   @Test(

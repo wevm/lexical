@@ -69,255 +69,6 @@
     ],
     "note": "Types @lexical/mdast shortcuts."
   },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > every command has a row of cases": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-code-core",
-      "lexical-markdown"
-    ],
-    "note": "Compares the command table with the commands, which include the list, code and markdown commands."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in declared (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in declared (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in declared2 (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in declared2 (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in plain (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in plain (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in plain2 (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in plain2 (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in root (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in root (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in shadow (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in shadow (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in shadow2 (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in shadow2 (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in slot-shadow (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-heading in slot-shadow (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown"
-    ],
-    "note": "Types a markdown heading shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in declared (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in declared (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in declared2 (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in declared2 (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in plain (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in plain (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in plain2 (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in plain2 (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in root (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in root (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in shadow (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in shadow (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in shadow2 (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in shadow2 (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in slot-shadow (NodeStructureExtension: false)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::structural commands in block containers > markdown-list in slot-shadow (NodeStructureExtension: true)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Types a markdown list shortcut (registerMarkdownShortcuts)."
-  },
   "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::the character limit's OverflowNode > $insertList with the caret in an OverflowNode alone in a paragraph after another": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -521,22 +272,6 @@
       "lexical-table"
     ],
     "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: assignment > markdown import assigns ids": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Imports markdown with $convertFromMarkdownString into lists."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: documents stored without ids > nested blocks are named by their path among identified blocks": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-markdown",
-      "lexical-list"
-    ],
-    "note": "Loads a markdown document with a list."
   },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > a block that took the id meanwhile keeps it, wherever the original returns": {
     "reason": "out-of-scope-package",
@@ -1194,14 +929,6 @@
       "lexical-table"
     ],
     "note": "Builds a table ($createTableNodeWithDimensions); waits for @lexical/table."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Ctrl+Backspace deletes list created by typing \"- \"": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-markdown"
-    ],
-    "note": "Types \"- \" into the UNORDERED_LIST markdown shortcut, which makes a ListNode; waits for @lexical/list and @lexical/markdown."
   },
   "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, empty, caret in the empty scope": {
     "reason": "out-of-scope-package",
@@ -13499,5 +13226,1941 @@
       "lexical-table"
     ],
     "note": "Imports a table through TableExtension, which is not ported; port with lexical-table."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"# Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"# Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"# Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"## Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"## Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"## Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"#### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"#### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"#### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"##### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"##### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"##### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"###### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"###### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"###### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello\\nworld\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Hello\\nworld\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"Hello\\nworld\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"> Hello\\n> world!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"> Hello\\n> world!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"> Hello\\n> world!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- Hello\\n- world\\n!\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- Hello\\n- world\\n!\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- Hello\\n- world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- Hello\\n- world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- Hello\\n- world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- Level 1\\n    - Level 2\\n        - Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- Level 1\\n    - Level 2\\n        - Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- Level 1\\n    - Level 2\\n        - Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- Level 1\\n\t- Level 2\\n  \t  - Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- Level 1\\n\t- Level 2\\n  \t  - Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"* Level 1\\n    * Level 2\\n        * Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"* Level 1\\n    * Level 2\\n        * Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- 1\\. foo\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- 1\\. foo\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- 1\\. foo\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. Hello\\n2. world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"1. Hello\\n2. world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"1. Hello\\n2. world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"25. Hello\\n26. world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"25. Hello\\n26. world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"25. Hello\\n26. world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. item one\\n2. item two\\n    - sublist\\n    1. sublist\\n    - [ ] checklist\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"1. item one\\n2. item two\\n    - sublist\\n    1. sublist\\n    - [ ] checklist\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"1. item one\\n2. item two\\n    - sublist\\n    1. sublist\\n    - [ ] checklist\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n    * b\\n    * c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- a\\n    * b\\n    * c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- a\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- a\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. a\\n   - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"1. a\\n   - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"1. a\\n   - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. item one\\n2. item two\\n   - sublist\\n   1. sublist\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"1. item one\\n2. item two\\n   - sublist\\n   1. sublist\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"1. item one\\n2. item two\\n   - sublist\\n   1. sublist\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"100. a\\n    - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"100. a\\n    - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"100. a\\n    - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n  - b\\n    - c\\n      - d\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- a\\n  - b\\n    - c\\n      - d\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- a\\n  - b\\n    - c\\n      - d\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. a\\n   1. b\\n      1. c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"1. a\\n   1. b\\n      1. c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"1. a\\n   1. b\\n      1. c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n    - b\\n    - c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- a\\n    - b\\n    - c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- a\\n    - b\\n    - c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"9. a\\n   - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"9. a\\n   - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"9. a\\n   - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"10. a\\n    - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"10. a\\n    - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"10. a\\n    - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n\\ntext\\n\\n1. c\\n   - d\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- a\\n\\ntext\\n\\n1. c\\n   - d\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- a\\n\\ntext\\n\\n1. c\\n   - d\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- a\\n\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- a\\n\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. First\\n\\n   - detail\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"1. First\\n\\n   - detail\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"1. First\\n\\n   - detail\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n\\ntext\\n\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- a\\n\\ntext\\n\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- a\\n\\ntext\\n\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- bullet1\\n    1. ordered1\\n    2. ordered2\\n- bullet2\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- bullet1\\n    1. ordered1\\n    2. ordered2\\n- bullet2\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- bullet1\\n    1. ordered1\\n    2. ordered2\\n- bullet2\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. ordered1\\n    - bullet1\\n    - bullet2\\n2. ordered2\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"1. ordered1\\n    - bullet1\\n    - bullet2\\n2. ordered2\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"1. ordered1\\n    - bullet1\\n    - bullet2\\n2. ordered2\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n    1. b\\n        - c\\n        - d\\n    2. e\\n- f\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"- a\\n    1. b\\n        - c\\n        - d\\n    2. e\\n- f\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"- a\\n    1. b\\n        - c\\n        - d\\n    2. e\\n- f\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. item one\\n2. item two\\n    - sublist bullet\\n    1. sublist ordered\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"1. item one\\n2. item two\\n    - sublist bullet\\n    1. sublist ordered\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"1. item one\\n2. item two\\n    - sublist bullet\\n    1. sublist ordered\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*Hello* world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"*Hello* world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*Hello* world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Hello** world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**Hello** world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Hello** world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold label:** Following paragraph text.\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Bold label:** Following paragraph text.\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"***Hello*** world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"***Hello*** world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"***Hello*** world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`Hello` world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`Hello` world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`Hello` world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`Backtick\\` after backslash\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`Backtick\\` after backslash\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`Backtick\\` after backslash\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`Backtick`\\\\ before backslash\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`Backtick`\\\\ before backslash\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`Backtick`\\\\ before backslash\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"~~Hello~~ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"~~Hello~~ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"~~Hello~~ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`hello$`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`hello$`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`hello$`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`$$hello`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`$$hello`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`$$hello`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`$a` `$b`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`$a` `$b`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`$a` `$b`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[x *a* `y](z)`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[x *a* `y](z)`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*a [b* `c](d)`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*a [b* `c](d)`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*a**`x`*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*a**`x`*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Here: `` a`b ``\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"Here: `` a`b ``\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Here: `` a`b ``\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Code: ``` a``b ```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"Code: ``` a``b ```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Code: ``` a``b ```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`` `x ``\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`` `x ``\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`` `x ``\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**`` a`b ``**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**`` a`b ``**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**`` a`b ``**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[Hello](https://lexical.dev) world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[Hello](https://lexical.dev) world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[Hello](https://lexical.dev) world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[Hello](https://lexical.dev \"Hello world\") world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[Hello](https://lexical.dev \"Hello world\") world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[Hello](https://lexical.dev \"Hello world\") world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[Hello](https://lexical.dev \"Title with \\\" escaped character\") world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[Hello](https://lexical.dev \"Title with \\\" escaped character\") world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[Hello](https://lexical.dev \"Title with \\\" escaped character\") world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello ***~~world~~***!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"Hello ***~~world~~***!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Hello ***~~world~~***!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Hello ~~world~~**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**Hello ~~world~~**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Hello ~~world~~**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**~~Hello *world*~~**~~!~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**~~Hello *world*~~**~~!~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**~~Hello *world*~~**~~!~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*Hello **world**!*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"*Hello **world**!*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*Hello **world**!*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"hello\\nworld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"hello\\nworld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"hello\\nworld\" #2": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"hello\\nworld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"hello\\nworld\" #2": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"hello\\nworld\" #3": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"hello\\nworld\" #2": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"hello\\nworld\" #3": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"# Hello\\n\\n\\n\\n**world**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"# Hello\\n\\n\\n\\n**world**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"# Hello\\n\\n\\n\\n**world**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"# Hello\\nhi\\n\\n**world**\\n\\nhi\\n> hello\\n> hello\\n\\n# hi\\n\\nhi\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"# Hello\\nhi\\n\\n**world**\\n\\nhi\\n> hello\\n> hello\\n\\n# hi\\n\\nhi\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"# Hello\\nhi\\n\\n**world**\\n\\nhi\\n> hello\\n> hello\\n\\n# hi\\n\\nhi\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"_Hello_ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"_Hello_ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"__Hello__ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"__Hello__ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"___Hello___ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"___Hello___ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello ~~__*world*__~~!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Hello ~~__*world*__~~!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```Single line Code```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"```Single line Code```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```javascript Incomplete tag\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"```javascript Incomplete tag\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```javascript Incomplete multiline\\n\\nTag\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"```javascript Incomplete multiline\\n\\nTag\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```javascript\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"```javascript\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"```javascript\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```unknown\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"```unknown\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"```unknown\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\t```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"\t```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"   ```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"   ```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"### Code blocks\\n\\n```javascript\\n1 + 1 = 2;\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"### Code blocks\\n\\n```javascript\\n1 + 1 = 2;\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"### Code blocks\\n\\n```javascript\\n1 + 1 = 2;\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello\\n\\n\\n\\nworld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Hello\\n\\n\\n\\nworld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"> Hello\\nworld\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"> Hello\\nworld\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello [world](https://lexical.dev)! Hello $world$! [Hello](https://lexical.dev) world! Hello $world$!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Hello [world](https://lexical.dev)! Hello $world$! [Hello](https://lexical.dev) world! Hello $world$!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"$$H$&e$\\`l$'l$o$\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Some HTML in mdx:\\n\\n<MyComponent>Some Text</MyComponent>\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"Some HTML in mdx:\\n\\n<MyComponent>Some Text</MyComponent>\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Some HTML in mdx:\\n\\n<MyComponent>Some Text</MyComponent>\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Some HTML in mdx:\\n\\n<MyComponent>Line 1\\nSome Text</MyComponent>\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Some HTML in mdx:\\n\\n<MyComponent>Line 1\\nSome Text</MyComponent>\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```ts\\nCode\\n```ts\\nSub Code\\n```\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"```ts\\nCode\\n```ts\\nSub Code\\n```\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello <MyTag>One <MyTag>Two</MyTag></MyTag> there\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Hello <MyTag>One <MyTag>Two</MyTag></MyTag> there\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[text](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[text](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[text](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`text`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`text`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`text`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[`text`](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[`text`](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[`text`](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold** [`text`](https://lexical.dev) **Bold 2**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**Bold** [`text`](https://lexical.dev) **Bold 2**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Bold** [`text`](https://lexical.dev) **Bold 2**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold** [`text` **Bold 2**](https://lexical.dev) **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**Bold** [`text` **Bold 2**](https://lexical.dev) **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Bold** [`text` **Bold 2**](https://lexical.dev) **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold** [`text **Bold in code**`](https://lexical.dev) **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**Bold** [`text **Bold in code**`](https://lexical.dev) **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Bold** [`text **Bold in code**`](https://lexical.dev) **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold** `[text](https://lexical.dev)` **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**Bold** `[text](https://lexical.dev)` **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Bold** `[text](https://lexical.dev)` **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Text **boldstart [text](https://lexical.dev) boldend** text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"Text **boldstart [text](https://lexical.dev) boldend** text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Text **boldstart [text](https://lexical.dev) boldend** text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Text **boldstart [`text`](https://lexical.dev) boldend** text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"Text **boldstart [`text`](https://lexical.dev) boldend** text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Text **boldstart [`text`](https://lexical.dev) boldend** text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"It ~~___works [with links](https://lexical.io)___~~ too\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"It ~~___works [with links](https://lexical.io)___~~ too\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"It ~~___works [with links](https://lexical.io)___~~ too\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"It ~~___works [with links](https://lexical.io) too___~~!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"It ~~___works [with links](https://lexical.io) too___~~!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"It ~~___works [with links](https://lexical.io) too___~~!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[link](https://lexical.dev)[link2](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[link](https://lexical.dev)[link2](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[link](https://lexical.dev)[link2](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](https://a.example.com) [b](https://b.example.com)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[a](https://a.example.com) [b](https://b.example.com)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[a](https://a.example.com) [b](https://b.example.com)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[foo [bar](/uri)](/uri)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[foo [bar](/uri)](/uri)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[foo [bar](/uri)](/uri)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[Ruby](https://en.wikipedia.org/wiki/Ruby_(programming_language))\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[Ruby](https://en.wikipedia.org/wiki/Ruby_(programming_language))\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[Ruby](https://en.wikipedia.org/wiki/Ruby_(programming_language))\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](https://example.com/a(b)c) and [d](https://example.com/d)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[a](https://example.com/a(b)c) and [d](https://example.com/d)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[a](https://example.com/a(b)c) and [d](https://example.com/d)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](https://example.com/a\\)b)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[a](https://example.com/a\\)b)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[a](https://example.com/a\\)b)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](<https://example.com/a b>)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[a](<https://example.com/a b>)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[a](<https://example.com/a b>)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](<https://example.com/a b> \"t\")\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[a](<https://example.com/a b> \"t\")\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[a](<https://example.com/a b> \"t\")\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](</uri>)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[a](</uri>)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[a](</uri>)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Multiple [`TextMatchTransformer`s](https://lexical.dev)~~$ with formatting$~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Multiple [`TextMatchTransformer`s](https://lexical.dev)~~$ with formatting$~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**`Bold Code`**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**`Bold Code`**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**`Bold Code`**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"This is a backslash: \\\\\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"This is a backslash: \\\\\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"This is a backslash: \\\\\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`C:\\$MFT`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`C:\\$MFT`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`C:\\$MFT`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`C:\\$MFT` and more\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"`C:\\$MFT` and more\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"`C:\\$MFT` and more\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**a\\\\\\*b**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**a\\\\\\*b**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**a\\\\\\*b**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"a\\\\\\* **b**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"a\\\\\\* **b**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"a\\\\\\* **b**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"This is an asterisk: \\*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"This is an asterisk: \\*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"This is an asterisk: \\*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Backtick and asterisk: \\`\\*\\*\\`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"Backtick and asterisk: \\`\\*\\*\\`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Backtick and asterisk: \\`\\*\\*\\`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Backtick and asterisk: \\`\\*\\*\\`**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**Backtick and asterisk: \\`\\*\\*\\`**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Backtick and asterisk: \\`\\*\\*\\`**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**\\*test\\***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**\\*test\\***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**\\*test\\***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**some bold text with an escaped star: \\*** normal text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**some bold text with an escaped star: \\*** normal text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**some bold text with an escaped star: \\*** normal text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\*This text should **not** be italic*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"\\*This text should **not** be italic*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"\\*This text should **not** be italic*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\*some text*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"\\*some text*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"\\*some text*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[text **bold** \\*normal\\*](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[text **bold** \\*normal\\*](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[text **bold** \\*normal\\*](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\*Hello\\* world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"\\*Hello\\* world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"\\*Hello\\* world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**&#160;**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**&#160;**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**&#160;**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[[h]ello](https://lexical.dev)[h[e]llo](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[[h]ello](https://lexical.dev)[h[e]llo](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[[h]ello](https://lexical.dev)[h[e]llo](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[h[e[ll]]o](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[h[e[ll]]o](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[h[e[ll]]o](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[hello]](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[hello]](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[hello]](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[h[ello](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[h[ello](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[h[ello](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*[h[ello](https://lexical.dev)*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"*[h[ello](https://lexical.dev)*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*[h[ello](https://lexical.dev)*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[**link**](https://lexical.dev)**text**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"[**link**](https://lexical.dev)**text**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"[**link**](https://lexical.dev)**text**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**text [link](https://lexical.dev)**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**text [link](https://lexical.dev)**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**text [link](https://lexical.dev)**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*text**text***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"*text**text***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*text**text***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**text*text***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**text*text***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**text*text***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*foo**bar*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"*foo**bar*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*foo**bar*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**foo [*bar*](/url)**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**foo [*bar*](/url)**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**foo [*bar*](/url)**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*foo *bar baz*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"*foo *bar baz*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*foo *bar baz*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*a `*` b `x`*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"*a `*` b `x`*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*a `*` b `x`*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"_foo_bar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"_foo_bar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"_foo_bar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Hello&#32;~~world~~**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**Hello&#32;~~world~~**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**Hello&#32;~~world~~**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*Hello&#32;**world**!*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"*Hello&#32;**world**!*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"*Hello&#32;**world**!*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**~~Hello&#32;*world*~~**~~!~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"**~~Hello&#32;*world*~~**~~!~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"**~~Hello&#32;*world*~~**~~!~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\→\\A\\a\\ \\3\\φ\\«\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"\\→\\A\\a\\ \\3\\φ\\«\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"\\→\\A\\a\\ \\3\\φ\\«\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"foo\\\\nbar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"foo\\\\nbar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"foo\\\\nbar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"foo  \\nbar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"foo  \\nbar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"foo [bar](https://lexical.dev)\tbaz\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"foo [bar](https://lexical.dev)\tbaz\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"foo\t \tbar\\n\tbaz\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"foo\t \tbar\\n\tbaz\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello\t\tWorld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > should not select when importing \"Hello\t\tWorld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by ConformanceTests/MarkdownTests.swift (state JSON, HTML and no selection after import; state JSON and markdown after export)."
+  },
+  "lexical-markdown/src/__tests__/unit/Issue5366Repro.test.ts::Issue #5366: hashtags block the heading shortcut > transforms with the \"# \" shortcut typed before existing text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Registers @lexical/hashtag's HashtagExtension, whose hashtag transform splits the typed \"#\" ahead of the heading shortcut; port with lexical-hashtag."
+  },
+  "lexical-markdown/src/__tests__/unit/Issue5366Repro.test.ts::Issue #5366: hashtags block the heading shortcut > transforms with the \"## \" shortcut typed before existing text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Registers @lexical/hashtag's HashtagExtension, whose hashtag transform splits the typed \"#\" ahead of the heading shortcut; port with lexical-hashtag."
+  },
+  "lexical-markdown/src/__tests__/unit/Issue5366Repro.test.ts::Issue #5366: hashtags block the heading shortcut > transforms with the \"### \" shortcut typed before existing text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Registers @lexical/hashtag's HashtagExtension, whose hashtag transform splits the typed \"#\" ahead of the heading shortcut; port with lexical-hashtag."
+  },
+  "lexical-markdown/src/__tests__/unit/Issue5366Repro.test.ts::Issue #5366: hashtags block the heading shortcut > transforms with the \"#### \" shortcut typed before existing text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Registers @lexical/hashtag's HashtagExtension, whose hashtag transform splits the typed \"#\" ahead of the heading shortcut; port with lexical-hashtag."
+  },
+  "lexical-markdown/src/__tests__/unit/Issue5366Repro.test.ts::Issue #5366: hashtags block the heading shortcut > transforms with the \"##### \" shortcut typed before existing text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Registers @lexical/hashtag's HashtagExtension, whose hashtag transform splits the typed \"#\" ahead of the heading shortcut; port with lexical-hashtag."
+  },
+  "lexical-markdown/src/__tests__/unit/Issue5366Repro.test.ts::Issue #5366: hashtags block the heading shortcut > transforms with the \"###### \" shortcut typed before existing text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Registers @lexical/hashtag's HashtagExtension, whose hashtag transform splits the typed \"#\" ahead of the heading shortcut; port with lexical-hashtag."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a `www.` host, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside an email, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside the resource of an `xmpp:` address, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a `www.` host after `_`, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL with a Unicode host, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL that holds an emoji, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside the start of a `www.` host, which its reference spoils, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside the start of a URL, which its reference spoils, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside the start of `mailto:`, which its reference spoils, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside the start of an email, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL that a reference before it would start, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside `mailto:`, which a reference before it does not change, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL right after a code span, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside an email before a URL, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL that would take in a code span, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL that runs on through formats, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a `www.` host that would take in markers, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a `www.` host that would take in italic, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a `www.` host that would take in markers after `:`, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL before a character that is a letter only for CommonMark, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a `www.` host that would take in a code span, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL that would take in strikethrough, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL that holds a `www.` host, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL that would take in the backslash of an escape at its end, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a `www.` host that leaves out the markers after it, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a `www.` host after `/`, which starts no link, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports formatting beside a URL that holds an email, which both importers read back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > keeps an email that holds a reference whole for @lexical/mdast": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports [[\"😀\",0],[\"“b”\",1]] so that both importers read it back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports [[\"a\",1],[\"😀\",2]] so that both importers read it back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports [[\"注意：\",1],[\"请先登录\",0]] so that both importers read it back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports [[\"你.w mailto:\",2],[\"1\",1]] so that both importers read it back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > exports [[\":http://\",1],[\"你\",2]] so that both importers read it back": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-mdast"
+    ],
+    "note": "Also reads the export back with @lexical/mdast ($convertFromMarkdownString of MdastGfmExtension), which is not ported; port with lexical-mdast."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::link destination round trip > preserves \"/ab\"": {
+    "reason": "deviation",
+    "note": "The id holds a raw U+007F, which a Swift string literal cannot hold, and the ledger reads `.upstream` literals as JSON, so no literal can name it. The case runs in MarkdownLinkDestinationRoundTripTests.preserves all the same, without the trait."
   }
 }

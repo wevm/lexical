@@ -772,6 +772,28 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   without CodeExtension is not ported. `lexical-code-core` is `enforced`:
   81 upstream tests, 75 ported, 6 skips (`lexical-table` and the gutter),
   and the 21 code cases in other packages' tests are ported too.
+- **`LexicalMarkdown`** ports `@lexical/markdown`. Its transformers are
+  JS regular expressions, many with lookbehind, which Swift `Regex` lacks,
+  so `JSRegExp` runs the JS source on ICU (`NSRegularExpression`): it
+  translates the spellings ICU reads differently (`\d`, `\w`, `\s` and
+  `\b` with JS's sets, `\0`, `\u{…}`), indexes by UTF-16 code unit and keeps
+  `lastIndex`, `exec`, `test` and the `String` helpers (`match`,
+  `matchAll`, `replace`, `split`) to JS semantics. Transformers are classes,
+  so a custom transformer can copy and adjust a built-in as JS spreads one.
+  The module-scope state JS keeps between calls (the export's bracket
+  context and the import's list indent columns) is per thread, in
+  `ThreadContext`, as `htmlContext` is for `LexicalHTML`. JS's `WeakMap`
+  cache of each emphasis tag's look-ahead verdict is dropped: the answer is
+  recomputed, which changes no output. `createMarkdownExport` and the other
+  helpers `index.ts` does not export are `package`. The 149 cases of
+  upstream's `IMPORT_AND_EXPORT` table are conformance vectors
+  (`vectors/markdown/import-export.json`), replayed byte for byte by
+  `MarkdownTests`, so their 413 generated test ids are `covered-by-vector`;
+  the table has 149 entries, not the 151 first counted. Tests that also
+  read the export back with `@lexical/mdast` and the hashtag repro are
+  `out-of-scope-package`. `lexical-markdown` is `enforced`: 1064 upstream
+  tests, 610 ported, 454 skips, and the 36 markdown cases in other
+  packages' tests are ported too.
 
 ## Scope of v0.1.0 (Q21)
 

@@ -47,8 +47,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The newest runtime and the deployment target's.
-        ios: ['27', '26']
+        # The newest runtime and the deployment target's. A runtime the image
+        # lacks is downloaded, which takes a full version (the xcode-27 image
+        # has only iOS 27 runtimes).
+        ios: ['27', '26.5']
     defaults:
       run:
         working-directory: swift
@@ -58,28 +60,28 @@ jobs:
           persist-credentials: false
       - name: Test (iOS ${{ matrix.ios }} Simulator)
         env:
-          IOS_MAJOR: ${{ matrix.ios }}
+          IOS_VERSION: ${{ matrix.ios }}
         run: |
-          # The newest installed runtime of this major version, downloading
-          # one when the image has none (the xcode-27 image may carry only
-          # iOS 27), and an iPhone on it, created when there is none.
+          # The newest installed runtime of this version (or of this major
+          # version), downloading it when the image has none, and an iPhone
+          # on it, created when there is none.
           pick_runtime() {
             xcrun simctl list runtimes available -j | python3 -c '
           import json, os, sys
-          major = os.environ["IOS_MAJOR"]
+          want = os.environ["IOS_VERSION"].split(".")
           found = [r for r in json.load(sys.stdin)["runtimes"]
-                   if r["platform"] == "iOS" and r["version"].split(".")[0] == major]
+                   if r["platform"] == "iOS" and r["version"].split(".")[:len(want)] == want]
           if found:
               print(max(found, key=lambda r: [int(x) for x in r["version"].split(".")])["identifier"])
           '
           }
           runtime="$(pick_runtime)"
           if [ -z "$runtime" ]; then
-            xcodebuild -downloadPlatform iOS -buildVersion "$IOS_MAJOR" ||
-              { echo "::error::No iOS $IOS_MAJOR simulator runtime could be installed"; exit 1; }
+            xcodebuild -downloadPlatform iOS -buildVersion "$IOS_VERSION" ||
+              { echo "::error::No iOS $IOS_VERSION simulator runtime could be installed"; exit 1; }
             runtime="$(pick_runtime)"
           fi
-          [ -n "$runtime" ] || { echo "::error::No iOS $IOS_MAJOR simulator runtime"; exit 1; }
+          [ -n "$runtime" ] || { echo "::error::No iOS $IOS_VERSION simulator runtime"; exit 1; }
           echo "Runtime: $runtime"
           device="$(xcrun simctl list devices available -j | RUNTIME="$runtime" python3 -c '
           import json, os, sys
@@ -92,7 +94,7 @@ jobs:
           import json, sys
           print([t["identifier"] for t in json.load(sys.stdin)["devicetypes"] if t["name"].startswith("iPhone")][-1])
           ')"
-            device="$(xcrun simctl create "iPhone (iOS $IOS_MAJOR)" "$type" "$runtime")"
+            device="$(xcrun simctl create "iPhone (iOS $IOS_VERSION)" "$type" "$runtime")"
           fi
           # The macro expansion tests link swift-syntax for the host; they run
           # in the macOS job and cannot load in the simulator.

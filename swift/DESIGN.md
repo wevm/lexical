@@ -719,6 +719,15 @@ upstream playground (Q31, Q39). Then `LexicalList`, `LexicalLink`,
   push is made by hand, because the policy must already be there.
 - Independent semver from 0.1.0. Release notes come from `CHANGELOG.md` and
   name the upstream version (Q23).
+- The API-break check (Q23), `scripts/api-breaks.sh`, compares the working
+  tree with the mirror's newest release tag, in `Swift API breaks (Linux)`
+  and in the `Swift (macOS)` job (which also covers the view modules). It
+  runs `swift package diagnose-api-breaking-changes`, and also compares the
+  public symbols of both sides' symbol graphs, because the digester counts
+  `package` declarations as API and misses a public declaration made
+  `package`. A break fails CI unless `## Unreleased` in `CHANGELOG.md` has
+  a `- **Breaking:**` entry, which then needs a minor version (major from
+  1.0). Before the first tag the check passes.
 - Until v0.1.0, commits go straight to main after the checks in AGENTS.md;
   afterwards, PRs and Changesets (Q38, Q42, Q43).
 - MIT, keeping Meta's notice (Q47).

@@ -82,3 +82,21 @@ jobs:
           persist-credentials: false
       - name: Run
         run: swift run -c release LexicalBenchmarks --markdown "$GITHUB_STEP_SUMMARY"
+
+  # Fails on a break of the public API since the mirror's newest release tag,
+  # unless CHANGELOG.md lists it as breaking (swift/scripts/api-breaks.sh).
+  api-breaks:
+    name: Swift API breaks (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.4.2-bookworm
+    defaults:
+      run:
+        working-directory: swift
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Install python3
+        run: command -v python3 || (apt-get update -q && apt-get install -yq python3)
+      - name: Check
+        run: scripts/api-breaks.sh

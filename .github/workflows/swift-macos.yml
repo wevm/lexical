@@ -39,6 +39,9 @@ jobs:
       - run: swift --version
       - name: Build and test (macOS)
         run: swift test
+      # The view modules' API exists only on Apple platforms (Linux checks the rest).
+      - name: API breaks since the last release
+        run: scripts/api-breaks.sh
 
   ios:
     name: Swift (iOS ${{ matrix.ios }} Simulator)

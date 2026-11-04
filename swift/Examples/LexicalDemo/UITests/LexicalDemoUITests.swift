@@ -268,6 +268,68 @@ final class LexicalDemoUITests: XCTestCase {
       "\(Self.paragraph1)|focus \(Self.paragraph1)@\(Self.paragraph1.utf16.count)")
   }
 
+  /// Launches on the demo document with the view probe, and waits until it
+  /// reports `expected`.
+  @MainActor
+  private func launchShowing(_ arguments: [String], until expected: String) -> String {
+    app = XCUIApplication()
+    app.launchArguments = ["-uitest"] + arguments
+    app.launch()
+    let probe = app.staticTexts["view-probe"]
+    let shows = NSPredicate(format: "label CONTAINS %@", expected)
+    _ = XCTWaiter.wait(
+      for: [XCTNSPredicateExpectation(predicate: shows, object: probe)], timeout: 10)
+    return probe.label
+  }
+
+  @MainActor
+  private func keepScreenshot(_ name: String) {
+    let attachment = XCTAttachment(screenshot: app.screenshot())
+    attachment.name = name
+    attachment.lifetime = .keepAlways
+    add(attachment)
+  }
+
+  /// The number after `key ` in the probe.
+  private func value(_ key: String, in probe: String) -> Double {
+    let field = probe.components(separatedBy: "; ").first { $0.hasPrefix(key + " ") }
+    return Double(field?.dropFirst(key.count + 1) ?? "") ?? 0
+  }
+
+  @MainActor
+  func testScalesFontsAtTheLargestAccessibilitySize() {
+    let category = "UICTContentSizeCategoryAccessibilityXXXL"
+    let probe = launchShowing(
+      ["-UIPreferredContentSizeCategoryName", category], until: "category \(category)")
+    XCTAssertTrue(probe.contains("category \(category)"), probe)
+    let heading = value("heading", in: probe)
+    let body = value("body", in: probe)
+    // 24 and 16 points at the default size; about three times that here,
+    // in the same ratio.
+    XCTAssertGreaterThan(body, 40, probe)
+    XCTAssertEqual(heading / body, 1.5, accuracy: 0.05, probe)
+    keepScreenshot("dynamic-type-ax-xxxl")
+  }
+
+  @MainActor
+  func testShowsTheDarkAppearance() {
+    let probe = launchShowing(["-dark"], until: "dark true")
+    XCTAssertTrue(probe.contains("dark true"), probe)
+    keepScreenshot("dark")
+  }
+
+  /// The decorators' accessibility labels while the test runner has
+  /// accessibility on, as VoiceOver does: SwiftUI builds the hosted views'
+  /// elements then, so the card, whose text content is empty, reads as
+  /// its views.
+  @MainActor
+  func testLabelsDecoratorsForAccessibility() {
+    let probe = launchShowing([], until: "decorators ")
+    print("DECORATOR-LABELS", probe)
+    XCTAssertTrue(probe.contains("decorators SwiftUI | "), probe)
+    XCTAssertTrue(probe.contains("A block decorator, DecoratorNode.decorate(_:)"), probe)
+  }
+
   /// Not a check: prints the keystroke timing on 5,000 paragraphs.
   @MainActor
   func testReportsKeystrokeTiming() {

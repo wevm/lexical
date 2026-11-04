@@ -2,12 +2,18 @@ import Lexical
 import LexicalSwiftUI
 import SwiftUI
 
+#if canImport(UIKit)
+  import LexicalUIKit
+  import UIKit
+#endif
+
 // The demo app: `LexicalEditor` on the demo document. Launch arguments:
 // `-empty` starts from an empty paragraph; `-text <text>`, repeated,
 // from one paragraph per argument; `-uitest` shows the model probe,
 // the editor's text content and JSON as accessibility labels, which the UI
 // tests read to check the model rather than the view; `-benchmark` times
-// keystrokes on a 5,000-paragraph document (Benchmark.swift) instead.
+// keystrokes on a 5,000-paragraph document (Benchmark.swift) instead;
+// `-dark` shows the dark appearance whatever the system's is.
 
 @main
 struct LexicalDemoApp: App {
@@ -97,6 +103,41 @@ final class DemoModel {
     }
   }
 
+  /// On iOS, what the view shows: its appearance and content size
+  /// category, the heading's and the body text's font sizes, and the
+  /// decorators' accessibility labels.
+  func viewProbe() -> String {
+    #if canImport(UIKit)
+      guard let view = editor.getRootElement() as? LexicalUITextView else { return "" }
+      let text = view.text as NSString
+      func size(_ string: String) -> String {
+        let range = text.range(of: string)
+        guard range.location != NSNotFound,
+          let font = view.textStorage.attribute(.font, at: range.location, effectiveRange: nil)
+            as? UIFont
+        else { return "-" }
+        return String(format: "%.1f", font.pointSize)
+      }
+      var labels: [String] = []
+      view.textStorage.enumerateAttribute(
+        .attachment, in: NSRange(location: 0, length: view.textStorage.length)
+      ) { value, _, _ in
+        if let attachment = value as? NSTextAttachment {
+          labels.append(attachment.accessibilityLabel ?? "nil")
+        }
+      }
+      let traits = view.traitCollection
+      return [
+        "dark \(traits.userInterfaceStyle == .dark)",
+        "category \(traits.preferredContentSizeCategory.rawValue)",
+        "heading \(size("Lexical for Swift"))", "body \(size("Native editing"))",
+        "decorators \(labels.joined(separator: " | "))",
+      ].joined(separator: "; ")
+    #else
+      return ""
+    #endif
+  }
+
   private func probe(_ state: EditorState) {
     text = (try? state.read { try getRoot().getTextContent() }) ?? ""
     json = (try? state.toJSON(true).stringify()) ?? ""
@@ -115,6 +156,8 @@ struct DemoView: View {
   private let showsProbe = ProcessInfo.processInfo.arguments.contains("-uitest")
   private let isBenchmark = ProcessInfo.processInfo.arguments.contains("-benchmark")
   @State private var benchmark = "running"
+  @State private var viewProbe = ""
+  private let isDark = ProcessInfo.processInfo.arguments.contains("-dark")
 
   var body: some View {
     VStack(spacing: 0) {
@@ -128,6 +171,7 @@ struct DemoView: View {
             .accessibilityLabel(model.selection)
           Text("log").accessibilityIdentifier("model-log")
             .accessibilityLabel(model.log.joined(separator: "; "))
+          Text("view").accessibilityIdentifier("view-probe").accessibilityLabel(viewProbe)
           if isBenchmark {
             Text(benchmark).accessibilityIdentifier("benchmark")
           }
@@ -135,6 +179,13 @@ struct DemoView: View {
         .font(.caption2)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(4)
+      }
+    }
+    .preferredColorScheme(isDark ? .dark : nil)
+    .task {
+      while showsProbe, !isBenchmark, !Task.isCancelled {
+        viewProbe = model.viewProbe()
+        try? await Task.sleep(for: .milliseconds(300))
       }
     }
     .task {

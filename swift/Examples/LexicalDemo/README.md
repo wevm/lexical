@@ -19,7 +19,11 @@ Launch arguments: `-empty` starts from an empty paragraph; `-text
 last commands the view dispatched, as accessibility labels) that the UI
 tests read; `-benchmark` types 200 keystrokes into a 5,000-paragraph
 document and shows their p95 (`testReportsKeystrokeTiming` prints it; pass
-`-configuration Release` for release numbers).
+`-configuration Release` for release numbers); `-dark` shows the dark
+appearance. With `-uitest` the probe also reports the view's appearance,
+content size category, font sizes and decorator labels, which the Dynamic
+Type, Dark Mode and decorator label tests read (Dynamic Type through
+`-UIPreferredContentSizeCategoryName`).
 
 ## Simulator
 

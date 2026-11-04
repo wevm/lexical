@@ -1,20 +1,26 @@
 name: Swift Release
 
-# Releases the Swift port when swift/VERSION names a version that isn't
-# released yet. After approval in the swift-release environment:
-# - publishes swift/ to the SwiftPM mirror (wevm/lexical-swift) and tags the
-#   version there. SwiftPM needs Package.swift at a repository root and clones
-#   whole repositories, so consumers install from the mirror.
-# - creates a GitHub release on the mirror from the version's section of
-#   swift/CHANGELOG.md.
-# Each step is skipped when its release already exists, so a failed run can be
-# rerun. 0.0.0 means unreleased.
+# Releases the Swift port, versioned with Changesets (swift/.changeset/README.md).
+# On each push to main:
+# - With pending changesets in swift/.changeset, opens or updates the
+#   "chore(swift): version packages" pull request, which runs
+#   swift/scripts/version-packages.sh (bumps swift/VERSION, adds the
+#   version's section to swift/CHANGELOG.md), and starts the Swift CI
+#   workflows on it: a pull request opened with GITHUB_TOKEN triggers none.
+# - Otherwise, if swift/VERSION names a version that isn't released yet:
+#   - publishes swift/ to the SwiftPM mirror (wevm/lexical-swift) and tags
+#     the version there. SwiftPM needs Package.swift at a repository root and
+#     clones whole repositories, so consumers install from the mirror.
+#   - creates a GitHub release on the mirror from the version's section of
+#     swift/CHANGELOG.md.
+# The swift-release environment only limits deployments to main; no one
+# approves them, so merging the version pull request is the release. Each
+# step is skipped when its release already exists, so a failed run can be
+# rerun.
 
 on:
   push:
     branches: [main]
-    paths:
-      - 'swift/VERSION'
   workflow_dispatch:
 
 permissions:
@@ -25,9 +31,66 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  version:
+    name: Version PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write # To start CI on the version branch.
+    outputs:
+      has-changesets: ${{ steps.version.outputs.has-changesets }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.24.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: swift-release/version
+        run: |
+          set -euo pipefail
+          pending="$(find swift/.changeset -maxdepth 1 -name '*.md' ! -name README.md | wc -l)"
+          if [ "$pending" -eq 0 ]; then
+            echo "has-changesets=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "has-changesets=true" >> "$GITHUB_OUTPUT"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$BRANCH"
+          swift/scripts/version-packages.sh
+          version="$(tr -d '[:space:]' < swift/VERSION)"
+          git add -A swift
+          git commit -q -m "chore(swift): version packages ($version)"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
+          {
+            echo "Merging this releases lexical-swift **$version**: the Swift Release workflow then publishes the mirror, the tag and the GitHub release."
+            echo
+            awk -v v="## $version" '$0 == v {f = 1; next} /^## / {f = 0} f' swift/CHANGELOG.md
+          } > "$RUNNER_TEMP/body.md"
+          title="chore(swift): version packages ($version)"
+          pr="$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$pr" ]; then
+            gh pr edit "$pr" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          else
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+          fi
+          gh workflow run swift.yml --ref "$BRANCH"
+          gh workflow run swift-macos.yml --ref "$BRANCH"
+
   plan:
     name: Plan release
     runs-on: ubuntu-latest
+    needs: version
+    if: needs.version.outputs.has-changesets == 'false'
     outputs:
       version: ${{ steps.plan.outputs.version }}
       mirror: ${{ steps.plan.outputs.mirror }}

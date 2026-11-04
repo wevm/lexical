@@ -39,9 +39,10 @@ write `vectors/*.json` with `UPDATE_VECTORS=1` (`pnpm run generate`); without
 it they fail when the checked-in files are stale. Generate with the Node in
 `.nvmrc`. Never edit a vector by hand.
 
-## Before pushing to main
+## Pull requests
 
-Rebase onto `origin/main`, then run:
+Changes reach main only through pull requests; nothing is pushed to main
+directly. Before opening or updating one, rebase onto `origin/main` and run:
 
 ```sh
 (cd swift && swift format lint --strict --recursive Sources Tests Benchmarks Package.swift \
@@ -53,17 +54,31 @@ npx tsc -p ./tsconfig.build.json --noEmit   # after changing lexical-conformance
 
 UI changes also run on macOS and the iOS Simulator.
 
+- One change per pull request, titled as a conventional commit
+  (`feat(swift): ...`, `fix(swift): ...`, `test(conformance): ...`), not the
+  upstream PR template. The body says what changes and how it was checked.
+- Subscribe to the pull request's CI and its comments. No human review is
+  required: the author merges once every check is green, and fixes or
+  answers comments first. Never merge red.
+- **Squash-merge**, so each change is one commit on main.
+- **Upstream syncs** are the exception: a branch with a real merge commit
+  named `Merge upstream vX.Y.Z`, merged with a merge commit (never squashed),
+  so upstream's history stays an ancestor of main.
+
+## Changesets
+
+A user-facing change to the package (API, behavior, types, platforms) adds
+a changeset in `swift/.changeset/` in the same pull request; its README has
+the format. A break needs a `minor` changeset below 1.0. Tests, the
+playground, examples and CI need none. Don't edit `swift/CHANGELOG.md` or
+`swift/VERSION` by hand.
+
 ## Releases
 
-A release happens when a change to `swift/VERSION` naming an unreleased
-version lands on main: the Swift Release workflow publishes the mirror, the
-tag and the GitHub release from that version's `CHANGELOG.md` section. The
-`swift-release` environment only limits deployments to `main`; no one
-approves them, so treat a `VERSION` bump as shipping.
-
-## Commits
-
-Conventional commits (`feat(swift): ...`, `test(conformance): ...`), not the
-upstream PR template. Upstream syncs are merge commits named
-`Merge upstream vX.Y.Z`. Add a line to `CHANGELOG.md` under `## Unreleased`
-for user-facing changes.
+While changesets are pending, the Swift Release workflow keeps a
+`chore(swift): version packages` pull request open, made by
+`swift/scripts/version-packages.sh`, and starts the Swift CI on it. Merging
+it (squash, once green, like any other) is the release: the workflow
+publishes the mirror, the tag and the GitHub release from that version's
+`CHANGELOG.md` section. The `swift-release` environment only limits
+deployments to `main`; no one approves them.

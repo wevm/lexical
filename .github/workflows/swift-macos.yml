@@ -5,6 +5,8 @@ name: Swift (macOS)
 # Path-filtered because macOS runners are slow to start.
 
 on:
+  # The release workflow starts these on its version pull request's branch.
+  workflow_dispatch:
   push:
     branches: [main]
     paths:

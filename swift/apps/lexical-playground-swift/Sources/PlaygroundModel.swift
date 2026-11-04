@@ -1,4 +1,5 @@
 import Lexical
+import LexicalA11y
 import LexicalDevtoolsCore
 import LexicalExtension
 import LexicalHTML
@@ -93,8 +94,14 @@ final class PlaygroundModel {
       defineExtension(
         name: "@lexical/playground-swift",
         dependencies: richText
-          ? [RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension]
-          : [PlainTextExtension, HistoryExtension]))
+          ? [
+            RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension,
+            HistoryAnnounceExtension, EditorModeAnnounceExtension,
+          ]
+          : [
+            PlainTextExtension, HistoryExtension, HistoryAnnounceExtension,
+            EditorModeAnnounceExtension,
+          ]))
   }
 
   /// Builds the other kind of editor, keeping the text: a plain text editor

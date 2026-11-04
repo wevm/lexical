@@ -141,7 +141,7 @@ let package = Package(
       name: "LexicalTextKitTests",
       dependencies: [
         "Lexical", "LexicalExtension", "LexicalHistory", "LexicalPlainText", "LexicalRichText",
-        "LexicalTesting", "LexicalTextKit",
+        "LexicalSelection", "LexicalTesting", "LexicalTextKit",
       ]),
     // The TextKit 2 editor views (Apple-only; empty modules elsewhere).
     .target(name: "LexicalAppKit", dependencies: ["Lexical", "LexicalA11y", "LexicalTextKit"]),

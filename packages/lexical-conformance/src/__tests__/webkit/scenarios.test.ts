@@ -12,7 +12,12 @@ import {
 } from '@lexical/extension';
 import {HistoryExtension} from '@lexical/history';
 import {PlainTextExtension} from '@lexical/plain-text';
-import {RichTextExtension} from '@lexical/rich-text';
+import {
+  $createHeadingNode,
+  $createQuoteNode,
+  RichTextExtension,
+} from '@lexical/rich-text';
+import {$patchStyleText, $setBlocksType} from '@lexical/selection';
 import {
   $createParagraphNode,
   $getRoot,
@@ -159,6 +164,25 @@ async function record(
     for (const step of scenario.steps) {
       if ('type' in step) {
         await commands.keyboardType(step.type);
+      } else if ('block' in step) {
+        const {block} = step;
+        editor.update(
+          () => {
+            const selection = $getSelection();
+            if (block === 'paragraph') {
+              $setBlocksType(selection, () => $createParagraphNode());
+            } else if (block === 'quote') {
+              $setBlocksType(selection, () => $createQuoteNode());
+            } else {
+              $setBlocksType(selection, () => $createHeadingNode(block));
+              const updated = $getSelection();
+              if (updated) {
+                $patchStyleText(updated, {'font-size': null});
+              }
+            }
+          },
+          {discrete: true},
+        );
       } else if ('advanceHistoryClock' in step) {
         const {delay, now} = getExtensionDependencyFromEditor(
           editor,

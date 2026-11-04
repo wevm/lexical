@@ -722,6 +722,9 @@ importers:
       '@lexical/rich-text':
         specifier: workspace:*
         version: link:../lexical-rich-text
+      '@lexical/selection':
+        specifier: workspace:*
+        version: link:../lexical-selection
       entities:
         specifier: 2.2.0
         version: 2.2.0

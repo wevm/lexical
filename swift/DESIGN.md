@@ -628,6 +628,12 @@ Reversible choices made porting `@lexical/extension` under Q18.
     other plugins (markdown shortcuts, autolink, emoji, …) would change what
     a key does. It starts with one empty, selected paragraph, and history's
     clock is fixed, so merging doesn't depend on timing.
+  - A step is typed text, a key chord, the e2e helper that advances
+    history's clock, or the playground toolbar's block type menu (`block`:
+    `$setBlocksType`, as `formatHeading`, `formatQuote` and
+    `formatParagraph` do). A spec that makes a block with a markdown
+    shortcut (`# `, `> `) uses the menu instead, since markdown is not in
+    v0.1.0.
   - Recording runs on Linux, where WebKit reports a Mac user agent but the
     host's `navigator.platform`; a setup file makes it `MacIntel`, so
     `IS_APPLE` holds. Its key bindings are GTK's, so Option and Command

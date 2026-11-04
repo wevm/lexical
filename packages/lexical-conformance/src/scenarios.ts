@@ -27,7 +27,23 @@ export type ScenarioStep =
    * merge delay (plus 50ms) and stays there, so the next change starts a
    * new undo entry.
    */
-  | {advanceHistoryClock: true};
+  | {advanceHistoryClock: true}
+  /**
+   * The playground toolbar's block type menu (`formatParagraph`,
+   * `formatHeading`, `formatQuote`): `$setBlocksType` on the selection, and
+   * for a heading `$patchStyleText` clearing `font-size`.
+   */
+  | {block: ScenarioBlockType};
+
+export type ScenarioBlockType =
+  | 'paragraph'
+  | 'h1'
+  | 'h2'
+  | 'h3'
+  | 'h4'
+  | 'h5'
+  | 'h6'
+  | 'quote';
 
 export type ScenarioMode = 'rich' | 'plain';
 
@@ -570,6 +586,113 @@ export const TAB: Scenario[] = [
   },
 ];
 
+/**
+ * Headings/*.spec.mjs: what Enter and Backspace do to a heading made with the
+ * toolbar's block type menu.
+ */
+export const HEADINGS: Scenario[] = [
+  {
+    modes: ['rich'],
+    name: 'HeadingsBackspaceAtStart > Headings - stays as a heading when you backspace at the start of a heading with no previous sibling nodes present',
+    steps: [
+      {block: 'h1'},
+      {type: 'Welcome to the playground'},
+      {press: 'Meta+ArrowUp'},
+      {press: 'Backspace'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'HeadingsBackspaceAtStart > Headings - removes only the empty previous paragraph and preserves heading on backspace at start (#4359)',
+    steps: [
+      {press: 'Enter'},
+      {block: 'h1'},
+      {type: 'Welcome to the playground'},
+      {press: 'Meta+ArrowLeft'},
+      {press: 'Backspace'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'HeadingsEnterAtEnd > Headings - changes to a paragraph when you press enter at the end of a heading',
+    steps: [
+      {block: 'h1'},
+      {type: 'Welcome to the playground'},
+      {press: 'Enter'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'HeadingsEnterInMiddle > Headings - stays as a heading when you press enter in the middle of a heading',
+    steps: [
+      {block: 'h1'},
+      {type: 'Welcome to the playground'},
+      {press: 'Meta+ArrowUp'},
+      {press: 'ArrowRight', times: 5},
+      {press: 'Enter'},
+    ],
+  },
+];
+
+/**
+ * SelectAllDelete.spec.mjs (#5835): select all and delete leaves one empty
+ * paragraph. The spec makes its heading or quote with a markdown shortcut
+ * ("# ", "> "); markdown is not in v0.1.0, so the block type menu makes it
+ * here. The list case waits for `LexicalList`.
+ */
+export const SELECT_ALL_DELETE: Scenario[] = [
+  {
+    modes: ['rich'],
+    name: 'SelectAllDelete > Select all + delete clears the editor (#5835) > a heading, with Backspace',
+    steps: [
+      {block: 'h1'},
+      {type: 'Just a heading'},
+      {press: 'Meta+a'},
+      {press: 'Backspace'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'SelectAllDelete > Select all + delete clears the editor (#5835) > a heading, with forward Delete',
+    steps: [
+      {block: 'h1'},
+      {type: 'Just a heading'},
+      {press: 'Meta+a'},
+      {press: 'Delete'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'SelectAllDelete > Select all + delete clears the editor (#5835) > a quote, with forward Delete',
+    steps: [
+      {block: 'quote'},
+      {type: 'Just a quote'},
+      {press: 'Meta+a'},
+      {press: 'Delete'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'SelectAllDelete > Select all + delete clears the editor (#5835) > a heading, with delete-by-word',
+    steps: [
+      {block: 'h1'},
+      {type: 'Just a heading'},
+      {press: 'Meta+a'},
+      {press: 'Alt+Delete'},
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'SelectAllDelete > Select all + delete clears the editor (#5835) > delete-by-word from a caret keeps the heading',
+    steps: [
+      {block: 'h1'},
+      {type: 'Heading'},
+      {press: 'Meta+ArrowUp'},
+      {press: 'Alt+Delete'},
+    ],
+  },
+];
+
 export const SCENARIO_FILES: {name: string; scenarios: Scenario[]}[] = [
   {name: 'text-entry', scenarios: TEXT_ENTRY},
   {name: 'history', scenarios: HISTORY},
@@ -577,6 +700,8 @@ export const SCENARIO_FILES: {name: string; scenarios: Scenario[]}[] = [
   {name: 'selection', scenarios: SELECTION},
   {name: 'navigation', scenarios: NAVIGATION},
   {name: 'tab', scenarios: TAB},
+  {name: 'headings', scenarios: HEADINGS},
+  {name: 'select-all-delete', scenarios: SELECT_ALL_DELETE},
 ];
 
 /**

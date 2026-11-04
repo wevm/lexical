@@ -4,6 +4,7 @@ import LexicalExtension
 import LexicalHistory
 import LexicalPlainText
 import LexicalRichText
+import LexicalSelection
 import LexicalTextKit
 import Testing
 
@@ -30,7 +31,10 @@ private enum ScenarioVectors {
     return FileManager.default.fileExists(atPath: url.path) ? url : nil
   }()
 
-  static let files = ["text-entry", "history", "text-formatting", "selection", "navigation", "tab"]
+  static let files = [
+    "text-entry", "history", "text-formatting", "selection", "navigation", "tab", "headings",
+    "select-all-delete",
+  ]
 
   /// `swift/parity/deviations.json`: the deviation listing each scenario
   /// (`<name> (<mode>)`) that may differ from WebKit.
@@ -140,6 +144,18 @@ private final class ScenarioRunner {
     if let text = step["type"]?.stringValue {
       for character in text {
         try press(Chord(String(character)))
+      }
+    } else if let block = step["block"]?.stringValue {
+      // The playground toolbar's block type menu.
+      try editor.update(discrete: true) {
+        let selection = try getSelection()
+        switch block {
+        case "paragraph": try setBlocksType(selection) { try createParagraphNode() }
+        case "quote": try setBlocksType(selection) { try createQuoteNode() }
+        default:
+          try setBlocksType(selection) { try createHeadingNode(block) }
+          if let updated = try getSelection() { try patchStyleText(updated, ["font-size": nil]) }
+        }
       }
     } else if step["advanceHistoryClock"] != nil {
       // The e2e helper: history's clock jumps past its merge delay.

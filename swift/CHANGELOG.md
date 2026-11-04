@@ -5,6 +5,8 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- `IMEExtension`: `compositionKey` and `composingTextNode` signals for the
+  IME composition in progress, set from the views' marked text.
 - `NormalizeTripleClickSelectionExtension`: a triple (or later) click's
   block selection ends inside the clicked block instead of at the start of
   the next one, so formatting it no longer reaches the next block. It acts

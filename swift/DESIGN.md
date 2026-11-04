@@ -283,12 +283,10 @@ Reversible choices made porting `@lexical/extension` under Q18.
   across a bundler's hot module replacement (`import.meta.hot`), which
   Swift has no equivalent of; its tests are `deviation` skips.
 - **Extensions that only touch the DOM wait for the views.**
-  `NodeSelectionDataSelectedExtension` (a host element attribute) and
-  `IMEExtension` (a `compositionend` listener around
-  `COMPOSITION_START_COMMAND`) have no model part; they port with the
-  native host views in M3, and their tests are `dom-only` until then.
-  `NormalizeTripleClickSelectionExtension` is ported (see Native surface
-  conventions).
+  `NodeSelectionDataSelectedExtension` (a host element attribute) has no
+  model part; it ports with the native host views in M3, and its tests are
+  `dom-only` until then. `NormalizeTripleClickSelectionExtension` and
+  `IMEExtension` are ported (see Native surface conventions).
 - **`PreventSelectAllExtension` registers nothing.** In JS it stops a
   `keydown` inside a decorator's DOM from reaching Lexical; key events reach
   the views, never a control inside a decorator, so only its config and
@@ -472,6 +470,13 @@ Reversible choices made porting `@lexical/extension` under Q18.
   the mouse inside `mouseDown(with:)`), so there is nothing to arm, cancel
   or match. The views report the click count as `detail`. The
   deprecated `thresholdMsec` and `dateNow` options are not ported.
+- **`IMEExtension` ends a composition on `COMPOSITION_END_COMMAND`.** JS
+  clears its `compositionKey` on the root element's `compositionend` event;
+  the views report the end of a composition as that command, which the
+  extension sees at `COMMAND_PRIORITY_BEFORE_EDITOR` before Lexical's own
+  handler takes it. A composition that starts on an element point gets its
+  `composingTextNode` from the update that inserts the first marked text,
+  which carries `COMPOSITION_START_TAG` as JS's empty-space heuristic does.
 
 - **Modules.** `LexicalAppKit` (`LexicalNSTextView`) and `LexicalUIKit`
   (`LexicalUITextView`) hold the views; `LexicalSwiftUI`'s `LexicalEditor`

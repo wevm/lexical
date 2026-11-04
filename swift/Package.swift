@@ -25,6 +25,7 @@ let package = Package(
     .library(name: "LexicalHeadless", targets: ["LexicalHeadless"]),
     .library(name: "LexicalPlainText", targets: ["LexicalPlainText"]),
     .library(name: "LexicalA11y", targets: ["LexicalA11y"]),
+    .library(name: "LexicalDevtoolsCore", targets: ["LexicalDevtoolsCore"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -167,6 +168,8 @@ let package = Package(
         .target(
           name: "LexicalUIKit", condition: .when(platforms: [.iOS, .visionOS, .macCatalyst])),
       ]),
+    // @lexical/devtools-core: the playground's tree view.
+    .target(name: "LexicalDevtoolsCore", dependencies: ["Lexical", "LexicalHTML"]),
     // Test support: the `.upstream(...)` trait the parity ledger reads.
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
     // Reported, not gating: `swift run -c release LexicalBenchmarks`.
@@ -179,7 +182,10 @@ let package = Package(
     // Replays packages/lexical-conformance/vectors, which only the monorepo
     // carries; skipped elsewhere.
     .testTarget(
-      name: "ConformanceTests", dependencies: ["Lexical", "LexicalHTML", "LexicalTesting"]),
+      name: "ConformanceTests",
+      dependencies: [
+        "Lexical", "LexicalDevtoolsCore", "LexicalHTML", "LexicalRichText", "LexicalTesting",
+      ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
     .testTarget(
       name: "LexicalTests",

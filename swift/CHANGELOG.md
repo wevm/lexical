@@ -5,6 +5,12 @@ workflow publishes the section headed `## <swift/VERSION>`.
 
 ## Unreleased
 
+- New `LexicalDevtoolsCore`: `generateContent`, the text of the playground's
+  tree view (the tree with its selection, the commands and the editor's
+  settings), or the state's HTML, indented. It matches
+  `@lexical/devtools-core` on 38 documents and selections
+  (`vectors/devtools/tree.json`). Link, mark and table nodes print as
+  other nodes until those packages are ported.
 - `CaretRange.iterNodeCarets` is lazy, as in JS: it returns a
   `StepwiseIterator` (now in `Lexical`, as `makeStepwiseIterator` is in
   `lexical`) instead of an array, so a loop that stops early no longer

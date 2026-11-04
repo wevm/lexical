@@ -15,6 +15,7 @@
     "html-entities": "node scripts/html-entities.mjs"
   },
   "devDependencies": {
+    "@lexical/devtools-core": "workspace:*",
     "@lexical/extension": "workspace:*",
     "@lexical/headless": "workspace:*",
     "@lexical/history": "workspace:*",

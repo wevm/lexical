@@ -174,6 +174,19 @@ package func createSharedNodeState(_ klass: LexicalNode.Type) -> SharedNodeState
 
 typealias KnownStateMap = JSMap<ObjectIdentifier, (config: AnyStateConfig, value: Any)>
 
+extension NodeState {
+  /// The known states whose value isn't their default, in the order they
+  /// were set, with their unparsed values (devtools' `printStateProperties`).
+  package func INTERNAL_nonDefaultKnownStates() -> [(key: String, value: JSONValue?)] {
+    var states: [(key: String, value: JSONValue?)] = []
+    for (_, entry) in knownState
+    where !entry.config.isEqualAny(entry.value, entry.config.defaultAny) {
+      states.append((entry.config.key, entry.config.unparseAny(entry.value)))
+    }
+    return states
+  }
+}
+
 /// `NodeState`: the state values of one version of a node.
 public final class NodeState {
   /// The node version that owns this state; others copy it before writing.

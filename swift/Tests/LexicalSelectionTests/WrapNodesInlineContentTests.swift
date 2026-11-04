@@ -1,5 +1,6 @@
 import Lexical
 import LexicalExtension
+import LexicalList
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -141,11 +142,12 @@ struct WrapMixCase: Sendable, CustomTestStringConvertible {
 }
 
 struct WrapBlockEndCase: Sendable, CustomTestStringConvertible {
+  var first = "paragraph"
   let end: String
   let backward: Bool
   let structure: Bool
   var testDescription: String {
-    "paragraph, to \(end)\(backward ? ", backward" : "")\(structureSuffix(structure))"
+    "\(first), to \(end)\(backward ? ", backward" : "")\(structureSuffix(structure))"
   }
 
   static let all: [WrapBlockEndCase] = [false, true].flatMap { structure in
@@ -154,6 +156,33 @@ struct WrapBlockEndCase: Sendable, CustomTestStringConvertible {
       "text in a shadow root",
     ].flatMap { end in
       [false, true].map { WrapBlockEndCase(end: end, backward: $0, structure: structure) }
+    }
+  }
+
+  /// The same cases with a list as the first block.
+  static let lists: [WrapBlockEndCase] = all.map {
+    var c = $0
+    c.first = "list"
+    return c
+  }
+}
+
+struct WrapListPointCase: Sendable, CustomTestStringConvertible {
+  let item: Int
+  let offset: Int
+  let backward: Bool
+  let structure: Bool
+  var testDescription: String {
+    "item \(item), list offset \(offset)\(backward ? ", backward" : "")\(structureSuffix(structure))"
+  }
+
+  static let all: [WrapListPointCase] = [false, true].flatMap { structure in
+    [0, 1, 2].flatMap { item in
+      [0, 1, 2, 3].flatMap { offset in
+        [false, true].map {
+          WrapListPointCase(item: item, offset: offset, backward: $0, structure: structure)
+        }
+      }
     }
   }
 }
@@ -750,14 +779,254 @@ struct WrapBlockEndCase: Sendable, CustomTestStringConvertible {
     ),
     arguments: WrapBlockEndCase.all)
   func rangeStartingAtBlockEnd(_ c: WrapBlockEndCase) throws {
+    try startingAtBlockEnd(c)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to an empty paragraph"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to an empty paragraph in a shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to an empty paragraph in a shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to an empty paragraph in a shadow root, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to an empty paragraph in a shadow root, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to an empty paragraph, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to an empty paragraph, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to an empty paragraph, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to text in a paragraph"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to text in a paragraph, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to text in a paragraph, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to text in a paragraph, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to text in a shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to text in a shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to text in a shadow root, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range that starts at the end of a block > list, to text in a shadow root, backward, NodeStructureExtension"
+    ),
+    arguments: WrapBlockEndCase.lists)
+  func rangeStartingAtListEnd(_ c: WrapBlockEndCase) throws {
+    try startingAtBlockEnd(c)
+  }
+
+  // A range with one end in a list item's text and the other an element
+  // point on the list itself, in either direction and at every offset:
+  // wrapNodes does not throw, and every text stays, in order.
+  @Test(
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 0"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 0, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 0, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 0, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 1"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 1, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 1, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 1, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 2"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 2, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 2, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 2, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 3"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 3, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 3, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 0, list offset 3, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 0"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 0, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 0, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 0, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 1"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 1, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 1, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 1, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 2"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 2, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 2, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 2, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 3"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 3, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 3, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 1, list offset 3, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 0"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 0, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 0, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 0, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 1"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 1, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 1, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 1, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 2"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 2, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 2, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 2, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 3"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 3, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 3, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a range from a list item to an element point on its list > item 2, list offset 3, backward, NodeStructureExtension"
+    ),
+    arguments: WrapListPointCase.all)
+  func rangeFromListItemToListPoint(_ c: WrapListPointCase) throws {
+    let editor = try buildEditor(
+      "@wrapNodes-list-point-test", c.structure,
+      [.klass(ListNode.self), .klass(ListItemNode.self), .klass(QuoteNode.self)])
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      let list = try createListNode("bullet").append(
+        contentsOf: ["aa", "bb", "cc"].map { try createListItemNode().append(createTextNode($0)) })
+      try getRoot().clear().append(createParagraphNode().append(createTextNode("before")), list)
+      let text = try #require(
+        try (list.getChildAtIndex(c.item) as! ElementNode).getFirstDescendant())
+      let selection = createRangeSelection()
+      let (textPoint, listPoint) =
+        c.backward ? (selection.focus, selection.anchor) : (selection.anchor, selection.focus)
+      try textPoint.set(text.getKey(), 1, .text)
+      try listPoint.set(list.getKey(), c.offset, .element)
+      try setSelection(selection)
+      try wrapNodes(selection) { try createQuoteNode() }
+    }
+    #expect(
+      try editor.read { try getRoot().getAllTextNodes().map { try $0.getTextContent() } } == [
+        "before", "aa", "bb", "cc",
+      ])
+  }
+
+  private func startingAtBlockEnd(_ c: WrapBlockEndCase) throws {
     let editor = try buildEditor(
       "@wrapNodes-start-at-block-end-test", c.structure,
-      [.klass(QuoteNode.self), .klass(TestShadowRootNode.self)])
+      [
+        .klass(ListNode.self), .klass(ListItemNode.self), .klass(QuoteNode.self),
+        .klass(TestShadowRootNode.self),
+      ])
     defer { editor.dispose() }
     var firstKey: NodeKey = ""
     var before: [String] = []
     try editor.update(discrete: true) {
-      let block = try createParagraphNode().append(try createTextNode("aa bb"))
+      let block: ElementNode =
+        c.first == "list"
+        ? try createListNode("bullet").append(
+          createListItemNode().append(createTextNode("aa")),
+          createListItemNode().append(createTextNode("bb")))
+        : try createParagraphNode().append(try createTextNode("aa bb"))
       let empty = try createParagraphNode()
       let ee = try createTextNode("ee")
       let tail: [LexicalNode] =
@@ -787,7 +1056,7 @@ struct WrapBlockEndCase: Sendable, CustomTestStringConvertible {
       #expect(try texts(getRoot()) == before)
       let block = try getRoot().getFirstChildOrThrow()
       #expect(block.getKey() == firstKey)
-      #expect(block.getType() == "paragraph")
+      #expect(block.getType() == c.first)
     }
   }
 

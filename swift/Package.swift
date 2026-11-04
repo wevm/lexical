@@ -61,8 +61,8 @@ let package = Package(
     .testTarget(
       name: "LexicalSelectionTests",
       dependencies: [
-        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalRichText",
-        "LexicalSelection", "LexicalTesting", "LexicalUtils",
+        "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalList",
+        "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/utils: traversal, insertion and editing helpers.
     .target(name: "LexicalUtils", dependencies: ["Lexical", "LexicalSelection"]),

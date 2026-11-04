@@ -129,6 +129,10 @@ async function record(
   const root = document.createElement('div');
   root.contentEditable = 'true';
   root.style.whiteSpace = 'pre-wrap';
+  // Wide enough that no scenario's paragraph wraps, as in the playground's
+  // Navigation browser test, so lines are paragraphs and line breaks.
+  root.style.width = '1400px';
+  root.style.font = '15px Arial';
   document.body.append(root);
   try {
     editor.setRootElement(root);

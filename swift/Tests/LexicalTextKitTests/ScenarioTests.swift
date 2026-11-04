@@ -30,7 +30,7 @@ private enum ScenarioVectors {
     return FileManager.default.fileExists(atPath: url.path) ? url : nil
   }()
 
-  static let files = ["text-entry", "history", "text-formatting", "selection"]
+  static let files = ["text-entry", "history", "text-formatting", "selection", "navigation"]
 
   /// `swift/parity/deviations.json`: the deviation listing each scenario
   /// (`<name> (<mode>)`) that may differ from WebKit.
@@ -175,6 +175,8 @@ private final class ScenarioRunner {
       try moveHorizontally(chord)
     case ("ArrowUp", false, false, _), ("ArrowDown", false, false, _):
       try moveVertically(chord)
+    case ("ArrowUp", true, false, false), ("ArrowDown", true, false, false):
+      try moveByParagraph(chord)
     case ("Tab", _, _, _), ("Escape", _, _, _):
       break
     case (let key, false, false, false) where key.count == 1:
@@ -233,6 +235,20 @@ private final class ScenarioRunner {
     if !chord.shift { anchor = target }
     focus = target
     try select(anchor: anchor, focus: focus)
+  }
+
+  /// Option-Up and Option-Down: `moveBackward:` then
+  /// `moveToBeginningOfParagraph:` (and the forward pair), with their
+  /// `AndModifySelection:` forms. A paragraph ends at a paragraph or line
+  /// break, as a `<br>` ends one in the browser.
+  private func moveByParagraph(_ chord: Chord) throws {
+    let isBackward = chord.key == "ArrowUp"
+    let document = controller.document
+    let (anchor, focus) = try currentSelection()
+    let from = chord.shift ? focus : isBackward ? min(anchor, focus) : max(anchor, focus)
+    let stepped = document.move(from, isBackward: isBackward, granularity: .character)
+    let target = document.move(stepped, isBackward: isBackward, granularity: .lineboundary)
+    try select(anchor: chord.shift ? anchor : target, focus: target)
   }
 
   /// The view's selection: the model's, with the view's own anchor while

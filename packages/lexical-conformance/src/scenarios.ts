@@ -401,18 +401,118 @@ export const SELECTION: Scenario[] = [
   },
 ];
 
+function typeParagraphs(paragraphs: string[]): ScenarioStep[] {
+  return paragraphs.flatMap((text, i): ScenarioStep[] =>
+    i > 0 ? [{press: 'Enter'}, {type: text}] : [{type: text}],
+  );
+}
+
+/** Each press its own step, so every caret position is compared. */
+function presses(chord: string, times: number): ScenarioStep[] {
+  return Array.from({length: times}, () => ({press: chord}));
+}
+
+const longParagraphs = typeParagraphs([
+  'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
+  'It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. ',
+  'It was popularised in the 1960s with the release of Letraset sheets containing lorem ipsum passages.',
+]);
+
+/**
+ * Navigation.spec.mjs and the browser test it defers to
+ * (lexical-playground/src/__tests__/browser/Navigation.test.ts, "native
+ * navigation"). That test fills the editor with an update; typing the same
+ * paragraphs gives the same document and caret. Its root is 1400px wide,
+ * as the recording's is, so no paragraph wraps.
+ */
+export const NAVIGATION: Scenario[] = [
+  {
+    modes: both,
+    name: 'Navigation > can type and navigate several paragraphs',
+    steps: [
+      ...typeParagraphs(['one', 'two', 'three']),
+      {press: 'Meta+ArrowUp'},
+      {press: 'Meta+ArrowDown'},
+    ],
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can move to the beginning of the current line, then back to the end of the current line',
+    steps: [
+      ...longParagraphs,
+      {press: 'Meta+ArrowLeft'},
+      {press: 'Meta+ArrowRight'},
+    ],
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can move one word to the right',
+    steps: [
+      ...longParagraphs,
+      {press: 'Meta+ArrowUp'},
+      {press: 'Alt+ArrowRight'},
+    ],
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can move to the beginning of the previous word',
+    steps: [...longParagraphs, ...presses('Alt+ArrowLeft', 2)],
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can move to the top of the editor, then to the bottom of the current paragraph',
+    steps: [
+      ...longParagraphs,
+      {press: 'Meta+ArrowUp'},
+      {press: 'Alt+ArrowDown'},
+    ],
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can move to the beginning of the current paragraph',
+    steps: [...longParagraphs, {press: 'Alt+ArrowUp'}],
+  },
+  {
+    modes: both,
+    name: 'Navigation > native navigation > can navigate through the plain text word by word',
+    steps: [
+      {type: '  123 abc 456  def  '},
+      ...presses('Alt+ArrowLeft', 5),
+      ...presses('Alt+ArrowRight', 5),
+    ],
+  },
+  {
+    modes: ['rich'],
+    name: 'Navigation > native navigation > can navigate through the formatted text word by word',
+    steps: [
+      {type: '  123 abc 456  def  '},
+      {press: 'Alt+ArrowLeft'},
+      ...presses('Shift+ArrowRight', 2),
+      {press: 'Meta+b'},
+      ...presses('Alt+ArrowLeft', 3),
+      ...presses('Shift+ArrowRight', 2),
+      {press: 'Meta+b'},
+      {press: 'Meta+ArrowRight'},
+      ...presses('Alt+ArrowLeft', 5),
+      ...presses('Alt+ArrowRight', 5),
+    ],
+  },
+];
+
 export const SCENARIO_FILES: {name: string; scenarios: Scenario[]}[] = [
   {name: 'text-entry', scenarios: TEXT_ENTRY},
   {name: 'history', scenarios: HISTORY},
   {name: 'text-formatting', scenarios: TEXT_FORMATTING},
   {name: 'selection', scenarios: SELECTION},
+  {name: 'navigation', scenarios: NAVIGATION},
 ];
 
 /**
  * The keys a Linux WebKit needs for a native caret move that a Mac makes
  * with `chord`. Playwright's WebKit uses the GTK key bindings on Linux, so
  * the Cocoa word and line moves (Option and Command with an arrow) are
- * pressed as their GTK equivalents. Chords that Lexical handles itself on
+ * pressed as their GTK equivalents, and the paragraph moves (Option with
+ * up or down) as Home and End. Chords that Lexical handles itself on
  * an Apple platform (Command-B, Command-Z, Option-Backspace, …) go through
  * unchanged, since `navigator.platform` is a Mac's.
  */
@@ -427,6 +527,12 @@ export function linuxWebKitChord(chord: string): string {
   }
   if (modifiers.has('Alt') && (key === 'ArrowLeft' || key === 'ArrowRight')) {
     return `Control+${shift}${key}`;
+  }
+  if (modifiers.has('Alt') && !modifiers.has('Meta')) {
+    // GTK has no paragraph move. Scenario lines never wrap, so Home and End
+    // (which the upstream tests press off Apple platforms) land where
+    // Option-Up and Option-Down do, from inside a paragraph.
+    return `${shift}${key === 'ArrowUp' ? 'Home' : 'End'}`;
   }
   if (modifiers.has('Meta')) {
     switch (key) {

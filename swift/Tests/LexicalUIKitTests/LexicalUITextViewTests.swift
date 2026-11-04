@@ -255,6 +255,32 @@
       _ = window
     }
 
+    @Test func fitsTheCaretAtTheEndOfTheText() throws {
+      let (view, window) = try makeView()
+      view.insertText("Hello")
+      view.insertText("\n")
+      view.insertText("world")
+      view.layoutIfNeeded()
+      let font = UIFont.systemFont(ofSize: 16)
+      let halfLeading = (27.2 - (font.ascender - font.descender)) / 2
+      func expectFitted(at position: UITextPosition, line: Int) {
+        // As tall as the font, on the line's centered text.
+        let caret = view.caretRect(for: position)
+        #expect(abs(caret.height - (font.ascender - font.descender)) <= 0.5, "\(caret)")
+        #expect(
+          abs(caret.minY - (view.textContainerInset.top + 27.2 * CGFloat(line) + halfLeading))
+            <= 0.5, "\(caret)")
+      }
+      let middle = try #require(view.position(from: view.beginningOfDocument, offset: 2))
+      expectFitted(at: middle, line: 0)
+      expectFitted(at: view.endOfDocument, line: 1)
+      // An empty last block: the extra line after the final newline.
+      view.insertText("\n")
+      view.layoutIfNeeded()
+      expectFitted(at: view.endOfDocument, line: 2)
+      _ = window
+    }
+
     @Test func hitTestsCarets() throws {
       let (view, window) = try makeView()
       view.insertText("Hello")

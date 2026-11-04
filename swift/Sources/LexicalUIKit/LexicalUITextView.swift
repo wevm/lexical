@@ -489,8 +489,14 @@
     public override func caretRect(for position: UITextPosition) -> CGRect {
       let caret = super.caretRect(for: position)
       let offset = self.offset(from: beginningOfDocument, to: position)
+      // The end of the text has no layout fragment of its own: the caret
+      // there is on the last character's (or on the extra line TextKit
+      // adds to it after a final newline).
+      let length = textStorage.length
       guard let layoutManager = textLayoutManager,
-        let location = textRange(NSRange(location: offset, length: 0))?.location,
+        let location = textRange(
+          NSRange(location: offset == length && length > 0 ? length - 1 : offset, length: 0))?
+          .location,
         let fragment = layoutManager.textLayoutFragment(for: location)
       else { return caret }
       let frame = fragment.layoutFragmentFrame
@@ -512,7 +518,10 @@
       let ascent = font?.ascender ?? line.fontExtents?.ascent ?? 0
       let descent = font.map { -$0.descender } ?? line.fontExtents?.descent ?? 0
       guard ascent + descent > 0 else { return caret }
-      let baseline = top + line.typographicBounds.minY + line.glyphOrigin.y - line.textOffset
+      let textOffset =
+        line.fontExtents == nil
+        ? line.textOffset(ascent: ascent, descent: descent) : line.textOffset
+      let baseline = top + line.typographicBounds.minY + line.glyphOrigin.y - textOffset
       return CGRect(
         x: caret.minX, y: baseline - ascent, width: caret.width, height: ascent + descent)
     }

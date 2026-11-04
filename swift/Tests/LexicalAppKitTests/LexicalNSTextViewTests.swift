@@ -221,6 +221,38 @@
       _ = window
     }
 
+    @Test func fitsTheCaretAtTheEndOfTheText() throws {
+      let (view, window) = try makeView()
+      insert(view, "Hello")
+      view.insertNewline(nil)
+      insert(view, "world")
+      let font = NSFont.systemFont(ofSize: 16)
+      let inset = view.textContainerInset.height
+      let halfLeading = (27.2 - (font.ascender - font.descender)) / 2
+      // The offscreen window shows no caret, so one stands in for
+      // NSTextView's, which is as tall as its line.
+      let indicator = NSTextInsertionIndicator(frame: .zero)
+      view.addSubview(indicator)
+      func expectFitted(at location: Int, line: Int) {
+        view.setSelectedRange(NSRange(location: location, length: 0))
+        indicator.frame = NSRect(x: 40, y: inset + 27.2 * CGFloat(line), width: 2, height: 27.2)
+        view.layout()
+        // As tall as the font, on the line's centered text.
+        let frame = indicator.frame
+        #expect(
+          abs(frame.height - (font.ascender - font.descender)) <= 0.5, "\(location): \(frame)")
+        #expect(
+          abs(frame.minY - (inset + 27.2 * CGFloat(line) + halfLeading)) <= 0.5,
+          "\(location): \(frame)")
+      }
+      expectFitted(at: 2, line: 0)
+      expectFitted(at: view.string.utf16.count, line: 1)
+      // An empty last block: the extra line after the final newline.
+      view.insertNewline(nil)
+      expectFitted(at: view.string.utf16.count, line: 2)
+      _ = window
+    }
+
     @Test func centersTextInCSSLineBoxes() throws {
       let (view, window) = try makeView()
       // Lines of capitals, whose ink runs from the cap height to the

@@ -21,6 +21,68 @@ conforms to.
 Requires iOS 26 or macOS 26 and Swift 6.4 (Xcode 27). The non-UI modules also build on
 Linux.
 
+Add the products you use to your target, for example:
+
+```swift
+.target(name: "MyApp", dependencies: [
+  .product(name: "Lexical", package: "lexical-swift"),
+  .product(name: "LexicalExtension", package: "lexical-swift"),
+  .product(name: "LexicalRichText", package: "lexical-swift"),
+  .product(name: "LexicalHistory", package: "lexical-swift"),
+  .product(name: "LexicalSwiftUI", package: "lexical-swift"),
+])
+```
+
+## Quick start
+
+Build an editor from extensions, as in JS, and show it with `LexicalEditor`
+(SwiftUI), `LexicalUITextView` (UIKit) or `LexicalNSTextView` (AppKit):
+
+```swift
+import Lexical
+import LexicalExtension
+import LexicalHistory
+import LexicalRichText
+import LexicalSwiftUI
+import SwiftUI
+
+@MainActor
+func makeEditor() throws -> Editor {
+  try buildEditorFromExtensions(
+    defineExtension(name: "my-app", dependencies: [RichTextExtension, HistoryExtension]))
+}
+
+struct ContentView: View {
+  @State private var editor = try! makeEditor()
+
+  var body: some View {
+    LexicalEditor(editor)
+  }
+}
+```
+
+The model API is Lexical's, without the `$` prefix (Swift identifiers can't
+start with `$`), and the `$` functions throw:
+
+```swift
+try editor.update(discrete: true) {
+  let paragraph = try createParagraphNode()
+  try paragraph.append(createTextNode("Hello, Lexical"))
+  try getRoot().clear().append(paragraph)
+}
+
+let text = try editor.read { try getRoot().getTextContent() }
+
+// The same JSON as JS, byte for byte; parse it back with parseEditorState.
+let json = try editor.getEditorState().toJSON().stringify()
+try editor.setEditorState(editor.parseEditorState(json))
+```
+
+Offsets in selections and points are UTF-16 code units, as in JS and
+`NSString`. The differences from JS are listed in the documentation's
+`JSParity` article; `Examples/LexicalDemo` and `apps/lexical-playground-swift`
+are complete apps.
+
 ## Development
 
 This package is developed in [wevm/lexical](https://github.com/wevm/lexical),

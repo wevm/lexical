@@ -116,6 +116,24 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertTrue(tree.contains("\"hello\""), tree)
   }
 
+  /// A hardware keyboard's Tab indents a code line and Shift+Tab outdents
+  /// it, as in the web playground.
+  @MainActor
+  func testShiftTabOutdentsACodeLine() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("``` ")
+    waitForTree(") code")
+    app.typeKey(.tab, modifierFlags: [])
+    editor.typeText("x")
+    waitForTree(") tab")
+    app.typeKey(.tab, modifierFlags: .shift)
+    let outdented = NSPredicate(format: "NOT (label CONTAINS %@)", ") tab")
+    expectation(for: outdented, evaluatedWith: app.staticTexts["tree-view"])
+    waitForExpectations(timeout: 5)
+    XCTAssertTrue(tree.contains("\"x\""), tree)
+  }
+
   @MainActor
   func testFontControlsPatchTheSelectionStyle() {
     launch()

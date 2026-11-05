@@ -64,6 +64,9 @@ public struct TextKitUpdate: Sendable {
   public var tags: Set<String> = []
   /// Whether the edits replace the whole text.
   public var isFull = false
+  /// Whether the view shows its placeholder: `canShowPlaceholder` of the
+  /// committed state, as upstream's `ContentEditable` decides it.
+  public var canShowPlaceholder = false
 
   public init() {}
 }

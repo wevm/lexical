@@ -515,6 +515,53 @@
       _ = window
     }
 
+    /// `.ContentEditable__placeholder`: #999 root text over the first line,
+    /// centered in it as typed text is, while `canShowPlaceholder` holds.
+    @Test func showsThePlaceholderWhereTypedTextWouldBe() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension]))
+      let (view, window) = makeLightView(editor)
+      let text = "Enter some rich text..."
+      view.placeholder = text
+      #expect(view.accessibilityValue == text)
+      // The rows of the first line's ink of a color: at least half
+      // covered, so text of either color measures alike.
+      func rows(_ isInk: @escaping ([Int]) -> Bool) throws -> ClosedRange<CGFloat>? {
+        view.layoutIfNeeded()
+        func display(_ layer: CALayer) {
+          layer.displayIfNeeded()
+          layer.sublayers?.forEach(display)
+        }
+        display(view.layer)
+        let (color, _) = try render(view)
+        let x = view.textContainerInset.left
+        let rows = stride(from: 0, to: 50, by: 0.5).filter { y in
+          stride(from: x, to: x + 150, by: 0.5).contains { isInk(color($0, y)) }
+        }
+        return rows.first.map { $0...rows.last! }
+      }
+      let placeholder = try #require(
+        try rows { $0.allSatisfy { $0 < 204 } && $0.max()! - $0.min()! < 8 }, "no placeholder")
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(createParagraphNode().append(createTextNode(text)))
+      }
+      #expect(view.accessibilityValue != text)
+      let typed = try #require(try rows { $0.allSatisfy { $0 < 128 } }, "no text")
+      #expect(abs(placeholder.lowerBound - typed.lowerBound) <= 1, "\(placeholder) \(typed)")
+      #expect(abs(placeholder.upperBound - typed.upperBound) <= 1, "\(placeholder) \(typed)")
+      // `$canShowPlaceholder`: only an unindented paragraph of text.
+      let blocks: [(() throws -> ElementNode, Bool)] = [
+        ({ try createHeadingNode() }, false),
+        ({ try createParagraphNode().setIndent(1) }, false),
+        ({ try createParagraphNode() }, true),
+      ]
+      for (block, shows) in blocks {
+        try editor.update(discrete: true) { try getRoot().clear().append(try block()) }
+        #expect((view.accessibilityValue == text) == shows)
+      }
+      _ = window
+    }
+
     private func makeLightView(_ editor: Editor) -> (LexicalUITextView, UIWindow) {
       let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
       window.overrideUserInterfaceStyle = .light

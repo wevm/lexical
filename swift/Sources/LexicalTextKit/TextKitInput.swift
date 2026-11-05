@@ -1,4 +1,5 @@
 import Lexical
+import LexicalText
 
 // The platform-neutral half of the text views (Q28, Q40). The views turn
 // each native input into the DOM-shaped event a browser would send and hand
@@ -125,6 +126,10 @@ public final class TextKitInputController {
       if let selection = selection as? NodeSelection {
         update.selectedNodes = Set(try selection.getNodes().map { $0.getKey() })
       }
+      // A document of more than one block never shows it, which settles
+      // most commits without reading the whole text.
+      update.canShowPlaceholder =
+        try getRoot().getChildrenSize() <= 1 && canShowPlaceholder(editor.isComposing())
       return update
     }
     update.tags = tags

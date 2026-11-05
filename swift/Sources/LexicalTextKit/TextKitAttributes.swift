@@ -763,6 +763,8 @@ public struct TextKitTheme: Hashable, Sendable {
       foregroundColor: TextKitColor(0, 0, 0).withDark(TextKitColor(235, 235, 240)),
       lineHeightMultiple: 1.7),
     "paragraph": TextKitStyle(spacingBefore: 0, spacingAfter: 0),
+    // `.ContentEditable__placeholder`: the root's 16px text in #999.
+    "placeholder": TextKitStyle(foregroundColor: TextKitColor(153, 153, 153)),
     "quote": TextKitStyle(
       foregroundColor: secondaryText, headIndent: 40, spacingAfter: 10,
       blockBar: TextKitBlockBar(
@@ -945,6 +947,13 @@ public struct TextKitTheme: Hashable, Sendable {
     try textAttributes(
       format: node.getFormat(), style: node.getStyle(),
       ancestors: node.getParents().reversed().map(TextKitElement.init))
+  }
+
+  /// The placeholder's look: the root's text with the `placeholder` style.
+  public var placeholderAttributes: TextKitTextAttributes {
+    var attributes = textAttributes(format: 0, style: "", ancestors: [])
+    if let style = styles["placeholder"] { attributes.apply(style, background: false) }
+    return attributes
   }
 
   /// The attributes of `block`'s paragraph (call it in a read or update).

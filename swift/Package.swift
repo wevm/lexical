@@ -209,7 +209,7 @@ let package = Package(
       ]),
     // The platform-neutral half of the text views: the document they show
     // and the input controller that turns native input into commands.
-    .target(name: "LexicalTextKit", dependencies: ["Lexical"]),
+    .target(name: "LexicalTextKit", dependencies: ["Lexical", "LexicalText"]),
     .testTarget(
       name: "LexicalTextKitTests",
       dependencies: [

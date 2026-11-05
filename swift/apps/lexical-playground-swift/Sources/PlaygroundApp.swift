@@ -44,10 +44,14 @@ struct PlaygroundView: View {
       ToolbarView(model: model)
       Divider()
       layout {
-        LexicalEditor(model.editor)
-          .id(model.generation)
-          .accessibilityIdentifier("editor")
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Editor.tsx's placeholder.
+        LexicalEditor(
+          model.editor,
+          placeholder: model.isRichText ? "Enter some rich text..." : "Enter some plain text..."
+        )
+        .id(model.generation)
+        .accessibilityIdentifier("editor")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         if model.showsTreeView {
           Divider()
           TreeView(model: model)

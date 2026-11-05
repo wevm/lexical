@@ -35,6 +35,21 @@
     private let history = HistoryUndoManager()
     public override var undoManager: UndoManager? { history }
     private let blockBarsView = BlockBarsView()
+    /// Shown while the editor is empty (`canShowPlaceholder`), over its
+    /// first line in the theme's `placeholder` style, and spoken as the
+    /// view's value then, as an empty text field's placeholder is: upstream
+    /// `ContentEditable`'s `placeholder` and `aria-placeholder`.
+    public var placeholder: String? {
+      didSet {
+        placeholderLabel.text = placeholder
+        setNeedsLayout()
+      }
+    }
+    /// Whether the editor's state can show the placeholder, as of the last
+    /// commit.
+    public private(set) var canShowPlaceholder = false
+    private var showsPlaceholder: Bool { canShowPlaceholder && placeholder?.isEmpty == false }
+    private let placeholderLabel = UILabel()
     /// The layout manager's delegate, kept here because it is held weakly.
     private let layoutDelegate = CenteredLineLayoutDelegate()
     /// A control over each check list item's box, which toggles the item:
@@ -65,6 +80,11 @@
       blockBarsView.isUserInteractionEnabled = false
       blockBarsView.backgroundColor = .clear
       insertSubview(blockBarsView, at: 0)
+      placeholderLabel.isUserInteractionEnabled = false
+      placeholderLabel.isAccessibilityElement = false
+      placeholderLabel.lineBreakMode = .byTruncatingTail
+      placeholderLabel.isHidden = true
+      addSubview(placeholderLabel)
       MicrotaskPump.install()
       let storageObserver = NotificationCenter.default.addObserver(
         forName: NSTextStorage.didProcessEditingNotification, object: textStorage, queue: nil
@@ -229,6 +249,8 @@
         decorators.retain(Set(editor.getDecorators().keys), document: controller.document)
       }
       decorators.select(update.selectedNodes)
+      canShowPlaceholder = update.canShowPlaceholder
+      setNeedsLayout()
       showMarkedText()
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
@@ -355,6 +377,46 @@
             width: textContainer.size.width - 2 * padding, height: frame.height))
       }
       sendSubviewToBack(blockBarsView)
+      layoutPlaceholder(layoutManager)
+    }
+
+    /// Puts the placeholder on the first line, centered in it as the
+    /// line's own text is, and as wide as the lines (upstream's is a line
+    /// of the root's text over the first).
+    private func layoutPlaceholder(_ layoutManager: NSTextLayoutManager) {
+      var line: CGRect?
+      if showsPlaceholder, let range = textRange(NSRange(location: 0, length: 0)) {
+        layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
+          _, segment, _, _ in
+          line = segment
+          return false
+        }
+      }
+      guard let line else {
+        placeholderLabel.isHidden = true
+        return
+      }
+      let attributes = controller.theme.placeholderAttributes
+      let font = attributes.uiFont(traitCollection.preferredContentSizeCategory)
+      let height = font.ascender - font.descender
+      // An empty document's line is TextKit's extra line fragment, which
+      // has the font's own height here; text typed there gets the root's
+      // `line-height`, which the placeholder is centered in as on the web.
+      let lineHeight = max(
+        line.height, (controller.theme["root"]?.lineHeightMultiple ?? 0) * font.pointSize)
+      let padding = textContainer.lineFragmentPadding
+      placeholderLabel.font = font
+      placeholderLabel.textColor = attributes.foregroundColor.uiColor
+      placeholderLabel.frame = CGRect(
+        x: textContainerInset.left + padding,
+        y: textContainerInset.top + line.minY + (lineHeight - height) / 2,
+        width: textContainer.size.width - 2 * padding, height: ceil(height))
+      placeholderLabel.isHidden = false
+    }
+
+    public override var accessibilityValue: String? {
+      get { showsPlaceholder ? placeholder : super.accessibilityValue }
+      set { super.accessibilityValue = newValue }
     }
 
     /// The lines of the block at `span`, in container coordinates. The

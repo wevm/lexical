@@ -4,6 +4,17 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.2
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- The TextKit reconciler applies an update's edits to its rendered text in one pass instead of splicing the text once per edit, so restyling a whole document (select all and bold, on 5,000 blocks) is about 40% faster. The edits sent to the text storage are unchanged.
+- Code blocks look like the web playground's: the default theme's `code` style draws a background, padding and a line-number gutter with a right border, in light and dark mode, and sets a tab size of 2. `TextKitStyle` gains `paddingTop`, `paddingBottom`, `gutter` (`TextKitGutter`) and `tabSize` for themes that want the same for their own blocks.
+- Horizontal rules show on macOS and iOS: they rendered nothing, because `HorizontalRuleNode` has no view of its own. The views now draw one from the theme's new `horizontalRule` (`TextKitRule`), which the default theme sets to the web playground's 2-point #ccc line with 1em margins, outlined in blue while the rule is selected, without the selection highlight or iOS's handles.
+- On macOS the pointer is a pointing hand over links, as the playground theme's `cursor: pointer` shows it on the web. `TextKitStyle` and `TextKitTextAttributes` gain `cursor` (`TextKitCursor`) for themes that want it for other text.
+
 ## 0.1.1
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

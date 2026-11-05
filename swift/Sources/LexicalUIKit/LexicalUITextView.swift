@@ -517,6 +517,25 @@
         x: caret.minX, y: baseline - ascent, width: caret.width, height: ascent + descent)
     }
 
+    /// The selection covers only each line's text, as a browser
+    /// highlights it: `UITextView`'s rects are whole line boxes, from the
+    /// container's edge on each line the selection runs through.
+    public override func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
+      let rects = super.selectionRects(for: range)
+      guard let layoutManager = textLayoutManager else { return rects }
+      let origin = CGPoint(x: textContainerInset.left, y: textContainerInset.top)
+      return rects.compactMap { rect in
+        let segment = rect.rect.offsetBy(dx: -origin.x, dy: -origin.y)
+        let trimmed =
+          layoutManager.selectionSegment(trimming: segment)
+          // The start and the end keep a rect, for their handles.
+          ?? ((rect.containsStart || rect.containsEnd)
+            ? CGRect(x: segment.minX, y: segment.minY, width: 0, height: segment.height) : nil)
+        guard let trimmed else { return nil }
+        return TrimmedSelectionRect(rect, trimmed.offsetBy(dx: origin.x, dy: origin.y))
+      }
+    }
+
     /// The text view edited its own text: the edits replay as input.
     public func textViewDidChange(_ textView: UITextView) {
       if isRendering { return }
@@ -696,6 +715,23 @@
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     @objc private func toggle() { onToggle?(key) }
+  }
+
+  /// A selection rect of `UITextView`'s with another frame.
+  private final class TrimmedSelectionRect: UITextSelectionRect {
+    private let base: UITextSelectionRect
+    private let frame: CGRect
+
+    init(_ base: UITextSelectionRect, _ frame: CGRect) {
+      self.base = base
+      self.frame = frame
+    }
+
+    override var rect: CGRect { frame }
+    override var writingDirection: NSWritingDirection { base.writingDirection }
+    override var containsStart: Bool { base.containsStart }
+    override var containsEnd: Bool { base.containsEnd }
+    override var isVertical: Bool { base.isVertical }
   }
 
   /// Draws quote bars and list markers behind the text.

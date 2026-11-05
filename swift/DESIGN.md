@@ -599,7 +599,13 @@ Reversible choices made porting `@lexical/extension` under Q18.
   is in a window. A model selection is shown after each commit; a
   `NodeSelection` of one node shows as its range selected. A commit tagged
   `focus` makes the view first responder, as `editor.focus()` focuses the
-  DOM root.
+  DOM root. The highlight covers only each line's text, as a browser draws
+  it over the inline boxes: TextKit's selection segments (macOS, through a
+  `NSTextLayoutManager` subclass) and `UITextView`'s selection rects (iOS)
+  are trimmed from whole line boxes, which run from the container's edge
+  over list markers, indents and quote bars, to the line's first and last
+  characters and the font's content area. Firefox draws it so; Safari
+  fills the gaps between lines of a selection over several lines.
 - **Composition** (Q40). Marked text is written through the model, as a
   browser writes it into the DOM: the first `setMarkedText` dispatches
   `COMPOSITION_START_COMMAND`, each one replaces the marked range with

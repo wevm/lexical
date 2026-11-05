@@ -98,6 +98,24 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForTree("\"Title\"")
   }
 
+  /// The web playground's keyboard shortcuts, from a hardware keyboard.
+  @MainActor
+  func testKeyboardShortcutsFormatTheBlock() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("hello")
+    app.typeKey("1", modifierFlags: [.command, .alternate])
+    waitForTree(") heading")
+    app.typeKey("7", modifierFlags: [.command, .shift])
+    waitForTree(") list")
+    waitForTree("listitem")
+    app.typeKey("e", modifierFlags: [.command, .shift])
+    waitForTree("center")
+    app.typeKey("q", modifierFlags: [.control, .shift])
+    waitForTree(") quote")
+    XCTAssertTrue(tree.contains("\"hello\""), tree)
+  }
+
   @MainActor
   func testFontControlsPatchTheSelectionStyle() {
     launch()

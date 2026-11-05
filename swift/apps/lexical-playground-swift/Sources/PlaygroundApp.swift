@@ -15,6 +15,13 @@ struct LexicalPlaygroundApp: App {
     #if os(macOS)
       .defaultSize(width: 1100, height: 760)
     #endif
+    .commands { PlaygroundCommands() }
+    #if os(macOS)
+      // The web playground's Keyboard shortcuts dialog, as a floating panel.
+      Window("Keyboard Shortcuts", id: "keyboard-shortcuts") { ShortcutsHelpView() }
+        .windowResizability(.contentSize)
+        .windowLevel(.floating)
+    #endif
   }
 }
 
@@ -29,6 +36,7 @@ struct PlaygroundView: View {
   #endif
 
   var body: some View {
+    @Bindable var model = model
     // One layout that changes axis, so the editor view (and the text view
     // attached to the editor) stays the same.
     let layout = isWide ? AnyLayout(HStackLayout(spacing: 0)) : AnyLayout(VStackLayout(spacing: 0))
@@ -48,6 +56,13 @@ struct PlaygroundView: View {
       }
       Divider()
       ActionsView(model: model, sheet: $sheet)
+    }
+    .focusedSceneValue(\.playgroundModel, model)
+    .sheet(isPresented: $model.showsShortcuts) {
+      NavigationStack {
+        ShortcutsHelpView()
+          .toolbar { Button("Done") { model.showsShortcuts = false } }
+      }
     }
     .sheet(item: $sheet) { sheet in
       switch sheet {
@@ -82,9 +97,22 @@ struct ActionsView: View {
   let model: PlaygroundModel
   @Binding var sheet: PlaygroundSheet?
 
+  #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+  #endif
+
   var body: some View {
     @Bindable var model = model
     HStack(spacing: 16) {
+      // `ActionsPlugin`'s Keyboard shortcuts button.
+      Button("Keyboard shortcuts", systemImage: "keyboard") {
+        #if os(macOS)
+          openWindow(id: "keyboard-shortcuts")
+        #else
+          model.showsShortcuts = true
+        #endif
+      }
+      .help("Show keyboard shortcuts")
       Button("JSON", systemImage: "curlybraces") { sheet = .importExport(.json) }
         .help("Import or export the editor state as JSON")
       Button("HTML", systemImage: "chevron.left.forwardslash.chevron.right") {

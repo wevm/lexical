@@ -18,6 +18,19 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   (`FloatingLinkEditorPlugin`): the URL, which opens the link, with edit
   and remove. The toolbar's link button links the selection and edits its
   URL there.
+- **Keyboard shortcuts:** the web playground's (`ShortcutsExtension`), from
+  the editor and the Format menu: ⌥⌘0–3 for normal and headings 1–3,
+  ⇧⌘7/8/9 for numbered, bulleted and check lists, ⌥⌘C code block, ⌃⇧Q
+  quote, ⌘> and ⌘< font size, ⇧⌘C inline code, ⇧⌘X strikethrough, ⌃⇧1/2/3
+  lowercase, uppercase and capitalize, ⇧⌘E/J/L/R alignment, ⌘, and ⌘.
+  subscript and superscript, ⌘] and ⌘[ indent and outdent, ⌘\ clear
+  formatting and ⌘K link. The Keyboard Shortcuts panel opens from the
+  bottom bar and the Help menu. They work with a hardware keyboard on iOS
+  too. Differences from the web: Add comment (⌥⌘M) is left out, as comments
+  aren't ported; ⌘, is subscript as on the web, as the playground has no
+  Settings menu item (its settings are a sheet); and the menu items' key
+  equivalents only fire while the editor isn't focused, since the editor
+  handles the same keys first.
 - **Debug view:** the tree view of `@lexical/devtools-core`
   (`LexicalDevtoolsCore.generateContent`): the node tree with the
   selection, the last commands and the editor's settings, or the exported

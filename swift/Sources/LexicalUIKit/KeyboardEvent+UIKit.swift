@@ -36,9 +36,12 @@
     public convenience init(_ key: UIKey, timeStamp: Double = 0) {
       let flags = key.modifierFlags
       let named = namedKeys[key.keyCode]
+      // Safari's `key`: with Command, Option applies and Shift doesn't;
+      // with Control alone, Shift applies and Control doesn't.
       let character =
-        flags.contains(.command) || flags.contains(.control)
-        ? key.charactersIgnoringModifiers : key.characters
+        flags.contains(.command)
+        ? key.characters
+        : flags.contains(.control) ? key.charactersIgnoringModifiers : key.characters
       self.init(
         "keydown", key: named?.key ?? character, code: named?.code ?? domCode(key.keyCode),
         altKey: flags.contains(.alternate), ctrlKey: flags.contains(.control),

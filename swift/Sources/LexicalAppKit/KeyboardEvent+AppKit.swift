@@ -37,7 +37,13 @@
       let key: String
       if let named = namedKeys[event.keyCode] {
         key = named
-      } else if flags.contains(.command) || flags.contains(.control) {
+      } else if flags.contains(.command) {
+        // Safari's `key` with Command: Option applies and Shift doesn't
+        // (⇧⌘7 is "7", ⌥⌘1 is "¡", ⇧⌘. is "."), which is the event's
+        // `characters`.
+        key = event.characters ?? ""
+      } else if flags.contains(.control) {
+        // With Control alone, Shift applies (⌃⇧1 is "!", ⌃⇧Q is "Q").
         key = event.charactersIgnoringModifiers ?? ""
       } else {
         key = event.characters ?? ""

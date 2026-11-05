@@ -229,6 +229,36 @@
       _ = window
     }
 
+    /// Shift+Tab is a `keydown` of Tab with `shiftKey`, as a browser
+    /// reports it: it outdents a code line (`CodeIndentExtension`) and a
+    /// paragraph at its start (`TabIndentationExtension`), instead of
+    /// moving the focus.
+    @Test func shiftTabOutdents() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "test",
+          dependencies: [RichTextExtension, CodeIndentExtension, TabIndentationExtension]))
+      let (view, window) = try makeView(editor)
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createCodeNode().append(createTabNode(), createCodeHighlightNode("foo")),
+          createParagraphNode().setIndent(1).append(createTextNode("bar")))
+      }
+      let backtab = key("\u{19}", 0x30, .shift, ignoringModifiers: "\u{19}")
+      view.setSelectedRange(NSRange(location: 2, length: 0))
+      view.keyDown(with: backtab)
+      #expect(window.firstResponder === view)
+      try editor.read { () throws in
+        #expect(try getRoot().getFirstChild()?.getTextContent() == "foo")
+      }
+      view.setSelectedRange(NSRange(location: (view.string as NSString).length - 3, length: 0))
+      view.keyDown(with: backtab)
+      try editor.read { () throws in
+        #expect(try (getRoot().getLastChild() as? ElementNode)?.getIndent() == 0)
+      }
+      #expect(window.firstResponder === view)
+    }
+
     @Test func selectionSyncsBothWays() throws {
       let (view, window) = try makeView()
       insert(view, "abc")

@@ -5,8 +5,10 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
 
 - **Toolbar:** undo and redo, the block type (normal, headings 1–6,
   bulleted, numbered and check lists, quote, code block), list buttons,
-  bold, italic, underline, strikethrough, code, subscript, superscript and
-  highlight, a link button, clear formatting,
+  the font family, the font size stepper (8–72), text and background
+  color pickers (inline styles through `patchStyleText`), an Insert menu
+  with a horizontal rule, bold, italic, underline, strikethrough, code,
+  subscript, superscript and highlight, a link button, clear formatting,
   alignment, and indent and outdent. The buttons follow the selection.
 - **Editing:** Markdown shortcuts (`# `, `- `, `1. `, `[ ] `, `> `,
   ` ``` `, `**bold**`, …), autolinked URLs and email addresses, and check

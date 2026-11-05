@@ -141,6 +141,12 @@ final class PlaygroundModel {
   private(set) var blockType = BlockType.paragraph
   private(set) var formats: Set<TextFormatType> = []
   private(set) var alignment: ElementFormatType = "left"
+  /// The selection's inline styles, as the web toolbar reads them with
+  /// `$getSelectionStyleValueForProperty` (`""` where the text disagrees).
+  private(set) var fontFamily = "Arial"
+  private(set) var fontSize = "\(defaultFontSize)px"
+  private(set) var fontColor = "#000"
+  private(set) var backgroundColor = "#fff"
   private(set) var canUndo = false
   private(set) var canRedo = false
   /// The selection is in a link.
@@ -188,7 +194,8 @@ final class PlaygroundModel {
             RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension,
             HistoryAnnounceExtension, EditorModeAnnounceExtension,
             configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
-            CheckListExtension, CodeExtension, PlaygroundMarkdownShortcutsExtension,
+            CheckListExtension, CodeExtension, HorizontalRuleExtension,
+            PlaygroundMarkdownShortcutsExtension,
             configExtension(TabIndentationExtension) { $0.maxIndent = 7 },
           ] + links
           : [
@@ -335,6 +342,11 @@ final class PlaygroundModel {
     try? editor.read {
       guard let selection = try getSelection() as? RangeSelection else { return }
       formats = Set(toolbarFormats.map(\.format).filter { selection.hasFormat($0) })
+      fontColor = try getSelectionStyleValueForProperty(selection, "color", "#000")
+      backgroundColor = try getSelectionStyleValueForProperty(selection, "background-color", "#fff")
+      fontFamily = try getSelectionStyleValueForProperty(selection, "font-family", "Arial")
+      fontSize = try getSelectionStyleValueForProperty(
+        selection, "font-size", "\(defaultFontSize)px")
       let anchor = try selection.anchor.getNode()
       let block = try anchor.getKey() == "root" ? anchor : anchor.getTopLevelElementOrThrow()
       // A list's type is the nearest list's, as the playground's toolbar
@@ -444,6 +456,50 @@ final class PlaygroundModel {
 
   func align(_ format: ElementFormatType) {
     _ = try? editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, format)
+  }
+
+  /// `applyStyleText` and `FontDropDown`'s `handleClick`: patches the
+  /// selected text's inline style (`$patchStyleText`).
+  func applyStyleText(_ property: String, _ value: String) {
+    try? editor.update {
+      if let selection = try getSelection() {
+        try patchStyleText(selection, [property: .value(value)])
+      }
+    }
+  }
+
+  /// The font size stepper's buttons (`updateFontSize`): the next size up
+  /// or down from the one shown, or from each text's own size when the
+  /// selection's sizes differ.
+  func stepFontSize(_ step: FontSizeStep, from inputValue: String) {
+    try? editor.update {
+      guard let selection = try getSelection() else { return }
+      if let current = Double(inputValue) {
+        let next = calculateNextFontSize(current, step)
+        try patchStyleText(selection, ["font-size": .value("\(formatFontSize(next))px")])
+      } else {
+        try patchStyleText(
+          selection,
+          [
+            "font-size": .compute { prev, _ in
+              let size = prev.flatMap { Double($0.dropLast(2)) } ?? Double(defaultFontSize)
+              return "\(formatFontSize(calculateNextFontSize(size, step)))px"
+            }
+          ])
+      }
+    }
+  }
+
+  /// The font size field (`updateFontSizeByInputValue`): the size typed,
+  /// clamped to the allowed range.
+  func setFontSize(_ size: Double) {
+    let clamped = min(max(size, Double(minAllowedFontSize)), Double(maxAllowedFontSize))
+    applyStyleText("font-size", "\(formatFontSize(clamped))px")
+  }
+
+  /// The Insert menu's Horizontal Rule.
+  func insertHorizontalRule() {
+    _ = try? editor.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND)
   }
 
   func indent() { _ = try? editor.dispatchCommand(INDENT_CONTENT_COMMAND) }
@@ -624,4 +680,55 @@ func prettyJSON(_ value: JSONValue, _ indent: String = "") -> String {
   default:
     return value.stringify()
   }
+}
+
+// MARK: Font size (ToolbarContext.tsx and ToolbarPlugin/utils.ts)
+
+let minAllowedFontSize = 8
+let maxAllowedFontSize = 72
+let defaultFontSize = 16
+
+enum FontSizeStep {
+  case increment, decrement
+}
+
+/// `calculateNextFontSize`: the stepper's next size, in larger steps for
+/// larger sizes.
+func calculateNextFontSize(_ current: Double, _ step: FontSizeStep) -> Double {
+  let min = Double(minAllowedFontSize)
+  let max = Double(maxAllowedFontSize)
+  switch step {
+  case .decrement:
+    switch current {
+    case let size where size > max: return max
+    case let size where size >= 48: return current - 12
+    case let size where size >= 24: return current - 4
+    case let size where size >= 14: return current - 2
+    case let size where size >= 9: return current - 1
+    default: return min
+    }
+  case .increment:
+    switch current {
+    case let size where size < min: return min
+    case let size where size < 12: return current + 1
+    case let size where size < 20: return current + 2
+    case let size where size < 36: return current + 4
+    case let size where size <= 60: return current + 12
+    default: return max
+    }
+  }
+}
+
+/// A size as JS's `String(number)` writes it: no `.0` for a whole number.
+func formatFontSize(_ size: Double) -> String {
+  size == size.rounded() ? String(Int(size)) : String(size)
+}
+
+/// `parseFontSizeForToolbar` without its unit: the size in pixels of a
+/// `px` or `pt` value, `""` for anything else.
+func toolbarFontSize(_ value: String) -> String {
+  guard let match = value.wholeMatch(of: /(\d+(?:\.\d+)?)(px|pt)/),
+    let size = Double(match.1)
+  else { return "" }
+  return formatFontSize(match.2 == "pt" ? (size * 4 / 3).rounded() : size)
 }

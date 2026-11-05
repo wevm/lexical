@@ -2,8 +2,9 @@ import Lexical
 import SwiftUI
 
 /// The playground's toolbar (`ToolbarPlugin`): undo and redo, the block
-/// type, the lists, the text formats, the link, clear formatting, alignment
-/// and indent. The buttons reflect the selection, as the web toolbar does.
+/// type, the lists, the font family and size, the text formats, the text
+/// and background colors, the link, clear formatting, the Insert menu,
+/// alignment and indent. The buttons reflect the selection, as the web toolbar does.
 struct ToolbarView: View {
   let model: PlaygroundModel
 
@@ -43,6 +44,10 @@ struct ToolbarView: View {
           }
           Divider().frame(height: 20)
         }
+        FontFamilyMenu(model: model)
+        Divider().frame(height: 20)
+        FontSizeStepper(model: model)
+        Divider().frame(height: 20)
         ForEach(toolbarFormats, id: \.format) { item in
           FormatButton(
             title: item.title, symbol: item.symbol, isOn: model.formats.contains(item.format)
@@ -50,11 +55,28 @@ struct ToolbarView: View {
             model.toggleFormat(item.format)
           }
         }
+        ColorPickerButton(
+          title: "Formatting text color", symbol: "character", color: model.fontColor
+        ) { model.applyStyleText("color", $0) }
+        ColorPickerButton(
+          title: "Formatting background color", symbol: "paintbrush.fill",
+          color: model.backgroundColor
+        ) { model.applyStyleText("background-color", $0) }
         FormatButton(title: "Insert Link", symbol: "link", isOn: model.isLink) {
           model.insertLink()
         }
         Button("Clear Formatting", systemImage: "eraser") { model.clearFormatting() }
         if model.isRichText {
+          Divider().frame(height: 20)
+          // The web toolbar's Insert dropdown, with the nodes the Swift
+          // port has.
+          Menu {
+            Button("Horizontal Rule", systemImage: "minus") { model.insertHorizontalRule() }
+          } label: {
+            Label("Insert", systemImage: "plus").labelStyle(.titleAndIcon)
+          }
+          .fixedSize()
+          .accessibilityLabel("Insert specialized editor node")
           Divider().frame(height: 20)
           Menu {
             ForEach(toolbarAlignments, id: \.format) { item in
@@ -79,6 +101,7 @@ struct ToolbarView: View {
       .padding(.horizontal, 8)
       .padding(.vertical, 6)
     }
+    .accessibilityIdentifier("toolbar")
   }
 }
 

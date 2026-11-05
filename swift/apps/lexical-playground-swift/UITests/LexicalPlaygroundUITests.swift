@@ -18,6 +18,24 @@ final class LexicalPlaygroundUITests: XCTestCase {
 
   @MainActor private var tree: String { app.staticTexts["tree-view"].label }
 
+  /// A toolbar button, scrolling the toolbar until it is on screen: like
+  /// the web toolbar, it is wider than a phone.
+  @MainActor
+  private func toolbarButton(_ label: String) -> XCUIElement {
+    let button = app.buttons[label]
+    let window = app.windows.firstMatch.frame
+    let start = app.scrollViews["toolbar"].coordinate(
+      withNormalizedOffset: CGVector(dx: 0.7, dy: 0.5))
+    // Short drags that hold at the end, so the toolbar has no momentum
+    // and stops with the button on screen.
+    for _ in 0..<8 where !window.contains(button.frame) {
+      start.press(
+        forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: -100, dy: 0)),
+        withVelocity: .slow, thenHoldForDuration: 0.2)
+    }
+    return button
+  }
+
   @MainActor
   func testShowsTheWelcomeDocumentInTheTreeView() {
     launch()
@@ -36,7 +54,7 @@ final class LexicalPlaygroundUITests: XCTestCase {
     editor.typeText("Hello")
     // Select the word just typed.
     for _ in 0..<5 { app.typeKey(.leftArrow, modifierFlags: .shift) }
-    app.buttons["Bold"].tap()
+    toolbarButton("Bold").tap()
     let formatted = NSPredicate(format: "label CONTAINS %@", "\"Hello\" { format: bold }")
     expectation(for: formatted, evaluatedWith: app.staticTexts["tree-view"])
     waitForExpectations(timeout: 5)
@@ -81,6 +99,24 @@ final class LexicalPlaygroundUITests: XCTestCase {
   }
 
   @MainActor
+  func testFontControlsPatchTheSelectionStyle() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Hello")
+    for _ in 0..<5 { app.typeKey(.leftArrow, modifierFlags: .shift) }
+    app.buttons["Increase font size"].tap()
+    XCTAssertEqual(app.textFields["font-size-input"].value as? String, "18")
+    app.buttons["Formatting options for font family"].tap()
+    app.buttons["Georgia"].tap()
+    app.buttons["JSON"].tap()
+    let text = app.textViews["import-export-text"]
+    XCTAssertTrue(text.waitForExistence(timeout: 5))
+    let value = text.value as? String ?? ""
+    XCTAssertTrue(value.contains("font-size: 18px;"), value)
+    XCTAssertTrue(value.contains("font-family: Georgia;"), value)
+  }
+
+  @MainActor
   func testTappingACheckBoxTogglesTheItem() {
     launch()
     let editor = clearedEditor()
@@ -107,11 +143,7 @@ final class LexicalPlaygroundUITests: XCTestCase {
     let editor = clearedEditor()
     editor.typeText("Hello")
     for _ in 0..<5 { app.typeKey(.leftArrow, modifierFlags: .shift) }
-    // The toolbar scrolls sideways on a phone.
-    let linkButton = app.buttons["Insert Link"]
-    let bold = app.buttons["Bold"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-    bold.press(forDuration: 0.1, thenDragTo: bold.withOffset(CGVector(dx: -250, dy: 0)))
-    linkButton.tap()
+    toolbarButton("Insert Link").tap()
     let input = app.textFields["link-input"]
     XCTAssertTrue(input.waitForExistence(timeout: 5))
     input.typeText("lexical.dev\n")

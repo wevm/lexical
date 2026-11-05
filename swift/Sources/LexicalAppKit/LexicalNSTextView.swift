@@ -45,6 +45,18 @@
     /// (`AriaLiveRegionExtension`); its announcements are spoken.
     public internal(set) var liveRegion: LiveRegion?
 
+    /// Shown while the editor is empty (`canShowPlaceholder`), over its
+    /// first line in the theme's `placeholder` style, and given to
+    /// accessibility as the placeholder value: upstream `ContentEditable`'s
+    /// `placeholder` and `aria-placeholder`.
+    public var placeholder: String? {
+      didSet { needsDisplay = true }
+    }
+    /// Whether the editor's state can show the placeholder, as of the last
+    /// commit.
+    public private(set) var canShowPlaceholder = false
+    private var showsPlaceholder: Bool { canShowPlaceholder && placeholder?.isEmpty == false }
+
     /// The text and paragraph look of the last block.
     private var lastBlockAttributes: [NSAttributedString.Key: Any]?
 
@@ -176,6 +188,7 @@
         decorators.retain(Set(editor.getDecorators().keys), document: controller.document)
       }
       decorators.select(update.selectedNodes)
+      canShowPlaceholder = update.canShowPlaceholder
       showMarkedText()
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
@@ -273,6 +286,39 @@
           ).fill()
         }
       }
+      if let frame = placeholderFrame, let placeholder {
+        placeholderString(placeholder).draw(
+          with: frame, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])
+      }
+    }
+
+    /// Where the placeholder's text is drawn, while it shows: on the first
+    /// line, centered in it as the line's own text is, and as wide as the
+    /// lines (upstream's is a line of the root's text over the first).
+    private var placeholderFrame: NSRect? {
+      guard showsPlaceholder, let layoutManager = textLayoutManager,
+        let line = firstLineFrame(layoutManager, NSRange(location: 0, length: 0))
+      else { return nil }
+      let font = controller.theme.placeholderAttributes.nsFont
+      let height = font.ascender - font.descender
+      let padding = textContainer?.lineFragmentPadding ?? 0
+      return NSRect(
+        x: textContainerOrigin.x + padding, y: textContainerOrigin.y + line.midY - height / 2,
+        width: (textContainer?.size.width ?? bounds.width) - 2 * padding, height: ceil(height))
+    }
+
+    /// The placeholder in the theme's look, on one line cut short with an
+    /// ellipsis, as `white-space: nowrap; text-overflow: ellipsis` does.
+    private func placeholderString(_ placeholder: String) -> NSAttributedString {
+      var attributes = controller.theme.placeholderAttributes.nsAttributes
+      let style = NSMutableParagraphStyle()
+      style.lineBreakMode = .byTruncatingTail
+      attributes[.paragraphStyle] = style
+      return NSAttributedString(string: placeholder, attributes: attributes)
+    }
+
+    public override func accessibilityPlaceholderValue() -> String? {
+      showsPlaceholder ? placeholder : nil
     }
 
     /// Fills `layout`'s box behind the block's lines, `lines` (in view

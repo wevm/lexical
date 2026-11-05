@@ -16,14 +16,22 @@
   /// ```swift
   /// let editor = try buildEditorFromExtensions(
   ///   defineExtension(name: "app", dependencies: [RichTextExtension, HistoryExtension]))
-  /// LexicalEditor(editor)
+  /// LexicalEditor(editor, placeholder: "Enter some rich text...")
   /// ```
   @MainActor
   public struct LexicalEditor {
     public let editor: Editor
+    /// Shown while the editor is empty, as upstream `ContentEditable`'s
+    /// `placeholder` (the text view's `placeholder`).
+    public var placeholder: String?
 
     public init(_ editor: Editor) {
       self.editor = editor
+    }
+
+    public init(_ editor: Editor, placeholder: String?) {
+      self.editor = editor
+      self.placeholder = placeholder
     }
   }
 
@@ -44,7 +52,9 @@
         return scrollView
       }
 
-      public func updateNSView(_ scrollView: NSScrollView, context: Context) {}
+      public func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        (scrollView.documentView as? LexicalNSTextView)?.placeholder = placeholder
+      }
     }
   #elseif canImport(UIKit)
     extension LexicalEditor: UIViewRepresentable {
@@ -52,7 +62,9 @@
         LexicalUITextView(editor: editor)
       }
 
-      public func updateUIView(_ textView: LexicalUITextView, context: Context) {}
+      public func updateUIView(_ textView: LexicalUITextView, context: Context) {
+        textView.placeholder = placeholder
+      }
     }
   #endif
 #endif

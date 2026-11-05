@@ -16,5 +16,6 @@
   "lexical-markdown": "enforced",
   "lexical-overflow": "enforced",
   "lexical-text": "enforced",
-  "lexical-hashtag": "enforced"
+  "lexical-hashtag": "enforced",
+  "lexical-react": "enforced"
 }

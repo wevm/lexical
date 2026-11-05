@@ -104,6 +104,12 @@ final class LexicalPlaygroundUITests: XCTestCase {
     launch()
     let editor = clearedEditor()
     editor.typeText("hello")
+    // A plain hardware key first: on the iOS 26 Simulator, after an earlier
+    // test's app got chords from XCUITest (Shift+Left in
+    // testFontControlsPatchTheSelectionStyle), the next app's chords arrive
+    // without their modifiers until a key without one does. At the end of
+    // the text, Right Arrow changes nothing.
+    app.typeKey(.rightArrow, modifierFlags: [])
     app.typeKey("1", modifierFlags: [.command, .alternate])
     waitForTree(") heading")
     app.typeKey("7", modifierFlags: [.command, .shift])

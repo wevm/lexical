@@ -224,8 +224,9 @@
       }
       textStorage.endEditing()
       if update.isFull || !update.decorators.isEmpty {
-        decorators.retain(Set(editor.getDecorators().keys))
+        decorators.retain(Set(editor.getDecorators().keys), document: controller.document)
       }
+      decorators.select(update.selectedNodes)
       showMarkedText()
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
@@ -535,6 +536,11 @@
       let origin = CGPoint(x: textContainerInset.left, y: textContainerInset.top)
       return rects.compactMap { rect in
         let segment = rect.rect.offsetBy(dx: -origin.x, dy: -origin.y)
+        // A selected horizontal rule is outlined, without handles: a node
+        // selection has no DOM range for Safari to put them on.
+        if layoutManager.isHorizontalRule(at: CGPoint(x: segment.minX, y: segment.midY)) {
+          return nil
+        }
         let trimmed =
           layoutManager.selectionSegment(trimming: segment)
           // The start and the end keep a rect, for their handles.

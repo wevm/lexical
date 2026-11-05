@@ -166,8 +166,9 @@
       }
       textStorage.endEditing()
       if update.isFull || !update.decorators.isEmpty {
-        decorators.retain(Set(editor.getDecorators().keys))
+        decorators.retain(Set(editor.getDecorators().keys), document: controller.document)
       }
+      decorators.select(update.selectedNodes)
       showMarkedText()
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)

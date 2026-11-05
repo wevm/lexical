@@ -664,7 +664,13 @@ Reversible choices made porting `@lexical/extension` under Q18.
   overrides `attachmentBounds`, and draws a file icon in its place. The
   attachment's `image` is a blank one for the same reason.
   A click or tap on the view dispatches `CLICK_COMMAND` with the node's key
-  as `targetKey`.
+  as `targetKey`. A `HorizontalRuleNode`, whose `decorate` is `nil` as in
+  JS (its `<hr>` and the theme's `hr` class are all there is), is drawn
+  from the theme's `horizontalRule` (`TextKitRule`, after
+  `.PlaygroundEditorTheme__hr`): a native view with the line in its padded
+  box, as tall as the box and its margins, outlined while it is in a node
+  selection (`hrSelected`), which the selection highlight and iOS's
+  handles leave alone (`user-select: none`).
 - **Attaching.** A view attaches itself as the root element before it
   listens for renders, then renders the document in full, replacing its
   own (empty) text. A view can so be created for an editor that already

@@ -34,6 +34,9 @@ public struct TextKitDecoratorSpan: Equatable, Sendable {
   /// Where it is once all the edits apply.
   public var location: Int
   public var isInline: Bool
+  /// For a horizontal rule, which has no view of its own (its `decorate`
+  /// is `nil`, as in JS, where its `<hr>` is all there is), how to draw it.
+  public var rule: TextKitRule?
 }
 
 /// One commit's changes to what the view shows.
@@ -54,6 +57,9 @@ public struct TextKitUpdate: Sendable {
   public var base = TextKitTextAttributes()
   /// The selection in the rendered text, when it is a range or one node.
   public var selectedRange: TextKitRange?
+  /// The nodes of a node selection, which a view marks (a selected
+  /// horizontal rule is outlined).
+  public var selectedNodes: Set<NodeKey> = []
   /// The commit's update tags.
   public var tags: Set<String> = []
   /// Whether the edits replace the whole text.
@@ -211,15 +217,31 @@ extension TextKitTheme {
       }
     }
 
-    for key in editor.getDecorators().keys.sorted() {
+    let decorators = editor.getDecorators()
+    var keys = Array(decorators.keys)
+    // A horizontal rule is drawn from the theme. Only an edit that brings a
+    // decorator's character can bring a rule.
+    if horizontalRule != nil,
+      update.isFull || edits.contains(where: { $0.string.utf16.contains(0xFFFC) })
+    {
+      keys += document.entries.compactMap { key, entry in
+        entry.kind == .decorator && decorators[key.key] == nil ? key.key : nil
+      }
+    }
+    for key in keys.sorted() {
       guard let decorator = try getNodeByKey(key) as? DecoratorNode,
         let span = document.span(key),
         update.isFull
           || finalRanges.contains(where: { $0.location <= span.location && span.location < $0.end })
       else { continue }
+      var rule: TextKitRule?
+      if decorators[key] == nil {
+        guard decorator.getType() == "horizontalrule", let horizontalRule else { continue }
+        rule = horizontalRule
+      }
       update.decorators.append(
         TextKitDecoratorSpan(
-          key: key, location: span.location, isInline: try decorator.isInline()))
+          key: key, location: span.location, isInline: try decorator.isInline(), rule: rule))
     }
     return update
   }

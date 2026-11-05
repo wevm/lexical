@@ -15,6 +15,7 @@
     /// it. A caret-wide segment keeps its place, and one off any line is
     /// left as it is.
     func selectionSegment(trimming segment: CGRect) -> CGRect? {
+      if isHorizontalRule(at: CGPoint(x: segment.minX, y: segment.midY)) { return nil }
       guard let box = textBox(at: CGPoint(x: segment.minX, y: segment.midY)) else {
         return segment
       }
@@ -27,6 +28,18 @@
         trimmed.size.width = maxX - minX
       }
       return trimmed
+    }
+
+    /// Whether the line at `point` is a horizontal rule's, which is not
+    /// highlighted (the web theme's `hr` has `user-select: none`); a
+    /// selected rule is outlined instead.
+    func isHorizontalRule(at point: CGPoint) -> Bool {
+      guard let line = textLayoutFragment(for: point)?.textLineFragments.first,
+        line.characterRange.location < line.attributedString.length
+      else { return false }
+      let attachment = line.attributedString.attribute(
+        .attachment, at: line.characterRange.location, effectiveRange: nil)
+      return (attachment as? LexicalDecoratorAttachment)?.isRule == true
     }
 
     /// The text box of the line at `point`, in container coordinates: from

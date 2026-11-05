@@ -186,10 +186,27 @@
     /// block's, so the caret moves when only the block's look changes (a
     /// list item that becomes a paragraph), and not once something is typed.
     private func showLastBlockAtCaret() {
-      guard let lastBlockAttributes,
-        selectedRange() == NSRange(location: textStorage?.length ?? 0, length: 0)
+      guard let lastBlockAttributes, let textStorage,
+        selectedRange() == NSRange(location: textStorage.length, length: 0)
       else { return }
+      let changed = !NSDictionary(dictionary: typingAttributes).isEqual(to: lastBlockAttributes)
       typingAttributes = lastBlockAttributes
+      // TextKit takes a new look for that line from the typing attributes
+      // but keeps a line it already measured where it was, without the
+      // block's paragraph spacing (an empty paragraph that becomes a code
+      // block stays against the line above), until the fragment is laid
+      // out again.
+      let text = textStorage.string as NSString
+      guard changed,
+        text.length == 0 || [0x0A, 0x2028].contains(text.character(at: text.length - 1)),
+        let layoutManager = textLayoutManager
+      else { return }
+      layoutManager.enumerateTextLayoutFragments(
+        from: layoutManager.documentRange.endLocation, options: [.reverse]
+      ) { fragment in
+        layoutManager.invalidateLayout(for: fragment.rangeInElement)
+        return false
+      }
     }
 
     /// Underlines the marked text, as rendering attributes so the storage
@@ -214,12 +231,7 @@
       let document = controller.document
       let lineWidth = (textContainer?.size.width ?? bounds.width) - 2 * padding
       for (key, layout) in controller.blockBoxes {
-        guard let span = document.span(key),
-          let frame = segmentsFrame(
-            layoutManager,
-            NSRange(
-              location: span.location,
-              length: min(max(span.length, 1), document.length - span.location)))
+        guard let span = document.span(key), let frame = blockLinesFrame(layoutManager, span)
         else { continue }
         drawBlockBox(
           layout, span: span, layoutManager,
@@ -243,12 +255,7 @@
             height: line.height))
       }
       for (key, bars) in controller.blockBars {
-        guard let span = document.span(key),
-          let frame = segmentsFrame(
-            layoutManager,
-            NSRange(
-              location: span.location,
-              length: min(max(span.length, 1), document.length - span.location)))
+        guard let span = document.span(key), let frame = blockLinesFrame(layoutManager, span)
         else { continue }
         for bar in bars {
           bar.color.nsColor.setFill()
@@ -445,6 +452,27 @@
           inset.stroke()
         }
       }
+    }
+
+    /// The lines of the block at `span`, in container coordinates. The
+    /// line a block ends on holds none of its characters when the block is
+    /// empty or ends with a line break: it is the next block's separator's
+    /// line, or TextKit's extra line fragment at the end of the text. It is
+    /// the block's line all the same, as a trailing `<br>` gives the web's
+    /// block an empty line box, so the line at the block's end joins it.
+    private func blockLinesFrame(
+      _ layoutManager: NSTextLayoutManager, _ span: TextKitSpan
+    )
+      -> NSRect?
+    {
+      let text = textStorage?.string as NSString? ?? ""
+      let end = min(span.end, text.length)
+      let lines = segmentsFrame(
+        layoutManager, NSRange(location: span.location, length: end - span.location))
+      guard end == span.location || text.character(at: end - 1) == 0x2028,
+        let last = segmentsFrame(layoutManager, NSRange(location: end, length: 0))
+      else { return lines }
+      return lines.map { $0.union(last) } ?? last
     }
 
     /// The union of the line fragments of `range`, in container

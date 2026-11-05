@@ -422,20 +422,115 @@
       _ = window
     }
 
-    @Test func drawsACodeBlocksBoxAndGutter() throws {
+    /// A code block's lines, `|` for a line break, then a paragraph so the
+    /// block isn't the text's last.
+    @Test(arguments: [("a|b", 2), ("a||b", 3), ("a||", 3), ("", 1)])
+    func drawsACodeBlocksBoxAndGutter(_ lines: String, count: Int) throws {
       let editor = try buildEditorFromExtensions(
         defineExtension(name: "test", dependencies: [RichTextExtension, CodeExtension]))
+      let (view, window) = makeLightView(editor)
+      try editor.update(discrete: true) {
+        let code = try createCodeNode()
+        for (index, text) in lines.split(separator: "|", omittingEmptySubsequences: false)
+          .enumerated()
+        {
+          if index > 0 { try code.append(createLineBreakNode()) }
+          if !text.isEmpty { try code.append(createTextNode(String(text))) }
+        }
+        // TextKit leaves out the spacing before the first paragraph.
+        try getRoot().clear().append(
+          createParagraphNode().append(createTextNode("x")), code,
+          createParagraphNode().append(createTextNode("y")))
+      }
+      let (color, near) = try render(view)
+      // The playground's `__code`: an 8-point margin, then the box, whose
+      // 8-point padding is above its 1.53 × 13-point lines and below them.
+      // A trailing line break's empty line is the block's too, as the
+      // web's `<br>` gives it a line box, and so is an empty block's line.
+      let left = view.textContainerInset.left + view.textContainer.lineFragmentPadding
+      let top = view.textContainerInset.top + 27.2 + 8
+      let line = 1.53 * 13
+      let bottom = top + 8 + CGFloat(count) * line + 8
+      let background = [240, 242, 245]
+      #expect(near(color(left + 200, top + 1), background), "\(color(left + 200, top + 1))")
+      #expect(near(color(left + 200, bottom - 1), background), "\(color(left + 200, bottom - 1))")
+      #expect(!near(color(left + 200, top - 1), background))
+      #expect(!near(color(left + 200, bottom + 1), background))
+      // The 41-point gutter and its 1-point border at the box's start.
+      #expect(near(color(left + 2, top + 2), [238, 238, 238]), "\(color(left + 2, top + 2))")
+      #expect(near(color(left + 41.5, top + 2), [204, 204, 204]), "\(color(left + 41.5, top + 2))")
+      // One number on each line, empty or not, centered in it like the
+      // line's text.
+      var inked: [CGFloat] = []
+      for row in stride(from: top, to: bottom, by: 0.5) {
+        let dark = stride(from: left + 8, to: left + 41 - 4, by: 0.5).contains { x in
+          color(x, row)[1] < 180
+        }
+        if dark { inked.append(row) }
+      }
+      let runs =
+        zip(inked, inked.dropFirst()).filter { $1 - $0 > 1 }.count + (inked.isEmpty ? 0 : 1)
+      #expect(runs == count, "\(inked)")
+      for index in 0..<count {
+        let middle = top + 8 + line * (CGFloat(index) + 0.5)
+        let ink = inked.filter { abs($0 - middle) < line / 2 }
+        try #require(!ink.isEmpty, "line \(index): \(inked)")
+        #expect(abs((ink.min()! + ink.max()!) / 2 - middle) <= 2, "line \(index): \(ink)")
+      }
+      _ = window
+    }
+
+    /// A quote that ends with a line break, followed by a paragraph: its
+    /// bar covers the empty line after the break, as the web's does.
+    @Test func drawsAQuotesBarOverItsTrailingEmptyLine() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension]))
+      let (view, window) = makeLightView(editor)
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createQuoteNode().append(createTextNode("a"), createLineBreakNode()),
+          createParagraphNode().append(createTextNode("y")))
+      }
+      let (color, near) = try render(view)
+      let layoutManager = try #require(view.textLayoutManager)
+      var lines: [CGRect] = []
+      layoutManager.enumerateTextLayoutFragments(
+        from: layoutManager.documentRange.location, options: [.ensuresLayout]
+      ) { fragment in
+        lines += fragment.textLineFragments.map {
+          $0.typographicBounds.offsetBy(
+            dx: fragment.layoutFragmentFrame.minX, dy: fragment.layoutFragmentFrame.minY)
+        }
+        return true
+      }
+      // The quote's two lines, then the paragraph's.
+      try #require(lines.count >= 3, "\(lines)")
+      let origin = view.textContainerInset.top
+      let bar = try #require(
+        stride(from: 0, to: 60, by: 0.5).first {
+          near(color($0, origin + lines[0].midY), [206, 208, 212])
+        }, "no bar on the first line")
+      #expect(near(color(bar + 1, origin + lines[1].midY), [206, 208, 212]))
+      #expect(!near(color(bar + 1, origin + lines[2].midY), [206, 208, 212]))
+      _ = window
+    }
+
+    private func makeLightView(_ editor: Editor) -> (LexicalUITextView, UIWindow) {
       let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
       window.overrideUserInterfaceStyle = .light
       let view = LexicalUITextView(editor: editor, frame: window.bounds)
       window.addSubview(view)
       window.makeKeyAndVisible()
-      try editor.update(discrete: true) {
-        // TextKit leaves out the spacing before the first paragraph.
-        try getRoot().clear().append(
-          createParagraphNode().append(createTextNode("x")),
-          createCodeNode().append(createTextNode("a"), createLineBreakNode(), createTextNode("b")))
-      }
+      return (view, window)
+    }
+
+    /// Renders `view` at 2×, returning its color at a point and a
+    /// comparison that takes either byte order.
+    private func render(
+      _ view: LexicalUITextView
+    ) throws -> (
+      (CGFloat, CGFloat) -> [Int], ([Int], [Int]) -> Bool
+    ) {
       view.layoutIfNeeded()
       let format = UIGraphicsImageRendererFormat()
       format.scale = 2
@@ -445,46 +540,21 @@
         view.layer.render(in: context.cgContext)
       }
       let cgImage = try #require(image.cgImage)
-      let bytes = try #require(cgImage.dataProvider?.data.flatMap(CFDataGetBytePtr))
-      func color(_ x: CGFloat, _ y: CGFloat) -> [Int] {
-        let pixel =
-          bytes + Int(y * 2) * cgImage.bytesPerRow + Int(x * 2) * cgImage.bitsPerPixel / 8
-        return [Int(pixel[0]), Int(pixel[1]), Int(pixel[2])]
-      }
-      // RGBA or BGRA: either order.
-      func near(_ a: [Int], _ b: [Int]) -> Bool {
-        let close = { (c: [Int]) in zip(c, b).allSatisfy { abs($0 - $1) <= 6 } }
-        return close(a) || close(a.reversed())
-      }
-      // The playground's `__code`: an 8-point margin, then the box, whose
-      // 8-point padding is above two 1.53 × 13-point lines and below them.
-      let left = view.textContainerInset.left + view.textContainer.lineFragmentPadding
-      let top = view.textContainerInset.top + 27.2 + 8
-      let line = 1.53 * 13
-      let bottom = top + 8 + 2 * line + 8
-      let background = [240, 242, 245]
-      #expect(near(color(left + 200, top + 1), background), "\(color(left + 200, top + 1))")
-      #expect(near(color(left + 200, bottom - 1), background), "\(color(left + 200, bottom - 1))")
-      #expect(!near(color(left + 200, top - 1), background))
-      #expect(!near(color(left + 200, bottom + 1), background))
-      // The 41-point gutter and its 1-point border at the box's start.
-      #expect(near(color(left + 2, top + 2), [238, 238, 238]), "\(color(left + 2, top + 2))")
-      #expect(near(color(left + 41.5, top + 2), [204, 204, 204]), "\(color(left + 41.5, top + 2))")
-      // A number on each line, centered in it like the line's text.
-      var inked: [CGFloat] = []
-      for row in Int(top * 2)..<Int(bottom * 2) {
-        let dark = stride(from: left + 8, to: left + 41 - 4, by: 0.5).contains { x in
-          color(x, CGFloat(row) / 2)[1] < 180
+      let data = try #require(cgImage.dataProvider?.data)
+      let bytes = try #require(CFDataGetBytePtr(data))
+      let bytesPerRow = cgImage.bytesPerRow
+      let bytesPerPixel = cgImage.bitsPerPixel / 8
+      return (
+        { x, y in
+          _ = data
+          let pixel = bytes + Int(y * 2) * bytesPerRow + Int(x * 2) * bytesPerPixel
+          return [Int(pixel[0]), Int(pixel[1]), Int(pixel[2])]
+        },
+        { a, b in
+          let close = { (c: [Int]) in zip(c, b).allSatisfy { abs($0 - $1) <= 6 } }
+          return close(a) || close(a.reversed())
         }
-        if dark { inked.append(CGFloat(row) / 2) }
-      }
-      for index in 0..<2 {
-        let middle = top + 8 + line * (CGFloat(index) + 0.5)
-        let ink = inked.filter { abs($0 - middle) < line / 2 }
-        try #require(!ink.isEmpty, "line \(index): \(inked)")
-        #expect(abs((ink.min()! + ink.max()!) / 2 - middle) <= 2, "line \(index): \(ink)")
-      }
-      _ = window
+      )
     }
   }
 #endif

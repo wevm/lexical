@@ -157,6 +157,8 @@ final class PlaygroundModel {
   private(set) var linkEditorKey: NodeKey?
   private(set) var linkEditorURL = ""
   var isLinkEditMode = false
+  /// The Keyboard Shortcuts panel is shown, where it is a sheet (iOS).
+  var showsShortcuts = false
   var editedLinkURL = "https://"
   @ObservationIgnored private lazy var linkEditorHost = FloatingLinkEditorHost(model: self)
 
@@ -196,6 +198,7 @@ final class PlaygroundModel {
             configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
             CheckListExtension, CodeExtension, HorizontalRuleExtension,
             PlaygroundMarkdownShortcutsExtension,
+            PlaygroundShortcutsExtension,
             configExtension(TabIndentationExtension) { $0.maxIndent = 7 },
           ] + links
           : [
@@ -289,6 +292,17 @@ final class PlaygroundModel {
           MainActor.assumeIsolated { self?.canRedo = payload }
           return false
         }, COMMAND_PRIORITY_CRITICAL))
+    // `ShortcutsExtension`'s command listeners.
+    for shortcut in PlaygroundShortcut.allCases where !shortcut.isBuiltin {
+      unregister.append(
+        editor.registerCommand(
+          shortcut.command,
+          { [weak self] event, _ in
+            event.preventDefault()
+            MainActor.assumeIsolated { self?.perform(shortcut) }
+            return true
+          }, COMMAND_PRIORITY_EDITOR))
+    }
     logCommands()
     refresh()
   }
@@ -506,6 +520,45 @@ final class PlaygroundModel {
   func outdent() { _ = try? editor.dispatchCommand(OUTDENT_CONTENT_COMMAND) }
   func undo() { _ = try? editor.dispatchCommand(UNDO_COMMAND) }
   func redo() { _ = try? editor.dispatchCommand(REDO_COMMAND) }
+
+  /// A keyboard shortcut's action, from its key press or its menu item:
+  /// what `ShortcutsExtension` registers for each (and the editor's own
+  /// shortcuts, for the menu).
+  func perform(_ shortcut: PlaygroundShortcut) {
+    switch shortcut {
+    case .normal: setBlockType(.paragraph)
+    case .heading1: if blockType != .h1 { setBlockType(.h1) }
+    case .heading2: if blockType != .h2 { setBlockType(.h2) }
+    case .heading3: if blockType != .h3 { setBlockType(.h3) }
+    case .numberedList: setBlockType(.number)
+    case .bulletList: setBlockType(.bullet)
+    case .checkList: setBlockType(.check)
+    case .codeBlock: setBlockType(.code)
+    case .quote: if blockType != .quote { setBlockType(.quote) }
+    case .increaseFontSize: stepFontSize(.increment, from: toolbarFontSize(fontSize))
+    case .decreaseFontSize: stepFontSize(.decrement, from: toolbarFontSize(fontSize))
+    case .insertCodeBlock: toggleFormat("code")
+    case .strikethrough: toggleFormat("strikethrough")
+    case .lowercase: toggleFormat("lowercase")
+    case .uppercase: toggleFormat("uppercase")
+    case .capitalize: toggleFormat("capitalize")
+    case .centerAlign: align("center")
+    case .justifyAlign: align("justify")
+    case .leftAlign: align("left")
+    case .rightAlign: align("right")
+    case .subscript: toggleFormat("subscript")
+    case .superscript: toggleFormat("superscript")
+    case .indent: indent()
+    case .outdent: outdent()
+    case .clearFormatting: clearFormatting()
+    case .insertLink: insertLink()
+    case .bold: toggleFormat("bold")
+    case .italic: toggleFormat("italic")
+    case .underline: toggleFormat("underline")
+    case .undo: undo()
+    case .redo: redo()
+    }
+  }
 
   /// `formatParagraph`, `formatHeading`, `formatBulletList`,
   /// `formatNumberedList`, `formatCheckList`, `formatQuote` and

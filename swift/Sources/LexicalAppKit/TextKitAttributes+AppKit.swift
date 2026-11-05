@@ -106,6 +106,7 @@
       if strikethrough { attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
       if baselineOffset != 0 { attributes[.baselineOffset] = baselineOffset }
       if cursor == .pointer { attributes[.cursor] = NSCursor.pointingHand }
+      if hoverUnderline { attributes[.lexicalHoverUnderline] = true }
       return attributes
     }
   }
@@ -163,5 +164,11 @@
       }
       return result
     }
+  }
+
+  extension NSAttributedString.Key {
+    /// Text underlined while the pointer is over its inline element
+    /// (`TextKitStyle.hoverUnderline`).
+    static let lexicalHoverUnderline = NSAttributedString.Key("LexicalHoverUnderline")
   }
 #endif

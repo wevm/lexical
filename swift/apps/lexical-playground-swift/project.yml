@@ -46,6 +46,8 @@ targets:
       - package: Lexical
         product: LexicalExtension
       - package: Lexical
+        product: LexicalHashtag
+      - package: Lexical
         product: LexicalHistory
       - package: Lexical
         product: LexicalHTML

@@ -33,6 +33,7 @@ let package = Package(
     .library(name: "LexicalOverflow", targets: ["LexicalOverflow"]),
     .library(name: "LexicalText", targets: ["LexicalText"]),
     .library(name: "LexicalMenu", targets: ["LexicalMenu"]),
+    .library(name: "LexicalHashtag", targets: ["LexicalHashtag"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -145,9 +146,9 @@ let package = Package(
     .testTarget(
       name: "LexicalMarkdownTests",
       dependencies: [
-        "Lexical", "LexicalCodeCore", "LexicalExtension", "LexicalHistory", "LexicalHTML",
-        "LexicalLink", "LexicalList", "LexicalMarkdown", "LexicalRichText", "LexicalSelection",
-        "LexicalTesting", "LexicalUtils",
+        "Lexical", "LexicalCodeCore", "LexicalExtension", "LexicalHashtag", "LexicalHistory",
+        "LexicalHTML", "LexicalLink", "LexicalList", "LexicalMarkdown", "LexicalRichText",
+        "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/overflow: the character limit's OverflowNode.
     .target(name: "LexicalOverflow", dependencies: ["Lexical"]),
@@ -156,14 +157,19 @@ let package = Package(
     .testTarget(
       name: "LexicalTextTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalMarkdown", "LexicalRichText",
-        "LexicalTesting", "LexicalText",
+        "Lexical", "LexicalExtension", "LexicalHashtag", "LexicalHistory", "LexicalList",
+        "LexicalMarkdown", "LexicalRichText", "LexicalTesting", "LexicalText",
       ]),
     // The platform-neutral half of @lexical/react's typeahead and node menus.
     .target(name: "LexicalMenu", dependencies: ["Lexical"]),
     .testTarget(
       name: "LexicalMenuTests",
       dependencies: ["Lexical", "LexicalMenu", "LexicalRichText", "LexicalTesting"]),
+    // @lexical/hashtag: hashtag nodes, made from text by LexicalText.
+    .target(name: "LexicalHashtag", dependencies: ["Lexical", "LexicalText"]),
+    .testTarget(
+      name: "LexicalHashtagTests",
+      dependencies: ["Lexical", "LexicalExtension", "LexicalHashtag", "LexicalTesting"]),
     // @lexical/a11y: the live region and the announcers.
     .target(name: "LexicalA11y", dependencies: ["Lexical", "LexicalExtension"]),
     .testTarget(
@@ -213,7 +219,8 @@ let package = Package(
     .testTarget(
       name: "LexicalTextKitTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalList", "LexicalPlainText",
+        "Lexical", "LexicalExtension", "LexicalHashtag", "LexicalHistory", "LexicalList",
+        "LexicalPlainText",
         "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalTextKit",
       ]),
     // The TextKit 2 editor views (Apple-only; empty modules elsewhere).
@@ -257,8 +264,9 @@ let package = Package(
     .testTarget(
       name: "ConformanceTests",
       dependencies: [
-        "Lexical", "LexicalCodeCore", "LexicalDevtoolsCore", "LexicalHTML", "LexicalLink",
-        "LexicalList", "LexicalMarkdown", "LexicalOverflow", "LexicalRichText", "LexicalTesting",
+        "Lexical", "LexicalCodeCore", "LexicalDevtoolsCore", "LexicalExtension", "LexicalHashtag",
+        "LexicalHTML", "LexicalLink", "LexicalList", "LexicalMarkdown", "LexicalOverflow",
+        "LexicalRichText", "LexicalTesting", "LexicalText",
       ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
     .testTarget(

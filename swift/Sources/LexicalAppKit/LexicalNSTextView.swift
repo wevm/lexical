@@ -682,8 +682,12 @@
           range: NSRange(location: last.location, length: last.length - 1))
       }
       super.setSelectedRanges(ranges, affinity: affinity, stillSelecting: stillSelecting)
+      if stillSelecting { takeTypingAttributes() }
       showLastBlockAtCaret()
-      guard !isRendering, !stillSelecting, let range = ranges.first?.rangeValue else { return }
+      // Each step of a click or a drag reaches the model as it happens, as
+      // a browser fires `selectionchange` from the press on, not only once
+      // `NSTextView` stops tracking the mouse.
+      guard !isRendering, let range = ranges.first?.rangeValue else { return }
       if let current = try? controller.selectedRange(),
         current == TextKitRange(location: range.location, length: range.length)
       {
@@ -695,6 +699,27 @@
         try controller.setSelectedRange(
           location: range.location, length: range.length, keepsAnchor: isExtendingSelection)
       }
+    }
+
+    /// The typing attributes `NSTextView` gives a selection once the mouse
+    /// is released, which it leaves as they were while it tracks it: those
+    /// of the character before the caret, or after it at a line's start,
+    /// and of a range's first character. The caret is fitted to their font.
+    private func takeTypingAttributes() {
+      guard let textStorage, textStorage.length > 0 else { return }
+      let text = textStorage.string as NSString
+      let range = selectedRange()
+      var index = range.location
+      if range.length == 0, index > 0,
+        index == text.length || ![0x0A, 0x2028].contains(text.character(at: index - 1))
+      {
+        index -= 1
+      }
+      guard index < text.length else { return }
+      var attributes = textStorage.attributes(at: index, effectiveRange: nil)
+      attributes[.attachment] = nil
+      typingAttributes = attributes
+      fitInsertionIndicator()
     }
 
     public override func mouseDown(with event: NSEvent) {

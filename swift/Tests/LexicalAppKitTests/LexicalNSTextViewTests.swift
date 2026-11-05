@@ -26,6 +26,23 @@
         ]))
   }
 
+  /// A rich text editor with history, and the history state it records
+  /// into, so a test can count its entries.
+  @MainActor
+  func makeEditorWithHistory(
+    _ dependencies: [any AnyLexicalExtensionArgument] = []
+  ) throws -> (Editor, HistoryState) {
+    let history = createEmptyHistoryState()
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "test",
+        dependencies: [
+          RichTextExtension,
+          configExtension(HistoryExtension) { $0.createInitialHistoryState = { _ in history } },
+        ] + dependencies))
+    return (editor, history)
+  }
+
   /// A view in an offscreen window, as first responder.
   @MainActor
   private func makeView(_ editor: Editor? = nil) throws -> (LexicalNSTextView, NSWindow) {
@@ -279,13 +296,28 @@
     /// with the caret in the font there. Selection-only updates are not
     /// history: one undo still takes back the last edit.
     @Test func selectionReachesTheModelWhileTheMouseIsTracked() throws {
-      let (view, window) = try makeView()
+      let (editor, history) = try makeEditorWithHistory()
+      let (view, window) = try makeView(editor)
       try view.editor.update(discrete: true) {
         try getRoot().clear().append(
           createHeadingNode("h1").append(createTextNode("Title")),
           createParagraphNode().append(createTextNode("body")))
       }
       view.setSelectedRange(NSRange(location: 2, length: 0))
+      let undoDepth = history.undoStack.count
+      // What each commit's update listener sees: the committed selection.
+      var committed: [(String, Int, String, Int)] = []
+      let remove = editor.registerUpdateListener { payload in
+        try payload.editorState.read {
+          guard let selection = try getSelection() as? RangeSelection else { return }
+          committed.append(
+            (
+              try selection.anchor.getNode().getTextContent(), selection.anchor.offset,
+              try selection.focus.getNode().getTextContent(), selection.focus.offset
+            ))
+        }
+      }
+      defer { remove() }
       let headingFont = try #require(view.typingAttributes[.font] as? NSFont)
       func step(_ range: NSRange) {
         view.setSelectedRanges(
@@ -303,17 +335,26 @@
       // Pressing in the paragraph ("bo|dy"), then dragging to "bod".
       step(NSRange(location: 8, length: 0))
       #expect(try model() == ("body", 2, "body", 2))
+      #expect(committed.last.map { $0 == ("body", 2, "body", 2) } == true, "\(committed)")
       let font = try #require(view.typingAttributes[.font] as? NSFont)
       #expect(font.pointSize < headingFont.pointSize, "\(font)")
       step(NSRange(location: 8, length: 1))
       #expect(try model() == ("body", 2, "body", 3))
+      #expect(committed.last.map { $0 == ("body", 2, "body", 3) } == true, "\(committed)")
       // Back into the heading, before the mouse is released.
       step(NSRange(location: 1, length: 0))
       #expect(try model() == ("Title", 1, "Title", 1))
+      #expect(committed.last.map { $0 == ("Title", 1, "Title", 1) } == true, "\(committed)")
+      // One commit per step, all before the mouse is released.
+      #expect(committed.count == 3, "\(committed)")
       #expect((view.typingAttributes[.font] as? NSFont)?.pointSize == headingFont.pointSize)
       view.setSelectedRanges(
         [NSValue(range: NSRange(location: 1, length: 0))], affinity: .downstream,
         stillSelecting: false)
+      // Selection-only commits record no history: undo still takes out the
+      // content the test set up.
+      #expect(history.undoStack.count == undoDepth)
+      #expect(history.redoStack.isEmpty)
       view.undo(nil)
       #expect(view.string == "")
       _ = window
@@ -873,8 +914,7 @@
     /// `__link:hover { text-decoration: underline }`: only the link under
     /// the pointer is underlined, as view state that sends no update.
     @Test func underlinesTheHoveredLink() throws {
-      let editor = try buildEditorFromExtensions(
-        defineExtension(name: "test", dependencies: [RichTextExtension, LinkExtension]))
+      let (editor, history) = try makeEditorWithHistory([LinkExtension])
       let (view, window) = try makeView(editor)
       try editor.update(discrete: true) {
         try getRoot().clear().append(
@@ -924,6 +964,8 @@
             timestamp: 0, windowNumber: window.windowNumber, context: nil, eventNumber: 0,
             clickCount: 0, pressure: 0)!)
       }
+      let undoDepth = history.undoStack.count
+      let state = editor.getEditorState()
       var updates = 0
       let remove = editor.registerUpdateListener { _ in updates += 1 }
       defer { remove() }
@@ -931,11 +973,22 @@
       #expect(try underlined().isEmpty)
       hover(try point(at: 3))
       #expect(try underlined() == [NSRange(location: 2, length: 2)])
+      // The underline is the view's: the link's text keeps no underline
+      // format.
+      try editor.read {
+        let link = try #require(
+          try getRoot().getFirstDescendant()?.getNextSibling() as? ElementNode)
+        #expect(try (link.getFirstChild() as? TextNode)?.getFormat() == 0)
+      }
       hover(try point(at: 4))
       #expect(try underlined() == [NSRange(location: 4, length: 2)])
       hover(nil)
       #expect(try underlined().isEmpty)
+      // Hovering touches neither the model nor the history.
       #expect(updates == 0)
+      #expect(editor.getEditorState() === state)
+      #expect(history.undoStack.count == undoDepth)
+      #expect(history.redoStack.isEmpty)
       _ = window
     }
 

@@ -21,6 +21,9 @@
     public var editor: Editor { controller.editor }
     /// The pasteboard copy, cut and paste use.
     public var pasteboard: UIPasteboard = .general
+    /// Menu elements the edit menu shows for a selection, before the
+    /// system's (see `LexicalUITextView+EditMenu.swift`).
+    public var editMenuElements: ((_ range: NSRange) -> [UIMenuElement])?
 
     private var isRendering = false
     private var removeListeners: [() -> Void] = []

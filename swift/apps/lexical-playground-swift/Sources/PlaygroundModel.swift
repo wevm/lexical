@@ -204,6 +204,16 @@ final class PlaygroundModel {
   /// The selection is in a link.
   private(set) var isLink = false
 
+  // The floating text format toolbar (`FloatingTextFormatToolbarPlugin`).
+  /// Text is selected where the popup formats it (`isText`).
+  private(set) var isFloatingText = false
+  /// The formats of the popup's buttons the selection has.
+  private(set) var floatingFormats: Set<TextFormatType> = []
+  /// The selection's anchor and focus, which the popup is placed above.
+  @ObservationIgnored private(set) var selectionPoints: (anchor: Point, focus: Point)?
+  @ObservationIgnored private lazy var formatToolbarHost = FloatingTextFormatToolbarHost(
+    model: self)
+
   // The floating link editor (`FloatingLinkEditorPlugin`).
   /// The link the panel shows, while the editor is editable.
   private(set) var linkEditorKey: NodeKey?
@@ -359,6 +369,7 @@ final class PlaygroundModel {
               css: "background-color: \(mentionBackgroundColor)")
           }
           self?.linkEditorHost.attach(to: root)
+          self?.formatToolbarHost.attach(to: root)
           self?.menuHosts.forEach { $0.attach(to: root) }
         }
         return nil
@@ -467,7 +478,10 @@ final class PlaygroundModel {
   private func refresh() {
     refreshLinkEditor()
     try? editor.read {
-      guard let selection = try getSelection() as? RangeSelection else { return }
+      guard let selection = try getSelection() as? RangeSelection else {
+        isFloatingText = false
+        return
+      }
       formats = Set(toolbarFormats.map(\.format).filter { selection.hasFormat($0) })
       fontColor = try getSelectionStyleValueForProperty(selection, "color", "#000")
       backgroundColor = try getSelectionStyleValueForProperty(selection, "background-color", "#fff")
@@ -496,8 +510,28 @@ final class PlaygroundModel {
       let focus = try selection.focus.getNode()
       let link = try (focus as? LinkNode) ?? (focus.getParent() as? LinkNode)
       isLink = link != nil
+      try refreshFloatingToolbar(selection)
     }
+    formatToolbarHost.refresh()
     refreshTree()
+  }
+
+  /// `updatePopup` of the floating text format toolbar.
+  private func refreshFloatingToolbar(_ selection: RangeSelection) throws {
+    // No popup while an IME composes.
+    if editor.isComposing() { return }
+    selectionPoints = (selection.anchor, selection.focus)
+    floatingFormats = Set(floatingToolbarFormats.map(\.format).filter { selection.hasFormat($0) })
+    let node = try getSelectedNode(selection)
+    let text = try selection.getTextContent()
+    if try !(selection.anchor.getNode().getParent() is CodeNode), !text.isEmpty {
+      isFloatingText = node is TextNode || node is ParagraphNode
+    } else {
+      isFloatingText = false
+    }
+    if !selection.isCollapsed(), text.replacingOccurrences(of: "\n", with: "").isEmpty {
+      isFloatingText = false
+    }
   }
 
   /// `$updateToolbar` and `$updateLinkEditor` of the floating link editor:

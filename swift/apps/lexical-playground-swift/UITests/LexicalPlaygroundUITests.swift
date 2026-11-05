@@ -273,4 +273,20 @@ final class LexicalPlaygroundUITests: XCTestCase {
     editor.swipeRight()
     waitForTree("\"Some information\"")
   }
+
+  /// `FloatingTextFormatToolbarPlugin`, which on iOS adds the popup's
+  /// formats to the edit menu: selecting a word and choosing Bold there
+  /// formats it.
+  @MainActor
+  func testEditMenuFormatsTheSelection() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Hello")
+    editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 25, dy: 18))
+      .doubleTap()
+    let bold = app.menuItems["Bold"]
+    XCTAssertTrue(bold.waitForExistence(timeout: 5), app.debugDescription)
+    bold.tap()
+    waitForTree("\"Hello\" { format: bold }")
+  }
 }

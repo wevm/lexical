@@ -20,6 +20,12 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   `MentionNode`. ":" and a keyword (`EmojiPickerPlugin`) list up to ten
   emoji; `Sources/emoji-list.json` is upstream's `utils/emoji-list.ts`
   (the gemoji list) with only the emoji, aliases and tags.
+- **Floating format toolbar** (`FloatingTextFormatToolbarPlugin`): while
+  text is selected, bold, italic, underline, strikethrough, subscript,
+  superscript, the three cases, code and link. On macOS it floats above the
+  selection, as on the web; on iOS the same actions are in the edit menu
+  above the selection, since UIKit's menu appears where the popup would
+  (the web leaves the popup out of narrow viewports).
 - **Autocomplete** (off by default; Settings → Autocomplete): at the end of
   a word the rest of it shows in grey after the caret
   (`AutocompleteExtension`), accepted with Tab or the right arrow, or a

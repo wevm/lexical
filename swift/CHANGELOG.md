@@ -4,6 +4,26 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.1
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- The caret at the end of the text is as tall as the font on macOS and iOS, as it is everywhere else, instead of as tall as the whole line.
+- On macOS the caret on an empty last block moves as soon as the block's indent or list marker changes (a paragraph that becomes a list item, a list item that becomes a paragraph), instead of once something is typed.
+- A theme's `lineHeightMultiple` lays lines out as CSS `line-height` does on macOS and iOS: each line is that many times the font size, with its text centered in it rather than at the line's bottom, and the caret is as tall as the font instead of the line. The playground's text, quotes and list markers so sit as they do on the web.
+- Node, editor and editor-state fields, the `JSMap` storage and the per-thread context skip Swift's dynamic exclusivity checks, which every node read and write paid for. Updates and loads are faster; behavior is unchanged.
+- `JSMap`, `JSSet` and `JSONObject` hash string keys with a fast hash of their UTF-8 bytes instead of SipHash, which made node-map lookups a large share of every update and load. String keys now compare by code units, as a JS `Map` or object does: two keys that are canonically equivalent but encoded differently (`"\u{E9}"` and `"e\u{301}"`) are distinct, where they used to collapse into one.
+- `getWritable()` on a node already marked dirty in the current pass returns it without marking it and its ancestors again. Setting several properties of one node, as importing JSON does, is faster; the dirty nodes an update reports are unchanged.
+- `JSONValue.parse` (and so `parseEditorState`) is about five times faster: it reads the text's UTF-8 instead of copying it to UTF-16, decodes strings without escapes in one step, and keeps a `JSONObject`'s entries in one ordered array, which it searches linearly up to 16 keys. Parsed values, key order and error messages are unchanged; error positions are still UTF-16 offsets.
+- On iOS, quote bars and list markers stay beside their text while the editor is pulled down past its top.
+- The TextKit reconciler skips the unchanged children around an inserted, removed or moved block instead of walking and reconciling every child of its parent. Enter and joining paragraphs in a 5,000-block document now take about 4 ms (release), under the 8 ms target.
+- Restyling a block's text after a commit walks only that block, not every text run in the document. Enter and joining paragraphs in a 5,000-block document went from about 23 ms to 12 ms (release).
+- The selection highlight covers only the selected text on macOS and iOS, as in a browser: no longer the list markers, indents and quote bars before it, the rest of each line after it, or the line-height's spacing above and below.
+- A TextKit render resolves each element's style chain and each distinct text and paragraph look once per update instead of once per run and block, and a full render no longer restyles the runs its one edit already styles. Loading a large document renders about a third faster; rendered attributes are unchanged.
+- `LexicalNSTextView` no longer flashes a triple click's selection across the line's whole width: the paragraph selection it shows while the mouse is down stops before the newline, as `UITextView`'s does.
+
 ## 0.1.0
 
 The first release. It conforms to upstream Lexical **0.53.0**: upstream

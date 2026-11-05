@@ -177,4 +177,27 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForExpectations(timeout: 5)
     XCTAssertFalse(view.exists)
   }
+
+  /// The "/" menu (`ComponentPickerPlugin`): typing filters it, a tap on
+  /// an option applies it and removes the query, and the software
+  /// keyboard's Return chooses the highlighted option.
+  @MainActor
+  func testComponentPickerInsertsBlocks() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/head")
+    let second = app.descendants(matching: .any)["typeahead-item-1"]
+    XCTAssertTrue(second.waitForExistence(timeout: 5))
+    XCTAssertTrue(second.label.contains("Heading 2"), second.label)
+    second.tap()
+    waitForTree(") heading")
+    XCTAssertFalse(tree.contains("/head"), tree)
+    XCTAssertFalse(app.descendants(matching: .any)["typeahead-menu"].exists)
+    editor.typeText("Title\n/quo")
+    XCTAssertTrue(
+      app.descendants(matching: .any)["typeahead-item-0"].waitForExistence(timeout: 5))
+    editor.typeText("\n")
+    waitForTree(") quote")
+    XCTAssertFalse(tree.contains("/quo"), tree)
+  }
 }

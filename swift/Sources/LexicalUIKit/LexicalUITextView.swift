@@ -47,6 +47,9 @@
     private var foreignEdits: [(range: NSRange, text: String)] = []
     /// Set while a shifted hardware key the text view handles is pressed.
     private var isExtendingSelection = false
+    /// Set while hardware key presses no handler took reach the text view,
+    /// which have had their `keydown` already.
+    private var isPassingPresses = false
 
     public init(editor: Editor, frame: CGRect = .zero) {
       controller = TextKitInputController(editor: editor)
@@ -463,7 +466,11 @@
         // A shifted key the text view handles (a shift-arrow) extends the
         // selection from the model's anchor.
         isExtendingSelection = unhandled.contains { $0.key?.modifierFlags.contains(.shift) == true }
-        defer { isExtendingSelection = false }
+        isPassingPresses = true
+        defer {
+          isExtendingSelection = false
+          isPassingPresses = false
+        }
         super.pressesBegan(unhandled, with: event)
       }
     }
@@ -485,6 +492,15 @@
     }
 
     public override func insertText(_ text: String) {
+      // The software keyboard's Return has no key press. Safari sends a
+      // `keydown` of Enter for it, which a menu open in the editor takes.
+      if text == "\n", !isPassingPresses, controller.markedRange == nil {
+        var handled = false
+        perform {
+          handled = try controller.keyDown(KeyboardEvent(key: "Enter", code: "Enter"))
+        }
+        if handled { return }
+      }
       perform { try controller.insertText(text) }
     }
 

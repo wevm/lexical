@@ -32,6 +32,7 @@ let package = Package(
     .library(name: "LexicalMarkdown", targets: ["LexicalMarkdown"]),
     .library(name: "LexicalOverflow", targets: ["LexicalOverflow"]),
     .library(name: "LexicalText", targets: ["LexicalText"]),
+    .library(name: "LexicalMenu", targets: ["LexicalMenu"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -158,6 +159,11 @@ let package = Package(
         "Lexical", "LexicalExtension", "LexicalHistory", "LexicalMarkdown", "LexicalRichText",
         "LexicalTesting", "LexicalText",
       ]),
+    // The platform-neutral half of @lexical/react's typeahead and node menus.
+    .target(name: "LexicalMenu", dependencies: ["Lexical"]),
+    .testTarget(
+      name: "LexicalMenuTests",
+      dependencies: ["Lexical", "LexicalMenu", "LexicalRichText", "LexicalTesting"]),
     // @lexical/a11y: the live region and the announcers.
     .target(name: "LexicalA11y", dependencies: ["Lexical", "LexicalExtension"]),
     .testTarget(

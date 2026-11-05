@@ -161,6 +161,9 @@ final class PlaygroundModel {
   var showsShortcuts = false
   var editedLinkURL = "https://"
   @ObservationIgnored private lazy var linkEditorHost = FloatingLinkEditorHost(model: self)
+  /// The typeahead menus' hosts (`ComponentPickerPlugin`, …), kept while
+  /// their editor is.
+  @ObservationIgnored private var menuHosts: [AnyObject & TypeaheadMenuAttaching] = []
 
   private(set) var tree = ""
   private(set) var commandsLog: [LexicalCommandLogEntry] = []
@@ -245,9 +248,15 @@ final class PlaygroundModel {
 
   private func attach() {
     syncClickableLinks()
+    let picker = registerComponentPicker(editor)
+    menuHosts = [picker.host]
+    unregister.append(picker.unregister)
     unregister.append(
       editor.registerRootListener { [weak self] root, _ in
-        MainActor.assumeIsolated { self?.linkEditorHost.attach(to: root) }
+        MainActor.assumeIsolated {
+          self?.linkEditorHost.attach(to: root)
+          self?.menuHosts.forEach { $0.attach(to: root) }
+        }
         return nil
       })
     unregister.append(

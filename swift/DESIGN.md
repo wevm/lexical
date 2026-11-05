@@ -853,6 +853,28 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   ported, 51 skips (11 of collaboration, the rest need `lexical-hashtag` or
   `lexical-mark`), and the root helper cases in `lexical-utils` are ported.
 
+- **`LexicalMenu`** ports the parts of `@lexical/react`'s
+  `LexicalTypeaheadMenuPlugin`, `LexicalNodeMenuPlugin` and
+  `shared/LexicalMenu` that are not React: `MenuOption`,
+  `basicTypeaheadTriggerMatch` (`useBasicTypeaheadTriggerMatch`, the same
+  regex, matched by Unicode scalar with UTF-16 offsets),
+  `$splitNodeContainingQuery`, and the menu's state and keyboard commands
+  (`MenuState`, at `COMMAND_PRIORITY_LOW` by default, registered only while
+  the menu is open, as `LexicalMenu` mounts them). `registerTypeaheadMenu`
+  is the plugin's update listener and `NodeMenu` the node menu's
+  `positionOrCloseMenu`. A `MenuResolution` carries the model range from
+  the trigger to the caret where JS carries a `getRect` over a DOM `Range`;
+  the views measure it with `rect(from:to:)` / `screenRect(from:to:)`.
+  Drawing the menu is the app's, as rendering is React's: the playground
+  shows `LexicalMenu`'s default `.typeahead-popover` in a child panel of the
+  window on macOS and over the window on iOS, repositioned on scroll and
+  closed when the query scrolls out of view (`useDynamicPositioning`).
+  `aria-activedescendant` has no native counterpart; each item is an
+  accessibility element marked selected. `@lexical/react` has no ledger
+  entry: its tests render React, so the contract is tested in
+  `LexicalMenuTests` (trigger matching against upstream's regex, run in
+  Node, and the commands).
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

@@ -10,6 +10,12 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   with a horizontal rule, bold, italic, underline, strikethrough, code,
   subscript, superscript and highlight, a link button, clear formatting,
   alignment, and indent and outdent. The buttons follow the selection.
+- **Typeahead menus:** "/" opens the component picker
+  (`ComponentPickerPlugin`): paragraph, headings 1–3, the lists, quote,
+  code, divider and the alignments, filtered by what follows the slash,
+  chosen with the arrows and Enter or Tab, a click or a tap. The table,
+  embed, equation, poll and other options insert nodes the port does not
+  have yet.
 - **Editing:** Markdown shortcuts (`# `, `- `, `1. `, `[ ] `, `> `,
   ` ``` `, `**bold**`, …), autolinked URLs and email addresses, and check
   boxes that toggle on a click or tap. Links open on a click while the
@@ -52,8 +58,8 @@ open LexicalPlayground.xcodeproj
 ## Tests
 
 `UITests/` has smoke tests for the iOS Simulator: the tree view shows the
-welcome document, the Bold button formats the selection, and JSON export
-shows the document.
+welcome document, the Bold button formats the selection, JSON export
+shows the document, and the "/" menu inserts blocks.
 
 ```sh
 xcodebuild test -project LexicalPlayground.xcodeproj -scheme LexicalPlayground \

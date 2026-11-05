@@ -7832,20 +7832,6 @@
     ],
     "note": "Builds a MarkNode; ports with @lexical/mark."
   },
-  "lexical-utils/src/__tests__/unit/LexicalRootHelpers.test.ts::LexicalRootHelpers tests > isBlank": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-text"
-    ],
-    "note": "Tests $rootTextContent and $isRootTextContentEmpty from @lexical/text; ports with that package."
-  },
-  "lexical-utils/src/__tests__/unit/LexicalRootHelpers.test.ts::LexicalRootHelpers tests > textContent": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-text"
-    ],
-    "note": "Tests $rootTextContent and $isRootTextContentEmpty from @lexical/text; ports with that package."
-  },
   "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > calls onReposition for a range selection": {
     "reason": "dom-only",
     "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
@@ -12565,5 +12551,391 @@
   "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::link destination round trip > preserves \"/ab\"": {
     "reason": "deviation",
     "note": "The id holds a raw U+007F, which a Swift string literal cannot hold, and the ledger reads `.upstream` literals as JSON, so no literal can name it. The case runs in MarkdownLinkDestinationRoundTripTests.preserves all the same, without the trait."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityRecord.test.ts::registerLexicalTextEntity records its edits > an entity grown over the start of the next node: a move": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityRecord.test.ts::registerLexicalTextEntity records its edits > an entity grown over all of the next node: a move, then its removal": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityRecord.test.ts::registerLexicalTextEntity records its edits > an entity shrunk: a split, as before (the rest is plain text)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityRecord.test.ts::registerLexicalTextEntity records its edits > an entity made plain text: a retype": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityRecord.test.ts::registerLexicalTextEntity records its edits > plain text made an entity: a split, then a retype": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityRecord.test.ts::registerLexicalTextEntity records its edits > no retype where createNode gives the entity other text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityEquivalence.test.ts::registerLexicalTextEntity against the helper before it recorded its edits > 300 random sessions of 8 edits next to entities, recording text edits: the same JSON, selection, mutations and keys": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityEquivalence.test.ts::the edge cases where a change of the calls would differ > range, recording": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityEquivalence.test.ts::the edge cases where a change of the calls would differ > node selection, recording": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityEquivalence.test.ts::the edge cases where a change of the calls would differ > strict setter, recording": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityEquivalence.test.ts::the edge cases where a change of the calls would differ > shortened, recording": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-y"
+    ],
+    "note": "Text-edit records (_recordTextEdits, EditorState#_textEdits) exist only for the Yjs 14 binding (@lexical/y); they port with collaboration."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::joining blocks before a hashtag keeps its NodeState (#9704) > #9704: a list item that starts with a hashtag, joined onto italic text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::joining blocks before a hashtag keeps its NodeState (#9704) > the same with backspace from the start of the item (deleteCharacter)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::joining blocks before a hashtag keeps its NodeState (#9704) > forward delete at the end of the text before it": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::joining blocks before a hashtag keeps its NodeState (#9704) > the block before ends with a tab, the text and tab carry NodeState": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::with MarkStateExtension comments (#9704) > a commented hashtag joined onto text in another format keeps its comment ids": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher and @lexical/mark's comment ids; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::an entity turned back into text does not take the text after it first > two hashtags turned into text: the text after them keeps its format, NodeState and the selection": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::entities of two registrations that touch > typing before a hashtag that a token and a segmented entity follow settles": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::an entity that may not be kept does not grow > after text with 7 earlier matches, a later match in the text after it is still made": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::an entity that may not be kept does not grow > after text with 8 earlier matches, a later match in the text after it is still made": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::an entity that may not be kept does not grow > after text with 7 earlier matches, the text after it keeps its format and NodeState": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher and @lexical/mark's comment ids; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::an entity that may not be kept does not grow > after text with 8 earlier matches, the text after it keeps its format and NodeState": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher and @lexical/mark's comment ids; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityLookbehind.test.ts::typing into a run of repeated characters keeps the text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Registers @lexical/hashtag's matcher next to the lookbehind matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityLookbehind.test.ts::typing into a run of repeated characters keeps NodeState on an existing character": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Registers @lexical/hashtag's matcher next to the lookbehind matcher; ports with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > #9703: a hashtag that stops matching keeps its NodeState when it becomes text (typing before it)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > deleting the # of a hashtag keeps its NodeState (reverse transform, no match)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > a hashtag that becomes text merges into neighbors with the same NodeState": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > a hashtag with no NodeState becomes text and merges as before": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > plain text with NodeState that becomes a hashtag keeps it": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > a hashtag made only of text inserted into a node does not take its NodeState": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > state that createNode gives the entity wins over the text it replaces": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > text inserted after a hashtag that becomes a hashtag does not take the NodeState copied from it": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > a reference-typed state value is carried as the same object": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > NodeState read from JSON (not parsed yet) is carried and exported": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > NodeState declared in the entity $config (nested and flat) is carried to the text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > a key the plain text type declares with another config is parsed with that config": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > a hashtag inside a MarkNode stays inside it when it becomes text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > undo and redo of a demotion restore the entity and the text with their NodeState": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the text transform: the entity before it stops matching with its text (prevMatch null)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the text transform: a token entity (mention-like) that text follows > with the same NodeState as the text: it keeps it and takes the text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the text transform: a token entity (mention-like) that text follows > with other NodeState than the text: kept with its NodeState, the text stays apart": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the text transform: a token entity (mention-like) that text follows > typed text after it: the selection stays after the typed text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the text transform: a token entity (mention-like) that text follows > with other NodeState than text that its match extends into, which keeps it apart: kept, each keeps its own": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the text transform: a token entity (mention-like) that text follows > with a value object distinct from the text after it, equal as JSON: each keeps its own": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the text transform: the entity after it stops matching (nextMatch null)": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the reverse transform: adjacent entities both become text": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > the reverse transform: an entity followed by an entity": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::every path that turns an entity into text keeps NodeState > joining two blocks across text of another format keeps the NodeState of every node": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeStateProperty.test.ts::registerLexicalTextEntity keeps NodeState (property) > hashtag: an edit that turns an entity into text keeps its NodeState and marks on its characters": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeStateProperty.test.ts::registerLexicalTextEntity keeps NodeState (property) > mention: an edit that turns an entity into text keeps its NodeState and marks on its characters": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag",
+      "lexical-mark"
+    ],
+    "note": "The file builds @lexical/hashtag and @lexical/mark nodes; the hashtag cases port with lexical-hashtag."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntitySettle.test.ts::registerLexicalTextEntity between text nodes of other formats (#9637) > typing in text with a match before a formatted hashtag marks only that text dirty": {
+    "reason": "out-of-scope-package",
+    "packages": [
+      "lexical-hashtag"
+    ],
+    "note": "Uses @lexical/hashtag's HashtagNode and matcher; ports with lexical-hashtag."
   }
 }

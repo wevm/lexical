@@ -14,5 +14,6 @@
   "lexical-link": "enforced",
   "lexical-code-core": "enforced",
   "lexical-markdown": "enforced",
-  "lexical-overflow": "enforced"
+  "lexical-overflow": "enforced",
+  "lexical-text": "enforced"
 }

@@ -839,6 +839,19 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   overflow cases in other packages' tests (330 `$wrapNodes` shapes, 3
   `$insertList` cases and 3 node structure cases) are ported. The ones
   that also need `lexical-mark` stay skipped.
+- **`LexicalText`** ports `@lexical/text`: `registerLexicalTextEntity`
+  (the transforms that make text entities such as hashtags), the root text
+  helpers, `canShowPlaceholder` and `findTextIntersectionFromCharacters`.
+  JS keeps the transforms' bookkeeping in `WeakMap`s keyed by the pending
+  editor state; only one state is pending per editor, so Swift keeps the
+  entry of the last one. `INTERNAL_$recordTextMove`/`Retype` only feed the
+  Yjs 14 binding's text-edit log, which Swift does not have, so they are
+  not ported and the tests of the log are `out-of-scope-package`
+  (`lexical-y`). JS compares NodeState JSON that was not parsed yet by
+  identity, Swift by value, which differs only for two equal objects that
+  JS would hold apart. `lexical-text` is `enforced`: 109 upstream tests, 58
+  ported, 51 skips (11 of collaboration, the rest need `lexical-hashtag` or
+  `lexical-mark`), and the root helper cases in `lexical-utils` are ported.
 
 ## Scope of v0.1.0 (Q21)
 

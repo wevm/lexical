@@ -31,6 +31,7 @@ let package = Package(
     .library(name: "LexicalCodeCore", targets: ["LexicalCodeCore"]),
     .library(name: "LexicalMarkdown", targets: ["LexicalMarkdown"]),
     .library(name: "LexicalOverflow", targets: ["LexicalOverflow"]),
+    .library(name: "LexicalText", targets: ["LexicalText"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -76,7 +77,7 @@ let package = Package(
       dependencies: [
         "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHTML", "LexicalLink",
         "LexicalList",
-        "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
+        "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalText", "LexicalUtils",
       ]),
     // @lexical/html: HTML export and import over the DOM in core.
     .target(
@@ -149,6 +150,14 @@ let package = Package(
       ]),
     // @lexical/overflow: the character limit's OverflowNode.
     .target(name: "LexicalOverflow", dependencies: ["Lexical"]),
+    // @lexical/text: text entities, placeholder and text content helpers.
+    .target(name: "LexicalText", dependencies: ["Lexical"]),
+    .testTarget(
+      name: "LexicalTextTests",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalMarkdown", "LexicalRichText",
+        "LexicalTesting", "LexicalText",
+      ]),
     // @lexical/a11y: the live region and the announcers.
     .target(name: "LexicalA11y", dependencies: ["Lexical", "LexicalExtension"]),
     .testTarget(

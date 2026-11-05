@@ -67,10 +67,10 @@ public class AnyStateConfig {
     self.schema = schema
   }
 
-  func parseAny(_ value: JSONValue?) -> Any { fatalError("abstract") }
-  func unparseAny(_ value: Any) -> JSONValue? { fatalError("abstract") }
-  func isEqualAny(_ a: Any, _ b: Any) -> Bool { fatalError("abstract") }
-  var defaultAny: Any { fatalError("abstract") }
+  package func parseAny(_ value: JSONValue?) -> Any { fatalError("abstract") }
+  package func unparseAny(_ value: Any) -> JSONValue? { fatalError("abstract") }
+  package func isEqualAny(_ a: Any, _ b: Any) -> Bool { fatalError("abstract") }
+  package var defaultAny: Any { fatalError("abstract") }
 
   /// Parses `raw` and sets it on `node`: one flat state of `$applyJSONSetters`.
   package func setParsed<T: LexicalNode>(_ node: T, _ raw: JSONValue) throws -> T {
@@ -97,10 +97,10 @@ public final class StateConfig<V>: AnyStateConfig {
     super.init(key: key, resetOnCopyNode: resetOnCopyNode, derived: derived, schema: schema)
   }
 
-  override func parseAny(_ value: JSONValue?) -> Any { parse(value) }
-  override func unparseAny(_ value: Any) -> JSONValue? { unparse(value as! V) }
-  override func isEqualAny(_ a: Any, _ b: Any) -> Bool { isEqual(a as! V, b as! V) }
-  override var defaultAny: Any { defaultValue }
+  package override func parseAny(_ value: JSONValue?) -> Any { parse(value) }
+  package override func unparseAny(_ value: Any) -> JSONValue? { unparse(value as! V) }
+  package override func isEqualAny(_ a: Any, _ b: Any) -> Bool { isEqual(a as! V, b as! V) }
+  package override var defaultAny: Any { defaultValue }
 }
 
 /// `createState(key, {parse, unparse, isEqual, resetOnCopyNode})`.
@@ -172,7 +172,7 @@ package func createSharedNodeState(_ klass: LexicalNode.Type) -> SharedNodeState
   return shared
 }
 
-typealias KnownStateMap = JSMap<ObjectIdentifier, (config: AnyStateConfig, value: Any)>
+package typealias KnownStateMap = JSMap<ObjectIdentifier, (config: AnyStateConfig, value: Any)>
 
 extension NodeState {
   /// The known states whose value isn't their default, in the order they
@@ -191,10 +191,10 @@ extension NodeState {
 public final class NodeState {
   /// The node version that owns this state; others copy it before writing.
   weak var node: LexicalNode?
-  let knownState: KnownStateMap
-  var unknownState: JSONObject?
-  let sharedNodeState: SharedNodeState
-  var size: Int
+  package let knownState: KnownStateMap
+  package var unknownState: JSONObject?
+  package let sharedNodeState: SharedNodeState
+  package var size: Int
 
   init(
     _ node: LexicalNode, _ sharedNodeState: SharedNodeState, _ unknownState: JSONObject? = nil,
@@ -277,7 +277,7 @@ public final class NodeState {
     return self
   }
 
-  func updateFromKnown(_ stateConfig: AnyStateConfig, _ value: Any) {
+  package func updateFromKnown(_ stateConfig: AnyStateConfig, _ value: Any) {
     let key = stateConfig.key
     sharedNodeState.sharedConfigMap.set(key, stateConfig)
     if var unknown = unknownState, unknown.has(key) {
@@ -289,7 +289,7 @@ public final class NodeState {
     knownState.set(ObjectIdentifier(stateConfig), (stateConfig, value))
   }
 
-  func updateFromUnknown(_ k: String, _ v: JSONValue?) {
+  package func updateFromUnknown(_ k: String, _ v: JSONValue?) {
     if UNSAFE_STATE_KEYS.contains(k) {
       return
     }

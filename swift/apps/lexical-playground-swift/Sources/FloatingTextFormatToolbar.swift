@@ -61,9 +61,8 @@ struct FloatingTextFormatToolbarView: View {
     }
     .padding(4)
     .frame(height: 43)
-    .background(RoundedRectangle(cornerRadius: 8).fill(Color.white))
-    // `box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3)`.
-    .shadow(color: .black.opacity(0.3), radius: 5, y: 5)
+    // White, `box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3)`.
+    .floatingSurface()
     .padding(Self.shadowMargin)
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Floating text format toolbar")
@@ -80,6 +79,14 @@ struct FloatingTextFormatToolbarView: View {
     }
   }
 
+  /// `button.popup-item.active`: `rgba(223, 232, 250, 0.3)`; the accent in
+  /// a dark appearance.
+  private var activeBackground: Color {
+    Color(
+      light: Color(red: 223 / 255, green: 232 / 255, blue: 250 / 255).opacity(0.3),
+      dark: Color.accentColor.opacity(0.35))
+  }
+
   private func button(
     _ title: String, _ label: String, _ symbol: String, active: Bool,
     action: @escaping () -> Void
@@ -87,13 +94,12 @@ struct FloatingTextFormatToolbarView: View {
     Button(action: action) {
       icon(symbol)
         .frame(width: 18, height: 18)
-        .foregroundStyle(Color.black.opacity(active ? 1 : 0.6))
+        // Black, at 0.6 while inactive.
+        .foregroundStyle(Color.primary.opacity(active ? 1 : 0.6))
         .padding(8)
         .background(
           RoundedRectangle(cornerRadius: 10)
-            .fill(
-              active
-                ? Color(red: 223 / 255, green: 232 / 255, blue: 250 / 255).opacity(0.3) : .clear)
+            .fill(active ? activeBackground : .clear)
         )
         .contentShape(Rectangle())
     }

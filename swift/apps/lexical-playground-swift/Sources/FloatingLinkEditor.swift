@@ -154,10 +154,7 @@ struct FloatingLinkEditorView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     // `.link-editor`: white, radius 8, `box-shadow: 0 5px 10px rgba(0, 0,
     // 0, 0.3)`.
-    .background(
-      RoundedRectangle(cornerRadius: 8).fill(.background)
-        .shadow(color: .black.opacity(0.3), radius: 5, y: 5)
-    )
+    .floatingSurface()
     .padding(Self.shadowMargin)
   }
 

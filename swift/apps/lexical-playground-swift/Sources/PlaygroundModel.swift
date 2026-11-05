@@ -10,6 +10,7 @@ import LexicalHistory
 import LexicalLink
 import LexicalList
 import LexicalMarkdown
+import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
 import LexicalSelection
@@ -164,6 +165,20 @@ final class PlaygroundModel {
   var showsTreeView = true {
     didSet { refreshTree() }
   }
+  /// "Char Limit" and "Char Limit (UTF-8)": `CharacterLimitPlugin` with a
+  /// limit of 5, counting UTF-16 code units when both are on.
+  var isCharLimit = false {
+    didSet { syncCharacterLimit() }
+  }
+  var isCharLimitUtf8 = false {
+    didSet { syncCharacterLimit() }
+  }
+  var isMaxLength = false {
+    didSet { syncMaxLength() }
+  }
+  /// The characters the character limit leaves, while it is on.
+  private(set) var remainingCharacters: Int?
+  @ObservationIgnored private var unregisterCharacterLimit: (() -> Void)?
   var treeViewShowsHTML = false {
     didSet { refreshTree() }
   }
@@ -223,7 +238,9 @@ final class PlaygroundModel {
       },
     ]
     // The rest of the playground's AppExtension, in both modes.
-    let always: [any AnyLexicalExtensionArgument] = [HashtagExtension]
+    let always: [any AnyLexicalExtensionArgument] = [
+      HashtagExtension, OverflowExtension, MaxLengthExtension,
+    ]
     return try buildEditorFromExtensions(
       defineExtension(
         name: "@lexical/playground-swift",
@@ -258,6 +275,24 @@ final class PlaygroundModel {
       isEditable)
   }
 
+  private func syncMaxLength() {
+    try? getExtensionDependencyFromEditor(editor, MaxLengthExtension).output.disabled.set(
+      !isMaxLength)
+  }
+
+  private func syncCharacterLimit() {
+    unregisterCharacterLimit?()
+    unregisterCharacterLimit = nil
+    remainingCharacters = nil
+    guard isCharLimit || isCharLimitUtf8 else { return }
+    let utf16 = isCharLimit
+    unregisterCharacterLimit = try? registerCharacterLimit(
+      editor, maxCharacters: 5, strlen: { utf16 ? $0.utf16.count : $0.utf8.count },
+      remainingCharacters: { [weak self] remaining in
+        MainActor.assumeIsolated { self?.remainingCharacters = remaining }
+      })
+  }
+
   /// Builds the other kind of editor, keeping the text: a plain text editor
   /// can't hold headings or quotes.
   private func rebuild() {
@@ -266,6 +301,8 @@ final class PlaygroundModel {
       (try? editor.read { try getRoot().getChildren().map { try $0.getTextContent() } }) ?? []
     for remove in unregister { remove() }
     unregister = []
+    unregisterCharacterLimit?()
+    unregisterCharacterLimit = nil
     editor = try! Self.makeEditor(richText: isRichText)
     try? editor.update(discrete: true) {
       let root = try getRoot().clear()
@@ -291,6 +328,8 @@ final class PlaygroundModel {
     let picker = registerComponentPicker(editor)
     menuHosts = [picker.host]
     unregister.append(picker.unregister)
+    syncMaxLength()
+    syncCharacterLimit()
     unregister.append(
       editor.registerRootListener { [weak self] root, _ in
         MainActor.assumeIsolated {

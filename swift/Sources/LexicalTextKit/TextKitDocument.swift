@@ -1,4 +1,5 @@
 import Lexical
+import Synchronization
 
 // The text a TextKit view shows for an editor state, and the map between its
 // UTF-16 locations and model points (Q11, Q12). `TextKitReconciler` keeps it
@@ -146,7 +147,27 @@ public struct TextKitDocument: Sendable {
   }
 
   static func isBlock(_ node: LexicalNode) throws -> Bool {
-    try (node is ElementNode || node is DecoratorNode) && !node.isInline()
+    if let element = node as? ElementNode { return try !isInline(element) }
+    return try node is DecoratorNode && !node.isInline()
+  }
+
+  /// Whether the views lay out `element` inline: it is inline in the model,
+  /// or its `createDOM` element is inline-level in HTML, which a browser
+  /// lays out inline whatever the model says (OverflowNode's `<span>`).
+  static func isInline(_ element: ElementNode) throws -> Bool {
+    try element.isInline() || rendersInline(element)
+  }
+
+  /// Whether `element`'s class makes an inline-level element in `createDOM`,
+  /// worked out once per class.
+  private static func rendersInline(_ element: ElementNode) -> Bool {
+    if element is RootNode { return false }
+    let id = ObjectIdentifier(type(of: element))
+    if let cached = inlineRenderingCache.withLock({ $0[id] }) { return cached }
+    let tag = (try? element.createDOM(EditorConfig(namespace: "")))?.localName
+    let inline = tag.map(inlineLevelTags.contains) ?? false
+    inlineRenderingCache.withLock { $0[id] = inline }
+    return inline
   }
 
   /// Renders `node` at `location` into `text` and `runs`, recording it and
@@ -393,3 +414,13 @@ public func selectPoints(
   try selection.focus.set(focus.0, focus.1, focus.2)
   try setSelection(selection)
 }
+
+private let inlineRenderingCache = Mutex<[ObjectIdentifier: Bool]>([:])
+
+/// HTML's inline-level (phrasing) elements that an element node's
+/// `createDOM` may make. `code` is left out: CodeNode makes one, and the
+/// playground's theme shows it as a block (`display: block`).
+private let inlineLevelTags: Set<String> = [
+  "a", "abbr", "b", "bdi", "bdo", "cite", "data", "dfn", "em", "i", "kbd", "mark", "q", "s",
+  "samp", "small", "span", "strong", "sub", "sup", "time", "u", "var",
+]

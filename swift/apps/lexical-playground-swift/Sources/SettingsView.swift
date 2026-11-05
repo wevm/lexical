@@ -13,6 +13,9 @@ struct SettingsView: View {
         Toggle("Rich Text", isOn: $model.isRichText)
         Toggle("Debug View", isOn: $model.showsTreeView)
         Toggle("Editable", isOn: $model.isEditable)
+        Toggle("Char Limit", isOn: $model.isCharLimit)
+        Toggle("Char Limit (UTF-8)", isOn: $model.isCharLimitUtf8)
+        Toggle("Max Length", isOn: $model.isMaxLength)
         Section {
           Button("Load the Welcome Document") {
             model.loadWelcome()

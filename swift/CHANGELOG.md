@@ -4,6 +4,28 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.3
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- A quote's bar and a code block's box and gutter cover the block's last line when it is empty, as after a trailing line break or in an empty block, the way a trailing `<br>` gives the web's block an empty line box. On macOS, a block that changes at the end of the text, such as an empty paragraph that becomes a code block, lays its empty line out again with the block's spacing straight away instead of once something is typed.
+- Add `registerCharacterLimit(_:maxCharacters:strlen:remainingCharacters:)` to `LexicalOverflow`, a port of `@lexical/react`'s `useCharacterLimit`: it wraps the text past the limit in `OverflowNode`s and reports the characters left. The TextKit views lay out an element inline when its `createDOM` makes an inline-level HTML element, as a browser does, so the text past the limit stays on its line, with the theme's `characterLimit` background.
+  
+  Verify: an element node that is a block in the model but makes a `<span>`, `<a>` or another inline-level element in `createDOM` now shows inline in the views.
+- A key pressed with Command reports the `key` Safari does: Option applies and Shift doesn't (⇧⌘7 is `7`, ⌥⌘1 is `¡`, ⇧⌘. is `.`), on macOS and with a hardware keyboard on iOS. Shortcuts bound to Shift+Command and a digit or symbol, such as ⇧⌘7 for a numbered list, now match. With Control alone, Shift still applies, as before.
+- The TextKit views attach a decorator again when its node changes, so its view shows the node's new properties, as React renders a decorator again. An inline decorator wider than its line is scaled down to the line's width, keeping its aspect, as an image's `max-width: 100%` scales it.
+- `LexicalUITextView.editMenuElements` adds an app's menu elements to the edit menu UIKit shows for a selection, before the system's actions.
+- The SwiftUI `LexicalEditor` can size itself to its content with `.sizedToContent(minHeight:maxHeight:)`: it grows with its text up to `maxHeight` and scrolls past it, as a chat composer does. Without the modifier it still fills the height it's offered. `LexicalNSTextView` and `LexicalUITextView` take the same range as `heightRange`, which sets their intrinsic height to their `contentHeight` clamped to that range. On iOS, an empty last line now has the last block's height and look, as on macOS, so an empty editor and its caret are as tall as a line of text.
+- `LexicalNSTextView`, `LexicalUITextView` and the SwiftUI `LexicalEditor` (`LexicalEditor(editor, placeholder:)`) take a `placeholder`. It shows while the editor is empty, decided by `canShowPlaceholder` the way upstream's `ContentEditable` decides it. It sits on the first line, where typed text goes, in the theme's new `placeholder` style (the playground's `#999` root text). VoiceOver reads it as the view's placeholder value on macOS and as its value on iOS. `TextKitUpdate.canShowPlaceholder` reports the decision for each commit.
+- Add `LexicalHashtag`, a port of `@lexical/hashtag`: `HashtagNode`, `createHashtagNode(_:)`, `isHashtagNode(_:)`, `HashtagExtension`, `HashtagConfig` and `registerLexicalHashtag(_:_:)`, with JS's matcher. The TextKit views style a text node whose type is not `text` with the theme style of its type, and the default theme gives hashtags the web playground's background.
+- Add `LexicalText`, a port of `@lexical/text`: `registerLexicalTextEntity(_:_:_:_:)`, which turns the text a matcher finds into entity nodes (such as hashtags) and back, `EntityMatch`, `rootTextContent()`, `isRootTextContentEmpty(_:trim:)`, `canShowPlaceholder(_:)`, their curried forms, and `findTextIntersectionFromCharacters(_:_:)`.
+- On macOS, a link is underlined while the pointer is over it, as the web playground's `__link:hover { text-decoration: underline }` does, and only that link. It is view state: no editor update or history entry. `TextKitStyle` gains `hoverUnderline`, which the default theme's `link` style sets.
+- Add `LexicalOverflow`, a port of `@lexical/overflow`: `OverflowNode`, which holds the text past a character limit, `createOverflowNode()`, `isOverflowNode(_:)` and `OverflowExtension`.
+- On macOS, the selection reaches the editor at each step of a click or a drag, as a browser's `selectionchange` does, rather than once the mouse button is released: update listeners (and a toolbar that shows the block type) and the caret's size follow the selection from the press on. Selection-only updates still add no history.
+- `LexicalMenu` ports the platform-neutral half of `@lexical/react`'s typeahead and node menus: `basicTypeaheadTriggerMatch` (`useBasicTypeaheadTriggerMatch`), `MenuOption`, `registerTypeaheadMenu` and `NodeMenu`, which find the query before the caret, keep the options and the highlighted one, and handle the arrow keys, Enter, Tab and Escape at the menu's priority while it is open. The app draws the menu. `LexicalNSTextView` and `LexicalUITextView` gain `rect(from:to:)` and `screenRect(from:to:)`, the rect of a model range, to position floating UI at. On iOS the software keyboard's Return is a `keydown` of Enter, as in Safari, so an open menu takes it.
+
 ## 0.1.2
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

@@ -224,4 +224,53 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForTree(") quote")
     XCTAssertFalse(tree.contains("/quo"), tree)
   }
+
+  /// `MentionsPlugin`: "@" and a name list the people the dummy lookup
+  /// finds, and Return turns the query into a mention.
+  @MainActor
+  func testMentionsInsertAMentionNode() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Hi @Luk")
+    let first = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(first.waitForExistence(timeout: 5))
+    XCTAssertTrue(first.label.contains("Luke Skywalker"), first.label)
+    editor.typeText("\n")
+    waitForTree(") mention \"Luke Skywalker\"")
+    XCTAssertFalse(tree.contains("@Luk"), tree)
+  }
+
+  /// `EmojiPickerPlugin`: ":" and a keyword list matching emoji, and a tap
+  /// inserts one in place of the query.
+  @MainActor
+  func testEmojiPickerInsertsAnEmoji() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("I am :hap")
+    let first = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(first.waitForExistence(timeout: 5))
+    XCTAssertTrue(first.label.contains("grinning"), first.label)
+    first.tap()
+    waitForTree("\"I am \u{1F600}")
+    XCTAssertFalse(tree.contains(":hap"), tree)
+  }
+
+  /// `AutocompleteExtension`, turned on in the settings: the rest of the
+  /// word shows as ghost text, and a swipe right accepts it.
+  @MainActor
+  func testAutocompleteSuggestsAndSwipeAccepts() {
+    launch()
+    app.buttons["Settings"].tap()
+    let toggle = app.switches["Autocomplete"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    app.buttons["Done"].tap()
+    let editor = clearedEditor()
+    editor.typeText("Some informa")
+    let ghost = app.staticTexts["autocomplete-ghost"]
+    XCTAssertTrue(ghost.waitForExistence(timeout: 5))
+    XCTAssertTrue(ghost.label.hasPrefix("tion"), ghost.label)
+    editor.swipeRight()
+    waitForTree("\"Some information\"")
+  }
 }

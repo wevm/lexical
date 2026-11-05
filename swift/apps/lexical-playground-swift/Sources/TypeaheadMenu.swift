@@ -1,5 +1,6 @@
 import Lexical
 import LexicalMenu
+import LexicalTextKit
 import SwiftUI
 
 #if os(macOS)
@@ -122,6 +123,12 @@ struct TypeaheadMenuView: View {
 @MainActor
 protocol TypeaheadMenuAttaching {
   func attach(to root: AnyObject?)
+}
+
+/// The input controller of `root`, the editor's text view.
+@MainActor
+func textController(_ root: AnyObject?) -> TextKitInputController? {
+  (root as? TextView)?.controller
 }
 
 /// Keeps a menu over the editor's window, under its query

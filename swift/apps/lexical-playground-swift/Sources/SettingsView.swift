@@ -13,6 +13,7 @@ struct SettingsView: View {
         Toggle("Rich Text", isOn: $model.isRichText)
         Toggle("Debug View", isOn: $model.showsTreeView)
         Toggle("Editable", isOn: $model.isEditable)
+        Toggle("Autocomplete", isOn: $model.isAutocomplete)
         Toggle("Char Limit", isOn: $model.isCharLimit)
         Toggle("Char Limit (UTF-8)", isOn: $model.isCharLimitUtf8)
         Toggle("Max Length", isOn: $model.isMaxLength)

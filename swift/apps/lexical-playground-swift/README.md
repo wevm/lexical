@@ -15,7 +15,17 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   code, divider and the alignments, filtered by what follows the slash,
   chosen with the arrows and Enter or Tab, a click or a tap. The table,
   embed, equation, poll and other options insert nodes the port does not
-  have yet.
+  have yet. "@" and a name (`MentionsPlugin`) list up to five people from
+  the web's dummy lookup, which answers after 500 ms, and insert a
+  `MentionNode`. ":" and a keyword (`EmojiPickerPlugin`) list up to ten
+  emoji; `Sources/emoji-list.json` is upstream's `utils/emoji-list.ts`
+  (the gemoji list) with only the emoji, aliases and tags.
+- **Autocomplete** (off by default; Settings → Autocomplete): at the end of
+  a word the rest of it shows in grey after the caret
+  (`AutocompleteExtension`), accepted with Tab or the right arrow, or a
+  swipe right on iOS. Only the English wordlist
+  (`Sources/autocomplete-english.txt`) is bundled; the Korean one and the
+  suggestions during an IME composition are not ported yet.
 - **Editing:** Markdown shortcuts (`# `, `- `, `1. `, `[ ] `, `> `,
   ` ``` `, `**bold**`, …), autolinked URLs and email addresses, and check
   boxes that toggle on a click or tap. Links open on a click while the
@@ -43,8 +53,8 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   HTML. It sits beside the editor in a regular-width window and below it
   otherwise.
 - **Actions:** import and export as JSON, HTML or Markdown, clear, read-only, and
-  settings (rich or plain text, the debug view, editable, the welcome
-  document).
+  settings (rich or plain text, the debug view, editable, autocomplete,
+  the welcome document).
 
 The Xcode project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 and not checked in:

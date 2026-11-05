@@ -57,7 +57,8 @@ func getBaseOptions(_ editor: Editor) -> [ComponentPickerOption] {
   for n in 1...3 {
     options.append(
       ComponentPickerOption(
-        "Heading \(n)", symbol: "textformat", glyph: "H\(n)", keywords: ["heading", "header", "h\(n)"],
+        "Heading \(n)", symbol: "textformat", glyph: "H\(n)",
+        keywords: ["heading", "header", "h\(n)"],
         onSelect: setBlocks { try createHeadingNode("h\(n)") }))
   }
   options += [
@@ -125,7 +126,9 @@ func filterComponentPickerOptions(
 
 /// `ComponentPickerMenuPlugin`.
 @MainActor
-func registerComponentPicker(_ editor: Editor) -> (
+func registerComponentPicker(
+  _ editor: Editor
+) -> (
   host: TypeaheadMenuHost<ComponentPickerOption>, unregister: () -> Void
 ) {
   let baseOptions = getBaseOptions(editor)

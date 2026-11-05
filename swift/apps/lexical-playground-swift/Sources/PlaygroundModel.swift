@@ -14,6 +14,7 @@ import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
 import LexicalSelection
+import LexicalTextKit
 import LexicalUtils
 import Observation
 
@@ -162,6 +163,11 @@ final class PlaygroundModel {
       refreshLinkEditor()
     }
   }
+  /// The Autocomplete setting, which `useSynchronizeSettings` passes to
+  /// `AutocompleteExtension`; off by default, as on the web.
+  var isAutocomplete = false {
+    didSet { syncAutocomplete() }
+  }
   var showsTreeView = true {
     didSet { refreshTree() }
   }
@@ -227,6 +233,7 @@ final class PlaygroundModel {
     // Links in both modes, as the playground's AppExtension has them; lists,
     // code blocks and Markdown shortcuts in rich text only.
     let links: [any AnyLexicalExtensionArgument] = [
+      MentionsExtension,
       configExtension(LinkExtension) { $0.validateUrl = validateUrl },
       configExtension(AutoLinkExtension) {
         $0.excludeParents = [isCodeNode]
@@ -260,6 +267,7 @@ final class PlaygroundModel {
             PlaygroundMarkdownShortcutsExtension,
             PlaygroundShortcutsExtension,
             configExtension(TabIndentationExtension) { $0.maxIndent = 7 },
+            configExtension(AutocompleteExtension) { $0.disabled = true },
           ] + links + always
           : [
             PlainTextExtension, HistoryExtension, HistoryAnnounceExtension,
@@ -291,6 +299,11 @@ final class PlaygroundModel {
       remainingCharacters: { [weak self] remaining in
         MainActor.assumeIsolated { self?.remainingCharacters = remaining }
       })
+  }
+
+  private func syncAutocomplete() {
+    try? getExtensionDependencyFromEditor(editor, AutocompleteExtension).output.disabled.set(
+      !isAutocomplete)
   }
 
   /// Builds the other kind of editor, keeping the text: a plain text editor
@@ -326,13 +339,25 @@ final class PlaygroundModel {
   private func attach() {
     syncClickableLinks()
     let picker = registerComponentPicker(editor)
-    menuHosts = [picker.host]
-    unregister.append(picker.unregister)
+    let emoji = registerEmojiPicker(editor)
+    let mentions = registerMentions(editor)
+    menuHosts = [picker.host, emoji.host, mentions.host]
+    if isRichText {
+      syncAutocomplete()
+      menuHosts.append(AutocompleteGhostHost(editor: editor))
+    }
+    unregister += [picker.unregister, emoji.unregister, mentions.unregister]
     syncMaxLength()
     syncCharacterLimit()
     unregister.append(
       editor.registerRootListener { [weak self] root, _ in
         MainActor.assumeIsolated {
+          // The view attaches before its first render, so the theme is
+          // in place for it.
+          if let controller = textController(root) {
+            controller.theme["mention"] = TextKitStyle(
+              css: "background-color: \(mentionBackgroundColor)")
+          }
           self?.linkEditorHost.attach(to: root)
           self?.menuHosts.forEach { $0.attach(to: root) }
         }

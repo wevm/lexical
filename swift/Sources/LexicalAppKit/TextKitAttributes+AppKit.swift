@@ -105,6 +105,7 @@
       if underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
       if strikethrough { attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
       if baselineOffset != 0 { attributes[.baselineOffset] = baselineOffset }
+      if cursor == .pointer { attributes[.cursor] = NSCursor.pointingHand }
       return attributes
     }
   }

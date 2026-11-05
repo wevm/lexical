@@ -329,19 +329,8 @@
       layoutCheckboxes(markers)
       var bars: [(CGRect, UIColor)] = []
       for (key, blockBars) in controller.blockBars {
-        guard let span = document.span(key),
-          let range = textRange(
-            NSRange(
-              location: span.location,
-              length: min(max(span.length, 1), document.length - span.location)))
+        guard let span = document.span(key), let frame = blockLinesFrame(layoutManager, span)
         else { continue }
-        var frame: CGRect?
-        layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
-          _, segment, _, _ in
-          frame = frame.map { $0.union(segment) } ?? segment
-          return true
-        }
-        guard let frame else { continue }
         for bar in blockBars {
           bars.append(
             (
@@ -354,19 +343,8 @@
       }
       blockBarsView.bars = bars
       blockBarsView.boxes = controller.blockBoxes.compactMap { key, layout in
-        guard let span = document.span(key),
-          let range = textRange(
-            NSRange(
-              location: span.location,
-              length: min(max(span.length, 1), document.length - span.location)))
+        guard let span = document.span(key), let frame = blockLinesFrame(layoutManager, span)
         else { return nil }
-        var frame: CGRect?
-        layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
-          _, segment, _, _ in
-          frame = frame.map { $0.union(segment) } ?? segment
-          return true
-        }
-        guard let frame else { return nil }
         return blockBox(
           layout, span: span, layoutManager,
           lines: CGRect(
@@ -374,6 +352,36 @@
             width: textContainer.size.width - 2 * padding, height: frame.height))
       }
       sendSubviewToBack(blockBarsView)
+    }
+
+    /// The lines of the block at `span`, in container coordinates. The
+    /// line a block ends on holds none of its characters when the block is
+    /// empty or ends with a line break: it is the next block's separator's
+    /// line, or TextKit's extra line fragment at the end of the text. It is
+    /// the block's line all the same, as a trailing `<br>` gives the web's
+    /// block an empty line box, so the line at the block's end joins it.
+    private func blockLinesFrame(
+      _ layoutManager: NSTextLayoutManager, _ span: TextKitSpan
+    )
+      -> CGRect?
+    {
+      let text = textStorage.string as NSString
+      let end = min(span.end, text.length)
+      func frame(_ range: NSRange) -> CGRect? {
+        guard let range = textRange(range) else { return nil }
+        var frame: CGRect?
+        layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
+          _, segment, _, _ in
+          frame = frame.map { $0.union(segment) } ?? segment
+          return true
+        }
+        return frame
+      }
+      let lines = frame(NSRange(location: span.location, length: end - span.location))
+      guard end == span.location || text.character(at: end - 1) == 0x2028,
+        let last = frame(NSRange(location: end, length: 0))
+      else { return lines }
+      return lines.map { $0.union(last) } ?? last
     }
 
     /// `layout`'s box behind the block's lines, `lines` (starting where line

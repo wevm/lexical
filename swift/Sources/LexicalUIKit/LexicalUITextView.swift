@@ -35,6 +35,8 @@
     private let history = HistoryUndoManager()
     public override var undoManager: UndoManager? { history }
     private let blockBarsView = BlockBarsView()
+    /// The text and paragraph look of the last block.
+    private var lastBlockAttributes: [NSAttributedString.Key: Any]?
     /// Shown while the editor is empty (`canShowPlaceholder`), over its
     /// first line in the theme's `placeholder` style, and spoken as the
     /// view's value then, as an empty text field's placeholder is: upstream
@@ -45,6 +47,32 @@
         setNeedsLayout()
       }
     }
+    /// When set, the view's intrinsic height is its content's
+    /// (`contentHeight`) kept within the range, so it grows with its text
+    /// up to the upper bound, as a chat composer does, and scrolls past it.
+    /// `nil` (the default) leaves the intrinsic size to `UITextView`.
+    public var heightRange: ClosedRange<CGFloat>? {
+      didSet { invalidateIntrinsicContentSize() }
+    }
+
+    /// The height of the laid-out text with the container inset above and
+    /// below it.
+    public var contentHeight: CGFloat {
+      let insets = textContainerInset.top + textContainerInset.bottom
+      guard let layoutManager = textLayoutManager else { return insets }
+      layoutManager.ensureLayout(for: layoutManager.documentRange)
+      return ceil(layoutManager.usageBoundsForTextContainer.height + insets)
+    }
+
+    public override var intrinsicContentSize: CGSize {
+      guard let heightRange else { return super.intrinsicContentSize }
+      return CGSize(
+        width: UIView.noIntrinsicMetric,
+        height: min(max(contentHeight, heightRange.lowerBound), heightRange.upperBound))
+    }
+
+    private var lastLaidOutWidth: CGFloat = 0
+
     /// Whether the editor's state can show the placeholder, as of the last
     /// commit.
     public private(set) var canShowPlaceholder = false
@@ -226,10 +254,16 @@
         let range = NSIntersectionRange(
           NSRange(location: paragraph.range.location, length: paragraph.range.length),
           NSRange(location: 0, length: length))
-        textStorage.addAttribute(
-          .paragraphStyle,
-          value: paragraph.attributes.uiParagraphStyle(font: paragraph.text.uiFont(contentSize)),
-          range: range)
+        let style = paragraph.attributes.uiParagraphStyle(font: paragraph.text.uiFont(contentSize))
+        textStorage.addAttribute(.paragraphStyle, value: style, range: range)
+        // The last block, unless it ends before an empty one.
+        if paragraph.range.end == length,
+          range.length == 0 || (textStorage.string as NSString).character(at: length - 1) != 0x0A
+        {
+          var attributes = paragraph.text.uiAttributes(contentSize)
+          attributes[.paragraphStyle] = style
+          lastBlockAttributes = attributes
+        }
         if range.length > 0,
           (textStorage.string as NSString).character(at: range.upperBound - 1) == 0x0A
         {
@@ -256,10 +290,39 @@
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange != selected { selectedRange = selected }
       }
+      showLastBlockAtCaret()
       if update.tags.contains(FOCUS_TAG), !hasFocus {
         focus()
       }
       setNeedsLayout()
+      if heightRange != nil { invalidateIntrinsicContentSize() }
+    }
+
+    /// An empty last block's line is TextKit's extra line fragment, which
+    /// no character carries: it, and the caret on it, take their look from
+    /// the typing attributes, which are the last block's while the caret is
+    /// there. Otherwise an empty document's line has the default font's
+    /// height rather than the root's `line-height`, until something is
+    /// typed.
+    private func showLastBlockAtCaret() {
+      guard let lastBlockAttributes,
+        selectedRange == NSRange(location: textStorage.length, length: 0)
+      else { return }
+      let text = textStorage.string as NSString
+      guard text.length == 0 || [0x0A, 0x2028].contains(text.character(at: text.length - 1)),
+        !NSDictionary(dictionary: typingAttributes).isEqual(to: lastBlockAttributes)
+      else { return }
+      typingAttributes = lastBlockAttributes
+      // TextKit keeps a line it already measured until it is laid out
+      // again.
+      if let layoutManager = textLayoutManager {
+        layoutManager.enumerateTextLayoutFragments(
+          from: layoutManager.documentRange.endLocation, options: [.reverse]
+        ) { fragment in
+          layoutManager.invalidateLayout(for: fragment.rangeInElement)
+          return false
+        }
+      }
     }
 
     private func textRange(_ range: NSRange) -> NSTextRange? {
@@ -316,6 +379,11 @@
     /// Lays out the quote bars and list markers behind the text.
     public override func layoutSubviews() {
       super.layoutSubviews()
+      // Text wraps differently at another width.
+      if heightRange != nil, bounds.width != lastLaidOutWidth {
+        lastLaidOutWidth = bounds.width
+        invalidateIntrinsicContentSize()
+      }
       // The bars are in content coordinates, so the view starts at the
       // content's origin even while the content is pulled past its top.
       blockBarsView.frame = CGRect(
@@ -738,6 +806,7 @@
     }
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
+      showLastBlockAtCaret()
       guard !isRendering else { return }
       let range = selectedRange
       if let current = try? controller.selectedRange(),

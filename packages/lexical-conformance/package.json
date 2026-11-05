@@ -25,6 +25,7 @@
     "@lexical/link": "workspace:*",
     "@lexical/list": "workspace:*",
     "@lexical/markdown": "workspace:*",
+    "@lexical/overflow": "workspace:*",
     "@lexical/plain-text": "workspace:*",
     "@lexical/rich-text": "workspace:*",
     "@lexical/selection": "workspace:*",

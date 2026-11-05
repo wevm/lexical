@@ -3,6 +3,7 @@ import LexicalCodeCore
 import LexicalExtension
 import LexicalLink
 import LexicalList
+import LexicalOverflow
 import LexicalRichText
 import LexicalTesting
 import Testing
@@ -10,7 +11,7 @@ import Testing
 // Port of packages/lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts.
 // Upstream's `build` registers the list, link, table, code and overflow
 // nodes in every editor; the editors here register rich text, the list, the
-// link, the code block and the horizontal rule. The tests that use the
+// link, the code block, the overflow and the horizontal rule. The tests that use the
 // other packages are skipped until they are ported.
 
 private func shape(_ node: LexicalNode) throws -> JSONValue {
@@ -33,7 +34,7 @@ private func build(_ initial: @escaping () throws -> Void, _ withStructure: Bool
       name: "node-structure-test",
       dependencies: [RichTextExtension, ListExtension, LinkExtension, HorizontalRuleExtension]
         + (withStructure ? [NodeStructureExtension] : []),
-      nodes: { [.klass(CodeNode.self)] },
+      nodes: { [.klass(CodeNode.self), .klass(OverflowNode.self)] },
       editorConfig: InitialEditorConfig(
         onError: { error, _ in throw error }, initialEditorState: .update { _ in try initial() })))
 }
@@ -479,6 +480,27 @@ private final class StatefulLinkNode: LinkNode {
 @Suite struct NodeStructureExtensionTests {
   @Test(
     .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > an OverflowNode stays in its paragraph"
+    ))
+  func overflowStaysInParagraph() throws {
+    let editor = try build(
+      {
+        try getRoot().append(
+          createParagraphNode().append(
+            createTextNode("within"), createOverflowNode().append(createTextNode("over"))))
+      }, true)
+    defer { editor.dispose() }
+    #expect(try rootShape(editor) == #"[["paragraph","within",["overflow","over"]]]"#)
+    try editor.read {
+      let paragraph = try #require(try getRoot().getFirstChildOrThrow() as? ElementNode)
+      let overflow = try #require(try paragraph.getLastChild())
+      // Its behaviour is unchanged: still not inline for the caret.
+      #expect(try overflow.isInline() == false)
+    }
+  }
+
+  @Test(
+    .upstream(
       "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a heading inside a link becomes a heading holding the link"
     ))
   func headingInsideLink() throws {
@@ -902,7 +924,59 @@ private final class StatefulLinkNode: LinkNode {
   }
 }
 
+private final class MyOverflowNode: OverflowNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(MyOverflowNode.self, type: "test-my-overflow", extends: OverflowNode.self)
+  }
+}
+
+private final class FakeOverflowNode: ParagraphNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(FakeOverflowNode.self, type: "overflow", extends: ParagraphNode.self)
+  }
+}
+
 @Suite struct NodeStructureRegistrationTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::registration > an OverflowNode subclass is exempt too; a class that only shares the type name is not"
+    ))
+  func overflowSubclassExempt() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "overflow", dependencies: [RichTextExtension, NodeStructureExtension],
+        nodes: { [.klass(MyOverflowNode.self)] },
+        editorConfig: InitialEditorConfig(
+          onError: { error, _ in throw error },
+          initialEditorState: .update { _ in
+            try getRoot().append(
+              createParagraphNode().append(
+                createTextNode("within"), create(MyOverflowNode.self).append(createTextNode("over"))
+              ))
+          })))
+    defer { editor.dispose() }
+    #expect(try rootShape(editor) == #"[["paragraph","within",["test-my-overflow","over"]]]"#)
+    let fake = try buildEditorFromExtensions(
+      defineExtension(
+        name: "fake-overflow", dependencies: [RichTextExtension, NodeStructureExtension],
+        nodes: { [.klass(FakeOverflowNode.self)] },
+        editorConfig: InitialEditorConfig(
+          onError: { error, _ in throw error },
+          initialEditorState: .update { _ in
+            let p = try createParagraphNode()
+            try getRoot().append(p)
+            try put(
+              p,
+              [
+                try createTextNode("a"),
+                try create(FakeOverflowNode.self).append(createTextNode("b")),
+              ])
+          })))
+    defer { fake.dispose() }
+    // A paragraph (not OverflowNode) in a paragraph becomes lines of it.
+    #expect(try rootShape(fake) == #"[["paragraph","a","linebreak","b"]]"#)
+  }
+
   @Test(
     .upstream(
       "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::registration > registerNodeStructure: idempotent, and disposed by its last registration"
@@ -1025,6 +1099,7 @@ private func buildCaretEditor(_ withStructure: Bool = true) throws -> Editor {
       name: "node-structure-carets",
       dependencies: [RichTextExtension, ListExtension, LinkExtension, HorizontalRuleExtension]
         + (withStructure ? [NodeStructureExtension] : []),
+      nodes: { [.klass(OverflowNode.self)] },
       editorConfig: InitialEditorConfig(onError: { error, _ in throw error })))
 }
 
@@ -1075,6 +1150,34 @@ private func content(_ editor: Editor) throws -> String {
 }
 
 @Suite struct NodeStructureCaretTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty link in an OverflowNode before a rule in a list item is removed before its holder is repaired, whatever the dirty order"
+    ))
+  func emptyLinkInOverflowBeforeRule() throws {
+    for order in ["outer first", "inner first"] {
+      let editor = try buildCaretEditor()
+      defer { editor.dispose() }
+      try loadThenNormalize(
+        editor,
+        {
+          [
+            try put(
+              createListNode("bullet"),
+              [
+                try put(
+                  createListItemNode(),
+                  [
+                    try put(createOverflowNode(), [try createLinkNode("https://a")]),
+                    try createHorizontalRuleNode(), try createTextNode("y"),
+                  ])
+              ])
+          ]
+        }, order: order)
+      #expect(try rootShape(editor) == #"["horizontalrule",["list",["listitem","y"]]]"#)
+    }
+  }
+
   @Test(
     .upstream(
       "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty link alone in a list is removed before its holder is repaired, whatever the dirty order"

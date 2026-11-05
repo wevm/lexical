@@ -30,6 +30,7 @@ let package = Package(
     .library(name: "LexicalLink", targets: ["LexicalLink"]),
     .library(name: "LexicalCodeCore", targets: ["LexicalCodeCore"]),
     .library(name: "LexicalMarkdown", targets: ["LexicalMarkdown"]),
+    .library(name: "LexicalOverflow", targets: ["LexicalOverflow"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -57,7 +58,7 @@ let package = Package(
       dependencies: [
         "Lexical", "LexicalClipboard", "LexicalCodeCore", "LexicalExtension", "LexicalHeadless",
         "LexicalHistory", "LexicalHTML", "LexicalLink", "LexicalList", "LexicalMarkdown",
-        "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
+        "LexicalOverflow", "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/selection: style patching, block conversion and wrapping.
     .target(name: "LexicalSelection", dependencies: ["Lexical"]),
@@ -65,7 +66,7 @@ let package = Package(
       name: "LexicalSelectionTests",
       dependencies: [
         "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalLink",
-        "LexicalList", "LexicalMarkdown",
+        "LexicalList", "LexicalMarkdown", "LexicalOverflow",
         "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/utils: traversal, insertion and editing helpers.
@@ -146,6 +147,8 @@ let package = Package(
         "LexicalLink", "LexicalList", "LexicalMarkdown", "LexicalRichText", "LexicalSelection",
         "LexicalTesting", "LexicalUtils",
       ]),
+    // @lexical/overflow: the character limit's OverflowNode.
+    .target(name: "LexicalOverflow", dependencies: ["Lexical"]),
     // @lexical/a11y: the live region and the announcers.
     .target(name: "LexicalA11y", dependencies: ["Lexical", "LexicalExtension"]),
     .testTarget(
@@ -240,7 +243,7 @@ let package = Package(
       name: "ConformanceTests",
       dependencies: [
         "Lexical", "LexicalCodeCore", "LexicalDevtoolsCore", "LexicalHTML", "LexicalLink",
-        "LexicalList", "LexicalMarkdown", "LexicalRichText", "LexicalTesting",
+        "LexicalList", "LexicalMarkdown", "LexicalOverflow", "LexicalRichText", "LexicalTesting",
       ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
     .testTarget(

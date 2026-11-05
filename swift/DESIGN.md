@@ -830,6 +830,15 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   `out-of-scope-package`. `lexical-markdown` is `enforced`: 1064 upstream
   tests, 610 ported, 454 skips, and the 36 markdown cases in other
   packages' tests are ported too.
+- **`LexicalOverflow`** ports `@lexical/overflow`: `OverflowNode`, the
+  character limit's inline holder of the text past the limit, and
+  `OverflowExtension`. The node structure code in core recognizes it by
+  its own config (type `overflow`, extending `ElementNode`), so core does
+  not depend on the module. The package has no unit tests of its own;
+  `lexical-overflow` is `enforced` with 0 upstream tests, and the 336
+  overflow cases in other packages' tests (330 `$wrapNodes` shapes, 3
+  `$insertList` cases and 3 node structure cases) are ported. The ones
+  that also need `lexical-mark` stay skipped.
 
 ## Scope of v0.1.0 (Q21)
 

@@ -4,6 +4,7 @@ import LexicalExtension
 import LexicalLink
 import LexicalList
 import LexicalMarkdown
+import LexicalOverflow
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting
@@ -2655,6 +2656,72 @@ private func emptyInRange(_ make: () throws -> ElementNode) throws {
       try insertList("bullet")
     }
     #expect(shape == #"box{aside:p("slot")}(list[bullet](li() li("x")))"#)
+  }
+
+  // MARK: the character limit's OverflowNode
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::the character limit's OverflowNode > $insertList with the caret in an OverflowNode in a paragraph"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::the character limit's OverflowNode > $insertList with the caret in an OverflowNode alone in a paragraph after another"
+    ),
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockContainers.test.ts::the character limit's OverflowNode > $insertList with the caret in an OverflowNode in a box that holds a quote"
+    ),
+    arguments: [
+      "in a paragraph", "alone in a paragraph after another", "in a box that holds a quote",
+    ])
+  func insertListInOverflow(_ name: String) throws {
+    let cases: [String: (inner: () throws -> [LexicalNode], text: String, expected: String)] = [
+      "in a paragraph": (
+        {
+          [
+            try createParagraphNode().append(
+              createTextNode("abc"), createOverflowNode().append(createTextNode("def")))
+          ]
+        }, "def", #"list[bullet](li("abc" overflow("def")))"#
+      ),
+      "alone in a paragraph after another": (
+        {
+          [
+            try p("abc"),
+            try createParagraphNode().append(createOverflowNode().append(createTextNode("ghi"))),
+          ]
+        }, "ghi", #"p("abc") / list[bullet](li(overflow("ghi")))"#
+      ),
+      "in a box that holds a quote": (
+        {
+          [
+            try create(PlainBoxNode.self).append(
+              createQuoteNode().append(createTextNode("q")),
+              createParagraphNode().append(
+                createTextNode("abc"), createOverflowNode().append(createTextNode("def"))))
+          ]
+        }, "def", #"box(quote("q") list[bullet](li("abc" overflow("def"))))"#
+      ),
+    ]
+    let c = cases[name]!
+    for structure in [false, true] {
+      if name == "in a box that holds a quote" && !structure {
+        continue
+      }
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "block-containers-overflow",
+          dependencies: [RichTextExtension, ListExtension]
+            + (structure ? [NodeStructureExtension] : []),
+          nodes: { [.klass(OverflowNode.self), .klass(PlainBoxNode.self)] },
+          editorConfig: InitialEditorConfig(onError: { error, _ in throw error })))
+      defer { editor.dispose() }
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(contentsOf: c.inner())
+        _ = try findText(c.text).select(1, 1)
+        try insertList("bullet")
+      }
+      #expect(try editor.read { try shapeOfRoot() } == c.expected)
+    }
   }
 
   // MARK: #9570: $insertList in a box inside a box

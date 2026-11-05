@@ -17,6 +17,7 @@ struct SettingsView: View {
         Toggle("Char Limit", isOn: $model.isCharLimit)
         Toggle("Char Limit (UTF-8)", isOn: $model.isCharLimitUtf8)
         Toggle("Max Length", isOn: $model.isMaxLength)
+        Toggle("Use Brackets for Highlighting", isOn: $model.isSpecialText)
         Section {
           Button("Load the Welcome Document") {
             model.loadWelcome()

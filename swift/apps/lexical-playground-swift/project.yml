@@ -70,6 +70,8 @@ targets:
       - package: Lexical
         product: LexicalSwiftUI
       - package: Lexical
+        product: LexicalText
+      - package: Lexical
         product: LexicalTextKit
       - package: Lexical
         product: LexicalUIKit

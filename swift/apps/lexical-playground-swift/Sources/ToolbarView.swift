@@ -72,7 +72,9 @@ struct ToolbarView: View {
           // port has.
           Menu {
             Button("Horizontal Rule", systemImage: "minus") { model.insertHorizontalRule() }
+            Button("Page Break", systemImage: "scissors") { model.insertPageBreak() }
             Button("Image", systemImage: "photo") { model.isInsertingImage = true }
+            Button("Date", systemImage: "calendar") { model.insertDate() }
           } label: {
             Label("Insert", systemImage: "plus").labelStyle(.titleAndIcon)
           }

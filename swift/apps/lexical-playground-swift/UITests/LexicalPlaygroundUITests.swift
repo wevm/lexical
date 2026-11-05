@@ -323,4 +323,45 @@ final class LexicalPlaygroundUITests: XCTestCase {
     expectation(for: wider, evaluatedWith: nil)
     waitForExpectations(timeout: 5)
   }
+
+  /// The playground's text entities and the "/" menu's Page Break and date
+  /// options: a keyword becomes a keyword node, brackets a special text
+  /// node once the setting is on, and the options insert their nodes.
+  @MainActor
+  func testInsertsPlaygroundNodes() {
+    launch()
+    app.buttons["Settings"].tap()
+    let toggle = app.switches["Use Brackets for Highlighting"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    app.buttons["Done"].tap()
+    let editor = clearedEditor()
+    editor.typeText("Big congrats and [special] text ")
+    waitForTree(") keyword \"congrats\"")
+    waitForTree(") specialText \"special\"")
+    editor.typeText("\n/tom")
+    let date = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(date.waitForExistence(timeout: 5))
+    XCTAssertTrue(date.label.contains("Tomorrow"), date.label)
+    editor.typeText("\n")
+    waitForTree(") datetime")
+    attachScreenshot("playground-text-nodes")
+    editor.typeText("\n/page")
+    let pageBreak = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(pageBreak.waitForExistence(timeout: 5))
+    XCTAssertTrue(pageBreak.label.contains("Page Break"), pageBreak.label)
+    pageBreak.tap()
+    waitForTree(") page-break")
+    XCTAssertFalse(tree.contains("/page"), tree)
+    attachScreenshot("playground-page-break")
+  }
+
+  /// Keeps a screenshot in the result bundle, to compare with the web.
+  @MainActor
+  private func attachScreenshot(_ name: String) {
+    let screenshot = XCTAttachment(screenshot: app.screenshot())
+    screenshot.name = name
+    screenshot.lifetime = .keepAlways
+    add(screenshot)
+  }
 }

@@ -182,6 +182,10 @@ final class PlaygroundModel {
   var isMaxLength = false {
     didSet { syncMaxLength() }
   }
+  /// "Use Brackets for Highlighting" (`shouldAllowHighlightingWithBrackets`).
+  var isSpecialText = false {
+    didSet { syncSpecialText() }
+  }
   /// The characters the character limit leaves, while it is on.
   private(set) var remainingCharacters: Int?
   @ObservationIgnored private var unregisterCharacterLimit: (() -> Void)?
@@ -256,7 +260,8 @@ final class PlaygroundModel {
     ]
     // The rest of the playground's AppExtension, in both modes.
     let always: [any AnyLexicalExtensionArgument] = [
-      HashtagExtension, OverflowExtension, MaxLengthExtension,
+      HashtagExtension, OverflowExtension, MaxLengthExtension, KeywordsExtension,
+      DateTimeExtension, SpecialTextExtension,
     ]
     return try buildEditorFromExtensions(
       defineExtension(
@@ -266,7 +271,8 @@ final class PlaygroundModel {
             RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension,
             HistoryAnnounceExtension, EditorModeAnnounceExtension,
             configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
-            CheckListExtension, CodeExtension, HorizontalRuleExtension, ImagesExtension,
+            CheckListExtension, CodeExtension, HorizontalRuleExtension, PageBreakExtension,
+            ImagesExtension,
             DragDropPasteExtension, PlaygroundDOMRenderExtension,
             // The web playground's `CodeHighlightExtension` brings both:
             // Tab and Shift+Tab indent and outdent code lines.
@@ -292,6 +298,11 @@ final class PlaygroundModel {
   private func syncClickableLinks() {
     try? getExtensionDependencyFromEditor(editor, ClickableLinkExtension).output.disabled.set(
       isEditable)
+  }
+
+  private func syncSpecialText() {
+    try? getExtensionDependencyFromEditor(editor, SpecialTextExtension).output.disabled.set(
+      !isSpecialText)
   }
 
   private func syncMaxLength() {
@@ -359,6 +370,7 @@ final class PlaygroundModel {
     }
     unregister += [picker.unregister, emoji.unregister, mentions.unregister]
     syncMaxLength()
+    syncSpecialText()
     syncCharacterLimit()
     unregister.append(
       editor.registerRootListener { [weak self] root, _ in
@@ -368,6 +380,8 @@ final class PlaygroundModel {
           if let controller = textController(root) {
             controller.theme["mention"] = TextKitStyle(
               css: "background-color: \(mentionBackgroundColor)")
+            controller.theme["keyword"] = TextKitStyle(css: keywordThemeStyle)
+            controller.theme["specialText"] = TextKitStyle(css: specialTextThemeStyle)
           }
           self?.linkEditorHost.attach(to: root)
           self?.formatToolbarHost.attach(to: root)
@@ -669,6 +683,15 @@ final class PlaygroundModel {
 
   func insertHorizontalRule() {
     _ = try? editor.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND)
+  }
+
+  func insertPageBreak() {
+    _ = try? editor.dispatchCommand(INSERT_PAGE_BREAK)
+  }
+
+  /// The toolbar's Date: today, at midnight.
+  func insertDate() {
+    _ = try? editor.dispatchCommand(INSERT_DATETIME_COMMAND, midnight())
   }
 
   func indent() { _ = try? editor.dispatchCommand(INDENT_CONTENT_COMMAND) }

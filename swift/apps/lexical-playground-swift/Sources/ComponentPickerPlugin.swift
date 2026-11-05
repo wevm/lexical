@@ -9,8 +9,8 @@ import LexicalSelection
 
 // Port of packages/lexical-playground/src/plugins/ComponentPickerPlugin: a
 // "/" at the start of a word opens a menu of the blocks the Swift
-// playground has, and the image, which opens the Insert Image dialog. The
-// table, Excalidraw, poll, embed, equation, GIF,
+// playground has, the page break, the dates, and the image, which opens
+// the Insert Image dialog. The table, Excalidraw, poll, embed, equation, GIF,
 // collapsible, card, pull quote, review and columns options insert nodes
 // the port does not have yet, so they are left out, and so is the dynamic
 // "3x4 Table" option.
@@ -99,8 +99,26 @@ func getBaseOptions(
       "Divider", symbol: "minus", keywords: ["horizontal rule", "divider", "hr"]
     ) { _ in _ = try editor.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND) },
     ComponentPickerOption(
+      "Page Break", symbol: "scissors", keywords: ["page break", "divider"]
+    ) { _ in _ = try editor.dispatchCommand(INSERT_PAGE_BREAK) },
+  ]
+  // The dates, at midnight.
+  for (title, days, keyword) in [
+    ("Date", 0, nil), ("Today", 0, "today"), ("Tomorrow", 1, "tomorrow"),
+    ("Yesterday", -1, "yesterday"),
+  ] {
+    options.append(
+      ComponentPickerOption(
+        title, symbol: "calendar",
+        keywords: ["date", "calendar", "time"] + (keyword.map { [$0] } ?? [])
+      ) { _ in
+        _ = try editor.dispatchCommand(INSERT_DATETIME_COMMAND, midnight(daysFromToday: days))
+      })
+  }
+  options += [
+    ComponentPickerOption(
       "Image", symbol: "photo", keywords: ["image", "photo", "picture", "file"]
-    ) { _ in showImageDialog() },
+    ) { _ in showImageDialog() }
   ]
   for (alignment, symbol) in [
     ("left", "text.alignleft"), ("center", "text.aligncenter"), ("right", "text.alignright"),

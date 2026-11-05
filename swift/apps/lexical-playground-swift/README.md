@@ -6,12 +6,16 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
 - **Toolbar:** undo and redo, the block type (normal, headings 1–6,
   bulleted, numbered and check lists, quote, code block), list buttons,
   bold, italic, underline, strikethrough, code, subscript, superscript and
-  highlight, a link editor (insert, edit, remove), clear formatting,
+  highlight, a link button, clear formatting,
   alignment, and indent and outdent. The buttons follow the selection.
 - **Editing:** Markdown shortcuts (`# `, `- `, `1. `, `[ ] `, `> `,
   ` ``` `, `**bold**`, …), autolinked URLs and email addresses, and check
   boxes that toggle on a click or tap. Links open on a click while the
-  editor is read-only.
+  editor is read-only; while editing, a Command-click opens one, and a
+  caret in a link shows the floating link editor below it
+  (`FloatingLinkEditorPlugin`): the URL, which opens the link, with edit
+  and remove. The toolbar's link button links the selection and edits its
+  URL there.
 - **Debug view:** the tree view of `@lexical/devtools-core`
   (`LexicalDevtoolsCore.generateContent`): the node tree with the
   selection, the last commands and the editor's settings, or the exported

@@ -6,7 +6,6 @@ import SwiftUI
 /// and indent. The buttons reflect the selection, as the web toolbar does.
 struct ToolbarView: View {
   let model: PlaygroundModel
-  @State private var isEditingLink = false
 
   var body: some View {
     ScrollView(.horizontal, showsIndicators: false) {
@@ -52,10 +51,7 @@ struct ToolbarView: View {
           }
         }
         FormatButton(title: "Insert Link", symbol: "link", isOn: model.isLink) {
-          isEditingLink = true
-        }
-        .popover(isPresented: $isEditingLink) {
-          LinkEditorView(model: model, isPresented: $isEditingLink)
+          model.insertLink()
         }
         Button("Clear Formatting", systemImage: "eraser") { model.clearFormatting() }
         if model.isRichText {
@@ -101,51 +97,5 @@ private struct FormatButton: View {
       )
       .accessibilityAddTraits(isOn ? .isSelected : [])
       .help(title)
-  }
-}
-
-/// The link editor (`FloatingLinkEditorPlugin`): the selection's link URL,
-/// editable, with Apply and Remove. For a selection outside a link, Apply
-/// links it to the URL typed.
-private struct LinkEditorView: View {
-  let model: PlaygroundModel
-  @Binding var isPresented: Bool
-  @State private var url = ""
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      Text(model.isLink ? "Edit Link" : "Insert Link").font(.headline)
-      TextField("https://", text: $url)
-        .textFieldStyle(.roundedBorder)
-        .autocorrectionDisabled()
-        #if os(iOS)
-          .textInputAutocapitalization(.never)
-          .keyboardType(.URL)
-        #endif
-        .accessibilityIdentifier("link-url")
-        .onSubmit(apply)
-      HStack {
-        if model.isLink {
-          Button("Remove", role: .destructive) {
-            model.setLink(nil)
-            isPresented = false
-          }
-        }
-        Spacer()
-        Button("Cancel") { isPresented = false }
-        Button("Apply", action: apply)
-          .keyboardShortcut(.defaultAction)
-          .disabled(!validateUrl(url))
-      }
-    }
-    .padding()
-    .frame(minWidth: 320)
-    .onAppear { url = model.isLink ? model.linkURL : "https://" }
-  }
-
-  private func apply() {
-    guard validateUrl(url) else { return }
-    model.setLink(url)
-    isPresented = false
   }
 }

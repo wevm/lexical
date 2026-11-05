@@ -127,6 +127,7 @@ final class PlaygroundModel {
     didSet {
       try? editor.setEditable(isEditable)
       syncClickableLinks()
+      refreshLinkEditor()
     }
   }
   var showsTreeView = true {
@@ -142,9 +143,16 @@ final class PlaygroundModel {
   private(set) var alignment: ElementFormatType = "left"
   private(set) var canUndo = false
   private(set) var canRedo = false
-  /// The selection is in a link, whose URL is `linkURL`.
+  /// The selection is in a link.
   private(set) var isLink = false
-  private(set) var linkURL = ""
+
+  // The floating link editor (`FloatingLinkEditorPlugin`).
+  /// The link the panel shows, while the editor is editable.
+  private(set) var linkEditorKey: NodeKey?
+  private(set) var linkEditorURL = ""
+  var isLinkEditMode = false
+  var editedLinkURL = "https://"
+  @ObservationIgnored private lazy var linkEditorHost = FloatingLinkEditorHost(model: self)
 
   private(set) var tree = ""
   private(set) var commandsLog: [LexicalCommandLogEntry] = []
@@ -228,6 +236,35 @@ final class PlaygroundModel {
   private func attach() {
     syncClickableLinks()
     unregister.append(
+      editor.registerRootListener { [weak self] root, _ in
+        MainActor.assumeIsolated { self?.linkEditorHost.attach(to: root) }
+        return nil
+      })
+    unregister.append(
+      editor.registerCommand(
+        KEY_ESCAPE_COMMAND,
+        { [weak self] _, _ in
+          MainActor.assumeIsolated {
+            guard let self, self.linkEditorKey != nil else { return false }
+            self.hideLinkEditor()
+            return true
+          }
+        }, COMMAND_PRIORITY_HIGH))
+    // A Command or Control click on a link opens it in a new tab, as the
+    // plugin's `CLICK_COMMAND` handler does while the editor is editable.
+    unregister.append(
+      editor.registerCommand(
+        CLICK_COMMAND,
+        { event, _ in
+          guard event.metaKey || event.ctrlKey,
+            let selection = try getSelection() as? RangeSelection,
+            let link = try findMatchingParent(getSelectedNode(selection), { $0 is LinkNode })
+              as? LinkNode
+          else { return false }
+          PlaygroundLinkWindow().open(try link.getURL(), "_blank", nil)
+          return true
+        }, COMMAND_PRIORITY_LOW))
+    unregister.append(
       editor.registerUpdateListener { [weak self] _ in
         MainActor.assumeIsolated { self?.refresh() }
       })
@@ -294,6 +331,7 @@ final class PlaygroundModel {
   }
 
   private func refresh() {
+    refreshLinkEditor()
     try? editor.read {
       guard let selection = try getSelection() as? RangeSelection else { return }
       formats = Set(toolbarFormats.map(\.format).filter { selection.hasFormat($0) })
@@ -319,9 +357,78 @@ final class PlaygroundModel {
       let focus = try selection.focus.getNode()
       let link = try (focus as? LinkNode) ?? (focus.getParent() as? LinkNode)
       isLink = link != nil
-      linkURL = try link?.getURL() ?? ""
     }
     refreshTree()
+  }
+
+  /// `$updateToolbar` and `$updateLinkEditor` of the floating link editor:
+  /// shows the panel at the selection's link, after the view has laid out
+  /// this update.
+  private func refreshLinkEditor() {
+    let link =
+      isEditable
+      ? try? editor.read { try floatingLink(getSelection()).map { ($0.getKey(), try $0.getURL()) } }
+      : nil
+    if link?.0 != linkEditorKey { isLinkEditMode = isLinkEditMode && link != nil }
+    linkEditorKey = link?.0
+    linkEditorURL = link?.1 ?? ""
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.linkEditorHost.position(at: self.linkEditorKey)
+    }
+  }
+
+  private func hideLinkEditor() {
+    linkEditorKey = nil
+    isLinkEditMode = false
+    linkEditorHost.position(at: nil)
+  }
+
+  /// The panel's edit button.
+  func editLink() {
+    editedLinkURL = linkEditorURL
+    isLinkEditMode = true
+    refreshLinkEditor()
+  }
+
+  /// The panel's trash button.
+  func removeLink() {
+    _ = try? editor.dispatchCommand(TOGGLE_LINK_COMMAND, nil)
+  }
+
+  /// `handleLinkSubmission`: links the selection to the URL typed, and
+  /// makes an autolink it is in a plain link.
+  func submitLink() {
+    if linkEditorKey != nil {
+      let url = sanitizeUrl(editedLinkURL)
+      try? editor.update { [editor] in
+        _ = try editor.dispatchCommand(TOGGLE_LINK_COMMAND, .url(url))
+        if let selection = try getSelection() as? RangeSelection,
+          let parent = try getSelectedNode(selection).getParent() as? AutoLinkNode
+        {
+          let link = try createLinkNode(
+            parent.getURL(),
+            LinkAttributes(rel: parent.__rel, target: parent.__target, title: parent.__title))
+          _ = try parent.replace(link, includeChildren: true)
+        }
+      }
+    }
+    editedLinkURL = "https://"
+    isLinkEditMode = false
+    refreshLinkEditor()
+  }
+
+  /// The toolbar's `insertLink`: links the selection to `https://` and
+  /// edits the URL in the panel, or unlinks a link.
+  func insertLink() {
+    if !isLink {
+      isLinkEditMode = true
+      editedLinkURL = "https://"
+      _ = try? editor.dispatchCommand(TOGGLE_LINK_COMMAND, .url(sanitizeUrl("https://")))
+    } else {
+      isLinkEditMode = false
+      _ = try? editor.dispatchCommand(TOGGLE_LINK_COMMAND, nil)
+    }
   }
 
   private func refreshTree() {
@@ -385,12 +492,6 @@ final class PlaygroundModel {
       default: try setBlocksType(selection) { try createHeadingNode(type.rawValue) }
       }
     }
-  }
-
-  /// Links the selection to `url`, or with `nil` unlinks it
-  /// (`TOGGLE_LINK_COMMAND`, which the link editor dispatches).
-  func setLink(_ url: String?) {
-    _ = try? editor.dispatchCommand(TOGGLE_LINK_COMMAND, url.map { .url($0) })
   }
 
   /// The playground's Clear Formatting (`$clearFormatting` in

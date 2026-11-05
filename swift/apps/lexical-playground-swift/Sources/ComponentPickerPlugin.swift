@@ -9,7 +9,8 @@ import LexicalSelection
 
 // Port of packages/lexical-playground/src/plugins/ComponentPickerPlugin: a
 // "/" at the start of a word opens a menu of the blocks the Swift
-// playground has. The table, Excalidraw, poll, embed, equation, GIF,
+// playground has, and the image, which opens the Insert Image dialog. The
+// table, Excalidraw, poll, embed, equation, GIF,
 // collapsible, card, pull quote, review and columns options insert nodes
 // the port does not have yet, so they are left out, and so is the dynamic
 // "3x4 Table" option.
@@ -39,7 +40,9 @@ final class ComponentPickerOption: MenuOption {
 
 /// `getBaseOptions`, for the nodes the port has, in the web's order.
 @MainActor
-func getBaseOptions(_ editor: Editor) -> [ComponentPickerOption] {
+func getBaseOptions(
+  _ editor: Editor, showImageDialog: @escaping () -> Void = {}
+) -> [ComponentPickerOption] {
   func setBlocks(_ create: @escaping () throws -> ElementNode) -> (String) throws -> Void {
     { _ in
       try editor.update {
@@ -95,6 +98,9 @@ func getBaseOptions(_ editor: Editor) -> [ComponentPickerOption] {
     ComponentPickerOption(
       "Divider", symbol: "minus", keywords: ["horizontal rule", "divider", "hr"]
     ) { _ in _ = try editor.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND) },
+    ComponentPickerOption(
+      "Image", symbol: "photo", keywords: ["image", "photo", "picture", "file"]
+    ) { _ in showImageDialog() },
   ]
   for (alignment, symbol) in [
     ("left", "text.alignleft"), ("center", "text.aligncenter"), ("right", "text.alignright"),
@@ -127,11 +133,11 @@ func filterComponentPickerOptions(
 /// `ComponentPickerMenuPlugin`.
 @MainActor
 func registerComponentPicker(
-  _ editor: Editor
+  _ editor: Editor, showImageDialog: @escaping () -> Void = {}
 ) -> (
   host: TypeaheadMenuHost<ComponentPickerOption>, unregister: () -> Void
 ) {
-  let baseOptions = getBaseOptions(editor)
+  let baseOptions = getBaseOptions(editor, showImageDialog: showImageDialog)
   var setOptions: ([ComponentPickerOption]) -> Void = { _ in }
   let (menu, unregister) = registerTypeaheadMenu(
     editor, triggerFn: basicTypeaheadTriggerMatch("/", minLength: 0, allowWhitespace: true),

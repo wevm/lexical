@@ -289,4 +289,38 @@ final class LexicalPlaygroundUITests: XCTestCase {
     bold.tap()
     waitForTree("\"Hello\" { format: bold }")
   }
+
+  /// `ImagesExtension`: the "/" menu's Image option opens the insert
+  /// dialog, whose sample inserts an image node that draws in the editor.
+  @MainActor
+  func testInsertsAnImageFromTheComponentPicker() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/imag")
+    let option = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    XCTAssertTrue(option.label.contains("Image"), option.label)
+    option.tap()
+    let sample = app.buttons["image-modal-option-sample"]
+    XCTAssertTrue(sample.waitForExistence(timeout: 5))
+    sample.tap()
+    waitForTree(") image")
+    XCTAssertFalse(tree.contains("/imag"), tree)
+    let image = app.descendants(matching: .any)["editor-image"]
+    XCTAssertTrue(image.waitForExistence(timeout: 5), app.debugDescription)
+    // A tap selects it, and dragging its top right handle makes it wider
+    // (`ImageResizer`). The top one, since a keyboard onboarding card on a
+    // fresh Simulator can leave the image's bottom under the debug view.
+    image.tap()
+    waitForTree("selection: node")
+    let width = image.frame.width
+    let corner = image.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0))
+      .withOffset(CGVector(dx: -4, dy: 4))
+    corner.press(
+      forDuration: 0.1, thenDragTo: corner.withOffset(CGVector(dx: 60, dy: -10)),
+      withVelocity: .slow, thenHoldForDuration: 0.1)
+    let wider = NSPredicate { _, _ in image.frame.width > width + 30 }
+    expectation(for: wider, evaluatedWith: nil)
+    waitForExpectations(timeout: 5)
+  }
 }

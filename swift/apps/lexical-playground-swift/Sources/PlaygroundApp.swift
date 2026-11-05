@@ -78,6 +78,7 @@ struct PlaygroundView: View {
           .toolbar { Button("Done") { model.showsShortcuts = false } }
       }
     }
+    .sheet(isPresented: $model.isInsertingImage) { InsertImageDialog(model: model) }
     .sheet(item: $sheet) { sheet in
       switch sheet {
       case .settings: SettingsView(model: model)

@@ -68,5 +68,9 @@
   "native/ios-format-toolbar-in-edit-menu": {
     "category": "platform-selection",
     "description": "On iOS the playground's floating text format toolbar (FloatingTextFormatToolbarPlugin) is not a popup: its bold, italic, underline and strikethrough join the system edit menu that UIKit shows above a selection, with the rest of its buttons in a Format submenu, so the two do not cover each other. The web playground shows the popup above the selection on wide viewports and leaves it out below 1025 pixels (isSmallWidthViewport). On macOS it is the web's popup."
+  },
+  "native/image-resizer-inside-the-image": {
+    "category": "platform-rendering",
+    "description": "The playground's ImageResizer handles are drawn just inside the image's edges, not 6 pixels outside them as the web's .image-resizer CSS places them, because the image's hosting view is the size of the image and neither AppKit nor UIKit hit-tests a point outside it. While a handle is dragged the image draws at its new size only where it shrinks, since the text view keeps the attachment at its old size until the handle is let go, when the node takes the size (the web restyles the <img> on every pointermove)."
   }
 }

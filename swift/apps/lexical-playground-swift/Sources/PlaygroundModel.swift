@@ -266,7 +266,8 @@ final class PlaygroundModel {
             RichTextExtension, HistoryExtension, NormalizeTripleClickSelectionExtension,
             HistoryAnnounceExtension, EditorModeAnnounceExtension,
             configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
-            CheckListExtension, CodeExtension, HorizontalRuleExtension,
+            CheckListExtension, CodeExtension, HorizontalRuleExtension, ImagesExtension,
+            DragDropPasteExtension, PlaygroundDOMRenderExtension,
             // The web playground's `CodeHighlightExtension` brings both:
             // Tab and Shift+Tab indent and outdent code lines.
             PlaygroundCodeHighlightExtension,
@@ -348,7 +349,7 @@ final class PlaygroundModel {
 
   private func attach() {
     syncClickableLinks()
-    let picker = registerComponentPicker(editor)
+    let picker = registerComponentPicker(editor) { [weak self] in self?.isInsertingImage = true }
     let emoji = registerEmojiPicker(editor)
     let mentions = registerMentions(editor)
     menuHosts = [picker.host, emoji.host, mentions.host]
@@ -659,6 +660,13 @@ final class PlaygroundModel {
   }
 
   /// The Insert menu's Horizontal Rule.
+  /// The Insert Image dialog is open (`showModal('Insert Image', ...)`).
+  var isInsertingImage = false
+
+  func insertImage(_ payload: InsertImagePayload) {
+    _ = try? editor.dispatchCommand(INSERT_IMAGE_COMMAND, payload)
+  }
+
   func insertHorizontalRule() {
     _ = try? editor.dispatchCommand(INSERT_HORIZONTAL_RULE_COMMAND)
   }

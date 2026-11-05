@@ -87,6 +87,7 @@ public final class TextKitReconciler {
       try payload.editorState.read {
         _ = try self.document.reconcileNode("root", at: 0, &context)
       }
+      document.applyPendingEdits(&context)
     } catch {
       // The rendering no longer matches the previous state; start over.
       fallbacks += 1
@@ -113,6 +114,9 @@ struct ReconcileContext {
   /// The dirty nodes of each parent in the next state.
   var dirtyChildren: [NodeKey: [NodeKey]] = [:]
   var edits: [TextKitEdit] = []
+  /// How many of `edits` the document's `string` has applied: the rest are
+  /// pending (see `TextKitDocument.replace`).
+  var appliedEdits = 0
 
   init(_ payload: UpdateListenerPayload) {
     prevNodeMap = payload.prevEditorState._nodeMap
@@ -141,16 +145,54 @@ struct ReconcileContext {
 }
 
 extension TextKitDocument {
-  /// Replaces a range of `string` and records the edit.
+  /// Records the edit replacing a range of `string`, which applies it
+  /// later. Splicing each edit into `string` as it came copied the text
+  /// after it every time, quadratic in a restyle of the whole document,
+  /// which edits every run. The walk goes from the end to the start, so
+  /// the pending edits are in descending order and apply in one pass
+  /// (`applyPendingEdits`); an edit that ends after the last pending one
+  /// starts applies them first.
   mutating func replace(
     _ location: Int, _ length: Int, with text: String, runs: [TextKitRun],
     _ context: inout ReconcileContext
   ) {
-    let utf16 = string.utf16
-    let lower = utf16.index(utf16.startIndex, offsetBy: location)
-    let upper = utf16.index(lower, offsetBy: length)
-    string.replaceSubrange(lower..<upper, with: text)
+    applyPendingEdits(before: location + length, &context)
     context.edits.append(TextKitEdit(location: location, length: length, string: text, runs: runs))
+  }
+
+  /// Applies the pending edits when one of them starts before `end`, so
+  /// `string` is current up to `end`.
+  mutating func applyPendingEdits(before end: Int, _ context: inout ReconcileContext) {
+    if context.appliedEdits < context.edits.count, end > context.edits.last!.location {
+      applyPendingEdits(&context)
+    }
+  }
+
+  /// Applies the pending edits to `string`, in one pass from its start.
+  mutating func applyPendingEdits(_ context: inout ReconcileContext) {
+    let pending = context.edits[context.appliedEdits...]
+    context.appliedEdits = context.edits.count
+    guard let first = pending.first else { return }
+    let utf16 = string.utf16
+    if pending.count == 1 {
+      let lower = utf16.index(utf16.startIndex, offsetBy: first.location)
+      let upper = utf16.index(lower, offsetBy: first.length)
+      string.replaceSubrange(lower..<upper, with: first.string)
+      return
+    }
+    var result = ""
+    result.reserveCapacity(string.utf8.count)
+    var cursor = utf16.startIndex
+    var cursorOffset = 0
+    for edit in pending.reversed() {
+      let lower = utf16.index(cursor, offsetBy: edit.location - cursorOffset)
+      result += string[cursor..<lower]
+      result += edit.string
+      cursor = utf16.index(lower, offsetBy: edit.length)
+      cursorOffset = edit.location + edit.length
+    }
+    result += string[cursor...]
+    string = result
   }
 
   /// `$reconcileNode`: brings the node at `key`, rendered at `start`, up to
@@ -170,6 +212,7 @@ extension TextKitDocument {
       let content = try next.getTextContent()
       let format = try next.getFormat()
       let style = try next.getStyle()
+      applyPendingEdits(before: start + oldLength, &context)
       let utf16 = string.utf16
       let lower = utf16.index(utf16.startIndex, offsetBy: start)
       let upper = utf16.index(lower, offsetBy: oldLength)

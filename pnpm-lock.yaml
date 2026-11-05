@@ -728,6 +728,9 @@ importers:
       '@lexical/markdown':
         specifier: workspace:*
         version: link:../lexical-markdown
+      '@lexical/overflow':
+        specifier: workspace:*
+        version: link:../lexical-overflow
       '@lexical/plain-text':
         specifier: workspace:*
         version: link:../lexical-plain-text

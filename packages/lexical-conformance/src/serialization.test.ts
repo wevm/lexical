@@ -24,6 +24,7 @@ import {
   ListItemNode,
   ListNode,
 } from '@lexical/list';
+import {$createOverflowNode, OverflowNode} from '@lexical/overflow';
 import {
   $createLineBreakNode,
   $createParagraphNode,
@@ -271,6 +272,52 @@ test('serialization/code', () => {
     'serialization/code',
     'serialization',
     'Documents with @lexical/code-core nodes and the exact JSON text JS writes for them.',
+    cases,
+  );
+});
+
+// Documents with @lexical/overflow's OverflowNode: the text past a character
+// limit, alone and after formatted text.
+test('serialization/overflow', () => {
+  const documents: Record<string, () => void> = {
+    'overflow after text': () => {
+      $getRoot().append(
+        $createParagraphNode().append(
+          $createTextNode('within '),
+          $createOverflowNode().append(
+            $createTextNode('past').toggleFormat('italic'),
+            $createTextNode(' the limit'),
+          ),
+        ),
+      );
+    },
+    'overflow alone': () => {
+      $getRoot().append(
+        $createParagraphNode().append(
+          $createOverflowNode().append($createTextNode('over')),
+        ),
+      );
+    },
+  };
+  const cases: Case[] = Object.entries(documents).map(([name, build]) => {
+    const editor = createHeadlessEditor({
+      nodes: [OverflowNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    editor.update(build, {discrete: true});
+    const state = editor.getEditorState();
+    return {
+      compact: JSON.stringify(state.toJSON(true)),
+      legacy: JSON.stringify(state.toJSON()),
+      name,
+    };
+  });
+  emitVectors(
+    'serialization/overflow',
+    'serialization',
+    'Documents with @lexical/overflow nodes and the exact JSON text JS writes for them.',
     cases,
   );
 });

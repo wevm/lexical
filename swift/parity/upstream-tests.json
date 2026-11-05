@@ -7373,5 +7373,8 @@
 "lexical-markdown/src/__tests__/unit/RetainedTextMatchImport.test.ts::retained text matches (detached: true) > with prefix \"prefix \" > does not unescape a returned node twice",
 "lexical-markdown/src/__tests__/unit/RetainedTextMatchImport.test.ts::retained text matches (detached: true) > with prefix \"prefix \" > keeps literal content when a transformer formats the node as code",
 "lexical-markdown/src/__tests__/unit/RetainedTextMatchImport.test.ts::retained text matches (detached: true) > with prefix \"prefix \" > leaves newly generated replacement text literal"
+],
+"lexical-overflow":[
+
 ]
 }}

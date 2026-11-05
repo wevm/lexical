@@ -133,6 +133,47 @@
       _ = window
     }
 
+    /// TextKit makes a new view provider for a decorator each time it lays
+    /// the decorator's line out again, and releases the old one, which
+    /// takes its view out of the text, after it shows the new one's: the
+    /// decorator stays in the new one.
+    @Test func keepsDecoratorsShownWhenTextKitReplacesTheirProviders() throws {
+      let (view, window) = try showDemo()
+      let storage = view.textStorage
+      let layoutManager = try #require(view.textLayoutManager)
+      // The viewport the providers' views are shown in.
+      let content = UIView(frame: CGRect(x: 0, y: 0, width: 390, height: 200))
+      window.addSubview(content)
+      defer { content.removeFromSuperview() }
+      var shown = 0
+      storage.enumerateAttribute(
+        .attachment, in: NSRange(location: 0, length: storage.length)
+      ) { value, range, _ in
+        guard let attachment = value as? NSTextAttachment,
+          let location = layoutManager.location(
+            layoutManager.documentRange.location, offsetBy: range.location)
+        else { return }
+        func show() -> NSTextAttachmentViewProvider? {
+          let provider = attachment.viewProvider(
+            for: view, location: location, textContainer: view.textContainer)
+          provider?.loadView()
+          if let view = provider?.view {
+            let fragment = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 60))
+            content.addSubview(fragment)
+            fragment.addSubview(view)
+          }
+          return provider
+        }
+        var old = show()
+        let new = show()
+        old = nil
+        _ = old
+        // Without its own container, the new view is the old one, now gone.
+        if let view = new?.view, view.window != nil, !hostedViews(view).isEmpty { shown += 1 }
+      }
+      #expect(shown == 2)
+    }
+
     @Test func rendersTheDemoDocument() throws {
       let (view, window) = try showDemo()
       #expect(view.text.hasPrefix("Lexical for Swift\nNative editing with bold"))

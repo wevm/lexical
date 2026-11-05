@@ -231,8 +231,39 @@
     }
 
     override func loadView() {
-      let attachment = textAttachment as? LexicalDecoratorAttachment
-      view = attachment?.ruleView ?? attachment?.host.view
+      guard let attachment = textAttachment as? LexicalDecoratorAttachment else { return }
+      view = DecoratorContainerView(content: attachment.ruleView ?? attachment.host.view)
+    }
+  }
+
+  /// A view provider's view, holding the attachment's one view. TextKit
+  /// makes a new provider each time it lays the decorator's line out again
+  /// and removes the old provider's view only after it shows the new one,
+  /// so the attachment's view, shared by both, would leave with the old
+  /// one. Each provider has its own container instead, and the one shown
+  /// last holds the view.
+  final class DecoratorContainerView: UIView {
+    let content: UIView
+
+    init(content: UIView) {
+      self.content = content
+      super.init(frame: content.frame)
+      hold()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func didMoveToWindow() {
+      super.didMoveToWindow()
+      if window != nil { hold() }
+    }
+
+    private func hold() {
+      guard content.superview !== self else { return }
+      content.frame = bounds
+      content.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+      addSubview(content)
     }
   }
 

@@ -6,6 +6,7 @@
   import LexicalCodeCore
   import LexicalExtension
   import LexicalHistory
+  import LexicalLink
   import LexicalRichText
   import LexicalTextKit
   import Testing
@@ -634,6 +635,23 @@
         try #require(!ink.isEmpty, "line \(index): \(inked)")
         #expect(abs((ink.min()! + ink.max()!) / 2 - middle) <= 2, "line \(index): \(ink)")
       }
+      _ = window
+    }
+
+    @Test func showsThePointingHandOverLinks() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension, LinkExtension]))
+      let (view, window) = try makeView(editor)
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createParagraphNode().append(
+            createTextNode("a "), createLinkNode("https://lexical.dev").append(createTextNode("b"))
+          ))
+      }
+      // `__link:hover { cursor: pointer }`; other text keeps the I-beam.
+      let storage = try #require(view.textStorage)
+      #expect(storage.attribute(.cursor, at: 2, effectiveRange: nil) as? NSCursor == .pointingHand)
+      #expect(storage.attribute(.cursor, at: 0, effectiveRange: nil) == nil)
       _ = window
     }
   }

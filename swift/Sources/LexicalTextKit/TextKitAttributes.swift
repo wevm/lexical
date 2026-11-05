@@ -194,6 +194,15 @@ public enum TextKitTextTransform: String, Hashable, Sendable {
   case none, uppercase, lowercase, capitalize
 }
 
+/// CSS `cursor`: the pointer shown over the text, where the platform has
+/// one.
+public enum TextKitCursor: String, Hashable, Sendable {
+  /// The text (I-beam) cursor.
+  case text
+  /// The pointing hand, over a link.
+  case pointer
+}
+
 /// A quote's bar: drawn `offset` points after the start of its block's box,
 /// `width` wide.
 public struct TextKitBlockBar: Hashable, Sendable {
@@ -310,6 +319,8 @@ public struct TextKitStyle: Hashable, Sendable {
   /// CSS `tab-size`: a tab advances to the next multiple of this many
   /// spaces of the block's font.
   public var tabSize: Double?
+  /// CSS `cursor` over the text.
+  public var cursor: TextKitCursor?
 
   public init(
     fontFamily: [String]? = nil, fontSize: TextKitFontSize? = nil, fontWeight: Int? = nil,
@@ -401,6 +412,7 @@ public struct TextKitStyle: Hashable, Sendable {
       $0.paddingBottom = other.paddingBottom ?? paddingBottom
       $0.gutter = other.gutter ?? gutter
       $0.tabSize = other.tabSize ?? tabSize
+      $0.cursor = other.cursor ?? cursor
     }
   }
 
@@ -618,6 +630,8 @@ public struct TextKitTextAttributes: Hashable, Sendable {
   /// The text has the `highlight` format.
   public var highlight = false
   public var textTransform = TextKitTextTransform.none
+  /// `nil` is the platform's text cursor.
+  public var cursor: TextKitCursor?
 
   public init() {}
 
@@ -636,6 +650,7 @@ public struct TextKitTextAttributes: Hashable, Sendable {
     if let v = style.strikethrough { strikethrough = v }
     if let v = style.baselineShift { baselineOffset += v * size }
     if let v = style.textTransform { textTransform = v }
+    if let v = style.cursor { cursor = v }
   }
 }
 
@@ -768,9 +783,11 @@ public struct TextKitTheme: Hashable, Sendable {
     // 0.5em; padding-left: 1.5em` comes to the same 32 points at 16.
     "listitem": TextKitStyle(headIndent: 32),
     "listitemChecked": TextKitStyle(strikethrough: true),
+    // `__link:hover { cursor: pointer }`.
     "link": TextKitStyle(
       foregroundColor: TextKitColor(33, 111, 219).withDark(TextKitColor(88, 166, 255)),
-      underline: false),
+      underline: false
+    ).with { $0.cursor = .pointer },
     "mark": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
     "heading.h1": TextKitStyle(
       fontSize: .points(24), fontWeight: 400,

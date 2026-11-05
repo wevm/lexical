@@ -177,6 +177,58 @@
       _ = window
     }
 
+    /// A shortcut's `key` is Safari's on macOS: with Command, Option
+    /// applies and Shift doesn't; with Control alone, Shift applies. The
+    /// characters are AppKit's for each key on a US layout.
+    @Test func keyIsSafarisWithModifiers() throws {
+      let cases: [(String, String, UInt16, NSEvent.ModifierFlags, String)] = [
+        ("7", "&", 0x1A, [.command, .shift], "7"),
+        ("\u{A1}", "1", 0x12, [.command, .option], "\u{A1}"),
+        (".", ">", 0x2F, [.command, .shift], "."),
+        ("1", "!", 0x12, [.control, .shift], "!"),
+        ("\u{11}", "Q", 0x0C, [.control, .shift], "Q"),
+        ("b", "b", 0x0B, [.command], "b"),
+      ]
+      for (characters, ignoringModifiers, keyCode, flags, expected) in cases {
+        let event = try #require(
+          KeyboardEvent(key(characters, keyCode, flags, ignoringModifiers: ignoringModifiers)))
+        #expect(event.key == expected, "\(characters) \(flags)")
+      }
+    }
+
+    /// ⇧⌘7 reaches a shortcut bound to Shift+Command+7, as in Safari.
+    @Test func shiftedCommandDigitMatchesItsShortcut() throws {
+      let command = createCommand("test", payload: KeyboardEvent.self)
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "test",
+          dependencies: [
+            RichTextExtension,
+            configExtension(KeyboardShortcutsExtension) {
+              $0.shortcuts = [
+                "LIST": [
+                  KeyboardShortcut(
+                    key: "7", modifiers: CONTROL_OR_META.with(shiftKey: true), command: command)
+                ]
+              ]
+            },
+          ]))
+      let (view, window) = try makeView(editor)
+      var fired = 0
+      let remove = editor.registerCommand(
+        command,
+        { event, _ in
+          fired += 1
+          event.preventDefault()
+          return true
+        }, COMMAND_PRIORITY_EDITOR)
+      defer { remove() }
+      #expect(
+        view.performKeyEquivalent(with: key("7", 0x1A, [.command, .shift], ignoringModifiers: "&")))
+      #expect(fired == 1)
+      _ = window
+    }
+
     @Test func selectionSyncsBothWays() throws {
       let (view, window) = try makeView()
       insert(view, "abc")

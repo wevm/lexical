@@ -60,6 +60,8 @@ targets:
       - package: Lexical
         product: LexicalMenu
       - package: Lexical
+        product: LexicalOverflow
+      - package: Lexical
         product: LexicalPlainText
       - package: Lexical
         product: LexicalRichText

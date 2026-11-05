@@ -162,7 +162,7 @@ extension TextKitTheme {
       if element is RootNode && !deep { return }
       let children = try element.getChildren()
       let hasBlockChild = try children.contains { try TextKitDocument.isBlock($0) }
-      if !(element is RootNode), try !element.isInline(), !hasBlockChild {
+      if !(element is RootNode), try !TextKitDocument.isInline(element), !hasBlockChild {
         if seen.insert(element.getKey()).inserted { blocks.append(element) }
         if deep { restyle.insert(element.getKey()) }
         return

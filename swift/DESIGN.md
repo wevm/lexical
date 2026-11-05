@@ -839,6 +839,24 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   overflow cases in other packages' tests (330 `$wrapNodes` shapes, 3
   `$insertList` cases and 3 node structure cases) are ported. The ones
   that also need `lexical-mark` stay skipped.
+- **The character limit is `registerCharacterLimit` in `LexicalOverflow`.**
+  It ports `useCharacterLimit` from `@lexical/react` (with
+  `$wrapOverflowedNodes` and `$mergePrevious`), the logic of
+  `CharacterLimitPlugin`: React keeps it in a hook, which has no native
+  counterpart, so it is a registration that returns its clean-up and
+  reports the characters left to a closure. The limit falls between
+  grapheme clusters, as JS's `Intl.Segmenter` makes it. The counter is
+  the playground's, as `MaxLengthExtension` (a playground plugin) is.
+  `lexical-react` is not in the ledger, so the 8 ported tests (5 of
+  `$wrapOverflowedNodes` and `$mergePrevious`, 3 of the plugin's count)
+  name their upstream titles in comments.
+- **The views lay out an element inline when its DOM is inline-level.**
+  `OverflowNode` is a block in the model, in JS too, and the browser shows
+  it inline because its `createDOM` makes a `<span>`. `TextKitDocument`
+  works out once per class whether `createDOM` makes an inline-level HTML
+  element (`span`, `a`, `mark`, ...; not `code`, which the playground's
+  theme shows as a block) and lays such an element out inline, with its
+  theme style as a run's background, as a model-inline element is.
 - **`LexicalText`** ports `@lexical/text`: `registerLexicalTextEntity`
   (the transforms that make text entities such as hashtags), the root text
   helpers, `canShowPlaceholder` and `findTextIntersectionFromCharacters`.

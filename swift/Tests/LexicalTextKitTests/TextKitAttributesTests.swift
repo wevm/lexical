@@ -1,6 +1,7 @@
 import Lexical
 import LexicalExtension
 import LexicalHashtag
+import LexicalOverflow
 import LexicalRichText
 import LexicalTextKit
 import Testing
@@ -515,5 +516,40 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     try controller.insertText("say #tag")
     let tagged = runs.filter { near($0.attributes.backgroundColor, hashtagBackground) }
     #expect(tagged.map(\.range) == [TextKitRange(location: 4, length: 4)])
+  }
+
+  @Test func overflowTakesTheCharacterLimitStyle() {
+    // OverflowNode's createDOM takes `theme.characterLimit`, whose
+    // background is `.PlaygroundEditorTheme__characterLimit`'s.
+    let overflow = TextKitElement(type: "overflow", isInline: true)
+    #expect(overflow.themeKey == "characterLimit")
+    var expected = plain
+    expected.backgroundColor = TextKitColor(255, 187, 187)
+    #expect(
+      theme.textAttributes(format: 0, style: "", ancestors: [paragraph, overflow]) == expected)
+  }
+
+  @Test func textPastTheCharacterLimitStaysOnItsLine() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(name: "test", dependencies: [RichTextExtension, OverflowExtension]))
+    _ = try registerCharacterLimit(editor, maxCharacters: 5)
+    let controller = TextKitInputController(editor: editor)
+    try controller.setSelectedRange(location: 0, length: 0)
+    try controller.insertText("hello world")
+    try editor.read {}
+    // A full render of the result, whose runs are where they end up.
+    let update = try controller.renderAll(replacing: 11)
+    let runs = update.edits.flatMap(\.runs)
+    let paragraphs = update.paragraphs
+    // OverflowNode is a block in the model, as in JS, where its <span> keeps
+    // it inline: the text past the limit stays on its line, and only it takes
+    // the background, as a run's.
+    #expect(controller.reconciler.document.string == "hello world")
+    let overflowing = runs.filter {
+      near($0.attributes.backgroundColor, TextKitColor(255, 187, 187))
+    }
+    #expect(overflowing.map(\.range) == [TextKitRange(location: 5, length: 6)])
+    #expect(paragraphs.map(\.range) == [TextKitRange(location: 0, length: 11)])
+    #expect(paragraphs.allSatisfy { $0.attributes.backgroundColor == nil })
   }
 }

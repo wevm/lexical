@@ -501,7 +501,7 @@ public struct TextKitElement: Hashable, Sendable {
     self.init(
       type: type,
       tag: type == "heading" ? json?["tag"]?.stringValue : nil,
-      isInline: try element.isInline(), format: try element.getFormatType(),
+      isInline: try TextKitDocument.isInline(element), format: try element.getFormatType(),
       indent: try element.getLatest().__indent, direction: try element.getDirection(),
       listType: type == "list" ? json?["listType"]?.stringValue : nil,
       value: type == "listitem" ? json?["value"]?.numberValue.map { Int($0) } : nil,
@@ -515,6 +515,9 @@ public struct TextKitElement: Hashable, Sendable {
     } else if type == "autolink" {
       // AutoLinkNode is a LinkNode, whose createDOM takes `theme.link`.
       "link"
+    } else if type == "overflow" {
+      // OverflowNode's createDOM takes `theme.characterLimit`.
+      "characterLimit"
     } else {
       type
     }
@@ -804,6 +807,8 @@ public struct TextKitTheme: Hashable, Sendable {
     // `__hashtag`; its `border-bottom: 1px solid rgba(88, 144, 255, 0.3)` is
     // not drawn.
     "hashtag": TextKitStyle(backgroundColor: TextKitColor(88, 144, 255, alpha: 0.15)),
+    // `__characterLimit`.
+    "characterLimit": TextKitStyle(backgroundColor: TextKitColor(255, 187, 187)),
     "heading.h1": TextKitStyle(
       fontSize: .points(24), fontWeight: 400,
       foregroundColor: TextKitColor(5, 5, 5).withDark(TextKitColor(245, 245, 250))),

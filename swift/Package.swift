@@ -151,7 +151,12 @@ let package = Package(
         "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/overflow: the character limit's OverflowNode.
-    .target(name: "LexicalOverflow", dependencies: ["Lexical"]),
+    .target(name: "LexicalOverflow", dependencies: ["Lexical", "LexicalText", "LexicalUtils"]),
+    .testTarget(
+      name: "LexicalOverflowTests",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalOverflow", "LexicalRichText", "LexicalTesting",
+      ]),
     // @lexical/text: text entities, placeholder and text content helpers.
     .target(name: "LexicalText", dependencies: ["Lexical"]),
     .testTarget(
@@ -220,8 +225,8 @@ let package = Package(
       name: "LexicalTextKitTests",
       dependencies: [
         "Lexical", "LexicalExtension", "LexicalHashtag", "LexicalHistory", "LexicalList",
-        "LexicalPlainText",
-        "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalTextKit",
+        "LexicalOverflow", "LexicalPlainText", "LexicalRichText", "LexicalSelection",
+        "LexicalTesting", "LexicalTextKit",
       ]),
     // The TextKit 2 editor views (Apple-only; empty modules elsewhere).
     .target(name: "LexicalAppKit", dependencies: ["Lexical", "LexicalA11y", "LexicalTextKit"]),

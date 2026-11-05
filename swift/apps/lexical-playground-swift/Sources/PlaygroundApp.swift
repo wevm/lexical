@@ -52,6 +52,16 @@ struct PlaygroundView: View {
         .id(model.generation)
         .accessibilityIdentifier("editor")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .bottomLeading) {
+          // `CharacterLimitPlugin`'s counter (`.characters-limit`).
+          if let remaining = model.remainingCharacters {
+            Text("\(remaining)")
+              .font(.system(size: 12))
+              .foregroundStyle(remaining < 0 ? .red : Color(white: 0.53))
+              .padding(.leading, 12).padding(.bottom, 5)
+              .accessibilityIdentifier("characters-limit")
+          }
+        }
         if model.showsTreeView {
           Divider()
           TreeView(model: model)

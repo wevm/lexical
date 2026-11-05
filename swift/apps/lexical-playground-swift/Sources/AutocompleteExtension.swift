@@ -326,10 +326,11 @@ final class AutocompleteGhostHost: TypeaheadMenuAttaching {
       label.isSelectable = false
       label.isBordered = false
       label.drawsBackground = false
-      label.textColor = NSColor(white: 0.8, alpha: 1)
+      // `#ccc` in a light appearance; dimmed text in a dark one.
+      label.textColor = .tertiaryLabelColor
       label.setAccessibilityIdentifier("autocomplete-ghost")
     #else
-      label.textColor = UIColor(white: 0.8, alpha: 1)
+      label.textColor = .tertiaryLabel
       label.isUserInteractionEnabled = false
       swipe.direction = .right
       // Typing and selecting go on as before.

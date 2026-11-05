@@ -255,7 +255,8 @@ struct DateTimeComponent: View {
         RoundedRectangle(cornerRadius: 8)
           .fill(
             has("highlight")
-              ? Color(red: 1, green: 212 / 255, blue: 0, opacity: 0.14) : Color(white: 0.867))
+              ? Color(red: 1, green: 212 / 255, blue: 0, opacity: 0.14)
+              : Color(light: Color(white: 0.867), dark: Color(white: 0.27)))
       )
       .overlay {
         if selection.isSelected {

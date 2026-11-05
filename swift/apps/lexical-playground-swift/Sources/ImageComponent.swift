@@ -192,10 +192,11 @@ struct ImageComponent: View {
         // `.image-caption-container`.
         Text(caption)
           .font(.system(size: 14))
-          .foregroundStyle(.black)
+          .foregroundStyle(.primary)
           .frame(maxWidth: size.width, alignment: .leading)
           .padding(.vertical, 4)
-          .background(Color.white.opacity(0.9))
+          // `rgba(255, 255, 255, 0.9)`, and its dark equivalent.
+          .background(Color(light: .white.opacity(0.9), dark: .black.opacity(0.6)))
       }
     }
     .onAppear {

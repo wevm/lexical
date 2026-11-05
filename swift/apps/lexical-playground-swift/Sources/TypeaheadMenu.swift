@@ -78,10 +78,7 @@ struct TypeaheadMenuView: View {
     .frame(width: model.width, height: min(200, CGFloat(model.rows.count) * 36))
     .clipShape(RoundedRectangle(cornerRadius: 8))
     // `.typeahead-popover`: white, radius 8, `0 5px 10px rgba(0,0,0,.3)`.
-    .background(
-      RoundedRectangle(cornerRadius: 8).fill(.background)
-        .shadow(color: .black.opacity(0.3), radius: 5, y: 5)
-    )
+    .floatingSurface()
     .padding(Self.shadowMargin)
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Typeahead menu")
@@ -91,6 +88,11 @@ struct TypeaheadMenuView: View {
   /// `li.item`: padding 8 (`ul li { margin: 0 }` wins over `li`'s side
   /// margins), a 20-point icon 8 from the text, 14-point text on a
   /// 20-point line, `#eee` while selected, clipped by the menu's corners.
+  /// `#eee`, and its dark equivalent.
+  private var selectedBackground: Color {
+    Color(light: Color(white: 0.933), dark: Color.primary.opacity(0.12))
+  }
+
   private func item(_ row: TypeaheadMenuRow, _ index: Int) -> some View {
     let isSelected = model.selectedIndex == index
     return HStack(spacing: 8) {
@@ -106,7 +108,7 @@ struct TypeaheadMenuView: View {
     }
     .foregroundStyle(Color.primary)
     .padding(8)
-    .background(isSelected ? Color.gray.opacity(0.15) : .clear)
+    .background(isSelected ? selectedBackground : .clear)
     .contentShape(Rectangle())
     .id(row.id)
     .onTapGesture { model.choose(index) }

@@ -801,6 +801,9 @@ public struct TextKitTheme: Hashable, Sendable {
       $0.hoverUnderline = true
     },
     "mark": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
+    // `__hashtag`; its `border-bottom: 1px solid rgba(88, 144, 255, 0.3)` is
+    // not drawn.
+    "hashtag": TextKitStyle(backgroundColor: TextKitColor(88, 144, 255, alpha: 0.15)),
     "heading.h1": TextKitStyle(
       fontSize: .points(24), fontWeight: 400,
       foregroundColor: TextKitColor(5, 5, 5).withDark(TextKitColor(245, 245, 250))),
@@ -854,10 +857,19 @@ public struct TextKitTheme: Hashable, Sendable {
     return layer
   }
 
-  /// The attributes of a text node with `format` and inline `style` inside
-  /// `ancestors`, outermost first (the root may be omitted).
+  /// The attributes of a text node of type `text` with `format` and inline
+  /// `style` inside `ancestors`, outermost first (the root may be omitted).
   public func textAttributes(
     format: Int, style: String, ancestors: [TextKitElement]
+  ) -> TextKitTextAttributes {
+    textAttributes(format: format, style: style, ancestors: ancestors, type: "text")
+  }
+
+  /// The attributes of a text node of `type`: a node of another type than
+  /// `text` (a `HashtagNode`, say) also takes the style keyed by its type,
+  /// as its `createDOM` adds the theme class of that name.
+  public func textAttributes(
+    format: Int, style: String, ancestors: [TextKitElement], type: String
   )
     -> TextKitTextAttributes
   {
@@ -866,6 +878,7 @@ public struct TextKitTheme: Hashable, Sendable {
     for element in ancestors where element.type != "root" {
       for style in styles(of: element) { attributes.apply(style, background: element.isInline) }
     }
+    if type != "text", let own = styles[type] { attributes.apply(own, background: true) }
     attributes.apply(textStyle(format: format).merging(TextKitStyle(css: style)), background: true)
     attributes.highlight = format & IS_HIGHLIGHT != 0
     return attributes
@@ -946,7 +959,7 @@ public struct TextKitTheme: Hashable, Sendable {
   public func textAttributes(for node: TextNode) throws -> TextKitTextAttributes {
     try textAttributes(
       format: node.getFormat(), style: node.getStyle(),
-      ancestors: node.getParents().reversed().map(TextKitElement.init))
+      ancestors: node.getParents().reversed().map(TextKitElement.init), type: node.getType())
   }
 
   /// The placeholder's look: the root's text with the `placeholder` style.

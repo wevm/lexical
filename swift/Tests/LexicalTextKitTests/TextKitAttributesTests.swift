@@ -1,4 +1,6 @@
 import Lexical
+import LexicalExtension
+import LexicalHashtag
 import LexicalRichText
 import LexicalTextKit
 import Testing
@@ -484,5 +486,34 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
       #expect(p.headIndent == 40 + 40)
       #expect(p.lineHeightMultiple == 1.7)
     }
+  }
+}
+
+@Suite struct TextKitTextTypeStyleTests {
+  /// `.PlaygroundEditorTheme__hashtag`'s background.
+  private let hashtagBackground = TextKitColor(88, 144, 255, alpha: 0.15)
+
+  @Test func aTextTypeTakesItsOwnStyle() {
+    var expected = plain
+    expected.backgroundColor = hashtagBackground
+    #expect(
+      theme.textAttributes(format: 0, style: "", ancestors: [paragraph], type: "hashtag")
+        == expected)
+    // A type without a style of its own is plain text.
+    #expect(
+      theme.textAttributes(format: 0, style: "", ancestors: [paragraph], type: "other")
+        == plain)
+  }
+
+  @Test func aHashtagRunIsStyled() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(name: "test", dependencies: [RichTextExtension, HashtagExtension]))
+    let controller = TextKitInputController(editor: editor)
+    var runs: [TextKitStyledRun] = []
+    controller.onRender = { update in runs = update.edits.flatMap(\.runs) + update.restyled }
+    try controller.setSelectedRange(location: 0, length: 0)
+    try controller.insertText("say #tag")
+    let tagged = runs.filter { near($0.attributes.backgroundColor, hashtagBackground) }
+    #expect(tagged.map(\.range) == [TextKitRange(location: 4, length: 4)])
   }
 }

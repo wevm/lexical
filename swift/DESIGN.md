@@ -849,9 +849,23 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   not ported and the tests of the log are `out-of-scope-package`
   (`lexical-y`). JS compares NodeState JSON that was not parsed yet by
   identity, Swift by value, which differs only for two equal objects that
-  JS would hold apart. `lexical-text` is `enforced`: 109 upstream tests, 58
-  ported, 51 skips (11 of collaboration, the rest need `lexical-hashtag` or
-  `lexical-mark`), and the root helper cases in `lexical-utils` are ported.
+  JS would hold apart. `lexical-text` is `enforced`: 109 upstream tests, 92
+  ported, 17 skips (11 of collaboration, 6 that need `lexical-mark`), and
+  the root helper cases in `lexical-utils` are ported.
+- **`LexicalHashtag`** ports `@lexical/hashtag`: `HashtagNode` and
+  `HashtagExtension`, whose transforms are `LexicalText`'s. JS matches with
+  a regular expression with the `i` flag and without `u`, over UTF-16 code
+  units with JS's case folding; Swift's regular expressions read Unicode
+  scalars and fold case differently, so the same expression runs by hand
+  over code units with the spec's `Canonicalize`, from JS's character
+  tables (including the CJK ranges `String.fromCharCode` truncates).
+  `vectors/entities` checks the matcher on text in many scripts and the
+  documents the transforms make. The views style a text node of another
+  type than `text` with the theme style of its type (`hashtag`), as its
+  `createDOM` adds the class. `lexical-hashtag` is `enforced`: 1 upstream
+  test, ported, and the 40 hashtag cases that waited for it (34 in
+  `lexical-text`, 6 in `lexical-markdown`) are ported; the ones that also
+  need `lexical-mark` stay skipped.
 
 - **`LexicalMenu`** ports the parts of `@lexical/react`'s
   `LexicalTypeaheadMenuPlugin`, `LexicalNodeMenuPlugin` and

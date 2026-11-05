@@ -710,6 +710,9 @@ importers:
       '@lexical/extension':
         specifier: workspace:*
         version: link:../lexical-extension
+      '@lexical/hashtag':
+        specifier: workspace:*
+        version: link:../lexical-hashtag
       '@lexical/headless':
         specifier: workspace:*
         version: link:../lexical-headless

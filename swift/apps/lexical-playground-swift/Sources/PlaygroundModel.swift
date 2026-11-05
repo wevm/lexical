@@ -5,6 +5,7 @@ import LexicalCodeCore
 import LexicalDevtoolsCore
 import LexicalExtension
 import LexicalHTML
+import LexicalHashtag
 import LexicalHistory
 import LexicalLink
 import LexicalList
@@ -221,6 +222,8 @@ final class PlaygroundModel {
         $0.getWindow = { _ in PlaygroundLinkWindow() }
       },
     ]
+    // The rest of the playground's AppExtension, in both modes.
+    let always: [any AnyLexicalExtensionArgument] = [HashtagExtension]
     return try buildEditorFromExtensions(
       defineExtension(
         name: "@lexical/playground-swift",
@@ -240,11 +243,11 @@ final class PlaygroundModel {
             PlaygroundMarkdownShortcutsExtension,
             PlaygroundShortcutsExtension,
             configExtension(TabIndentationExtension) { $0.maxIndent = 7 },
-          ] + links
+          ] + links + always
           : [
             PlainTextExtension, HistoryExtension, HistoryAnnounceExtension,
             EditorModeAnnounceExtension,
-          ] + links))
+          ] + links + always))
   }
 
   /// Clickable links are active only while the editor is read-only, as the

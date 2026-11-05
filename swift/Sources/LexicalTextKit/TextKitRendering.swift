@@ -99,25 +99,31 @@ extension TextKitTheme {
       var chain: Int
       var format: Int
       var style: String
+      var type: String
     }
     var texts: [TextKey: TextKitTextAttributes] = [:]
     func attributes(
-      format: Int, style: String, parent: ElementNode?
+      format: Int, style: String, parent: ElementNode?, type: String = "text"
     ) throws -> TextKitTextAttributes {
-      try attributes(format: format, style: style, chain: parent.map(chain) ?? ([], -1))
+      try attributes(
+        format: format, style: style, chain: parent.map(chain) ?? ([], -1), type: type)
     }
     func attributes(
-      format: Int, style: String, chain: (chain: [TextKitElement], id: Int)
+      format: Int, style: String, chain: (chain: [TextKitElement], id: Int),
+      type: String = "text"
     ) throws -> TextKitTextAttributes {
       let (ancestors, id) = chain
-      let key = TextKey(chain: id, format: format, style: style)
+      let key = TextKey(chain: id, format: format, style: style, type: type)
       if let attributes = texts[key] { return attributes }
-      let attributes = textAttributes(format: format, style: style, ancestors: ancestors)
+      let attributes = textAttributes(
+        format: format, style: style, ancestors: ancestors, type: type)
       texts[key] = attributes
       return attributes
     }
     func attributes(for node: TextNode) throws -> TextKitTextAttributes {
-      try attributes(format: node.getFormat(), style: node.getStyle(), parent: node.getParent())
+      try attributes(
+        format: node.getFormat(), style: node.getStyle(), parent: node.getParent(),
+        type: node.getType())
     }
     update.isFull = dirtyElements == nil
     update.edits = try edits.map { edit in
@@ -129,9 +135,12 @@ extension TextKitTheme {
           let parent = try document.entries[run.key]?.parent.flatMap {
             try getNodeByKey($0) as? ElementNode
           }
+          // A text node of another type (a hashtag) takes its type's style.
+          let type = (try getNodeByKey(run.key) as? TextNode)?.getType() ?? "text"
           return TextKitStyledRun(
             range: TextKitRange(location: run.location, length: run.length),
-            attributes: try attributes(format: run.format, style: run.style, parent: parent))
+            attributes: try attributes(
+              format: run.format, style: run.style, parent: parent, type: type))
         })
     }
     // Where each edit ends up: the edits after it, lower in the text, shift

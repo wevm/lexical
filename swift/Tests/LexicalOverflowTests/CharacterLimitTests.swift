@@ -6,9 +6,7 @@ import LexicalTesting
 import Testing
 
 // Ports of packages/lexical-react/src/__tests__/unit/useLexicalCharacterLimit.test.ts
-// and LexicalCharacterLimitPlugin.test.tsx. `lexical-react` is not in the
-// parity ledger, so these carry the upstream titles in comments instead of
-// `.upstream` ids.
+// and LexicalCharacterLimitPlugin.test.tsx.
 
 private func makeEditor() throws -> Editor {
   let editor = try buildEditorFromExtensions(
@@ -36,9 +34,11 @@ private func paragraph(at index: Int) throws -> ParagraphNode {
 }
 
 @Suite struct CharacterLimitTests {
-  // useCharacterLimit > $mergePrevious > merges left overflow into right with
-  // selection in left
-  @Test func mergesLeftOverflowIntoRightWithSelectionInLeft() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/useLexicalCharacterLimit.test.ts::useCharacterLimit > $mergePrevious > merges left overflow into right with selection in left"
+    ))
+  func mergesLeftOverflowIntoRightWithSelectionInLeft() throws {
     let editor = try makeEditor()
     try editor.update {
       let (overflowLeft, overflowRight, paragraph) = try setupLeftRightOverflow()
@@ -64,9 +64,11 @@ private func paragraph(at index: Int) throws -> ParagraphNode {
     }
   }
 
-  // useCharacterLimit > $mergePrevious > merges with selection spanning both
-  // overflows
-  @Test func mergesWithSelectionSpanningBothOverflows() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/useLexicalCharacterLimit.test.ts::useCharacterLimit > $mergePrevious > merges with selection spanning both overflows"
+    ))
+  func mergesWithSelectionSpanningBothOverflows() throws {
     let editor = try makeEditor()
     try editor.update {
       let (overflowLeft, overflowRight, paragraph) = try setupLeftRightOverflow()
@@ -92,9 +94,11 @@ private func paragraph(at index: Int) throws -> ParagraphNode {
     }
   }
 
-  // useCharacterLimit > $wrapOverflowedNodes > merges adjacent overflow nodes
-  // when wrapping before existing overflow
-  @Test func mergesAdjacentOverflowNodesWhenWrappingBeforeExistingOverflow() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/useLexicalCharacterLimit.test.ts::useCharacterLimit > $wrapOverflowedNodes > merges adjacent overflow nodes when wrapping before existing overflow"
+    ))
+  func mergesAdjacentOverflowNodesWhenWrappingBeforeExistingOverflow() throws {
     let editor = try makeEditor()
     try editor.update {
       let root = try getRoot()
@@ -118,9 +122,11 @@ private func paragraph(at index: Int) throws -> ParagraphNode {
     }
   }
 
-  // useCharacterLimit > $wrapOverflowedNodes > counts \n\n separators between
-  // paragraphs (#6329)
-  @Test func countsSeparatorsBetweenParagraphs() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/useLexicalCharacterLimit.test.ts::useCharacterLimit > $wrapOverflowedNodes > counts \\n\\n separators between paragraphs (#6329)"
+    ))
+  func countsSeparatorsBetweenParagraphs() throws {
     let editor = try makeEditor()
     try editor.update {
       let root = try getRoot()
@@ -142,9 +148,11 @@ private func paragraph(at index: Int) throws -> ParagraphNode {
     }
   }
 
-  // useCharacterLimit > $wrapOverflowedNodes > splits text correctly with
-  // separator budget (#6329)
-  @Test func splitsTextWithSeparatorBudget() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/useLexicalCharacterLimit.test.ts::useCharacterLimit > $wrapOverflowedNodes > splits text correctly with separator budget (#6329)"
+    ))
+  func splitsTextWithSeparatorBudget() throws {
     let editor = try makeEditor()
     try editor.update {
       let root = try getRoot()
@@ -164,9 +172,11 @@ private func paragraph(at index: Int) throws -> ParagraphNode {
     }
   }
 
-  // useCharacterLimit > $wrapOverflowedNodes > counts multiple separators
-  // across three paragraphs (#6329)
-  @Test func countsSeparatorsAcrossThreeParagraphs() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/useLexicalCharacterLimit.test.ts::useCharacterLimit > $wrapOverflowedNodes > counts multiple separators across three paragraphs (#6329)"
+    ))
+  func countsSeparatorsAcrossThreeParagraphs() throws {
     let editor = try makeEditor()
     try editor.update {
       let root = try getRoot()
@@ -191,9 +201,11 @@ private func paragraph(at index: Int) throws -> ParagraphNode {
     }
   }
 
-  // useCharacterLimit > $wrapOverflowedNodes > advances the budget past a
-  // slotted decorator so the wrap boundary is exact
-  @Test func advancesTheBudgetPastASlottedDecorator() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/useLexicalCharacterLimit.test.ts::useCharacterLimit > $wrapOverflowedNodes > advances the budget past a slotted decorator so the wrap boundary is exact"
+    ))
+  func advancesTheBudgetPastASlottedDecorator() throws {
     let editor = try makeEditor()
     try editor.update {
       let root = try getRoot()
@@ -241,24 +253,31 @@ private func overflowNodeCount(_ editor: Editor) throws -> Int {
 }
 
 @Suite struct CharacterLimitPluginTests {
-  // CharacterLimitPlugin > counts the text that is already in the editor when
-  // it mounts
-  @Test func countsTheTextAlreadyInTheEditor() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/LexicalCharacterLimitPlugin.test.tsx::CharacterLimitPlugin > counts the text that is already in the editor when it mounts"
+    ))
+  func countsTheTextAlreadyInTheEditor() throws {
     let (remaining, editor) = try mountWithText("hello world")
     #expect(remaining == -6)
     #expect(try overflowNodeCount(editor) > 0)
   }
 
-  // CharacterLimitPlugin > reports a full budget for an editor that is under
-  // the limit
-  @Test func reportsAFullBudgetUnderTheLimit() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/LexicalCharacterLimitPlugin.test.tsx::CharacterLimitPlugin > reports a full budget for an editor that is under the limit"
+    ))
+  func reportsAFullBudgetUnderTheLimit() throws {
     let (remaining, editor) = try mountWithText("hi")
     #expect(remaining == 3)
     #expect(try overflowNodeCount(editor) == 0)
   }
 
-  // CharacterLimitPlugin > counts in the charset it was given
-  @Test func countsInTheCharsetItWasGiven() throws {
+  @Test(
+    .upstream(
+      "lexical-react/src/__tests__/unit/LexicalCharacterLimitPlugin.test.tsx::CharacterLimitPlugin > counts in the charset it was given"
+    ))
+  func countsInTheCharsetItWasGiven() throws {
     // Three 3-byte characters: 3 UTF-16 code units, 9 UTF-8 bytes.
     let (remaining, _) = try mountWithText("一二三", strlen: { $0.utf8.count })
     #expect(remaining == -4)

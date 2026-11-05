@@ -133,9 +133,15 @@ public final class MenuState<Option: MenuOption> {
     rawSelectedIndex.map { min(options.count - 1, $0) }
   }
 
-  /// Whether the default renderer would draw nothing, so the keys pass
-  /// through to the editor (`rendersNothing`).
-  var rendersNothing: Bool { options.isEmpty }
+  /// Whether the app's view draws the menu even when it has no options, as
+  /// a JS `menuRenderFn` is called whatever the option list looks like and
+  /// may show a "no results" panel. While it is false, an empty menu draws
+  /// nothing, as the default renderer, and its keys pass through.
+  public var drawsEmptyMenu = false
+
+  /// Whether the menu puts nothing on screen, so the keys pass through to
+  /// the editor (`rendersNothing`).
+  var rendersNothing: Bool { !drawsEmptyMenu && options.isEmpty }
 
   /// Replaces the options (JS re-renders with new `options`).
   public func setOptions(_ options: [Option]) {
@@ -204,6 +210,13 @@ public final class MenuState<Option: MenuOption> {
       newIndex = forward ? 0 : last
     }
     rawSelectedIndex = newIndex
+    // A menu drawn with no options has nothing to highlight.
+    guard options.indices.contains(newIndex) else {
+      rawSelectedIndex = -1
+      onChange?()
+      event.preventDefault()
+      return true
+    }
     _ = try? editor.dispatchCommand(
       SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND, (index: newIndex, option: options[newIndex]))
     onChange?()

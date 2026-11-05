@@ -192,6 +192,51 @@
       _ = window
     }
 
+    /// The selection `NSTextView` makes while it tracks the mouse reaches
+    /// the model at each step, as `selectionchange` does from the press on,
+    /// with the caret in the font there. Selection-only updates are not
+    /// history: one undo still takes back the last edit.
+    @Test func selectionReachesTheModelWhileTheMouseIsTracked() throws {
+      let (view, window) = try makeView()
+      try view.editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createHeadingNode("h1").append(createTextNode("Title")),
+          createParagraphNode().append(createTextNode("body")))
+      }
+      view.setSelectedRange(NSRange(location: 2, length: 0))
+      let headingFont = try #require(view.typingAttributes[.font] as? NSFont)
+      func step(_ range: NSRange) {
+        view.setSelectedRanges(
+          [NSValue(range: range)], affinity: .downstream, stillSelecting: true)
+      }
+      func model() throws -> (String, Int, String, Int) {
+        try view.editor.read {
+          let selection = try #require(try getSelection() as? RangeSelection)
+          return (
+            try selection.anchor.getNode().getTextContent(), selection.anchor.offset,
+            try selection.focus.getNode().getTextContent(), selection.focus.offset
+          )
+        }
+      }
+      // Pressing in the paragraph ("bo|dy"), then dragging to "bod".
+      step(NSRange(location: 8, length: 0))
+      #expect(try model() == ("body", 2, "body", 2))
+      let font = try #require(view.typingAttributes[.font] as? NSFont)
+      #expect(font.pointSize < headingFont.pointSize, "\(font)")
+      step(NSRange(location: 8, length: 1))
+      #expect(try model() == ("body", 2, "body", 3))
+      // Back into the heading, before the mouse is released.
+      step(NSRange(location: 1, length: 0))
+      #expect(try model() == ("Title", 1, "Title", 1))
+      #expect((view.typingAttributes[.font] as? NSFont)?.pointSize == headingFont.pointSize)
+      view.setSelectedRanges(
+        [NSValue(range: NSRange(location: 1, length: 0))], affinity: .downstream,
+        stillSelecting: false)
+      view.undo(nil)
+      #expect(view.string == "")
+      _ = window
+    }
+
     @Test func caretOnAnEmptyLastBlockFollowsItsIndent() throws {
       let (view, window) = try makeView()
       insert(view, "Hello")

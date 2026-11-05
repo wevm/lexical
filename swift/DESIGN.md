@@ -649,7 +649,8 @@ Reversible choices made porting `@lexical/extension` under Q18.
   (`CenteredLineLayoutFragment`) draws its lines' text centered in them,
   with the half-leading above and below, where TextKit would put all the
   extra space above the text. The caret is fitted to the font's ascent and
-  descent at that centered baseline, as a browser draws it, while the
+  descent at that centered baseline, as a browser draws it (at the end
+  of the text too, which has no layout fragment of its own), while the
   selection keeps the whole line box. Quote bars are drawn behind the
   text from the block's line fragments. `textTransform` is not drawn yet,
   so the default theme's `h2` and `h3` show their case as typed.

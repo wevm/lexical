@@ -78,8 +78,15 @@
     /// is centered in the line.
     var textOffset: CGFloat {
       guard let (ascent, descent) = fontExtents else { return 0 }
-      let height = typographicBounds.height
-      return max(0, glyphOrigin.y - (height + ascent - descent) / 2)
+      return textOffset(ascent: ascent, descent: descent)
+    }
+
+    /// How far above where TextKit put it text of `ascent` and `descent`
+    /// is drawn, so it is centered in the line: for a line without text,
+    /// such as the extra line after a final newline, the caret's font
+    /// stands in for the line's.
+    func textOffset(ascent: CGFloat, descent: CGFloat) -> CGFloat {
+      max(0, glyphOrigin.y - (typographicBounds.height + ascent - descent) / 2)
     }
   }
 #endif

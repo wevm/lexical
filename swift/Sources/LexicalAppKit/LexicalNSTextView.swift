@@ -293,8 +293,15 @@
           self, selector: #selector(insertionIndicatorMoved(_:)),
           name: NSView.frameDidChangeNotification, object: indicator)
       }
+      // The end of the text has no layout fragment of its own: the caret
+      // there is on the last character's (or on the extra line TextKit
+      // adds to it after a final newline).
+      let length = (string as NSString).length
+      let offset = selectedRange().location
       guard let layoutManager = textLayoutManager,
-        let location = textRange(NSRange(location: selectedRange().location, length: 0))?.location,
+        let location = textRange(
+          NSRange(location: offset == length && length > 0 ? length - 1 : offset, length: 0))?
+          .location,
         let fragment = layoutManager.textLayoutFragment(for: location)
       else { return }
       let origin = textContainerOrigin
@@ -311,8 +318,11 @@
       let font = typingAttributes[.font] as? NSFont
       let ascent = font?.ascender ?? line.fontExtents?.ascent ?? 0
       let descent = font.map { -$0.descender } ?? line.fontExtents?.descent ?? 0
+      let textOffset =
+        line.fontExtents == nil
+        ? line.textOffset(ascent: ascent, descent: descent) : line.textOffset
       let baseline =
-        origin.y + frame.minY + line.typographicBounds.minY + line.glyphOrigin.y - line.textOffset
+        origin.y + frame.minY + line.typographicBounds.minY + line.glyphOrigin.y - textOffset
       let fitted = NSRect(
         x: caret.minX, y: baseline - ascent, width: caret.width, height: ascent + descent)
       guard ascent + descent > 0, fitted != caret else { return }

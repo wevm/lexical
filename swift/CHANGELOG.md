@@ -4,6 +4,15 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.4
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Decorator views in the TextKit views (images, horizontal rules, inline decorators such as the playground's date pill) no longer stop drawing after an edit lays their line out again. TextKit makes a new view provider for the line and releases the old one, which took the decorator's view out of the text after the new provider had shown it; each provider now shows the view in its own container. Fixed on macOS and iOS.
+- `LexicalMenu`: `MenuState.drawsEmptyMenu` tells the menu that the app's view draws it even with no options, as a JS `menuRenderFn` can. Such a menu keeps the arrow, Enter, Tab and Escape keys instead of letting them through to the editor, and an arrow key leaves nothing highlighted, as upstream does.
+
 ## 0.1.3
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

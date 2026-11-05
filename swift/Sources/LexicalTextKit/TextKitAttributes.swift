@@ -321,6 +321,9 @@ public struct TextKitStyle: Hashable, Sendable {
   public var tabSize: Double?
   /// CSS `cursor` over the text.
   public var cursor: TextKitCursor?
+  /// `:hover { text-decoration: underline }`: the inline element under
+  /// the pointer is underlined, where the platform has one.
+  public var hoverUnderline: Bool?
 
   public init(
     fontFamily: [String]? = nil, fontSize: TextKitFontSize? = nil, fontWeight: Int? = nil,
@@ -413,6 +416,7 @@ public struct TextKitStyle: Hashable, Sendable {
       $0.gutter = other.gutter ?? gutter
       $0.tabSize = other.tabSize ?? tabSize
       $0.cursor = other.cursor ?? cursor
+      $0.hoverUnderline = other.hoverUnderline ?? hoverUnderline
     }
   }
 
@@ -632,6 +636,8 @@ public struct TextKitTextAttributes: Hashable, Sendable {
   public var textTransform = TextKitTextTransform.none
   /// `nil` is the platform's text cursor.
   public var cursor: TextKitCursor?
+  /// Underlined while the pointer is over its inline element.
+  public var hoverUnderline = false
 
   public init() {}
 
@@ -651,6 +657,7 @@ public struct TextKitTextAttributes: Hashable, Sendable {
     if let v = style.baselineShift { baselineOffset += v * size }
     if let v = style.textTransform { textTransform = v }
     if let v = style.cursor { cursor = v }
+    if let v = style.hoverUnderline { hoverUnderline = v }
   }
 }
 
@@ -783,11 +790,14 @@ public struct TextKitTheme: Hashable, Sendable {
     // 0.5em; padding-left: 1.5em` comes to the same 32 points at 16.
     "listitem": TextKitStyle(headIndent: 32),
     "listitemChecked": TextKitStyle(strikethrough: true),
-    // `__link:hover { cursor: pointer }`.
+    // `__link:hover { text-decoration: underline; cursor: pointer }`.
     "link": TextKitStyle(
       foregroundColor: TextKitColor(33, 111, 219).withDark(TextKitColor(88, 166, 255)),
       underline: false
-    ).with { $0.cursor = .pointer },
+    ).with {
+      $0.cursor = .pointer
+      $0.hoverUnderline = true
+    },
     "mark": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
     "heading.h1": TextKitStyle(
       fontSize: .points(24), fontWeight: 400,

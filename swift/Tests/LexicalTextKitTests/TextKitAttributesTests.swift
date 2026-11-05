@@ -224,8 +224,9 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     let link = TextKitElement(type: "link", isInline: true)
     var linkText = plain
     linkText.foregroundColor = TextKitColor(33, 111, 219).withDark(TextKitColor(88, 166, 255))
-    // `__link:hover { cursor: pointer }`.
+    // `__link:hover { text-decoration: underline; cursor: pointer }`.
     linkText.cursor = .pointer
+    linkText.hoverUnderline = true
     #expect(text(in: [paragraph, link]) == linkText)
     // An autolink takes the link's look, as its createDOM takes theme.link.
     #expect(text(in: [paragraph, TextKitElement(type: "autolink", isInline: true)]) == linkText)

@@ -746,6 +746,75 @@
       )
     }
 
+    /// `__link:hover { text-decoration: underline }`: only the link under
+    /// the pointer is underlined, as view state that sends no update.
+    @Test func underlinesTheHoveredLink() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension, LinkExtension]))
+      let (view, window) = try makeView(editor)
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createParagraphNode().append(
+            createTextNode("a "),
+            createLinkNode("https://lexical.dev").append(createTextNode("bb")),
+            createLinkNode("https://lexical.dev/docs").append(createTextNode("cc"))))
+      }
+      let layoutManager = try #require(view.textLayoutManager)
+      layoutManager.ensureLayout(for: layoutManager.documentRange)
+      func point(at index: Int) throws -> NSPoint {
+        let start = try #require(
+          layoutManager.location(layoutManager.documentRange.location, offsetBy: index))
+        let range = try #require(
+          NSTextRange(location: start, end: layoutManager.location(start, offsetBy: 1)))
+        var frame = NSRect.zero
+        layoutManager.enumerateTextSegments(in: range, type: .standard, options: []) {
+          _, segment, _, _ in
+          frame = segment
+          return false
+        }
+        return NSPoint(
+          x: frame.midX + view.textContainerOrigin.x, y: frame.midY + view.textContainerOrigin.y)
+      }
+      func underlined() throws -> [NSRange] {
+        let storage = try #require(view.textStorage)
+        var ranges: [NSRange] = []
+        storage.enumerateAttribute(
+          .underlineStyle, in: NSRange(location: 0, length: storage.length)
+        ) { value, range, _ in
+          if value != nil { ranges.append(range) }
+        }
+        return ranges
+      }
+      func hover(_ point: NSPoint?) {
+        guard let point else {
+          view.mouseExited(
+            with: NSEvent.enterExitEvent(
+              with: .mouseExited, location: .zero, modifierFlags: [], timestamp: 0,
+              windowNumber: window.windowNumber, context: nil, eventNumber: 0, trackingNumber: 0,
+              userData: nil)!)
+          return
+        }
+        view.mouseMoved(
+          with: NSEvent.mouseEvent(
+            with: .mouseMoved, location: view.convert(point, to: nil), modifierFlags: [],
+            timestamp: 0, windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+            clickCount: 0, pressure: 0)!)
+      }
+      var updates = 0
+      let remove = editor.registerUpdateListener { _ in updates += 1 }
+      defer { remove() }
+      hover(try point(at: 0))
+      #expect(try underlined().isEmpty)
+      hover(try point(at: 3))
+      #expect(try underlined() == [NSRange(location: 2, length: 2)])
+      hover(try point(at: 4))
+      #expect(try underlined() == [NSRange(location: 4, length: 2)])
+      hover(nil)
+      #expect(try underlined().isEmpty)
+      #expect(updates == 0)
+      _ = window
+    }
+
     @Test func showsThePointingHandOverLinks() throws {
       let editor = try buildEditorFromExtensions(
         defineExtension(name: "test", dependencies: [RichTextExtension, LinkExtension]))

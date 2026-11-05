@@ -36,6 +36,11 @@
     private var isExtendingSelection = false
     /// Set while the mouse tracks a triple (or later) click.
     private var isSelectingParagraphs = false
+    /// The inline element (a link) under the pointer, underlined as CSS
+    /// `:hover` would: view state that never reaches the editor.
+    private var hoveredKey: NodeKey?
+    /// The runs the hover underlined, which take it off again.
+    private var hoverUnderlines: [NSRange] = []
     /// The editor's live region, while this view hosts it
     /// (`AriaLiveRegionExtension`); its announcements are spoken.
     public internal(set) var liveRegion: LiveRegion?
@@ -112,6 +117,9 @@
       isRendering = true
       defer { isRendering = false }
       guard let textStorage else { return }
+      // The hover underline comes off the old text and goes on the new.
+      showHoverUnderline(false)
+      defer { showHoverUnderline(true) }
       textStorage.beginEditing()
       let base = update.base.nsAttributes
       for edit in update.edits {
@@ -128,7 +136,7 @@
           NSRange(location: 0, length: length))
         for key: NSAttributedString.Key in [
           .font, .foregroundColor, .backgroundColor, .underlineStyle, .strikethroughStyle,
-          .baselineOffset,
+          .baselineOffset, .lexicalHoverUnderline,
         ] {
           textStorage.removeAttribute(key, range: range)
         }
@@ -748,6 +756,110 @@
       perform { try controller.click(mouseEvent) }
     }
 
+    // MARK: Hover
+
+    public override func updateTrackingAreas() {
+      super.updateTrackingAreas()
+      if !trackingAreas.contains(where: { $0.owner === self && $0.userInfo?["hover"] != nil }) {
+        addTrackingArea(
+          NSTrackingArea(
+            rect: .zero,
+            options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self, userInfo: ["hover": true]))
+      }
+    }
+
+    public override func mouseMoved(with event: NSEvent) {
+      super.mouseMoved(with: event)
+      hover(at: convert(event.locationInWindow, from: nil))
+    }
+
+    public override func mouseExited(with event: NSEvent) {
+      super.mouseExited(with: event)
+      hover(at: nil)
+    }
+
+    /// Underlines the inline element whose text is under `point` when its
+    /// theme style has `hoverUnderline`, and takes the underline off the one
+    /// the pointer left.
+    private func hover(at point: NSPoint?) {
+      let key = point.flatMap(hoverTarget)
+      guard key != hoveredKey else { return }
+      showHoverUnderline(false)
+      hoveredKey = key
+      showHoverUnderline(true)
+    }
+
+    /// Underlines the hovered element's text that isn't underlined already,
+    /// or takes off the underline it added. The storage's attributes are
+    /// the view's, so this sends no update. (TextKit 2's `NSTextView` draws
+    /// no rendering attributes, so they can't hold it.)
+    private func showHoverUnderline(_ shows: Bool) {
+      guard let textStorage else { return }
+      if !shows {
+        for range in hoverUnderlines where range.upperBound <= textStorage.length {
+          textStorage.removeAttribute(.underlineStyle, range: range)
+        }
+        hoverUnderlines = []
+        return
+      }
+      guard let key = hoveredKey, let span = controller.document.span(key) else { return }
+      let range = NSIntersectionRange(
+        NSRange(location: span.location, length: span.length),
+        NSRange(location: 0, length: textStorage.length))
+      textStorage.enumerateAttribute(.underlineStyle, in: range) { value, run, _ in
+        guard value == nil else { return }
+        hoverUnderlines.append(run)
+      }
+      for run in hoverUnderlines {
+        textStorage.addAttribute(
+          .underlineStyle, value: NSUnderlineStyle.single.rawValue, range: run)
+      }
+    }
+
+    /// The inline element around the character under `point`, if that
+    /// character is hover-underlined.
+    private func hoverTarget(_ point: NSPoint) -> NodeKey? {
+      guard let textStorage, let layoutManager = textLayoutManager else { return nil }
+      let insertion = characterIndexForInsertion(at: point)
+      let origin = textContainerOrigin
+      // The character the pointer is on: the one after the insertion point
+      // or the one before it, whichever's glyphs it is over.
+      guard
+        let index = [insertion, insertion - 1].first(where: { index in
+          guard index >= 0, index < textStorage.length,
+            textStorage.attribute(.lexicalHoverUnderline, at: index, effectiveRange: nil) != nil,
+            let frame = segmentsFrame(layoutManager, NSRange(location: index, length: 1))
+          else { return false }
+          return frame.offsetBy(dx: origin.x, dy: origin.y).contains(point)
+        })
+      else { return nil }
+      // The widest inline element around it that is underlined throughout:
+      // the link, not a mark inside it or a block outside it.
+      var underlined = NSRange()
+      _ = textStorage.attribute(
+        .lexicalHoverUnderline, at: index, longestEffectiveRange: &underlined,
+        in: NSRange(location: 0, length: textStorage.length))
+      let key = controller.nodeKey(at: index)
+      let document = controller.document
+      return try? editor.read(.latest) { () throws -> NodeKey? in
+        // The key is the text node's, or the link's when the two have the
+        // same span.
+        var target: NodeKey?
+        var node = try getNodeByKey(key)
+        while let current = node {
+          if let element = current as? ElementNode {
+            guard try element.isInline(), let span = document.span(element.getKey()),
+              NSRange(location: span.location, length: span.length).isWithin(underlined)
+            else { break }
+            target = element.getKey()
+          }
+          node = try current.getParent()
+        }
+        return target
+      }
+    }
+
     /// The node under `point`, `"root"` past the last block.
     func targetKey(at point: NSPoint) -> NodeKey {
       if let layoutManager = textLayoutManager,
@@ -882,6 +994,12 @@
     /// The caret at `(x, y)` of the view, hit-tested by TextKit.
     public func caretFromPoint(_ x: Double, _ y: Double) throws -> PointCaret? {
       try controller.caret(at: characterIndexForInsertion(at: NSPoint(x: x, y: y)))
+    }
+  }
+
+  extension NSRange {
+    fileprivate func isWithin(_ other: NSRange) -> Bool {
+      location >= other.location && upperBound <= other.upperBound
     }
   }
 #endif

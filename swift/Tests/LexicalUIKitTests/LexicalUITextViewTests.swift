@@ -342,6 +342,53 @@
       _ = window
     }
 
+    /// A selected decorator shows only its own outline, as on the web: not
+    /// UIKit's handles and highlight over its attachment character. A text
+    /// selection afterwards has them again. `block` selects the demo's card,
+    /// or else its inline badge.
+    @Test(arguments: [true, false])
+    func showsNoHandlesBesideASelectedDecorator(_ block: Bool) throws {
+      let editor = try makeDemoEditor()
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+      let view = LexicalUITextView(editor: editor, frame: window.bounds)
+      window.addSubview(view)
+      window.makeKeyAndVisible()
+      _ = view.becomeFirstResponder()
+      try loadDemoDocument(editor)
+      /// The selection handles UIKit shows.
+      func shownHandles() -> [UIView] {
+        window.layoutIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.2))
+        func visible(_ view: UIView) -> Bool {
+          !view.isHidden && view.alpha > 0 && (view.superview.map(visible) ?? true)
+        }
+        func handles(_ view: UIView) -> [UIView] {
+          (view is UITextSelectionHandleView ? [view] : []) + view.subviews.flatMap(handles)
+        }
+        return handles(view).filter(visible)
+      }
+      func select(_ body: @escaping () throws -> Void) throws {
+        try editor.update(discrete: true) { try body() }
+      }
+      try select {
+        let parent = try block ? getRoot() : #require(getRoot().getChildAtIndex(1) as? ElementNode)
+        let node = try #require(
+          try parent.getChildren().first { block ? $0 is CardNode : $0 is BadgeNode })
+        let selection = createNodeSelection()
+        selection.add(node.getKey())
+        try setSelection(selection)
+      }
+      #expect(view.selectedRange.length == 1)
+      #expect(shownHandles().isEmpty, "\(shownHandles())")
+      // Text selected again shows its handles.
+      try select {
+        let text = try #require(try getRoot().getFirstDescendant() as? TextNode)
+        _ = try text.select(0, 5)
+      }
+      #expect(shownHandles().count == 2, "\(shownHandles())")
+      _ = window
+    }
+
     @Test func drawsHorizontalRulesFromTheTheme() throws {
       let editor = try buildEditorFromExtensions(
         defineExtension(name: "test", dependencies: [RichTextExtension, HorizontalRuleExtension]))

@@ -1,5 +1,6 @@
 import Foundation
 import Lexical
+import LexicalSwiftUI
 import SwiftUI
 
 #if os(macOS)
@@ -16,8 +17,9 @@ import SwiftUI
 // (`.editor-image img { max-width: 100% }`, which the views' decorator
 // attachments apply to an inline decorator wider than the line), with
 // the selection outline and `ImageResizer`'s handles while it is in a node
-// selection, and its caption below it. Editing the caption is not ported
-// yet.
+// selection, and its caption over its bottom edge: a nested editor that
+// the resizer's Add Caption button shows and that hides again when it
+// loses focus empty (`DisableCaptionOnBlur`).
 
 /// The images loaded so far, by `src`. A decorator's view is sized when it
 /// is attached, so loading one marks its nodes dirty, which attaches them
@@ -90,6 +92,32 @@ final class NodeSelectionState {
   isolated deinit { unregister?() }
 }
 
+/// `DisableCaptionOnBlur`: hides the caption when it loses focus empty.
+/// Hiding an empty caption is not an edit, so the update is kept out of the
+/// history (`HISTORIC_TAG`).
+@MainActor
+final class CaptionBlurState {
+  private var unregister: (() -> Void)?
+
+  func observe(_ editor: Editor, _ key: NodeKey, _ caption: Editor) {
+    guard unregister == nil else { return }
+    unregister = caption.registerCommand(
+      BLUR_COMMAND,
+      { _, _ in
+        if try isCaptionEditorEmpty() {
+          try editor.update(tag: HISTORIC_TAG) {
+            if let node = try getNodeByKey(key) as? ImageNode, node.__showCaption {
+              try node.setShowCaption(false)
+            }
+          }
+        }
+        return false
+      }, COMMAND_PRIORITY_LOW)
+  }
+
+  isolated deinit { unregister?() }
+}
+
 /// `ImageComponent`.
 struct ImageComponent: View {
   let editor: Editor
@@ -100,8 +128,10 @@ struct ImageComponent: View {
   let height: ImageDimension
   let maxWidth: Double
   let showCaption: Bool
-  let caption: String
+  let caption: Editor
+  let captionsEnabled: Bool
   @State private var selection = NodeSelectionState()
+  @State private var captionBlur = CaptionBlurState()
   /// The size while a handle is dragged, which the node takes when it is
   /// let go (`onResizeEnd`).
   @State private var resizing: CGSize?
@@ -129,6 +159,31 @@ struct ImageComponent: View {
     #endif
     _ = try? editor.dispatchCommand(
       CLICK_COMMAND, MouseEvent("click", shiftKey: shiftKey, targetKey: nodeKey))
+  }
+
+  /// `setShowCaption(true)`: shows the caption, puts its caret at its end
+  /// and focuses it.
+  private func addCaption() {
+    let key = nodeKey
+    let caption = caption
+    try? editor.update {
+      guard let node = try getNodeByKey(key) as? ImageNode else { return }
+      try node.setShowCaption(true)
+      try caption.update {
+        if try getSelection() == nil { _ = try getRoot().selectEnd() }
+      }
+    }
+    // `caption.focus()` once the caption's view, which SwiftUI draws after
+    // the image decorates again, is in the window.
+    Task { @MainActor in
+      for _ in 0..<40 {
+        if (caption.getRootElement() as? LexicalRootElement)?.isConnected == true {
+          try? caption.focus()
+          return
+        }
+        try? await Task.sleep(for: .milliseconds(25))
+      }
+    }
   }
 
   var body: some View {
@@ -177,9 +232,31 @@ struct ImageComponent: View {
       .accessibilityAddTraits(.isImage)
       .accessibilityAddTraits(selection.isSelected ? .isSelected : [])
       .accessibilityIdentifier("editor-image")
+      .overlay(alignment: .bottom) {
+        if showCaption {
+          // `.image-caption-container`: over the image's bottom, 4 points
+          // up, with a white top border, `rgba(255, 255, 255, 0.9)` (a dark
+          // equivalent in a dark appearance) and black text; the editor
+          // (`.ImageNode__contentEditable`) has 10 points of padding.
+          LexicalEditor(caption, placeholder: "Enter a caption...")
+            .sizedToContent(minHeight: 20, maxHeight: max(20, size.height - 24))
+            .padding(10)
+            .frame(minWidth: 100, maxWidth: .infinity)
+            .background(Color(light: .white.opacity(0.9), dark: .black.opacity(0.6)))
+            .overlay(alignment: .top) {
+              Rectangle().fill(Color(light: .white, dark: .white.opacity(0.2))).frame(height: 1)
+            }
+            .padding(.bottom, 4)
+            .accessibilityIdentifier("image-caption")
+        }
+      }
       .overlay {
         if selection.isSelected || resizing != nil, editor.isEditable() {
-          ImageResizer(size: size, maxWidth: maxWidth, resizing: $resizing) { size in
+          ImageResizer(
+            size: size, maxWidth: maxWidth, resizing: $resizing,
+            showsCaptionButton: !showCaption && captionsEnabled && image != nil,
+            addCaption: addCaption
+          ) { size in
             let key = nodeKey
             try? editor.update {
               try (getNodeByKey(key) as? ImageNode)?.setWidthAndHeight(
@@ -188,19 +265,10 @@ struct ImageComponent: View {
           }
         }
       }
-      if showCaption, !caption.isEmpty {
-        // `.image-caption-container`.
-        Text(caption)
-          .font(.system(size: 14))
-          .foregroundStyle(.primary)
-          .frame(maxWidth: size.width, alignment: .leading)
-          .padding(.vertical, 4)
-          // `rgba(255, 255, 255, 0.9)`, and its dark equivalent.
-          .background(Color(light: .white.opacity(0.9), dark: .black.opacity(0.6)))
-      }
     }
     .onAppear {
       selection.observe(editor, nodeKey)
+      captionBlur.observe(editor, nodeKey, caption)
       if image == nil {
         let key = nodeKey
         nonisolated(unsafe) let editor = editor
@@ -222,6 +290,10 @@ private struct ImageResizer: View {
   let size: CGSize
   let maxWidth: Double
   @Binding var resizing: CGSize?
+  /// Whether the Add Caption button shows (`!showCaption &&
+  /// captionsEnabled`).
+  let showsCaptionButton: Bool
+  let addCaption: () -> Void
   let onResizeEnd: (CGSize) -> Void
   @State private var start: CGSize?
 
@@ -293,8 +365,40 @@ private struct ImageResizer: View {
       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
   }
 
+  @State private var isHovering = false
+
   var body: some View {
     ZStack {
+      if showsCaptionButton {
+        // `.image-caption-button`: 20 points up from the bottom, 30% of the
+        // width (at least 100), `rgba(0, 0, 0, 0.5)` with a white border at
+        // 0.3 and white text, `rgba(60, 132, 244, 0.5)` while hovered.
+        Button(action: addCaption) {
+          Text("Add Caption")
+            .font(.system(size: 13))
+            .foregroundStyle(.white)
+            .padding(10)
+            .frame(width: max(100, size.width * 0.3))
+            .background(
+              RoundedRectangle(cornerRadius: 5)
+                .fill(
+                  isHovering
+                    ? Color(red: 60 / 255, green: 132 / 255, blue: 244 / 255).opacity(0.5)
+                    : Color.black.opacity(0.5))
+            )
+            .overlay(
+              RoundedRectangle(cornerRadius: 5).strokeBorder(.white.opacity(0.3), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .accessibilityIdentifier("image-caption-button")
+        .frame(maxHeight: .infinity, alignment: .bottom)
+        // The handles' padding below is negative; this is the image's
+        // bottom plus 20.
+        .padding(.bottom, 28)
+      }
       handle(.north, .top)
       handle([.north, .east], .topTrailing)
       handle(.east, .trailing)

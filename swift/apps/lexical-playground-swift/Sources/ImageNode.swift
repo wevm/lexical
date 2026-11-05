@@ -2,9 +2,18 @@ import Foundation
 import Lexical
 import LexicalExtension
 import LexicalHTML
+import LexicalHashtag
+import LexicalHistory
 import LexicalLink
 import LexicalRichText
+import LexicalTextKit
 import LexicalUtils
+
+#if os(macOS)
+  import AppKit
+#else
+  import UIKit
+#endif
 
 // Port of packages/lexical-playground/src/nodes/ImageNode.tsx: an image
 // with its alt text, size, maximum width and a caption, which is a nested
@@ -43,13 +52,44 @@ enum ImageDimension: Equatable {
 }
 
 /// `CaptionEditorExtension`: the caption's nested editor, empty until it
-/// is given a state. Upstream's caption also has hashtags, keywords, emoji
-/// and mentions, which the Swift playground does not register there yet.
+/// is given a state, sharing its parent's history and theme. Upstream's
+/// caption also has emoji and mentions, which the Swift playground does not
+/// register there yet.
 let CaptionEditorExtension = defineExtension(
   name: "@lexical/playground/ImageNodeCaption",
-  dependencies: [RichTextExtension, LinkExtension],
+  dependencies: [
+    SharedHistoryExtension, NestedEditorExtension, RichTextExtension, HashtagExtension,
+    LinkExtension, KeywordsExtension,
+  ],
   editorConfig: InitialEditorConfig(
-    namespace: "Playground/ImageNodeCaption", initialEditorState: InitialEditorStateType.none))
+    namespace: "Playground/ImageNodeCaption", initialEditorState: InitialEditorStateType.none),
+  register: { editor, _, _ in
+    editor.registerRootListener { root, _ in
+      nonisolated(unsafe) let root = root
+      MainActor.assumeIsolated {
+        // `.ImageNode__contentEditable` and `.ImageNode__placeholder`: 12px
+        // text, the placeholder in #888. The view attaches before its first
+        // render, so the theme is in place for it.
+        if let controller = textController(root) {
+          controller.theme["root"]?.fontSize = .points(12)
+          controller.theme["placeholder"] = TextKitStyle(
+            fontSize: .points(12), foregroundColor: TextKitColor(136, 136, 136))
+          controller.theme["keyword"] = TextKitStyle(css: keywordThemeStyle)
+        }
+        // The caption container draws the background.
+        #if os(macOS)
+          (root as? NSTextView)?.drawsBackground = false
+          // In its scroll view once SwiftUI makes it the document view.
+          DispatchQueue.main.async {
+            (root as? NSTextView)?.enclosingScrollView?.hasVerticalScroller = false
+          }
+        #else
+          (root as? UIView)?.backgroundColor = .clear
+        #endif
+      }
+      return nil
+    }
+  })
 
 /// `ImagePayload`.
 struct ImagePayload {
@@ -118,6 +158,9 @@ final class ImageNode: DecoratorNode {
   /// `ImagesExtension`'s rules do not reach, so the node converts `<img>`
   /// itself as well, as upstream's `importDOM` did before the rules
   /// replaced it.
+  /// A `<figure>` gives the images among its children its `<figcaption>`,
+  /// as the `figure` rule does; the `<figcaption>` itself imports to
+  /// nothing, as the `figcaption` rule's.
   override class func importDOM() -> DOMConversionMap? {
     [
       "img": { node in
@@ -125,8 +168,38 @@ final class ImageNode: DecoratorNode {
         return DOMConversion { node in
           DOMConversionOutput(node: [try importImage(node as! DOMElement)].compactMap { $0 })
         }
-      }
+      },
+      "figure": { node in
+        guard let el = node as? DOMElement,
+          let figcaption = el.getElementsByTagName("figcaption").first
+        else { return nil }
+        return DOMConversion { _ in
+          DOMConversionOutput(
+            node: [],
+            after: { children in
+              for case let image as ImageNode in children {
+                try image.importCaption(figcaption)
+              }
+              return children
+            })
+        }
+      },
+      "figcaption": { _ in
+        DOMConversion { _ in DOMConversionOutput(node: [], forChild: { _, _ in nil }) }
+      },
     ]
+  }
+
+  /// Shows the caption, filled from `figcaption`'s children. The caption
+  /// editor is a nested editor with its own (legacy) import pipeline;
+  /// route the `<figcaption>` children through it.
+  func importCaption(_ figcaption: DOMElement) throws {
+    try setShowCaption(true)
+    let caption = try getLatest().caption
+    try caption.update(tag: SKIP_DOM_SELECTION_TAG) {
+      try selectAll().insertNodes(generateNodesFromDOM(caption, figcaption))
+      try setSelection(nil)
+    }
   }
 
   override func afterCloneFrom(_ prevNode: LexicalNode) throws {
@@ -276,14 +349,15 @@ final class ImageNode: DecoratorNode {
     let (key, src, altText, width, height, maxWidth, showCaption) = (
       getKey(), __src, __altText, __width, __height, __maxWidth, __showCaption
     )
-    let captionText =
-      showCaption ? (try? caption.read { try getRoot().getTextContent() }) ?? "" : ""
+    let captionsEnabled = __captionsEnabled
     // The views decorate on the main thread.
     nonisolated(unsafe) let editor = editor
+    nonisolated(unsafe) let caption = caption
     return MainActor.assumeIsolated {
       ImageComponent(
         editor: editor, nodeKey: key, src: src, altText: altText, width: width, height: height,
-        maxWidth: maxWidth, showCaption: showCaption, caption: captionText)
+        maxWidth: maxWidth, showCaption: showCaption, caption: caption,
+        captionsEnabled: captionsEnabled)
     }
   }
 }
@@ -297,7 +371,9 @@ func createImageNode(_ payload: ImagePayload) throws -> ImageNode {
   node.__width = ImageDimension(payload.width)
   node.__height = ImageDimension(payload.height)
   node.__showCaption = payload.showCaption ?? false
-  node._caption = payload.caption
+  // Upstream builds the caption editor with the node, while its parent is
+  // the active editor.
+  node._caption = payload.caption ?? node.caption
   node.__captionsEnabled = payload.captionsEnabled != false
   return try applyNodeReplacement(node)
 }

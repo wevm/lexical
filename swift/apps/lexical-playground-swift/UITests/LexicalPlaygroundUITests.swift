@@ -324,6 +324,42 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForExpectations(timeout: 5)
   }
 
+  /// `ImageResizer`'s Add Caption button shows the image's caption, a
+  /// nested editor that takes the typing, and an empty caption hides again
+  /// when it loses focus (`DisableCaptionOnBlur`).
+  @MainActor
+  func testAddsACaptionToAnImage() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/imag")
+    let option = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    option.tap()
+    let sample = app.buttons["image-modal-option-sample"]
+    XCTAssertTrue(sample.waitForExistence(timeout: 5))
+    sample.tap()
+    let image = app.descendants(matching: .any)["editor-image"]
+    XCTAssertTrue(image.waitForExistence(timeout: 5), app.debugDescription)
+    image.tap()
+    waitForTree("selection: node")
+    let button = app.buttons["image-caption-button"]
+    XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription)
+    button.tap()
+    let caption = app.textViews["image-caption"]
+    XCTAssertTrue(caption.waitForExistence(timeout: 5), app.debugDescription)
+    caption.typeText("A yellow flower")
+    let typed = NSPredicate(format: "value CONTAINS %@", "A yellow flower")
+    expectation(for: typed, evaluatedWith: caption)
+    waitForExpectations(timeout: 5)
+    attachScreenshot("image-caption")
+    // Emptied and left, the caption hides.
+    caption.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 15))
+    editor.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.95)).tap()
+    let gone = NSPredicate(format: "exists == false")
+    expectation(for: gone, evaluatedWith: caption)
+    waitForExpectations(timeout: 5)
+  }
+
   /// The playground's text entities and the "/" menu's Page Break and date
   /// options: a keyword becomes a keyword node, brackets a special text
   /// node once the setting is on, and the options insert their nodes.

@@ -96,4 +96,35 @@ final class LexicalPlaygroundUITests: XCTestCase {
     let value = text.value as? String ?? ""
     XCTAssertTrue(value.contains("\"checked\": true"), value)
   }
+
+  /// The floating link editor (`FloatingLinkEditorPlugin`): the toolbar's
+  /// link button opens its URL field, confirming links the selection, the
+  /// panel shows the URL while the caret is in the link, and its trash
+  /// button unlinks it.
+  @MainActor
+  func testFloatingLinkEditorLinksAndUnlinks() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Hello")
+    for _ in 0..<5 { app.typeKey(.leftArrow, modifierFlags: .shift) }
+    // The toolbar scrolls sideways on a phone.
+    let linkButton = app.buttons["Insert Link"]
+    let bold = app.buttons["Bold"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+    bold.press(forDuration: 0.1, thenDragTo: bold.withOffset(CGVector(dx: -250, dy: 0)))
+    linkButton.tap()
+    let input = app.textFields["link-input"]
+    XCTAssertTrue(input.waitForExistence(timeout: 5))
+    input.typeText("lexical.dev\n")
+    waitForTree(") link")
+    // A tap in the link puts the caret in it, which shows the panel.
+    editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 20, dy: 22)).tap()
+    let view = app.buttons["link-view"]
+    XCTAssertTrue(view.waitForExistence(timeout: 5))
+    XCTAssertEqual(view.label, "https://lexical.dev")
+    app.buttons["Remove link"].tap()
+    let unlinked = NSPredicate(format: "NOT (label CONTAINS %@)", ") link")
+    expectation(for: unlinked, evaluatedWith: app.staticTexts["tree-view"])
+    waitForExpectations(timeout: 5)
+    XCTAssertFalse(view.exists)
+  }
 }

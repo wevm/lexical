@@ -38,6 +38,8 @@ targets:
       - package: Lexical
         product: LexicalA11y
       - package: Lexical
+        product: LexicalAppKit
+      - package: Lexical
         product: LexicalCodeCore
       - package: Lexical
         product: LexicalDevtoolsCore
@@ -61,6 +63,8 @@ targets:
         product: LexicalSelection
       - package: Lexical
         product: LexicalSwiftUI
+      - package: Lexical
+        product: LexicalUIKit
       - package: Lexical
         product: LexicalUtils
   LexicalPlaygroundUITests:

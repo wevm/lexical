@@ -57,6 +57,43 @@
     public private(set) var canShowPlaceholder = false
     private var showsPlaceholder: Bool { canShowPlaceholder && placeholder?.isEmpty == false }
 
+    /// When set, the view's intrinsic height is its content's
+    /// (`contentHeight`) kept within the range, so it grows with its text
+    /// up to the upper bound, as a chat composer does. The enclosing scroll
+    /// view scrolls past that, given the clamped height. `nil` (the
+    /// default) leaves the intrinsic size to `NSTextView`.
+    public var heightRange: ClosedRange<CGFloat>? {
+      didSet {
+        invalidateIntrinsicContentSize()
+        enclosingScrollView?.invalidateIntrinsicContentSize()
+      }
+    }
+
+    /// The height of the laid-out text with the container inset above and
+    /// below it.
+    public var contentHeight: CGFloat {
+      guard let layoutManager = textLayoutManager else { return 2 * textContainerInset.height }
+      layoutManager.ensureLayout(for: layoutManager.documentRange)
+      return ceil(layoutManager.usageBoundsForTextContainer.height + 2 * textContainerInset.height)
+    }
+
+    public override var intrinsicContentSize: NSSize {
+      guard let heightRange else { return super.intrinsicContentSize }
+      return NSSize(
+        width: NSView.noIntrinsicMetric,
+        height: min(max(contentHeight, heightRange.lowerBound), heightRange.upperBound))
+    }
+
+    /// Tells the layout (and SwiftUI, through the enclosing scroll view)
+    /// that the content's height may have changed.
+    private func invalidateContentHeight() {
+      guard heightRange != nil else { return }
+      invalidateIntrinsicContentSize()
+      enclosingScrollView?.invalidateIntrinsicContentSize()
+    }
+
+    private var lastLaidOutWidth: CGFloat = 0
+
     /// The text and paragraph look of the last block.
     private var lastBlockAttributes: [NSAttributedString.Key: Any]?
 
@@ -199,6 +236,7 @@
         focus()
       }
       needsDisplay = true
+      invalidateContentHeight()
     }
 
     /// An empty last block's line is TextKit's extra line fragment, which
@@ -401,6 +439,11 @@
     public override func layout() {
       super.layout()
       fitInsertionIndicator()
+      // Text wraps differently at another width.
+      if bounds.width != lastLaidOutWidth {
+        lastLaidOutWidth = bounds.width
+        invalidateContentHeight()
+      }
     }
 
     /// Makes the caret as tall as the font at it, on its line's centered

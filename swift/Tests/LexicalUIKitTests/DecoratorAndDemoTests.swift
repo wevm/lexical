@@ -232,5 +232,36 @@
       #expect(textView.text.hasPrefix("Lexical for Swift"))
       _ = window
     }
+
+    /// `sizedToContent`: 8pt insets around the lines, each 1.7 × 16 =
+    /// 27.2pt as in the playground's CSS, up to the maximum, past which it
+    /// scrolls; and as short again once the text is.
+    @Test func sizesToItsContentInSwiftUI() throws {
+      let editor = try makeDemoEditor()
+      let host = UIHostingController(
+        rootView: VStack(spacing: 0) {
+          LexicalEditor(editor).sizedToContent(maxHeight: 150)
+          Spacer(minLength: 0)
+        })
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 520))
+      window.rootViewController = host
+      window.makeKeyAndVisible()
+      func height(lines: Int) throws -> CGFloat {
+        try editor.update(discrete: true) {
+          let root = try getRoot().clear()
+          if lines == 0 { try root.append(createParagraphNode()) }
+          for line in 0..<lines {
+            try root.append(createParagraphNode().append(createTextNode("Line \(line)")))
+          }
+        }
+        settle(host.view)
+        return try #require(editor.getRootElement() as? LexicalUITextView).frame.height
+      }
+      #expect(abs(try height(lines: 0) - 43.2) <= 1.5)
+      #expect(abs(try height(lines: 3) - 97.6) <= 1.5)
+      #expect(try height(lines: 10) == 150)
+      #expect(abs(try height(lines: 1) - 43.2) <= 1.5)
+      _ = window
+    }
   }
 #endif

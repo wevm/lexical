@@ -66,7 +66,13 @@ def public(d):
     return out
 
 base, new = public(sys.argv[1]), public(sys.argv[2])
-gone = sorted(base[k] for k in base.keys() - new.keys())
+# A protocol's default implementation shows on a conforming type as a
+# synthesized symbol; once the type implements it itself, the symbol has its
+# own identifier but stays public under the same name.
+names = set(new.values())
+gone = sorted(
+    base[k] for k in base.keys() - new.keys()
+    if not ("::SYNTHESIZED::" in k and base[k] in names))
 for g in gone:
     print(f"  💔 no longer public: {g}")
 sys.exit(1 if gone else 0)

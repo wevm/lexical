@@ -480,6 +480,82 @@
       _ = window
     }
 
+    /// Enter in a code block makes an empty line with the code style's line
+    /// box and caret, at its end, in its middle and after several Enters,
+    /// as the web's `<br>` takes its block's font, and the line above it
+    /// keeps its text where it was. `trailing` puts a paragraph after the
+    /// block.
+    @Test(arguments: [false, true])
+    func givesACodeBlocksEmptyLinesItsLineBox(_ trailing: Bool) throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension, CodeExtension]))
+      let (view, window) = makeLightView(editor)
+      _ = view.becomeFirstResponder()
+      try editor.update(discrete: true) {
+        let code = try createCodeNode()
+        try code.append(createTextNode("ab"))
+        try getRoot().clear().append(createParagraphNode().append(createTextNode("x")), code)
+        if trailing { try getRoot().append(createParagraphNode().append(createTextNode("y"))) }
+        _ = try (code.getFirstChild() as? TextNode)?.select(2, 2)
+      }
+      let layoutManager = try #require(view.textLayoutManager)
+      /// The code block's lines, in view coordinates.
+      func lines() throws -> [CGRect] {
+        view.layoutIfNeeded()
+        layoutManager.ensureLayout(for: layoutManager.documentRange)
+        let start = try #require(
+          layoutManager.location(layoutManager.documentRange.location, offsetBy: 2))
+        let fragment = try #require(layoutManager.textLayoutFragment(for: start))
+        return fragment.textLineFragments.map {
+          $0.typographicBounds.offsetBy(
+            dx: view.textContainerInset.left + fragment.layoutFragmentFrame.minX,
+            dy: view.textContainerInset.top + fragment.layoutFragmentFrame.minY)
+        }
+      }
+      let left = view.textContainerInset.left + view.textContainer.lineFragmentPadding + 52
+      /// The rows the first line's "a" is drawn on, left of any caret.
+      func inkOfTheFirstLine() throws -> [CGFloat] {
+        let line = try lines()[0]
+        let (color, _) = try render(view)
+        return stride(from: line.minY, to: line.maxY, by: 0.5).filter { row in
+          stride(from: left, to: left + 6, by: 0.5).contains { color($0, row)[1] < 150 }
+        }
+      }
+      let ink = try inkOfTheFirstLine()
+      try #require(!ink.isEmpty)
+      let font = try #require(UIFont(name: "Menlo-Regular", size: 13))
+      let height = font.ascender - font.descender
+      func expectCodeCaret(at offset: Int, line index: Int) throws {
+        let all = try lines()
+        try #require(index < all.count, "\(all) \(view.textStorage.string.debugDescription)")
+        let line = all[index]
+        let position = try #require(view.position(from: view.beginningOfDocument, offset: offset))
+        // As tall as the code font, on the line's centered text.
+        let caret = view.caretRect(for: position)
+        #expect(abs(caret.height - height) <= 0.5, "\(offset): \(caret)")
+        #expect(
+          abs(caret.minY - (line.minY + (line.height - height) / 2)) <= 0.5,
+          "\(offset): \(caret) in \(line)")
+      }
+      // "ab" is at 2..<4, so its line ends at 4 and the next starts at 5.
+      // (A third Enter at the end would leave the block, as on the web.)
+      view.insertText("\n")
+      try expectCodeCaret(at: 5, line: 1)
+      view.insertText("\n")
+      try expectCodeCaret(at: 6, line: 2)
+      view.insertText("c")
+      // The empty line between "ab" and "c".
+      try expectCodeCaret(at: 5, line: 1)
+      // Every line is 1.53 × 13 points, empty or not.
+      let all = try lines()
+      #expect(all.count == 3, "\(all)")
+      for line in all { #expect(abs(line.height - 1.53 * 13) <= 0.5, "\(all)") }
+      // The first line's text did not move.
+      let after = try inkOfTheFirstLine()
+      #expect(after == ink, "\(ink) → \(after)")
+      _ = window
+    }
+
     /// A quote that ends with a line break, followed by a paragraph: its
     /// bar covers the empty line after the break, as the web's does.
     @Test func drawsAQuotesBarOverItsTrailingEmptyLine() throws {

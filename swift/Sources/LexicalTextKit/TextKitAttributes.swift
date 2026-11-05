@@ -577,10 +577,44 @@ public struct TextKitParagraphAttributes: Hashable, Sendable {
 /// key paths, nested keys joined with dots: `root`, `paragraph`, `quote`,
 /// `code`, `link`, `mark`, `heading.h1`...`heading.h6`, `indent`, `ltr`,
 /// `rtl`, and `text.bold`...`text.underlineStrikethrough`.
+/// How a view draws a horizontal rule (`HorizontalRuleNode`, whose
+/// `createDOM` is an `<hr>` with the theme's `hr` class): a line in a box
+/// with padding and margins, outlined while the rule is selected.
+public struct TextKitRule: Hashable, Sendable {
+  /// The line's height (`hr:after { height }`).
+  public var thickness: Double
+  public var color: TextKitColor
+  /// Around the line, inside the outline (`hr { padding }`).
+  public var padding: Double
+  /// Above and below the box (`hr { margin }`).
+  public var margin: Double
+  /// The outline of a selected rule (`hrSelected { outline }`), drawn
+  /// outside the box.
+  public var selectedOutlineWidth: Double
+  public var selectedOutlineColor: TextKitColor
+
+  public init(
+    thickness: Double = 2, color: TextKitColor, padding: Double = 2, margin: Double = 16,
+    selectedOutlineWidth: Double = 2, selectedOutlineColor: TextKitColor
+  ) {
+    self.thickness = thickness
+    self.color = color
+    self.padding = padding
+    self.margin = margin
+    self.selectedOutlineWidth = selectedOutlineWidth
+    self.selectedOutlineColor = selectedOutlineColor
+  }
+
+  /// The box's height with its margins: what the rule's line takes.
+  public var height: Double { 2 * margin + 2 * padding + thickness }
+}
+
 public struct TextKitTheme: Hashable, Sendable {
   public var styles: [String: TextKitStyle]
   /// Points per indent level, `--lexical-indent-base-value` in JS.
   public var indentWidth: Double
+  /// How horizontal rules are drawn; `nil` draws none.
+  public var horizontalRule: TextKitRule?
 
   public init(styles: [String: TextKitStyle] = [:], indentWidth: Double = 40) {
     self.styles = styles
@@ -596,7 +630,19 @@ public struct TextKitTheme: Hashable, Sendable {
   /// browser's defaults for `h4`...`h6`. The playground is light only; the
   /// colors here have dark variants, so the text stays readable in a dark
   /// appearance.
-  public static let `default` = TextKitTheme(styles: [
+  public static let `default` = TextKitTheme.playground
+
+  private static let playground: TextKitTheme = {
+    var theme = playgroundStyles
+    // `.PlaygroundEditorTheme__hr`: `padding: 2px; margin: 1em 0`, a 2px
+    // #ccc line, and `outline: 2px solid rgb(60, 132, 244)` when selected.
+    theme.horizontalRule = TextKitRule(
+      color: TextKitColor(204, 204, 204).withDark(TextKitColor(85, 85, 90)),
+      selectedOutlineColor: TextKitColor(60, 132, 244))
+    return theme
+  }()
+
+  private static let playgroundStyles = TextKitTheme(styles: [
     "root": TextKitStyle(
       fontSize: .points(16), fontWeight: 400,
       foregroundColor: TextKitColor(0, 0, 0).withDark(TextKitColor(235, 235, 240)),

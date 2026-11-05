@@ -500,5 +500,82 @@
       }
       _ = window
     }
+
+    @Test func drawsHorizontalRulesFromTheTheme() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension, HorizontalRuleExtension]))
+      let (view, window) = try makeView(editor)
+      window.appearance = NSAppearance(named: .aqua)
+      var rule: NodeKey = ""
+      try editor.update(discrete: true) {
+        let node = try createHorizontalRuleNode()
+        rule = node.getKey()
+        try getRoot().clear().append(
+          createParagraphNode().append(createTextNode("a")), node,
+          createParagraphNode().append(createTextNode("b")))
+      }
+      func render() throws -> (CGFloat, CGFloat) -> [Int] {
+        let layoutManager = try #require(view.textLayoutManager)
+        layoutManager.ensureLayout(for: layoutManager.documentRange)
+        view.layoutSubtreeIfNeeded()
+        let rep = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+        view.cacheDisplay(in: view.bounds, to: rep)
+        let scale = CGFloat(rep.pixelsHigh) / view.bounds.height
+        return { x, y in
+          let c = rep.colorAt(x: Int(x * scale), y: Int(y * scale))?.usingColorSpace(.sRGB)
+          return [c?.redComponent, c?.greenComponent, c?.blueComponent].map {
+            Int((($0 ?? 0) * 255).rounded())
+          }
+        }
+      }
+      // The offscreen bitmap's color space shifts the colors, the blue most.
+      func near(_ a: [Int], _ b: [Int]) -> Bool { zip(a, b).allSatisfy { abs($0 - $1) <= 28 } }
+      // The playground's `__hr`: a 2-point #ccc line, 2 points of padding
+      // and 16 points of margin above and below it.
+      var color = try render()
+      let rows = stride(from: CGFloat(0), to: 150, by: 0.5)
+      let line = rows.filter { near(color(200, $0), [204, 204, 204]) }
+      try #require(!line.isEmpty, "no rule drawn")
+      #expect(line.max()! - line.min()! <= 2, "\(line)")
+      let lineTop = line.min()!
+      // The line between the paragraphs, 18 points (margin and padding)
+      // below the first and above the second.
+      let layoutManager = try #require(view.textLayoutManager)
+      var fragments: [CGRect] = []
+      layoutManager.enumerateTextLayoutFragments(from: layoutManager.documentRange.location) {
+        fragments.append($0.layoutFragmentFrame)
+        return true
+      }
+      try #require(fragments.count == 3)
+      let origin = view.textContainerOrigin.y
+      #expect(abs(fragments[1].height - 38) <= 1, "\(fragments)")
+      #expect(abs(lineTop - (origin + fragments[1].minY + 18)) <= 1, "\(lineTop) \(fragments)")
+      #expect(!rows.contains { near(color(200, $0), [60, 132, 244]) })
+
+      // Selected, it is outlined in blue outside its padded box.
+      try editor.update(discrete: true) {
+        let selection = createNodeSelection()
+        selection.add(rule)
+        try setSelection(selection)
+      }
+      color = try render()
+      let outline = rows.filter { near(color(200, $0), [60, 132, 244]) }
+      try #require(!outline.isEmpty, "not outlined")
+      #expect(abs(outline.min()! - (lineTop - 4)) <= 1, "\(outline) \(lineTop)")
+      #expect(abs(outline.max()! - (lineTop + 5.5)) <= 1, "\(outline) \(lineTop)")
+      // The selection highlight leaves it alone (`user-select: none`).
+      let ruleStart = try #require(
+        layoutManager.location(layoutManager.documentRange.location, offsetBy: 2))
+      let ruleRange = try #require(
+        NSTextRange(location: ruleStart, end: layoutManager.location(ruleStart, offsetBy: 1)))
+      var highlighted: [CGRect] = []
+      layoutManager.enumerateTextSegments(in: ruleRange, type: .selection, options: []) {
+        _, segment, _, _ in
+        highlighted.append(segment)
+        return true
+      }
+      #expect(highlighted.isEmpty, "\(highlighted)")
+      _ = window
+    }
   }
 #endif

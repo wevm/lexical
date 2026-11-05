@@ -340,5 +340,85 @@
       }
       _ = window
     }
+
+    @Test func drawsHorizontalRulesFromTheTheme() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension, HorizontalRuleExtension]))
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+      window.overrideUserInterfaceStyle = .light
+      let view = LexicalUITextView(editor: editor, frame: window.bounds)
+      window.addSubview(view)
+      window.makeKeyAndVisible()
+      var rule: NodeKey = ""
+      try editor.update(discrete: true) {
+        let node = try createHorizontalRuleNode()
+        rule = node.getKey()
+        try getRoot().clear().append(
+          createParagraphNode().append(createTextNode("a")), node,
+          createParagraphNode().append(createTextNode("b")))
+      }
+      func render() -> (CGFloat, CGFloat) -> [Int] {
+        view.layoutIfNeeded()
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 2
+        // Each view draws its layer's contents before the layer tree is
+        // rendered over white.
+        func display(_ layer: CALayer) {
+          layer.displayIfNeeded()
+          layer.sublayers?.forEach(display)
+        }
+        display(view.layer)
+        let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { context in
+          UIColor.white.setFill()
+          context.fill(view.bounds)
+          view.layer.render(in: context.cgContext)
+        }
+        let width = Int(view.bounds.width * 2)
+        let height = Int(view.bounds.height * 2)
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let context = CGContext(
+          data: &pixels, width: width, height: height, bitsPerComponent: 8,
+          bytesPerRow: width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        context.draw(image.cgImage!, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return { x, y in
+          let offset = (Int(y * 2) * width + Int(x * 2)) * 4
+          return [Int(pixels[offset]), Int(pixels[offset + 1]), Int(pixels[offset + 2])]
+        }
+      }
+      func near(_ a: [Int], _ b: [Int]) -> Bool { zip(a, b).allSatisfy { abs($0 - $1) <= 28 } }
+      // The playground's `__hr`: a 2-point #ccc line 18 points (margin and
+      // padding) below the first paragraph's 27.2-point line, in a
+      // 38-point line of its own.
+      var color = render()
+      let lineTop = view.textContainerInset.top + 27.2 + 18
+      #expect(near(color(200, lineTop + 1), [204, 204, 204]), "\(color(200, lineTop + 1))")
+      #expect(near(color(200, lineTop - 1), [255, 255, 255]), "\(color(200, lineTop - 1))")
+      #expect(near(color(200, lineTop + 3), [255, 255, 255]), "\(color(200, lineTop + 3))")
+      let layoutManager = try #require(view.textLayoutManager)
+      var fragments: [CGRect] = []
+      layoutManager.enumerateTextLayoutFragments(from: layoutManager.documentRange.location) {
+        fragments.append($0.layoutFragmentFrame)
+        return true
+      }
+      try #require(fragments.count == 3)
+      #expect(abs(fragments[1].height - 38) <= 1, "\(fragments)")
+
+      // Selected, it is outlined in blue outside its padded box, and the
+      // selection highlight leaves it alone (`user-select: none`).
+      try editor.update(discrete: true) {
+        let selection = createNodeSelection()
+        selection.add(rule)
+        try setSelection(selection)
+      }
+      color = render()
+      #expect(near(color(200, lineTop - 3), [60, 132, 244]), "\(color(200, lineTop - 3))")
+      #expect(near(color(200, lineTop + 5), [60, 132, 244]), "\(color(200, lineTop + 5))")
+      let start = try #require(view.position(from: view.beginningOfDocument, offset: 2))
+      let end = try #require(view.position(from: start, offset: 1))
+      let rects = view.selectionRects(for: try #require(view.textRange(from: start, to: end)))
+      #expect(rects.isEmpty, "\(rects.map(\.rect))")
+      _ = window
+    }
   }
 #endif

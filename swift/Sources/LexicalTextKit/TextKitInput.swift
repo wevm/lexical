@@ -117,7 +117,11 @@ public final class TextKitInputController {
     var update = try editorState.read {
       var update = try theme.update(
         edits, document, editor: editor, dirtyElements: dirtyElements)
-      update.selectedRange = try Self.range(of: getSelection(), in: document)
+      let selection = try getSelection()
+      update.selectedRange = try Self.range(of: selection, in: document)
+      if let selection = selection as? NodeSelection {
+        update.selectedNodes = Set(try selection.getNodes().map { $0.getKey() })
+      }
       return update
     }
     update.tags = tags

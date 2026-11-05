@@ -72,9 +72,10 @@ private func toggleNodeSelection(_ node: LexicalNode, _ shiftKey: Bool = false) 
 ///
 /// JS also adds the theme's `hrSelected` class (default `selected`) to the
 /// `<hr>` of a selected rule, through a mutation listener and the
-/// `NodeSelectionExtension` signals. The views draw the selected state, so
-/// that part is not ported; the click arrives as `CLICK_COMMAND` with the
-/// rule's key as its `targetKey`.
+/// `NodeSelectionExtension` signals. The views draw the rule and its
+/// selected state from their theme's `horizontalRule`, so that part is not
+/// ported; the click arrives as `CLICK_COMMAND` with the rule's key as its
+/// `targetKey`.
 public let HorizontalRuleExtension = defineExtension(
   name: "@lexical/extension/HorizontalRule",
   dependencies: [EditorStateExtension, NodeSelectionExtension],

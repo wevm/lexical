@@ -84,11 +84,23 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground.uitests
     dependencies:
       - target: LexicalPlayground
+  LexicalPlaygroundTests:
+    type: bundle.unit-test
+    supportedDestinations: [iOS, macOS]
+    sources: [Tests]
+    dependencies:
+      - target: LexicalPlayground
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground.tests
+        # XcodeGen writes the iOS host path for a multiplatform app.
+        TEST_HOST[sdk=macosx*]: $(BUILT_PRODUCTS_DIR)/LexicalPlayground.app/Contents/MacOS/LexicalPlayground
 schemes:
   LexicalPlayground:
     build:
       targets:
         LexicalPlayground: all
         LexicalPlaygroundUITests: [test]
+        LexicalPlaygroundTests: [test]
     test:
-      targets: [LexicalPlaygroundUITests]
+      targets: [LexicalPlaygroundTests, LexicalPlaygroundUITests]

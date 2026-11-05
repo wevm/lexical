@@ -32,6 +32,19 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   swipe right on iOS. Only the English wordlist
   (`Sources/autocomplete-english.txt`) is bundled; the Korean one and the
   suggestions during an IME composition are not ported yet.
+- **Images** (`ImagesExtension`, `ImageNode`): Insert → Image, or "/"
+  and Image, opens the insert dialog: the sample image, a URL, or a file,
+  with its alt text. Dropped or pasted image files are inserted too
+  (`DragDropPasteExtension`). An image is drawn at its size, scaled down to
+  the line's width and to its maximum width (500 by default), and a click
+  or tap selects it as a whole with the blue outline and the resize
+  handles (`ImageResizer`): an edge handle changes the width or height, a
+  corner keeps the aspect, and the image takes its new size when the
+  handle is let go. Its JSON and HTML are the web's. A caption shows as its
+  text; editing it in its nested editor and dragging an image to move it
+  are not ported yet, and HTML imported from the Import menu does not
+  restore a `<figure>`'s caption, which upstream imports through the
+  `DOMImportExtension` rules.
 - **Editing:** Markdown shortcuts (`# `, `- `, `1. `, `[ ] `, `> `,
   ` ``` `, `**bold**`, …), autolinked URLs and email addresses, and check
   boxes that toggle on a click or tap. Links open on a click while the
@@ -75,7 +88,9 @@ open LexicalPlayground.xcodeproj
 
 `UITests/` has smoke tests for the iOS Simulator: the tree view shows the
 welcome document, the Bold button formats the selection, JSON export
-shows the document, and the "/" menu inserts blocks.
+shows the document, the typeahead menus insert blocks, mentions and emoji,
+autocomplete, the edit menu's formats, and inserting an image. `Tests/`
+has unit tests comparing `ImageNode`'s JSON and HTML with the web's.
 
 ```sh
 xcodebuild test -project LexicalPlayground.xcodeproj -scheme LexicalPlayground \

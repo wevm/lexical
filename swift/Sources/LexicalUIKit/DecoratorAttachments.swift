@@ -187,7 +187,13 @@
     /// line's descent, so the line is no taller than its box, as an `<hr>`.
     func bounds(proposedLineFragment: CGRect, font: UIFont?) -> CGRect {
       if isInline {
-        return CGRect(origin: .zero, size: size)
+        // No wider than the line, keeping its aspect, as an image's
+        // `max-width: 100%`.
+        let scale =
+          proposedLineFragment.width > 0 && size.width > proposedLineFragment.width
+          ? proposedLineFragment.width / size.width : 1
+        return CGRect(
+          origin: .zero, size: CGSize(width: size.width * scale, height: size.height * scale))
       }
       return CGRect(
         x: 0, y: isRule ? font?.descender ?? 0 : 0, width: max(proposedLineFragment.width, 1),

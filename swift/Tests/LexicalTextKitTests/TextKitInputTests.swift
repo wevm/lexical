@@ -1,9 +1,11 @@
+import Foundation
 import Lexical
 import LexicalExtension
 import LexicalHistory
 import LexicalList
 import LexicalPlainText
 import LexicalRichText
+import LexicalTesting
 import LexicalTextKit
 import Testing
 
@@ -104,6 +106,36 @@ private func key(
       try c.beforeInput("formatItalic")
       #expect(try json(c).contains(#"{"type":"text","format":2,"text":"Hello"}"#))
     }
+  }
+
+  @Test func attachesAChangedDecoratorAgain() throws {
+    let editor = try createTestEditor()
+    _ = registerRichText(editor)
+    let c = TextKitInputController(editor: editor)
+    // The editor decorates only while it has a root element, which a view
+    // is.
+    let root = NSObject()
+    try editor.setRootElement(root)
+    var update = TextKitUpdate()
+    c.onRender = { update = $0 }
+    var key: NodeKey = ""
+    try editor.update(discrete: true) {
+      let decorator = try createTestDecoratorNode()
+      key = decorator.getKey()
+      try getRoot().append(
+        createParagraphNode().append(createTextNode("a"), decorator),
+        createParagraphNode().append(createTextNode("b")))
+    }
+    #expect(update.decorators.map(\.key) == [key])
+    // Its character is the same, but a view shows what it decorates now.
+    try editor.update(discrete: true) { try getNodeByKey(key)?.markDirty() }
+    #expect(update.edits.isEmpty)
+    #expect(update.decorators.map(\.key) == [key])
+    // A commit that leaves it alone does not.
+    try editor.update(discrete: true) {
+      try (getRoot().getLastChild() as? ElementNode)?.getFirstChild()?.markDirty()
+    }
+    #expect(update.decorators.isEmpty)
   }
 
   @Test func deletesThroughBeforeInput() throws {

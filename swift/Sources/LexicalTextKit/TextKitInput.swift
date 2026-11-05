@@ -94,7 +94,7 @@ public final class TextKitInputController {
       && edits[0].string.utf16.count == reconciler.document.length
     try publish(
       edits, payload.editorState, tags: Set(payload.tags),
-      dirtyElements: isFull ? nil : payload.dirtyElements)
+      dirtyElements: isFull ? nil : payload.dirtyElements, dirtyLeaves: payload.dirtyLeaves)
   }
 
   /// Renders the whole document again, as one edit replacing the view's
@@ -113,14 +113,14 @@ public final class TextKitInputController {
   @discardableResult
   private func publish(
     _ edits: [TextKitEdit], _ editorState: EditorState, tags: Set<String>,
-    dirtyElements: JSMap<NodeKey, Bool>?
+    dirtyElements: JSMap<NodeKey, Bool>?, dirtyLeaves: JSSet<NodeKey>? = nil
   ) throws -> TextKitUpdate {
     let theme = theme
     let editor = editor
     let document = reconciler.document
     var update = try editorState.read {
       var update = try theme.update(
-        edits, document, editor: editor, dirtyElements: dirtyElements)
+        edits, document, editor: editor, dirtyElements: dirtyElements, dirtyLeaves: dirtyLeaves)
       let selection = try getSelection()
       update.selectedRange = try Self.range(of: selection, in: document)
       if let selection = selection as? NodeSelection {

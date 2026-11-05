@@ -74,10 +74,12 @@ public struct TextKitUpdate: Sendable {
 extension TextKitTheme {
   /// Styles `edits` of `document` (call it in a read of the state they
   /// render). `dirtyElements` are the commit's; `nil` styles every
-  /// paragraph and decorator.
+  /// paragraph and decorator. A decorator in `dirtyLeaves` is attached
+  /// again, so its view shows what the node now decorates, as React
+  /// renders a decorator again when its node changes.
   func update(
     _ edits: [TextKitEdit], _ document: TextKitDocument, editor: Editor,
-    dirtyElements: JSMap<NodeKey, Bool>?
+    dirtyElements: JSMap<NodeKey, Bool>?, dirtyLeaves: JSSet<NodeKey>? = nil
   ) throws -> TextKitUpdate {
     var update = TextKitUpdate()
     update.base = textAttributes(format: 0, style: "", ancestors: [])
@@ -243,7 +245,7 @@ extension TextKitTheme {
     for key in keys.sorted() {
       guard let decorator = try getNodeByKey(key) as? DecoratorNode,
         let span = document.span(key),
-        update.isFull
+        update.isFull || dirtyLeaves?.has(key) == true
           || finalRanges.contains(where: { $0.location <= span.location && span.location < $0.end })
       else { continue }
       var rule: TextKitRule?

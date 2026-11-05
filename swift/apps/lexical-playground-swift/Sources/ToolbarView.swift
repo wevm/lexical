@@ -72,6 +72,7 @@ struct ToolbarView: View {
           // port has.
           Menu {
             Button("Horizontal Rule", systemImage: "minus") { model.insertHorizontalRule() }
+            Button("Image", systemImage: "photo") { model.isInsertingImage = true }
           } label: {
             Label("Insert", systemImage: "plus").labelStyle(.titleAndIcon)
           }

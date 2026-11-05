@@ -652,7 +652,15 @@ Reversible choices made porting `@lexical/extension` under Q18.
   descent at that centered baseline, as a browser draws it (at the end
   of the text too, which has no layout fragment of its own), while the
   selection keeps the whole line box. Quote bars are drawn behind the
-  text from the block's line fragments. `textTransform` is not drawn yet,
+  text from the block's line fragments, and so is a block style's
+  `backgroundColor` box (`TextKitBlockBox`; the default theme's code
+  block, after `.PlaygroundEditorTheme__code`): its background, padding
+  (added to the paragraph spacing and head indent) and an optional
+  `gutter` with its own background, right border
+  and one line number per line, as the web theme's `::before` draws
+  `data-gutter`. A theme `tabSize` sets the paragraph's
+  `defaultTabInterval` to that many spaces of its font, as CSS
+  `tab-size`. `textTransform` is not drawn yet,
   so the default theme's `h2` and `h3` show their case as typed.
 - **Decorators** (Q12). A decorator's U+FFFC carries an `NSTextAttachment`
   whose view provider hosts the SwiftUI view its `decorate(_:)` returned

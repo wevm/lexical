@@ -110,11 +110,13 @@
   }
 
   extension TextKitParagraphAttributes {
-    /// The paragraph style of a block whose text is `fontSize` points. A
-    /// CSS `line-height` number is that many times the font size: the line
-    /// is at least that tall, and its text is centered in it by
-    /// `CenteredLineLayoutFragment`.
-    func nsParagraphStyle(fontSize: CGFloat) -> NSParagraphStyle {
+    /// The paragraph style of a block whose text is in `font`. A CSS
+    /// `line-height` number is that many times the font size: the line is
+    /// at least that tall, and its text is centered in it by
+    /// `CenteredLineLayoutFragment`. A `tab-size` is that many of the
+    /// font's spaces.
+    func nsParagraphStyle(font: NSFont) -> NSParagraphStyle {
+      let fontSize = font.pointSize
       let style = NSMutableParagraphStyle()
       let isRTL = writingDirection == .rightToLeft
       style.alignment =
@@ -138,6 +140,11 @@
       style.paragraphSpacingBefore = spacingBefore
       style.paragraphSpacing = spacingAfter
       if let lineHeightMultiple { style.minimumLineHeight = lineHeightMultiple * fontSize }
+      if let tabSize {
+        let space = (" " as NSString).size(withAttributes: [.font: font]).width
+        style.tabStops = []
+        style.defaultTabInterval = tabSize * space
+      }
       return style
     }
   }

@@ -1,6 +1,7 @@
 #if canImport(UIKit)
   import Lexical
   import LexicalA11y
+  import LexicalCodeCore
   import LexicalExtension
   import LexicalHistory
   import LexicalRichText
@@ -418,6 +419,71 @@
       let end = try #require(view.position(from: start, offset: 1))
       let rects = view.selectionRects(for: try #require(view.textRange(from: start, to: end)))
       #expect(rects.isEmpty, "\(rects.map(\.rect))")
+      _ = window
+    }
+
+    @Test func drawsACodeBlocksBoxAndGutter() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension, CodeExtension]))
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+      window.overrideUserInterfaceStyle = .light
+      let view = LexicalUITextView(editor: editor, frame: window.bounds)
+      window.addSubview(view)
+      window.makeKeyAndVisible()
+      try editor.update(discrete: true) {
+        // TextKit leaves out the spacing before the first paragraph.
+        try getRoot().clear().append(
+          createParagraphNode().append(createTextNode("x")),
+          createCodeNode().append(createTextNode("a"), createLineBreakNode(), createTextNode("b")))
+      }
+      view.layoutIfNeeded()
+      let format = UIGraphicsImageRendererFormat()
+      format.scale = 2
+      let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { context in
+        UIColor.white.setFill()
+        context.fill(view.bounds)
+        view.layer.render(in: context.cgContext)
+      }
+      let cgImage = try #require(image.cgImage)
+      let bytes = try #require(cgImage.dataProvider?.data.flatMap(CFDataGetBytePtr))
+      func color(_ x: CGFloat, _ y: CGFloat) -> [Int] {
+        let pixel =
+          bytes + Int(y * 2) * cgImage.bytesPerRow + Int(x * 2) * cgImage.bitsPerPixel / 8
+        return [Int(pixel[0]), Int(pixel[1]), Int(pixel[2])]
+      }
+      // RGBA or BGRA: either order.
+      func near(_ a: [Int], _ b: [Int]) -> Bool {
+        let close = { (c: [Int]) in zip(c, b).allSatisfy { abs($0 - $1) <= 6 } }
+        return close(a) || close(a.reversed())
+      }
+      // The playground's `__code`: an 8-point margin, then the box, whose
+      // 8-point padding is above two 1.53 × 13-point lines and below them.
+      let left = view.textContainerInset.left + view.textContainer.lineFragmentPadding
+      let top = view.textContainerInset.top + 27.2 + 8
+      let line = 1.53 * 13
+      let bottom = top + 8 + 2 * line + 8
+      let background = [240, 242, 245]
+      #expect(near(color(left + 200, top + 1), background), "\(color(left + 200, top + 1))")
+      #expect(near(color(left + 200, bottom - 1), background), "\(color(left + 200, bottom - 1))")
+      #expect(!near(color(left + 200, top - 1), background))
+      #expect(!near(color(left + 200, bottom + 1), background))
+      // The 41-point gutter and its 1-point border at the box's start.
+      #expect(near(color(left + 2, top + 2), [238, 238, 238]), "\(color(left + 2, top + 2))")
+      #expect(near(color(left + 41.5, top + 2), [204, 204, 204]), "\(color(left + 41.5, top + 2))")
+      // A number on each line, centered in it like the line's text.
+      var inked: [CGFloat] = []
+      for row in Int(top * 2)..<Int(bottom * 2) {
+        let dark = stride(from: left + 8, to: left + 41 - 4, by: 0.5).contains { x in
+          color(x, CGFloat(row) / 2)[1] < 180
+        }
+        if dark { inked.append(CGFloat(row) / 2) }
+      }
+      for index in 0..<2 {
+        let middle = top + 8 + line * (CGFloat(index) + 0.5)
+        let ink = inked.filter { abs($0 - middle) < line / 2 }
+        try #require(!ink.isEmpty, "line \(index): \(inked)")
+        #expect(abs((ink.min()! + ink.max()!) / 2 - middle) <= 2, "line \(index): \(ink)")
+      }
       _ = window
     }
   }

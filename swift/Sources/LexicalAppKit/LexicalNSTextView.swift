@@ -138,8 +138,7 @@
         let range = NSIntersectionRange(
           NSRange(location: paragraph.range.location, length: paragraph.range.length),
           NSRange(location: 0, length: length))
-        let style = paragraph.attributes.nsParagraphStyle(
-          fontSize: paragraph.text.nsFont.pointSize)
+        let style = paragraph.attributes.nsParagraphStyle(font: paragraph.text.nsFont)
         textStorage.addAttribute(.paragraphStyle, value: style, range: range)
         // The last block, unless it ends before an empty one.
         if paragraph.range.end == length,
@@ -214,6 +213,20 @@
       let padding = textContainer?.lineFragmentPadding ?? 0
       let document = controller.document
       let lineWidth = (textContainer?.size.width ?? bounds.width) - 2 * padding
+      for (key, layout) in controller.blockBoxes {
+        guard let span = document.span(key),
+          let frame = segmentsFrame(
+            layoutManager,
+            NSRange(
+              location: span.location,
+              length: min(max(span.length, 1), document.length - span.location)))
+        else { continue }
+        drawBlockBox(
+          layout, span: span, layoutManager,
+          lines: NSRect(
+            x: origin.x + padding, y: origin.y + frame.minY, width: lineWidth,
+            height: frame.height))
+      }
       for (key, layout) in controller.listMarkers {
         guard let span = document.span(key),
           let line = firstLineFrame(
@@ -244,6 +257,60 @@
             height: frame.height
           ).fill()
         }
+      }
+    }
+
+    /// Fills `layout`'s box behind the block's lines, `lines` (in view
+    /// coordinates, starting where line fragments do), and draws its
+    /// gutter with a number on the first line of each of the block's lines
+    /// (the text after each line break).
+    private func drawBlockBox(
+      _ layout: TextKitBlockBoxLayout, span: TextKitSpan, _ layoutManager: NSTextLayoutManager,
+      lines: NSRect
+    ) {
+      let box = layout.box
+      let isRTL = layout.isRightToLeft
+      let frame = NSRect(
+        x: isRTL ? lines.minX : lines.minX + box.offset, y: lines.minY - box.paddingTop,
+        width: lines.width - box.offset, height: lines.height + box.paddingTop + box.paddingBottom)
+      box.color.nsColor.setFill()
+      frame.fill()
+      guard let gutter = box.gutter else { return }
+      let gutterFrame = NSRect(
+        x: isRTL ? frame.maxX - gutter.width : frame.minX, y: frame.minY, width: gutter.width,
+        height: frame.height)
+      gutter.backgroundColor.nsColor.setFill()
+      gutterFrame.fill()
+      gutter.borderColor.nsColor.setFill()
+      NSRect(
+        x: isRTL ? gutterFrame.minX - gutter.borderWidth : gutterFrame.maxX, y: frame.minY,
+        width: gutter.borderWidth, height: frame.height
+      ).fill()
+      let font = layout.text.nsFont
+      let attributes: [NSAttributedString.Key: Any] = [
+        .font: font, .foregroundColor: gutter.foregroundColor.nsColor,
+      ]
+      let text = textStorage?.string as NSString? ?? ""
+      var start = span.location
+      var number = 1
+      while start <= span.end {
+        let end = text.range(
+          of: "\u{2028}", range: NSRange(location: start, length: span.end - start)
+        ).location
+        if let line = firstLineFrame(
+          layoutManager,
+          NSRange(location: start, length: min(1, max(0, text.length - start))))
+        {
+          let string = NSAttributedString(string: "\(number)", attributes: attributes)
+          let width = string.size().width
+          let y = textContainerOrigin.y + line.midY - (font.ascender - font.descender) / 2
+          let x =
+            isRTL ? gutterFrame.minX + gutter.padding : gutterFrame.maxX - gutter.padding - width
+          string.draw(at: NSPoint(x: x, y: y))
+        }
+        guard end != NSNotFound else { break }
+        start = end + 1
+        number += 1
       }
     }
 

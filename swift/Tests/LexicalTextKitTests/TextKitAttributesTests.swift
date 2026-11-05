@@ -199,11 +199,26 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     #expect(text(in: [code]) == codeText)
     var codeParagraph = TextKitParagraphAttributes()
     codeParagraph.headIndent = 52
-    codeParagraph.spacingBefore = 8
-    codeParagraph.spacingAfter = 8
+    // The 8-point margins, outside the box, and its 8-point padding.
+    codeParagraph.spacingBefore = 8 + 8
+    codeParagraph.spacingAfter = 8 + 8
     codeParagraph.lineHeightMultiple = 1.53
     codeParagraph.backgroundColor = codeBackground
+    codeParagraph.tabSize = 2
+    codeParagraph.blockBox = TextKitBlockBox(
+      offset: 0, paddingTop: 8, paddingBottom: 8, color: codeBackground,
+      gutter: TextKitGutter(
+        width: 25 + 2 * 8, padding: 8,
+        backgroundColor: TextKitColor(238, 238, 238).withDark(TextKitColor(52, 54, 60)),
+        borderWidth: 1, borderColor: TextKitColor(204, 204, 204).withDark(TextKitColor(72, 74, 80)),
+        foregroundColor: TextKitColor(119, 119, 119).withDark(TextKitColor(150, 152, 158))))
     #expect(theme.paragraphAttributes(blocks: [code]) == codeParagraph)
+    // In a quote the box starts at the block, inside the quote's indent.
+    let quoted = theme.paragraphAttributes(blocks: [TextKitElement(type: "quote"), code])
+    #expect(quoted.blockBox?.offset == 40)
+    #expect(quoted.headIndent == 40 + 52)
+    #expect(quoted.spacingBefore == 16)
+    #expect(quoted.spacingAfter == 10 + 8)
 
     // Inline elements color the text and are skipped for the paragraph.
     let link = TextKitElement(type: "link", isInline: true)

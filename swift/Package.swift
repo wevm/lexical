@@ -204,16 +204,16 @@ let package = Package(
       name: "LexicalAppKitTests",
       dependencies: [
         "LexicalA11y",
-        "Lexical", "LexicalAppKit", "LexicalExtension", "LexicalHistory", "LexicalRichText",
-        "LexicalSwiftUI", "LexicalTextKit",
+        "Lexical", "LexicalAppKit", "LexicalCodeCore", "LexicalExtension", "LexicalHistory",
+        "LexicalRichText", "LexicalSwiftUI", "LexicalTextKit",
       ]),
     .target(name: "LexicalUIKit", dependencies: ["Lexical", "LexicalA11y", "LexicalTextKit"]),
     .testTarget(
       name: "LexicalUIKitTests",
       dependencies: [
         "LexicalA11y",
-        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalRichText", "LexicalSwiftUI",
-        "LexicalTextKit", "LexicalUIKit",
+        "Lexical", "LexicalCodeCore", "LexicalExtension", "LexicalHistory", "LexicalRichText",
+        "LexicalSwiftUI", "LexicalTextKit", "LexicalUIKit",
       ]),
     .target(
       name: "LexicalSwiftUI",

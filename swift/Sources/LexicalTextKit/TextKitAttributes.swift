@@ -208,6 +208,69 @@ public struct TextKitBlockBar: Hashable, Sendable {
   }
 }
 
+/// A code block's line-number gutter, the playground theme's `__code`
+/// `::before`: `width` points (padding included) at the start of the
+/// block's box, a `borderWidth` border on its end side, and each line's
+/// number right-aligned `padding` points before that, in the block's font.
+public struct TextKitGutter: Hashable, Sendable {
+  public var width: Double
+  public var padding: Double
+  public var backgroundColor: TextKitColor
+  public var borderWidth: Double
+  public var borderColor: TextKitColor
+  public var foregroundColor: TextKitColor
+
+  public init(
+    width: Double, padding: Double, backgroundColor: TextKitColor, borderWidth: Double,
+    borderColor: TextKitColor, foregroundColor: TextKitColor
+  ) {
+    self.width = width
+    self.padding = padding
+    self.backgroundColor = backgroundColor
+    self.borderWidth = borderWidth
+    self.borderColor = borderColor
+    self.foregroundColor = foregroundColor
+  }
+}
+
+/// A block's box, which a block's `backgroundColor` fills: from `offset`
+/// points after the inline start to the line's end, and from `paddingTop`
+/// points above its first line to `paddingBottom` below its last, as CSS
+/// paints a block's background over its padding box.
+public struct TextKitBlockBox: Hashable, Sendable {
+  public var offset: Double
+  public var paddingTop: Double
+  public var paddingBottom: Double
+  public var color: TextKitColor
+  /// Line numbers at the box's start, for a code block.
+  public var gutter: TextKitGutter?
+
+  public init(
+    offset: Double, paddingTop: Double, paddingBottom: Double, color: TextKitColor,
+    gutter: TextKitGutter? = nil
+  ) {
+    self.offset = offset
+    self.paddingTop = paddingTop
+    self.paddingBottom = paddingBottom
+    self.color = color
+    self.gutter = gutter
+  }
+}
+
+/// A block's box and the look of its text, which its gutter's numbers take.
+public struct TextKitBlockBoxLayout: Hashable, Sendable {
+  public var box: TextKitBlockBox
+  public var text: TextKitTextAttributes
+  /// The inline start is the right edge.
+  public var isRightToLeft: Bool
+
+  public init(box: TextKitBlockBox, text: TextKitTextAttributes, isRightToLeft: Bool) {
+    self.box = box
+    self.text = text
+    self.isRightToLeft = isRightToLeft
+  }
+}
+
 /// What one theme key looks like. Every property is optional: `nil` leaves
 /// what the key's element inherits. The character properties apply to the
 /// text inside; the paragraph ones only to blocks.
@@ -237,6 +300,16 @@ public struct TextKitStyle: Hashable, Sendable {
   /// A CSS `line-height` number, a multiple of the block's font size.
   public var lineHeightMultiple: Double?
   public var blockBar: TextKitBlockBar?
+  /// A block's padding above its first line and below its last: inside
+  /// the box its `backgroundColor` fills, where `spacingBefore` and
+  /// `spacingAfter` are outside it.
+  public var paddingTop: Double?
+  public var paddingBottom: Double?
+  /// A block's line-number gutter, at the start of its box.
+  public var gutter: TextKitGutter?
+  /// CSS `tab-size`: a tab advances to the next multiple of this many
+  /// spaces of the block's font.
+  public var tabSize: Double?
 
   public init(
     fontFamily: [String]? = nil, fontSize: TextKitFontSize? = nil, fontWeight: Int? = nil,
@@ -321,7 +394,21 @@ public struct TextKitStyle: Hashable, Sendable {
       spacingBefore: other.spacingBefore ?? spacingBefore,
       spacingAfter: other.spacingAfter ?? spacingAfter,
       lineHeightMultiple: other.lineHeightMultiple ?? lineHeightMultiple,
-      blockBar: other.blockBar ?? blockBar)
+      blockBar: other.blockBar ?? blockBar
+    )
+    .with {
+      $0.paddingTop = other.paddingTop ?? paddingTop
+      $0.paddingBottom = other.paddingBottom ?? paddingBottom
+      $0.gutter = other.gutter ?? gutter
+      $0.tabSize = other.tabSize ?? tabSize
+    }
+  }
+
+  /// This style changed by `body`.
+  public func with(_ body: (inout TextKitStyle) -> Void) -> TextKitStyle {
+    var style = self
+    body(&style)
+    return style
   }
 }
 
@@ -565,6 +652,12 @@ public struct TextKitParagraphAttributes: Hashable, Sendable {
   /// own line height.
   public var lineHeightMultiple: Double?
   public var backgroundColor: TextKitColor?
+  /// The box the innermost block with a `backgroundColor` fills, its
+  /// offset from the inline start.
+  public var blockBox: TextKitBlockBox?
+  /// CSS `tab-size`, in spaces of the block's font; `nil` is TextKit's
+  /// default tab stops.
+  public var tabSize: Double?
   /// Quote bars, outermost first, offsets from the inline start.
   public var blockBars: [TextKitBlockBar] = []
   /// A list item's marker, drawn before `headIndent`.
@@ -653,10 +746,24 @@ public struct TextKitTheme: Hashable, Sendable {
       blockBar: TextKitBlockBar(
         offset: 20, width: 4, color: TextKitColor(206, 208, 212).withDark(TextKitColor(84, 86, 92)))
     ),
+    // `__code`: an 8-point margin above and below, 8 points of padding
+    // inside the background, and the `::before` gutter (25 points wide,
+    // 8 of padding on each side and a 1-point border), 10 points before
+    // the text.
     "code": TextKitStyle(
       fontFamily: ["Menlo", "Consolas", "Monaco", "monospace"], fontSize: .points(13),
       backgroundColor: codeBackground, headIndent: 52, spacingBefore: 8,
-      spacingAfter: 8, lineHeightMultiple: 1.53),
+      spacingAfter: 8, lineHeightMultiple: 1.53
+    ).with {
+      $0.paddingTop = 8
+      $0.paddingBottom = 8
+      $0.tabSize = 2
+      $0.gutter = TextKitGutter(
+        width: 41, padding: 8,
+        backgroundColor: TextKitColor(238, 238, 238).withDark(TextKitColor(52, 54, 60)),
+        borderWidth: 1, borderColor: TextKitColor(204, 204, 204).withDark(TextKitColor(72, 74, 80)),
+        foregroundColor: TextKitColor(119, 119, 119).withDark(TextKitColor(150, 152, 158)))
+    },
     // `__listItem { margin: 0 32px }`; a check list item's `margin-left:
     // 0.5em; padding-left: 1.5em` comes to the same 32 points at 16.
     "listitem": TextKitStyle(headIndent: 32),
@@ -764,12 +871,22 @@ public struct TextKitTheme: Hashable, Sendable {
               offset: attributes.headIndent + bar.offset, width: bar.width, color: bar.color))
         }
       }
+      // A block with a background has a box, from its own start (before
+      // its indent) and over its padding.
+      if element != nil, let color = layer.compactMap(\.backgroundColor).last {
+        attributes.blockBox = TextKitBlockBox(
+          offset: attributes.headIndent,
+          paddingTop: layer.compactMap(\.paddingTop).last ?? 0,
+          paddingBottom: layer.compactMap(\.paddingBottom).last ?? 0, color: color,
+          gutter: layer.compactMap(\.gutter).last)
+      }
       for style in layer {
         attributes.headIndent += style.headIndent ?? 0
         attributes.spacingBefore = max(attributes.spacingBefore, style.spacingBefore ?? 0)
         attributes.spacingAfter = max(attributes.spacingAfter, style.spacingAfter ?? 0)
         if let v = style.lineHeightMultiple { attributes.lineHeightMultiple = v }
         if let v = style.backgroundColor { attributes.backgroundColor = v }
+        if let v = style.tabSize { attributes.tabSize = v }
       }
       guard let element else { continue }
       attributes.headIndent += Double(element.indent) * indentWidth
@@ -787,6 +904,11 @@ public struct TextKitTheme: Hashable, Sendable {
       case "end": attributes.alignment = .end
       default: break
       }
+    }
+    // The padding is inside the box, after the spacing outside it.
+    if let box = attributes.blockBox {
+      attributes.spacingBefore += box.paddingTop
+      attributes.spacingAfter += box.paddingBottom
     }
     return attributes
   }

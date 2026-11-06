@@ -400,17 +400,39 @@
       window.makeKeyAndVisible()
       _ = view.becomeFirstResponder()
       try loadDemoDocument(editor)
-      /// The selection handles UIKit shows.
-      func shownHandles() -> [UIView] {
-        window.layoutIfNeeded()
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.2))
+      /// The selection handles UIKit shows once they settle, and the most
+      /// it showed meanwhile. UIKit adds and fades them in some run loop
+      /// turns after the selection changes, later on some runtimes than
+      /// others, so this watches for at least a second, until the count has
+      /// held for half a second (or five seconds pass): long enough that
+      /// handles shown late still count, in either direction.
+      func settledHandles() -> (shown: [UIView], most: Int) {
         func visible(_ view: UIView) -> Bool {
           !view.isHidden && view.alpha > 0 && (view.superview.map(visible) ?? true)
         }
         func handles(_ view: UIView) -> [UIView] {
           (view is UITextSelectionHandleView ? [view] : []) + view.subviews.flatMap(handles)
         }
-        return handles(view).filter(visible)
+        func shown() -> [UIView] {
+          window.layoutIfNeeded()
+          return handles(view).filter(visible)
+        }
+        let start = Date()
+        var current = shown()
+        var most = current.count
+        var since = start
+        while Date().timeIntervalSince(start) < 5 {
+          RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+          let next = shown()
+          most = max(most, next.count)
+          if next.count != current.count {
+            current = next
+            since = Date()
+          } else if Date().timeIntervalSince(start) >= 1, Date().timeIntervalSince(since) >= 0.5 {
+            return (next, most)
+          }
+        }
+        return (current, most)
       }
       func select(_ body: @escaping () throws -> Void) throws {
         try editor.update(discrete: true) { try body() }
@@ -424,7 +446,8 @@
         try setSelection(selection)
       }
       #expect(view.selectedRange.length == 1)
-      #expect(shownHandles().isEmpty, "\(shownHandles())")
+      let decorator = settledHandles()
+      #expect(decorator.most == 0, "\(decorator.shown)")
       // Text selected again shows its handles.
       try select {
         let text = try #require(try getRoot().getFirstDescendant() as? TextNode)
@@ -434,7 +457,8 @@
       // scrolled into view; a range selection doesn't scroll (as in JS), so
       // bring its text back on screen, where UIKit shows its handles.
       view.setContentOffset(.zero, animated: false)
-      #expect(shownHandles().count == 2, "\(shownHandles())")
+      let textHandles = settledHandles()
+      #expect(textHandles.shown.count == 2, "\(textHandles.shown)")
       _ = window
     }
 

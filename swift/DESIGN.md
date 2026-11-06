@@ -903,6 +903,15 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   `lexical-react` is not in the ledger, so the 8 ported tests (5 of
   `$wrapOverflowedNodes` and `$mergePrevious`, 3 of the plugin's count)
   name their upstream titles in comments.
+- **The table of contents is `registerTableOfContents` in
+  `LexicalRichText`.** It ports the logic of `@lexical/react`'s
+  `TableOfContentsPlugin`, which keeps the headings in order from heading
+  and text mutations and from the update listener's dirty elements, as a
+  registration that reports `[TableOfContentsEntry]` to a closure, the way
+  `registerCharacterLimit` does. Mutation listeners fire from the
+  reconciler, so it needs a mounted root, as in JS. Upstream has no tests
+  of it, so its own tests cover the order of added, moved, edited and
+  removed headings. The panel is the playground's.
 - **The views lay out an element inline when its DOM is inline-level.**
   `OverflowNode` is a block in the model, in JS too, and the browser shows
   it inline because its `createDOM` makes a `<span>`. `TextKitDocument`

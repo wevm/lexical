@@ -18,6 +18,10 @@ struct SettingsView: View {
         Toggle("Char Limit (UTF-8)", isOn: $model.isCharLimitUtf8)
         Toggle("Max Length", isOn: $model.isMaxLength)
         Toggle("Use Brackets for Highlighting", isOn: $model.isSpecialText)
+        Toggle(
+          "Table Of Contents",
+          isOn: Binding(
+            get: { model.tableOfContents.isShown }, set: { model.tableOfContents.isShown = $0 }))
         Section {
           Button("Load the Welcome Document") {
             model.loadWelcome()

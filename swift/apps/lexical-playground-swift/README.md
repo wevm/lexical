@@ -28,16 +28,29 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   The embed draws in a web view, aligns with the toolbar and selects with a
   click beside it, as `BlockWithAlignableContents` does. Their JSON and
   HTML are the web's, byte for byte.
+- **Polls** (`PollNode`, `PollExtension`): Insert → Poll, or "/" and Poll,
+  asks for the question and inserts a poll with two options. Each option
+  is edited in place, a vote toggles with the checkbox (as one of the web's
+  animal names, picked at launch), the bar behind it shows its share, and
+  options can be added and, from three, removed. Its JSON and HTML are the
+  web's.
+- **Sticky notes** (`StickyNode`): Insert → Sticky Note floats a yellow
+  note over the editor's top left corner, with its own plain-text editor.
+  Drag its paper to move it; its buttons toggle pink and yellow and delete
+  it. It scrolls with the text, as the web's does with the page. The
+  handwriting face is the system's Noteworthy, for the web's Reenie Beanie
+  web font. Its JSON is the web's.
 - **Typeahead menus:** "/" opens the component picker
   (`ComponentPickerPlugin`): paragraph, headings 1–3, the lists, quote,
-  code, divider and the alignments, filtered by what follows the slash,
-  chosen with the arrows and Enter or Tab, a click or a tap. The table,
-  embed, equation, poll and other options insert nodes the port does not
-  have yet. "@" and a name (`MentionsPlugin`) list up to five people from
-  the web's dummy lookup, which answers after 500 ms, and insert a
-  `MentionNode`. ":" and a keyword (`EmojiPickerPlugin`) list up to ten
-  emoji; `Sources/emoji-list.json` is upstream's `utils/emoji-list.ts`
-  (the gemoji list) with only the emoji, aliases and tags.
+  code, divider, page break, poll, embeds, dates, image and the
+  alignments, filtered by what follows the slash, chosen with the arrows and
+  Enter or Tab, a click or a tap. The table, equation and other options
+  insert nodes the port does not have yet. "@" and a name
+  (`MentionsPlugin`) list up to five people from the web's dummy lookup,
+  which answers after 500 ms, and insert a `MentionNode`. ":" and a
+  keyword (`EmojiPickerPlugin`) list up to ten emoji;
+  `Sources/emoji-list.json` is upstream's `utils/emoji-list.ts` (the gemoji
+  list) with only the emoji, aliases and tags.
 - **Floating format toolbar** (`FloatingTextFormatToolbarPlugin`): while
   text is selected, bold, italic, underline, strikethrough, subscript,
   superscript, the three cases, code and link. On macOS it floats above the
@@ -123,8 +136,9 @@ shows the document, the typeahead menus insert blocks, mentions and emoji,
 autocomplete, the edit menu's formats, and inserting and captioning an
 image. `MacUITests/` has the macOS ones: the toolbar's Insert Link puts
 the caret in the link editor's URL field. `Tests/` has unit tests
-comparing `ImageNode`'s JSON and HTML with the web's, and its caption's
-import and shared history.
+comparing `ImageNode`'s, the embeds', `PollNode`'s and `StickyNode`'s
+JSON and HTML with the web's, the image caption's import and shared
+history, and a poll's option edits.
 
 ```sh
 xcodebuild test -project LexicalPlayground.xcodeproj -scheme LexicalPlayground \

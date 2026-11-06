@@ -33,6 +33,8 @@ let package = Package(
     .library(name: "LexicalOverflow", targets: ["LexicalOverflow"]),
     .library(name: "LexicalText", targets: ["LexicalText"]),
     .library(name: "LexicalMenu", targets: ["LexicalMenu"]),
+    .library(name: "LexicalDecoratorBlockNode", targets: ["LexicalDecoratorBlockNode"]),
+    .library(name: "LexicalAutoEmbed", targets: ["LexicalAutoEmbed"]),
     .library(name: "LexicalHashtag", targets: ["LexicalHashtag"]),
     .library(name: "LexicalMark", targets: ["LexicalMark"]),
   ],
@@ -172,6 +174,27 @@ let package = Package(
     .testTarget(
       name: "LexicalMenuTests",
       dependencies: ["Lexical", "LexicalMenu", "LexicalRichText", "LexicalTesting"]),
+    // @lexical/react's DecoratorBlockNode, the base of block embeds, and
+    // the commands of BlockWithAlignableContents.
+    .target(
+      name: "LexicalDecoratorBlockNode",
+      dependencies: ["Lexical", "LexicalExtension", "LexicalUtils"]),
+    .testTarget(
+      name: "LexicalDecoratorBlockNodeTests",
+      dependencies: [
+        "Lexical", "LexicalDecoratorBlockNode", "LexicalExtension", "LexicalRichText",
+      ]),
+    // The platform-neutral half of @lexical/react's LexicalAutoEmbedPlugin.
+    .target(
+      name: "LexicalAutoEmbed",
+      dependencies: ["Lexical", "LexicalLink", "LexicalMenu", "LexicalUtils"]
+    ),
+    .testTarget(
+      name: "LexicalAutoEmbedTests",
+      dependencies: [
+        "Lexical", "LexicalAutoEmbed", "LexicalExtension", "LexicalLink", "LexicalMenu",
+        "LexicalRichText", "LexicalTesting", "LexicalUtils",
+      ]),
     // @lexical/hashtag: hashtag nodes, made from text by LexicalText.
     .target(name: "LexicalHashtag", dependencies: ["Lexical", "LexicalText"]),
     .testTarget(

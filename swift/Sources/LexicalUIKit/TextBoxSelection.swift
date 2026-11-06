@@ -78,11 +78,9 @@
         x: frame.minX + line.typographicBounds.minX, y: frame.minY + line.typographicBounds.minY)
       let start = line.locationForCharacter(at: range.location).x
       let stop = end > range.location ? line.locationForCharacter(at: end).x : start + 4
-      // Where `CenteredLineLayoutFragment` draws the baseline.
-      let offset = max(
-        0,
-        line.glyphOrigin.y
-          - (line.typographicBounds.height + extents.ascent - extents.descent) / 2)
+      // Where `CenteredLineLayoutFragment` draws the baseline: centered in
+      // the line, or on a tall inline decorator's baseline.
+      let offset = line.textOffset(ascent: extents.ascent, descent: extents.descent)
       let baseline = origin.y + line.glyphOrigin.y - offset
       return CGRect(
         x: origin.x + min(start, stop), y: baseline - extents.ascent, width: abs(stop - start),

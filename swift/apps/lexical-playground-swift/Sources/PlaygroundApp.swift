@@ -130,6 +130,7 @@ struct PlaygroundView: View {
         .padding()
         .presentationDetents([.height(200)])
     }
+    .sheet(isPresented: $model.isInsertingPoll) { InsertPollDialog(editor: model.editor) }
     .sheet(
       isPresented: Binding(
         get: { model.embedConfig != nil }, set: { if !$0 { model.embedConfig = nil } })

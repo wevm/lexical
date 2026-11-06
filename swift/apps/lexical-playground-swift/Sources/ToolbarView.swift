@@ -77,6 +77,8 @@ struct ToolbarView: View {
               Button("Horizontal Rule", systemImage: "minus") { model.insertHorizontalRule() }
               Button("Page Break", systemImage: "scissors") { model.insertPageBreak() }
               Button("Image", systemImage: "photo") { model.isInsertingImage = true }
+              Button("Poll", systemImage: "chart.bar.xaxis") { model.isInsertingPoll = true }
+              Button("Sticky Note", systemImage: "note.text") { model.insertStickyNote() }
               Button("Date", systemImage: "calendar") { model.insertDate() }
               ForEach(EmbedConfigs, id: \.type) { config in
                 Button(config.contentName, systemImage: config.symbol) {

@@ -458,6 +458,59 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertFalse(tree.contains("/youtube"), tree)
   }
 
+  /// `PollExtension`: the "/" menu's Poll asks for the question and
+  /// inserts a poll with two options; a vote counts, and a third option
+  /// can be added.
+  @MainActor
+  func testInsertsAPollAndVotesFromTheComponentPicker() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/poll")
+    let option = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    XCTAssertTrue(option.label.contains("Poll"), option.label)
+    option.tap()
+    let question = app.textFields["poll-question-input"]
+    XCTAssertTrue(question.waitForExistence(timeout: 5))
+    let confirm = app.buttons["poll-confirm"]
+    XCTAssertFalse(confirm.isEnabled)
+    question.tap()
+    question.typeText("Lunch?")
+    confirm.tap()
+    waitForTree(") poll")
+    XCTAssertFalse(tree.contains("/poll"), tree)
+    let vote = app.buttons["poll-option-0-vote"]
+    XCTAssertTrue(vote.waitForExistence(timeout: 5), app.debugDescription)
+    XCTAssertFalse(app.buttons["poll-option-1-remove"].isEnabled)
+    vote.tap()
+    XCTAssertTrue(app.staticTexts["1 vote"].waitForExistence(timeout: 5))
+    app.buttons["poll-add-option"].tap()
+    XCTAssertTrue(app.buttons["poll-option-2-vote"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.buttons["poll-option-2-remove"].isEnabled)
+  }
+
+  /// The Insert menu's Sticky Note floats a yellow note over the editor;
+  /// its buttons toggle its color and delete it.
+  @MainActor
+  func testInsertsAStickyNoteFromTheInsertMenu() {
+    launch()
+    _ = clearedEditor()
+    toolbarButton("Insert specialized editor node").tap()
+    app.buttons["Sticky Note"].firstMatch.tap()
+    let note = app.descendants(matching: .any)["sticky-note"]
+    XCTAssertTrue(note.waitForExistence(timeout: 5), app.debugDescription)
+    waitForTree(") sticky")
+    app.buttons["sticky-color"].tap()
+    app.buttons["sticky-delete"].tap()
+    let gone = NSPredicate(format: "exists == false")
+    expectation(for: gone, evaluatedWith: note)
+    waitForExpectations(timeout: 5)
+    expectation(
+      for: NSPredicate(format: "NOT (label CONTAINS ') sticky')"),
+      evaluatedWith: app.staticTexts["tree-view"])
+    waitForExpectations(timeout: 5)
+  }
+
   /// `ImagesExtension`: the "/" menu's Image option opens the insert
   /// dialog, whose sample inserts an image node that draws in the editor.
   @MainActor

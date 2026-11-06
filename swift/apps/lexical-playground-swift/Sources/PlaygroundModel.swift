@@ -224,6 +224,7 @@ final class PlaygroundModel {
   #if os(macOS)
     @ObservationIgnored private let draggableBlockHost = DraggableBlockHost()
   #endif
+  @ObservationIgnored private let stickyNotesHost = StickyNotesHost()
   /// The selection's code block and its language (`codeLanguage` and
   /// `selectedElementKey` of the toolbar's state).
   private(set) var codeLanguage = ""
@@ -279,7 +280,7 @@ final class PlaygroundModel {
             HistoryAnnounceExtension, EditorModeAnnounceExtension,
             configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
             CheckListExtension, CodeExtension, HorizontalRuleExtension, PageBreakExtension,
-            ImagesExtension, DecoratorDragExtension, EmbedsExtension,
+            ImagesExtension, DecoratorDragExtension, EmbedsExtension, PollExtension,
             DragDropPasteExtension, PlaygroundDOMRenderExtension,
             // The web playground's `CodeHighlightExtension` brings both:
             // Tab and Shift+Tab indent and outdent code lines.
@@ -298,7 +299,9 @@ final class PlaygroundModel {
           : [
             PlainTextExtension, HistoryExtension, HistoryAnnounceExtension,
             EditorModeAnnounceExtension,
-          ] + links + always))
+          ] + links + always,
+        // `PlaygroundNodes`' nodes that no extension brings.
+        nodes: { richText ? [.klass(StickyNode.self)] : [] }))
   }
 
   /// Clickable links are active only while the editor is read-only, as the
@@ -369,7 +372,9 @@ final class PlaygroundModel {
 
   private func attach() {
     syncClickableLinks()
-    let picker = registerComponentPicker(editor) { [weak self] in self?.isInsertingImage = true }
+    let picker = registerComponentPicker(
+      editor, showImageDialog: { [weak self] in self?.isInsertingImage = true },
+      showPollDialog: { [weak self] in self?.isInsertingPoll = true })
     let emoji = registerEmojiPicker(editor)
     let mentions = registerMentions(editor)
     menuHosts = [picker.host, emoji.host, mentions.host]
@@ -410,7 +415,10 @@ final class PlaygroundModel {
           }
           self?.linkEditorHost.attach(to: root)
           self?.formatToolbarHost.attach(to: root)
-          if let self { self.codeActionMenuHost.attach(to: root, editor: self.editor) }
+          if let self {
+            self.codeActionMenuHost.attach(to: root, editor: self.editor)
+            self.stickyNotesHost.attach(to: root, editor: self.editor)
+          }
           #if os(macOS)
             if let self {
               self.draggableBlockHost.attach(
@@ -734,6 +742,15 @@ final class PlaygroundModel {
 
   func insertPageBreak() {
     _ = try? editor.dispatchCommand(INSERT_PAGE_BREAK)
+  }
+
+  /// The Insert Poll dialog is open (`showModal('Insert Poll', ...)`).
+  var isInsertingPoll = false
+
+  /// The Insert menu's Sticky Note: a note at the editor's top left corner,
+  /// appended to the root.
+  func insertStickyNote() {
+    try? editor.update { try getRoot().append(createStickyNode(0, 0)) }
   }
 
   /// The embed dialog that is open (`AutoEmbedDialog`), for its config.

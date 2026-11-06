@@ -42,7 +42,8 @@ final class ComponentPickerOption: MenuOption {
 /// `getBaseOptions`, for the nodes the port has, in the web's order.
 @MainActor
 func getBaseOptions(
-  _ editor: Editor, showImageDialog: @escaping () -> Void = {}
+  _ editor: Editor, showImageDialog: @escaping () -> Void = {},
+  showPollDialog: @escaping () -> Void = {}
 ) -> [ComponentPickerOption] {
   func setBlocks(_ create: @escaping () throws -> ElementNode) -> (String) throws -> Void {
     { _ in
@@ -102,6 +103,9 @@ func getBaseOptions(
     ComponentPickerOption(
       "Page Break", symbol: "scissors", keywords: ["page break", "divider"]
     ) { _ in _ = try editor.dispatchCommand(INSERT_PAGE_BREAK) },
+    ComponentPickerOption(
+      "Poll", symbol: "chart.bar.xaxis", keywords: ["poll", "vote"]
+    ) { _ in showPollDialog() },
   ]
   // The embeds, which open their dialog.
   for config in EmbedConfigs {
@@ -159,11 +163,13 @@ func filterComponentPickerOptions(
 /// `ComponentPickerMenuPlugin`.
 @MainActor
 func registerComponentPicker(
-  _ editor: Editor, showImageDialog: @escaping () -> Void = {}
+  _ editor: Editor, showImageDialog: @escaping () -> Void = {},
+  showPollDialog: @escaping () -> Void = {}
 ) -> (
   host: TypeaheadMenuHost<ComponentPickerOption>, unregister: () -> Void
 ) {
-  let baseOptions = getBaseOptions(editor, showImageDialog: showImageDialog)
+  let baseOptions = getBaseOptions(
+    editor, showImageDialog: showImageDialog, showPollDialog: showPollDialog)
   var setOptions: ([ComponentPickerOption]) -> Void = { _ in }
   let (menu, unregister) = registerTypeaheadMenu(
     editor, triggerFn: basicTypeaheadTriggerMatch("/", minLength: 0, allowWhitespace: true),

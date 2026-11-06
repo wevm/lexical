@@ -710,6 +710,9 @@ importers:
       '@lexical/extension':
         specifier: workspace:*
         version: link:../lexical-extension
+      '@lexical/fast-check':
+        specifier: workspace:*
+        version: link:../lexical-fast-check
       '@lexical/hashtag':
         specifier: workspace:*
         version: link:../lexical-hashtag
@@ -746,6 +749,9 @@ importers:
       entities:
         specifier: 2.2.0
         version: 2.2.0
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
       lexical:
         specifier: workspace:*
         version: link:../lexical

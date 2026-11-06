@@ -270,8 +270,8 @@ let package = Package(
       name: "ConformanceTests",
       dependencies: [
         "Lexical", "LexicalCodeCore", "LexicalDevtoolsCore", "LexicalExtension", "LexicalHashtag",
-        "LexicalHTML", "LexicalLink", "LexicalList", "LexicalMarkdown", "LexicalOverflow",
-        "LexicalRichText", "LexicalTesting", "LexicalText",
+        "LexicalHistory", "LexicalHTML", "LexicalLink", "LexicalList", "LexicalMarkdown",
+        "LexicalOverflow", "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalText",
       ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
     .testTarget(

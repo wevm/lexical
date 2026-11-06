@@ -22,6 +22,32 @@ struct CSSPropertyTraits: OptionSet {
   static let verbatim = CSSPropertyTraits(rawValue: 8)
 }
 
+/// CSS input preprocessing, as jsdom's `preprocessValue` does it to every
+/// value and to `cssText`: form feeds and CR LF or CR become LF, and NUL and
+/// a trailing backslash (an escape cut off by the end) become U+FFFD.
+func preprocessCSS(_ css: String) -> String {
+  guard
+    css.contains(where: { $0 == "\u{0C}" || $0 == "\r" || $0 == "\r\n" || $0 == "\0" })
+      || css.hasSuffix("\\")
+  else { return css }
+  var out = String.UnicodeScalarView()
+  var scalars = Array(css.unicodeScalars)
+  if scalars.last == "\\" { scalars[scalars.count - 1] = "\u{FFFD}" }
+  var i = 0
+  while i < scalars.count {
+    switch scalars[i] {
+    case "\u{0C}": out.append("\n")
+    case "\r":
+      out.append("\n")
+      if i + 1 < scalars.count, scalars[i + 1] == "\n" { i += 1 }
+    case "\0": out.append("\u{FFFD}")
+    default: out.append(scalars[i])
+    }
+    i += 1
+  }
+  return String(out)
+}
+
 /// The declarations in inline CSS text, in order, a repeated property
 /// keeping the position of its first declaration and its last value.
 func parseCSSDeclarations(_ css: String) -> [(String, String)] {

@@ -233,6 +233,7 @@ public final class CSSStyleDeclaration {
   /// property; an unknown property or invalid priority is ignored.
   public func setProperty(_ name: String, _ value: String, _ priority: String = "") {
     let name = canonicalName(name)
+    let value = preprocessCSS(value)
     if value.isEmpty {
       removeProperty(name)
       return
@@ -276,7 +277,7 @@ public final class CSSStyleDeclaration {
   /// `style` attribute (which is where `css` came from).
   func parse(_ css: String) {
     entries = []
-    for (name, rawValue) in parseCSSDeclarations(css) {
+    for (name, rawValue) in parseCSSDeclarations(preprocessCSS(css)) {
       let (value, important) = splitImportant(rawValue)
       _ = write(canonicalName(name, fromText: true), value, important ? "important" : "")
     }

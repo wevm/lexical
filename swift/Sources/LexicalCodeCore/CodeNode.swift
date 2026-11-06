@@ -213,7 +213,11 @@ open class CodeNode: ElementNode {
           break
         }
       }
-      let split = try firstSelectionNode.splitText(anchor.offset)[0]
+      // An empty text node splits into nothing; JS then throws a TypeError
+      // reading `getIndexWithinParent` of `undefined`, which aborts the update.
+      guard let split = try firstSelectionNode.splitText(anchor.offset).first else {
+        throw LexicalError("insertNewAfter: the selected text node is empty")
+      }
       let x = anchor.offset == 0 ? 0 : 1
       let index = try split.getIndexWithinParent() + x
       let codeNode = try firstSelectionNode.getParentOrThrow()

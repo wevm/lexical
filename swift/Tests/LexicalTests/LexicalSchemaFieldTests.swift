@@ -305,3 +305,20 @@ private final class TagsNode: ElementNode {
     #expect(tags == [[], ["a"]])
   }
 }
+
+/// Numbers past `Int`'s range parse without trapping (found by the property
+/// vectors, swift/DESIGN.md, integer properties): flags read as JS's bitwise
+/// operators read them, `(2 ** 32 + 1) | 0 === 1` (bold), and indents clamp.
+@Suite struct LexicalSchemaIntegerRangeTests {
+  @Test func outOfRangeNumbersParse() throws {
+    let editor = try editorWith([])
+    let state = try editor.parseEditorState(
+      #"{"root":{"children":[{"children":[{"detail":-1e300,"format":4294967297,"mode":"normal","style":"","text":"a","type":"text","version":1}],"direction":null,"format":"","indent":1e300,"textFormat":1e300,"type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}"#
+    )
+    try state.read {
+      let text = try #require(try getRoot().getFirstDescendant() as? TextNode)
+      #expect(try text.hasFormat("bold"))
+      #expect(try !text.hasFormat("italic"))
+    }
+  }
+}

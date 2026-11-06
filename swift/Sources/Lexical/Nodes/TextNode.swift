@@ -28,12 +28,12 @@ open class TextNode: LexicalNode {
           "detail", aliasedValue(numberValue(), DETAIL_TYPE_TO_DETAIL.mapValues(JSONValue.int)),
           of: TextNode.self,
           get: { try .int($0.getDetail()) },
-          set: { try $0.setDetail(Int($1?.numberValue ?? 0)) }),
+          set: { try $0.setDetail(jsToInt32($1?.numberValue ?? 0)) }),
         SchemaField(
           "format", aliasedValue(numberValue(), TEXT_TYPE_TO_FORMAT.mapValues(JSONValue.int)),
           of: TextNode.self,
           get: { try .int($0.getFormat()) },
-          set: { try $0.setFormat(Int($1?.numberValue ?? 0)) }),
+          set: { try $0.setFormat(jsToInt32($1?.numberValue ?? 0)) }),
         SchemaField(
           "mode", enumValue(["normal", "token", "segmented"]), of: TextNode.self,
           get: { try .string($0.getMode()) },

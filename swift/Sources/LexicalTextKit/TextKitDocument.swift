@@ -89,9 +89,14 @@ public struct TextKitDocument: Sendable {
 
   public init() {}
 
+  /// The document of `root` (call it in a read or update).
+  public init(root: RootNode) throws {
+    try self.init(root: root, suffix: nil)
+  }
+
   /// The document of `root` (call it in a read or update), with `suffix`
   /// after its text node.
-  public init(root: RootNode, suffix: TextKitSuffix? = nil) throws {
+  public init(root: RootNode, suffix: TextKitSuffix?) throws {
     self.suffix = suffix
     var text = ""
     var runs: [TextKitRun] = []

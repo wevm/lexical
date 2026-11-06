@@ -44,21 +44,6 @@ jobs:
       # The view modules' API exists only on Apple platforms (Linux checks the rest).
       - name: API breaks since the last release
         run: scripts/api-breaks.sh
-      # The chat composer example uses the public products only, as an app
-      # outside this repository would: building it catches API it relies on
-      # going away. Build only; it has no tests.
-      - name: Build the chat composer example (macOS, iOS Simulator)
-        working-directory: swift/Examples/ChatComposer
-        env:
-          HOMEBREW_NO_AUTO_UPDATE: '1'
-        run: |
-          command -v xcodegen >/dev/null || brew install -q xcodegen
-          xcodegen generate -q
-          for destination in 'platform=macOS' 'generic/platform=iOS Simulator'; do
-            xcodebuild build -project ChatComposer.xcodeproj -scheme ChatComposer \
-              -destination "$destination" -derivedDataPath "$RUNNER_TEMP/chat-composer" \
-              -skipMacroValidation -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO -quiet
-          done
 
   ios:
     name: Swift (iOS ${{ matrix.ios }} Simulator)

@@ -988,6 +988,31 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   `LexicalMenuTests` (trigger matching against upstream's regex, run in
   Node, and the commands).
 
+## Follow-ups: chat composer gaps
+
+A chat composer built on the public products only (the example added in #76
+and later removed) turned up these gaps, still open:
+
+- `LexicalMenu` keeps a menu's state and keys but has no default renderer or
+  positioning, where upstream's `LexicalTypeaheadMenuPlugin` has a default
+  `menuRenderFn`. Every app draws its own menu; the playground's floating menu
+  (`TypeaheadMenuHost`) is app code.
+- `registerTypeaheadMenu`'s `onQueryChange` doesn't receive the menu it
+  belongs to, so setting options from it needs a variable captured before the
+  menu exists. `MenuState.onChange` is a single closure, so only one view can
+  follow a menu.
+- A read-only message is a whole editor and text view per message. There is
+  no lightweight renderer from an editor state to an `AttributedString` or a
+  SwiftUI `Text` for static content such as a long message list.
+- An array of `any AnyLexicalExtensionArgument` isn't `Sendable`, so a shared
+  list of extensions can't be a global constant under Swift 6; it has to be a
+  function.
+
+The gaps it found and fixed stay in the library: `LexicalEditor.theme(_:)`
+and `editorBackground(_:)`, the macOS scroller shown only while the content
+overflows, and a collapsed caret kept in view after each commit while
+focused (unless the update has `SKIP_SCROLL_INTO_VIEW_TAG`).
+
 ## Scope of v0.1.0 (Q21)
 
 `Lexical`, `LexicalExtension`, `LexicalRichText`, `LexicalPlainText`,

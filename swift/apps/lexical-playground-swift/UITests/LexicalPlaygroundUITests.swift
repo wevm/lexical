@@ -186,6 +186,25 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertTrue(value.contains("\"highlightType\": \"string\""), value)
   }
 
+  /// The opt-in grammars the playground links: SQL highlights its keywords.
+  @MainActor
+  func testPickingSQLHighlightsTheBlock() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("``` SELECT id FROM users")
+    waitForTree(") code")
+    let picker = app.buttons["code-language"]
+    XCTAssertTrue(picker.waitForExistence(timeout: 5))
+    picker.tap()
+    app.buttons["SQL"].tap()
+    app.buttons["JSON"].tap()
+    let text = app.textViews["import-export-text"]
+    XCTAssertTrue(text.waitForExistence(timeout: 5))
+    let value = text.value as? String ?? ""
+    XCTAssertTrue(value.contains("\"language\": \"sql\""), value)
+    XCTAssertTrue(value.contains("\"highlightType\": \"keyword\""), value)
+  }
+
   @MainActor
   func testFontControlsPatchTheSelectionStyle() {
     launch()

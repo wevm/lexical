@@ -14,7 +14,10 @@ CORE_VERSION=v0.27.1
 # The CLI that generates parser.c for a grammar that doesn't commit it.
 CLI_VERSION=0.27.1
 
-# name|repository|tag|src dir in the repo|C function suffix
+# name|repository|tag|src dir in the repo|C function suffix[|highlights
+# query in the repo, when not queries/highlights.scm[|the suffix of a grammar
+# above whose highlights come first, as the grammar's configuration lists
+# them or its query's "; inherits:" names them]]
 GRAMMARS=(
   "JavaScript|tree-sitter/tree-sitter-javascript|v0.25.0|src|javascript"
   "TypeScript|tree-sitter/tree-sitter-typescript|v0.23.2|typescript/src|typescript"
@@ -26,6 +29,16 @@ GRAMMARS=(
   "Rust|tree-sitter/tree-sitter-rust|v0.24.2|src|rust"
   "Go|tree-sitter/tree-sitter-go|v0.25.0|src|go"
   "Bash|tree-sitter/tree-sitter-bash|v0.25.1|src|bash"
+  "C|tree-sitter/tree-sitter-c|v0.24.2|src|c"
+  "CPP|tree-sitter/tree-sitter-cpp|v0.23.4|src|cpp||c"
+  "Java|tree-sitter/tree-sitter-java|v0.23.5|src|java"
+  # The block grammar: headings, fences, lists and quotes; the inline
+  # grammar it injects (emphasis, links, code spans) is left out.
+  "Markdown|tree-sitter-grammars/tree-sitter-markdown|v0.5.4|tree-sitter-markdown/src|markdown|tree-sitter-markdown/queries/highlights.scm"
+  "ObjC|tree-sitter-grammars/tree-sitter-objc|v3.0.2|src|objc||c"
+  "PowerShell|airbus-cert/tree-sitter-powershell|v0.26.6|src|powershell"
+  "SQL|DerekStride/tree-sitter-sql|v0.3.11|src|sql"
+  "XML|tree-sitter-grammars/tree-sitter-xml|v0.7.0|xml/src|xml|queries/xml/highlights.scm"
 )
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -80,28 +93,34 @@ EOF
 }
 
 for entry in "${GRAMMARS[@]}"; do
-  IFS='|' read -r name repo tag src id <<<"$entry"
+  IFS='|' read -r name repo tag src id query inherits <<<"$entry"
+  query=${query:-queries/highlights.scm}
   dir="$work/$id"
   commit=$(clone "$repo" "$tag" "$dir")
   if [ ! -f "$dir/$src/parser.c" ]; then
     (cd "$dir/$(dirname "$src")" && npx --yes "tree-sitter-cli@$CLI_VERSION" generate >/dev/null)
+    [ -f "$dir/$src/parser.c" ] || { echo "Could not generate $name's parser.c" >&2; exit 1; }
   fi
   dest="$root/Sources/TreeSitter$name"
   rm -rf "$dest"
   # The sources the parser compiles, without the grammar's JSON, at their
   # path in the repository: TypeScript's scanner includes
-  # ../../common/scanner.h, which it shares with TSX.
+  # ../../common/scanner.h, which it shares with TSX, and XML's its own.
   mkdir -p "$dest/$src" "$dest/queries"
   (cd "$dir/$src" && find . \( -name '*.c' -o -name '*.h' \) -print0 |
     xargs -0 -I{} cp --parents {} "$dest/$src/")
-  if [ "$src" != src ]; then
+  if [ "$src" != src ] && compgen -G "$dir/common/*.h" >/dev/null; then
     mkdir -p "$dest/common"
     cp "$dir/common/"*.h "$dest/common/"
   fi
-  cp "$dir/queries/highlights.scm" "$dest/queries/highlights.scm"
+  cp "$dir/$query" "$dest/queries/highlights.scm"
   cp "$dir/LICENSE"* "$dest/LICENSE"
   printf '%s %s (%s)\n' "$repo" "$tag" "$commit" >"$dest/VERSION"
   queries=("$dest/queries/highlights.scm")
+  if [ -n "$inherits" ]; then
+    cp "$work/$inherits/queries/highlights.scm" "$dest/queries/highlights-$inherits.scm"
+    queries=("$dest/queries/highlights-$inherits.scm" "${queries[@]}")
+  fi
   # TypeScript's highlights extend JavaScript's, which tree-sitter's
   # configuration for it lists after its own.
   if [ "$id" = typescript ]; then

@@ -92,7 +92,10 @@ the `CodeTokenizer` in its config, as upstream swaps Prism for Shiki.
 captures are mapped to Prism's token names, so a theme's `codeHighlight`
 colors apply. Each grammar is its own product, so an app links only the
 languages it uses: `LexicalCodeTreeSitterJavaScript`, `…TypeScript`,
-`…Swift`, `…Python`, `…JSON`, `…HTML`, `…CSS`, `…Rust`, `…Go` and `…Bash`.
+`…Swift`, `…Python`, `…JSON`, `…HTML`, `…CSS`, `…Rust`, `…Go`, `…Bash`,
+`…C`, `…CPP`, `…Java`, `…Markdown`, `…ObjC`, `…PowerShell`, `…SQL` and
+`…XML`. Markdown highlights its block structure (headings, lists, quotes,
+fences) only, without the inline grammar.
 
 ```swift
 configExtension(CodeHighlighterExtension) {

@@ -1050,6 +1050,84 @@
       )
     }
 
+    /// A highlight (comment marks, find and replace matches) covers the
+    /// same text box as the selection over the same range, the font's
+    /// content area rather than the line box, as
+    /// `.PlaygroundEditorTheme__mark` is an inline background on the web:
+    /// in a 1.7 paragraph, in a 1.53 code block, and beside an inline
+    /// decorator taller than the line, where both are on the text, which is
+    /// on the decorator's baseline.
+    @Test(arguments: ["paragraph", "code", "tall"])
+    func paintsAHighlightOverTheSelectionsTextBox(_ block: String) throws {
+      TallNode.size = CGSize(width: 24, height: 80)
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "test", dependencies: [RichTextExtension, CodeExtension],
+          nodes: { [.klass(TallNode.self)] }))
+      let (view, window) = try makeView(editor)
+      var key = ""
+      try editor.update(discrete: true) {
+        // Spaces where the color is sampled, so no glyph is over it.
+        let text = try createTextNode("ab    cd")
+        key = text.getKey()
+        let parent: ElementNode =
+          block == "code"
+          ? try createCodeNode().append(text)
+          : block == "tall"
+            ? try createParagraphNode().append(create(TallNode.self), text)
+            : try createParagraphNode().append(text)
+        try getRoot().clear().append(createParagraphNode().append(createTextNode("x")), parent)
+      }
+      view.controller.highlights["test"] = TextKitHighlight(
+        ranges: [
+          TextKitHighlightRange(anchorKey: key, anchorOffset: 2, focusKey: key, focusOffset: 6)
+        ],
+        backgroundColor: TextKitColor(255, 0, 0))
+      let (color, near) = try render(view)
+      let layoutManager = try #require(view.textLayoutManager)
+      let location = try #require(view.controller.document.span(key)).location + 2
+      let start = try #require(
+        layoutManager.location(layoutManager.documentRange.location, offsetBy: location))
+      let range = try #require(
+        NSTextRange(location: start, end: layoutManager.location(start, offsetBy: 4)))
+      /// The selection's rects over `range`, in view coordinates.
+      func selection(_ range: NSTextRange) -> [NSRect] {
+        var rects: [NSRect] = []
+        layoutManager.enumerateTextSegments(in: range, type: .selection, options: []) {
+          _, segment, _, _ in
+          rects.append(
+            segment.offsetBy(dx: view.textContainerOrigin.x, dy: view.textContainerOrigin.y))
+          return true
+        }
+        return rects
+      }
+      let rects = selection(range)
+      try #require(rects.count == 1, "\(rects)")
+      let box = rects[0]
+      // The selection is on the text: "ab"'s box has its ink.
+      let lettersStart = try #require(layoutManager.location(start, offsetBy: -2))
+      let letters = try #require(NSTextRange(location: lettersStart, end: start))
+      let text = try #require(selection(letters).first)
+      // The highlight's color as drawn, in the bitmap's color space.
+      let red = color(box.midX, box.midY)
+      #expect(red.filter { $0 > 200 }.count == 1 && red.filter { $0 < 80 }.count == 2, "\(red)")
+      #expect(
+        near(color(box.midX, box.minY + 1.5), red), "\(box) \(color(box.midX, box.minY + 1.5))")
+      #expect(
+        near(color(box.midX, box.maxY - 1.5), red), "\(box) \(color(box.midX, box.maxY - 1.5))")
+      #expect(
+        !near(color(box.midX, box.minY - 1.5), red), "\(box) \(color(box.midX, box.minY - 1.5))")
+      #expect(
+        !near(color(box.midX, box.maxY + 1.5), red), "\(box) \(color(box.midX, box.maxY + 1.5))")
+      let inked = stride(from: text.minY, to: text.maxY, by: 0.5).contains { y in
+        stride(from: text.minX, to: text.maxX, by: 0.5).contains { x in
+          color(x, y).allSatisfy { $0 < 100 }
+        }
+      }
+      #expect(inked, "\(text)")
+      _ = window
+    }
+
     /// `__link:hover { text-decoration: underline }`: only the link under
     /// the pointer is underlined, as view state that sends no update.
     @Test func underlinesTheHoveredLink() throws {

@@ -542,6 +542,71 @@
       _ = window
     }
 
+    /// A highlight (comment marks, find and replace matches) covers the
+    /// same text box as the selection over the same range, the font's
+    /// content area rather than the line box, as
+    /// `.PlaygroundEditorTheme__mark` is an inline background on the web:
+    /// in a 1.7 paragraph, in a 1.53 code block, and beside an inline
+    /// decorator taller than the line, where both are on the text, which is
+    /// on the decorator's baseline.
+    @Test(arguments: ["paragraph", "code", "tall"])
+    func paintsAHighlightOverTheSelectionsTextBox(_ block: String) throws {
+      TallNode.size = CGSize(width: 24, height: 80)
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "test", dependencies: [RichTextExtension, CodeExtension],
+          nodes: { [.klass(TallNode.self)] }))
+      let (view, window) = makeLightView(editor)
+      var key = ""
+      try editor.update(discrete: true) {
+        // Spaces where the color is sampled, so no glyph is over it.
+        let text = try createTextNode("ab    cd")
+        key = text.getKey()
+        let parent: ElementNode =
+          block == "code"
+          ? try createCodeNode().append(text)
+          : block == "tall"
+            ? try createParagraphNode().append(create(TallNode.self), text)
+            : try createParagraphNode().append(text)
+        try getRoot().clear().append(createParagraphNode().append(createTextNode("x")), parent)
+      }
+      view.controller.highlights["test"] = TextKitHighlight(
+        ranges: [
+          TextKitHighlightRange(anchorKey: key, anchorOffset: 2, focusKey: key, focusOffset: 6)
+        ],
+        backgroundColor: TextKitColor(255, 0, 0))
+      let (color, near) = try render(view)
+      let location = try #require(view.controller.document.span(key)).location + 2
+      let start = try #require(view.position(from: view.beginningOfDocument, offset: location))
+      let end = try #require(view.position(from: start, offset: 4))
+      let range = try #require(view.textRange(from: start, to: end))
+      let selection = view.selectionRects(for: range).map(\.rect)
+      try #require(selection.count == 1, "\(selection)")
+      let box = selection[0]
+      // The selection is on the text: "ab"'s box has its ink.
+      let letters = try #require(view.position(from: start, offset: -2))
+      let lettersRange = try #require(view.textRange(from: letters, to: start))
+      let text = try #require(view.selectionRects(for: lettersRange).first?.rect)
+      // The highlight's color as drawn, in the bitmap's color space.
+      let red = color(box.midX, box.midY)
+      #expect(red.filter { $0 > 200 }.count == 1 && red.filter { $0 < 80 }.count == 2, "\(red)")
+      #expect(
+        near(color(box.midX, box.minY + 1.5), red), "\(box) \(color(box.midX, box.minY + 1.5))")
+      #expect(
+        near(color(box.midX, box.maxY - 1.5), red), "\(box) \(color(box.midX, box.maxY - 1.5))")
+      #expect(
+        !near(color(box.midX, box.minY - 1.5), red), "\(box) \(color(box.midX, box.minY - 1.5))")
+      #expect(
+        !near(color(box.midX, box.maxY + 1.5), red), "\(box) \(color(box.midX, box.maxY + 1.5))")
+      let inked = stride(from: text.minY, to: text.maxY, by: 0.5).contains { y in
+        stride(from: text.minX, to: text.maxX, by: 0.5).contains { x in
+          color(x, y).allSatisfy { $0 < 100 }
+        }
+      }
+      #expect(inked, "\(text)")
+      _ = window
+    }
+
     /// A code block's lines, `|` for a line break, then a paragraph so the
     /// block isn't the text's last.
     @Test(arguments: [("a|b", 2), ("a||b", 3), ("a||", 3), ("", 1)])

@@ -313,7 +313,9 @@
     }
 
     /// The controller's highlights, behind the text, each range's rects
-    /// filled with its color.
+    /// filled with its color. Each covers its line's text box, as the
+    /// selection does: on the web a highlight is an inline background,
+    /// over the font's content area rather than the whole line box.
     private func drawHighlights(_ layoutManager: NSTextLayoutManager, in rect: NSRect) {
       let origin = textContainerOrigin
       for (range, highlight) in controller.highlightedRanges() {
@@ -322,8 +324,11 @@
         else { continue }
         color.nsColor.setFill()
         layoutManager.enumerateTextSegments(in: textRange, type: .highlight, options: []) {
-          _, frame, _, _ in
-          let frame = frame.offsetBy(dx: origin.x, dy: origin.y)
+          _, segment, _, _ in
+          guard
+            let frame = layoutManager.selectionSegment(trimming: segment)?
+              .offsetBy(dx: origin.x, dy: origin.y)
+          else { return true }
           if frame.intersects(rect) { frame.fill(using: .sourceOver) }
           return true
         }

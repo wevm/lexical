@@ -10,6 +10,8 @@ public enum TextKitPasteboard {
   public static let types: [(mime: String, type: String)] = [
     ("application/x-lexical-editor", "dev.lexical.editor"),
     ("application/x-lexical-drag", "dev.lexical.drag"),
+    // `DraggableBlockPlugin`'s dragged block.
+    ("application/x-lexical-drag-block", "dev.lexical.drag-block"),
     ("text/html", "public.html"),
     ("text/plain", "public.utf8-plain-text"),
     ("text/uri-list", "public.url"),

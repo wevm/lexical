@@ -252,6 +252,15 @@
       #expect(view.prepareForDragOperation(drag))
       #expect(view.performDragOperation(drag))
       #expect(dropped == #"{"type":"image"}"#)
+      // A block dragged by its handle carries only a Lexical type, which
+      // the view registers for, so that AppKit sends the drag to it.
+      #expect(view.acceptableDragTypes.contains(.init("dev.lexical.drag-block")))
+      pasteboard.clearContents()
+      let block = NSPasteboardItem()
+      block.setString("2", forType: .init("dev.lexical.drag-block"))
+      pasteboard.writeObjects([block])
+      #expect(view.draggingUpdated(drag) == .move)
+      #expect(view.performDragOperation(drag))
       // From another view it is not this view's to move.
       let other = Drag(from: NSView(), over: window, at: point, pasteboard)
       #expect(view.draggingUpdated(other) != .move)

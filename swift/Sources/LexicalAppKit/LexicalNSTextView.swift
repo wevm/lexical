@@ -1048,6 +1048,14 @@
       ]
     }
 
+    /// What `NSTextView` takes, and the Lexical types, so that a drag that
+    /// carries only a Lexical payload (a dragged block's) reaches the view.
+    public override var acceptableDragTypes: [NSPasteboard.PasteboardType] {
+      let lexical = TextKitPasteboard.types.map { NSPasteboard.PasteboardType($0.type) }
+      let types = super.acceptableDragTypes
+      return types + lexical.filter { !types.contains($0) }
+    }
+
     public override func dragSelection(
       with event: NSEvent, offset mouseOffset: NSSize, slideBack: Bool
     ) -> Bool {
@@ -1105,24 +1113,26 @@
       let data = sender.draggingPasteboard.lexicalDataTransfer()
       var accepted = false
       perform { accepted = try controller.dragOver(data, x: point.x, y: point.y) }
+      // A Lexical drag payload from this view (a selected image's, or a
+      // dragged block's) is taken as a move, as a contenteditable takes a
+      // drop by default; `DROP_COMMAND`'s handlers place it.
+      if isLexicalDragFromSelf(sender) { return .move }
       if !operation.isEmpty { return operation }
-      if accepted { return .copy }
-      // A decorator's drag payload from this view (a selected image) is
-      // taken as a move, as a contenteditable takes a drop by default;
-      // `DROP_COMMAND`'s handlers place it.
-      return isDecoratorDrag(sender) ? .move : []
+      return accepted ? .copy : []
     }
 
-    /// Whether `sender` drags a decorator's payload from this view, which
-    /// `NSTextView` itself would refuse.
-    private func isDecoratorDrag(_ sender: any NSDraggingInfo) -> Bool {
-      let type = NSPasteboard.PasteboardType("dev.lexical.drag")
+    /// Whether `sender` drags a decorator's or a block's payload from this
+    /// view, which `NSTextView` itself would refuse.
+    private func isLexicalDragFromSelf(_ sender: any NSDraggingInfo) -> Bool {
+      let types: Set<NSPasteboard.PasteboardType> = [
+        .init("dev.lexical.drag"), .init("dev.lexical.drag-block"),
+      ]
       return (sender.draggingSource as AnyObject?) === self
-        && sender.draggingPasteboard.types?.contains(type) == true
+        && !types.isDisjoint(with: sender.draggingPasteboard.types ?? [])
     }
 
     public override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-      isDecoratorDrag(sender) || super.prepareForDragOperation(sender)
+      isLexicalDragFromSelf(sender) || super.prepareForDragOperation(sender)
     }
 
     public override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {

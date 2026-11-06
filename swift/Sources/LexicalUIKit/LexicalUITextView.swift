@@ -27,6 +27,14 @@
     /// Menu elements the edit menu shows for a selection, before the
     /// system's (see `LexicalUITextView+EditMenu.swift`).
     public var editMenuElements: ((_ range: NSRange) -> [UIMenuElement])?
+    /// Called as UIKit presents the edit menu, as
+    /// `UITextViewDelegate.textView(_:willPresentEditMenuWith:)` would be
+    /// (the view is its own delegate), so an app can move its own floating
+    /// views out of the menu's way.
+    public var willPresentEditMenu: ((_ animator: any UIEditMenuInteractionAnimating) -> Void)?
+    /// Called as UIKit dismisses the edit menu, as
+    /// `UITextViewDelegate.textView(_:willDismissEditMenuWith:)` would be.
+    public var willDismissEditMenu: ((_ animator: any UIEditMenuInteractionAnimating) -> Void)?
 
     private var isRendering = false
     private var removeListeners: [() -> Void] = []

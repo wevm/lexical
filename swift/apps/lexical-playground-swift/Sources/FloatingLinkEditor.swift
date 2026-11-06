@@ -210,10 +210,31 @@ final class FloatingLinkEditorHost {
       textView = root as? LexicalUITextView
     #endif
     textView?.addSubview(hostingView)
+    #if os(iOS)
+      // The edit menu a tap on the selection opens goes below the link when
+      // there is no room above it, over the panel, as Safari's does over
+      // the web panel: the panel moves out of its way while it shows.
+      textView?.willPresentEditMenu = { [weak self] animator in
+        animator.addCompletion {
+          guard let self else { return }
+          self.editMenuFrame = self.coveringFrame()
+          self.position(at: self.key)
+        }
+      }
+      textView?.willDismissEditMenu = { [weak self] animator in
+        guard let self else { return }
+        self.editMenuFrame = nil
+        animator.addAnimations { self.position(at: self.key) }
+      }
+    #endif
   }
+
+  /// The node the panel is at.
+  private var key: NodeKey?
 
   /// Shows the panel at the rendered node `key`, or hides it for `nil`.
   func position(at key: NodeKey?) {
+    self.key = key
     guard let textView, let key, let span = textView.controller.document.span(key),
       let rect = firstRect(of: NSRange(location: span.location, length: span.length))
     else {
@@ -238,11 +259,51 @@ final class FloatingLinkEditorHost {
     if y + height > visible.maxY - 10, rect.minY - 10 - height >= visible.minY + 10 {
       y = rect.minY - 10 - height
     }
+    #if os(iOS)
+      // Below the edit menu, or above it when that does not fit either.
+      if let menu = editMenuFrame,
+        menu.intersects(CGRect(x: visible.minX, y: y, width: visible.width, height: height))
+      {
+        y =
+          menu.maxY + 10 + height <= visible.maxY - 10 || menu.minY - 10 - height < visible.minY
+          ? menu.maxY + 10 : menu.minY - 10 - height
+      }
+    #endif
     let x = max(visible.minX + 10, min(rect.minX, visible.maxX - 10 - width))
     hostingView.frame = CGRect(
       x: x - margin, y: y - margin, width: width + 2 * margin, height: height + 2 * margin)
     hostingView.isHidden = false
   }
+
+  #if os(iOS)
+    /// The edit menu's frame in the text view while it shows.
+    private var editMenuFrame: CGRect?
+
+    /// The frame, in the text view, of what covers the panel from a window
+    /// above the text view's (the edit menu, which UIKit draws in its text
+    /// effects window and does not report the frame of): the outermost view
+    /// under a point of the panel that is smaller than its window.
+    private func coveringFrame() -> CGRect? {
+      guard let textView, let window = textView.window, !hostingView.isHidden else { return nil }
+      let panel = hostingView.convert(hostingView.bounds, to: window)
+      var frame: CGRect?
+      for other in window.windowScene?.windows ?? []
+      where other !== window && !other.isHidden && other.windowLevel > window.windowLevel {
+        for x in stride(from: panel.minX + 10, through: panel.maxX - 10, by: 20) {
+          let point = other.convert(CGPoint(x: x, y: panel.midY), from: window)
+          guard var view = other.hitTest(point, with: nil), view !== other else { continue }
+          while let parent = view.superview, parent !== other,
+            parent.bounds.size != other.bounds.size
+          {
+            view = parent
+          }
+          let covered = textView.convert(view.convert(view.bounds, to: nil), from: other)
+          frame = frame?.union(covered) ?? covered
+        }
+      }
+      return frame
+    }
+  #endif
 
   /// The first line's rect of `range` in the text view.
   private func firstRect(of range: NSRange) -> CGRect? {

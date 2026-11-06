@@ -246,6 +246,10 @@ struct DateTimeComponent: View {
 
   var body: some View {
     Text(getDateTimeText(dateTime))
+      // An inline decorator wider than the line, as at the largest text
+      // sizes, is drawn smaller rather than cut short.
+      .lineLimit(1)
+      .minimumScaleFactor(0.5)
       .bold(has("bold"))
       .italic(has("italic"))
       .underline(has("underline"))

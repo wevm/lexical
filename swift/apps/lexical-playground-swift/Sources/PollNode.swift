@@ -274,6 +274,8 @@ struct PollComponent: View {
   let question: String
   let options: [PollOption]
   @State private var selection = NodeSelectionState()
+  /// Its width at the text's size, within the line.
+  @ScaledMetric(relativeTo: .footnote) private var width: CGFloat = pollWidth
 
   private var totalVotes: Int { options.reduce(0) { $0 + $1.votes.count } }
 
@@ -281,7 +283,7 @@ struct PollComponent: View {
     VStack(spacing: 0) {
       // `.PollNode__heading`.
       Text(question)
-        .font(.system(size: 18, weight: .bold))
+        .scaledFont(size: 18, weight: .bold, relativeTo: .title3)
         .foregroundStyle(Color(white: 0.267))
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
@@ -298,7 +300,7 @@ struct PollComponent: View {
         .accessibilityIdentifier("poll-add-option")
     }
     .padding(15)
-    .frame(width: pollWidth)
+    .frame(maxWidth: width)
     .background(Color(white: 0.988), in: RoundedRectangle(cornerRadius: 10))
     .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(white: 0.933), lineWidth: 1))
     .overlay {
@@ -330,88 +332,110 @@ private struct PollOptionView: View {
   let withPollNode: (@escaping (PollNode) throws -> Void) -> Void
   @State private var text = ""
   @FocusState private var isFocused: Bool
+  /// The option's 13-point text, its 22-point check box and its delete
+  /// button's 28-point target, at the reader's text size.
+  @ScaledMetric(relativeTo: .footnote) private var fontSize: CGFloat = 13
+  @ScaledMetric(relativeTo: .footnote) private var checkboxSize: CGFloat = 22
+  @ScaledMetric(relativeTo: .footnote) private var deleteSize: CGFloat = 28
+  /// Room for the votes, at the end of the option's field.
+  @ScaledMetric(relativeTo: .caption) private var votesWidth: CGFloat = 60
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     let checked = option.votes.contains(collaborationUsername)
     let votes = option.votes.count
-    HStack(spacing: 0) {
-      // `.PollNode__optionCheckboxWrapper`.
-      Button {
-        withPollNode { try $0.toggleVote(option, collaborationUsername) }
-      } label: {
-        RoundedRectangle(cornerRadius: 5)
-          .fill(checked ? pollBlue : .clear)
-          .overlay(
-            RoundedRectangle(cornerRadius: 5).stroke(checked ? pollBlue : Color(white: 0.6))
-          )
-          .overlay {
-            if checked {
-              Image(systemName: "checkmark").font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.white)
-            }
-          }
-          .frame(width: 22, height: 22)
-          .contentShape(Rectangle())
-      }
-      .buttonStyle(.plain)
-      .padding(.trailing, 10)
-      .accessibilityLabel(checked ? "Remove vote" : "Vote")
-      .accessibilityAddTraits(checked ? .isSelected : [])
-      .accessibilityIdentifier("poll-option-\(index)-vote")
-      // `.PollNode__optionInputWrapper`.
-      ZStack(alignment: .leading) {
-        TextField(
-          "", text: $text,
-          prompt: Text("Option \(index + 1)").font(.system(size: 13)).foregroundStyle(
-            Color(white: 0.6))
-        )
-        .textFieldStyle(.plain)
-        .font(.system(size: 13, weight: .bold))
-        .foregroundStyle(pollBlue)
-        .padding(7)
-        .padding(.trailing, votes > 0 ? 60 : 0)
-        .focused($isFocused)
-        .onChange(of: text) { _, value in
-          guard value != option.text else { return }
-          withPollNode { try $0.setOptionText(option, value) }
-        }
-        .accessibilityIdentifier("poll-option-\(index)")
-        if votes > 0 {
-          Text(votes == 1 ? "1 vote" : "\(votes) votes")
-            .font(.system(size: 12))
-            .foregroundStyle(pollBlue)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-            .padding(.trailing, 15)
-            .allowsHitTesting(false)
-        }
-      }
-      // `.PollNode__optionInputVotes`: the option's share of the votes.
-      .background(alignment: .leading) {
-        GeometryReader { geometry in
-          Color(red: 236 / 255, green: 243 / 255, blue: 254 / 255)
-            .frame(
-              width: totalVotes == 0 ? 0 : geometry.size.width * Double(votes) / Double(totalVotes)
+    // At the accessibility sizes the field has no room for the votes too,
+    // which go below it.
+    let votesInField = !dynamicTypeSize.isAccessibilitySize
+    VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 0) {
+        // `.PollNode__optionCheckboxWrapper`.
+        Button {
+          withPollNode { try $0.toggleVote(option, collaborationUsername) }
+        } label: {
+          RoundedRectangle(cornerRadius: 5)
+            .fill(checked ? pollBlue : .clear)
+            .overlay(
+              RoundedRectangle(cornerRadius: 5).stroke(checked ? pollBlue : Color(white: 0.6))
             )
-            .animation(.easeInOut(duration: 1), value: votes)
+            .overlay {
+              if checked {
+                Image(systemName: "checkmark")
+                  .scaledFont(size: 11, weight: .bold, relativeTo: .caption2)
+                  .foregroundStyle(.white)
+              }
+            }
+            .frame(width: min(checkboxSize, 44), height: min(checkboxSize, 44))
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .padding(.trailing, 10)
+        .accessibilityLabel(checked ? "Remove vote" : "Vote")
+        .accessibilityAddTraits(checked ? .isSelected : [])
+        .accessibilityIdentifier("poll-option-\(index)-vote")
+        // `.PollNode__optionInputWrapper`.
+        ZStack(alignment: .leading) {
+          TextField(
+            "", text: $text,
+            prompt: Text("Option \(index + 1)").font(.system(size: fontSize)).foregroundStyle(
+              Color(white: 0.6))
+          )
+          .textFieldStyle(.plain)
+          .font(.system(size: fontSize, weight: .bold))
+          .foregroundStyle(pollBlue)
+          .padding(7)
+          .padding(.trailing, votes > 0 && votesInField ? votesWidth : 0)
+          .focused($isFocused)
+          .onChange(of: text) { _, value in
+            guard value != option.text else { return }
+            withPollNode { try $0.setOptionText(option, value) }
+          }
+          .accessibilityIdentifier("poll-option-\(index)")
+          if votes > 0 && votesInField {
+            Text(votes == 1 ? "1 vote" : "\(votes) votes")
+              .scaledFont(size: 12, relativeTo: .caption)
+              .foregroundStyle(pollBlue)
+              .frame(maxWidth: .infinity, alignment: .trailing)
+              .padding(.trailing, 15)
+              .allowsHitTesting(false)
+          }
+        }
+        // `.PollNode__optionInputVotes`: the option's share of the votes.
+        .background(alignment: .leading) {
+          GeometryReader { geometry in
+            Color(red: 236 / 255, green: 243 / 255, blue: 254 / 255)
+              .frame(
+                width: totalVotes == 0
+                  ? 0 : geometry.size.width * Double(votes) / Double(totalVotes)
+              )
+              .animation(.easeInOut(duration: 1), value: votes)
+          }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .overlay(RoundedRectangle(cornerRadius: 5).stroke(pollBlue))
+        // `.PollNode__optionDelete`: a grey X, disabled below three options.
+        Button {
+          withPollNode { try $0.deleteOption(option) }
+        } label: {
+          Image(systemName: "xmark")
+            .scaledFont(size: 12, weight: .semibold, relativeTo: .caption)
+            .foregroundStyle(Color(white: 0.6))
+            .frame(width: min(deleteSize, 44), height: min(deleteSize, 44))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .opacity(0.3)
+        .disabled(!canDelete)
+        .padding(.leading, 6)
+        .accessibilityLabel("Remove")
+        .accessibilityIdentifier("poll-option-\(index)-remove")
       }
-      .clipShape(RoundedRectangle(cornerRadius: 5))
-      .overlay(RoundedRectangle(cornerRadius: 5).stroke(pollBlue))
-      // `.PollNode__optionDelete`: a grey X, disabled below three options.
-      Button {
-        withPollNode { try $0.deleteOption(option) }
-      } label: {
-        Image(systemName: "xmark").font(.system(size: 12, weight: .semibold))
-          .foregroundStyle(Color(white: 0.6))
-          .frame(width: 28, height: 28)
-          .contentShape(Rectangle())
+      if votes > 0 && !votesInField {
+        Text(votes == 1 ? "1 vote" : "\(votes) votes")
+          .scaledFont(size: 12, relativeTo: .caption)
+          .foregroundStyle(pollBlue)
+          .padding(.leading, min(checkboxSize, 44) + 10)
       }
-      .buttonStyle(.plain)
-      .opacity(0.3)
-      .disabled(!canDelete)
-      .padding(.leading, 6)
-      .accessibilityLabel("Remove")
-      .accessibilityIdentifier("poll-option-\(index)-remove")
     }
     .padding(.bottom, 10)
     .onAppear { text = option.text }
@@ -425,7 +449,7 @@ private struct PollOptionView: View {
 struct PlaygroundSmallButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.system(size: 13))
+      .scaledFont(size: 13, relativeTo: .footnote)
       .foregroundStyle(.black)
       .padding(.vertical, 5).padding(.horizontal, 10)
       .background(

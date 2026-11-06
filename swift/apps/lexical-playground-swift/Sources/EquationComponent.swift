@@ -18,12 +18,12 @@ struct KatexSize: Equatable {
   var depth: CGFloat
 }
 
-/// The sizes measured so far, by equation and display mode, so a redrawn
-/// equation is laid out at its size at once.
+/// The sizes measured so far, by equation, display mode and font size, so
+/// a redrawn equation is laid out at its size at once.
 @MainActor private var katexSizes: [String: KatexSize] = [:]
 
-private func katexSizeKey(_ equation: String, _ inline: Bool) -> String {
-  "\(inline ? "i" : "b"):\(equation)"
+private func katexSizeKey(_ equation: String, _ inline: Bool, _ fontSize: CGFloat) -> String {
+  "\(inline ? "i" : "b")\(fontSize):\(equation)"
 }
 
 /// `EquationComponent`: `KatexRenderer` while it is not being edited, and
@@ -153,7 +153,7 @@ private struct EquationEditor: View {
         }
       }
     }
-    .font(.system(size: 15, design: .monospaced))
+    .scaledFont(size: 15, design: .monospaced, relativeTo: .subheadline)
     .background(Color(white: 0.933))
     .environment(\.colorScheme, .light)
     .onAppear { isFocused = true }
@@ -169,13 +169,15 @@ struct KatexRenderer: View {
   let inline: Bool
   var onSize: ((KatexSize) -> Void)?
   @State private var measured: KatexSize?
+  /// The page's 16 pixels, at the reader's text size.
+  @ScaledMetric(relativeTo: .body) private var fontSize: CGFloat = 16
 
   var body: some View {
-    let size = measured ?? katexSizes[katexSizeKey(equation, inline)]
+    let key = katexSizeKey(equation, inline, fontSize)
+    let size = katexSizes[key] ?? measured
     KatexWebView(
-      equation: equation, inline: inline,
+      equation: equation, inline: inline, fontSize: fontSize,
       onSize: { size in
-        let key = katexSizeKey(equation, inline)
         measured = size
         guard katexSizes[key] != size else { return }
         katexSizes[key] = size
@@ -196,12 +198,13 @@ struct KatexRenderer: View {
 private struct KatexWebView: PlatformViewRepresentable {
   let equation: String
   let inline: Bool
+  let fontSize: CGFloat
   let onSize: (KatexSize) -> Void
 
   final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
-    var shown: (String, Bool)?
+    var shown: (String, Bool, CGFloat)?
     var loaded = false
-    var pending: (String, Bool)?
+    var pending: (String, Bool, CGFloat)?
     var onSize: ((KatexSize) -> Void)?
 
     func userContentController(
@@ -218,20 +221,22 @@ private struct KatexWebView: PlatformViewRepresentable {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
       MainActor.assumeIsolated {
         loaded = true
-        if let pending { show(webView, pending.0, pending.1) }
+        if let pending { show(webView, pending.0, pending.1, pending.2) }
       }
     }
 
-    @MainActor func show(_ webView: WKWebView, _ equation: String, _ inline: Bool) {
+    @MainActor func show(
+      _ webView: WKWebView, _ equation: String, _ inline: Bool, _ fontSize: CGFloat
+    ) {
       guard loaded else {
-        pending = (equation, inline)
+        pending = (equation, inline, fontSize)
         return
       }
       pending = nil
-      shown = (equation, inline)
+      shown = (equation, inline, fontSize)
       let data = try? JSONSerialization.data(withJSONObject: [equation])
       let argument = data.flatMap { String(data: $0, encoding: .utf8) } ?? "[\"\"]"
-      webView.evaluateJavaScript("show(\(argument)[0], \(inline))")
+      webView.evaluateJavaScript("show(\(argument)[0], \(inline), \(fontSize))")
     }
   }
 
@@ -257,8 +262,8 @@ private struct KatexWebView: PlatformViewRepresentable {
 
   private func update(_ webView: WKWebView, _ coordinator: Coordinator) {
     coordinator.onSize = onSize
-    if let shown = coordinator.shown, shown == (equation, inline) { return }
-    coordinator.show(webView, equation, inline)
+    if let shown = coordinator.shown, shown == (equation, inline, fontSize) { return }
+    coordinator.show(webView, equation, inline, fontSize)
   }
 
   #if os(macOS)

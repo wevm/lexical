@@ -480,7 +480,7 @@ private struct AddCommentBox: View {
       comments.addComment()
     } label: {
       Image(systemName: "text.bubble")
-        .font(.system(size: 18))
+        .scaledFont(size: 18, relativeTo: .title3)
         .foregroundStyle(.black.opacity(0.7))
         .frame(width: 40, height: 60)
         .contentShape(RoundedRectangle(cornerRadius: 20))
@@ -501,6 +501,9 @@ struct CommentInputBox: View {
   let comments: CommentsModel
   @State private var content = ""
   @FocusState private var isFocused: Bool
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  /// `.CommentPlugin_CommentInputBox`'s 250 pixels, at the text's size.
+  @ScaledMetric(relativeTo: .subheadline) private var width: CGFloat = 250
 
   private var canSubmit: Bool {
     !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -510,7 +513,7 @@ struct CommentInputBox: View {
     VStack(spacing: 0) {
       TextField("Type a comment...", text: $content, axis: .vertical)
         .textFieldStyle(.plain)
-        .font(.system(size: 15))
+        .scaledFont(size: 15, relativeTo: .subheadline)
         .lineLimit(3...)
         .focused($isFocused)
         #if os(macOS)
@@ -525,7 +528,12 @@ struct CommentInputBox: View {
         )
         .padding(10)
         .accessibilityIdentifier("comment-input")
-      HStack(spacing: 10) {
+      // The buttons stack at the accessibility sizes, where their labels
+      // do not fit side by side.
+      let buttons =
+        dynamicTypeSize.isAccessibilitySize
+        ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
+      buttons {
         Button("Cancel") {
           content = ""
           comments.cancelAddComment()
@@ -541,7 +549,7 @@ struct CommentInputBox: View {
       }
       .padding([.horizontal, .bottom], 10)
     }
-    .frame(width: 250)
+    .frame(maxWidth: width)
     .frame(minHeight: 80)
     .background(
       RoundedRectangle(cornerRadius: 5).fill(.white)
@@ -564,7 +572,7 @@ private struct CommentButtonStyle: ButtonStyle {
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .font(.system(size: 14, weight: isPrimary ? .bold : .regular))
+      .scaledFont(size: 14, weight: isPrimary ? .bold : .regular, relativeTo: .subheadline)
       .foregroundStyle(isPrimary ? .white : Color(white: 0.27))
       .frame(maxWidth: .infinity)
       .padding(.vertical, 10)
@@ -588,7 +596,7 @@ struct ShowCommentsButton: View {
       comments.showComments.toggle()
     } label: {
       Image(systemName: "bubble.left.and.text.bubble.right")
-        .font(.system(size: 16))
+        .scaledFont(size: 16, relativeTo: .callout)
         .foregroundStyle(.black.opacity(comments.showComments ? 1 : 0.6))
         .frame(width: 36, height: 36)
         .background(
@@ -599,6 +607,10 @@ struct ShowCommentsButton: View {
     .help(comments.showComments ? "Hide Comments" : "Show Comments")
     .accessibilityLabel(comments.showComments ? "Hide Comments" : "Show Comments")
     .accessibilityIdentifier("show-comments")
+    // It floats over the editor's text, so it grows only as a bar's
+    // buttons do.
+    .accessibilityShowsLargeContentViewer()
+    .barDynamicTypeSize()
   }
 }
 
@@ -610,7 +622,7 @@ struct CommentsPanel: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       Text("Comments")
-        .font(.system(size: 20))
+        .scaledFont(size: 20, relativeTo: .title3)
         .foregroundStyle(Color(white: 0.27))
         .padding(.leading, 15)
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -663,7 +675,7 @@ private struct ThreadView: View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .top) {
         Text("\(Text("> ").foregroundStyle(Color(white: 0.8)))\(Text(Self.quote(thread.quote)))")
-          .font(.system(size: 15))
+          .scaledFont(size: 15, relativeTo: .subheadline)
           .lineSpacing(4)
           .padding(.horizontal, 10)
           .padding(.top, 10)
@@ -678,12 +690,12 @@ private struct ThreadView: View {
       HStack(spacing: 0) {
         TextField("Reply to comment...", text: $reply, axis: .vertical)
           .textFieldStyle(.plain)
-          .font(.system(size: 15))
+          .scaledFont(size: 15, relativeTo: .subheadline)
           .onSubmit(send)
           .accessibilityIdentifier("comment-reply")
         Button(action: send) {
           Image(systemName: "paperplane")
-            .font(.system(size: 16))
+            .scaledFont(size: 16, relativeTo: .callout)
             .foregroundStyle(.black.opacity(canSend ? 0.5 : 0.3))
         }
         .buttonStyle(.plain)
@@ -752,7 +764,7 @@ private struct CommentRow: View {
           .foregroundStyle(Color(white: 0.27))
           .opacity(comment.deleted ? 0.5 : 1)
       }
-      .font(.system(size: 14))
+      .scaledFont(size: 14, relativeTo: .subheadline)
       .frame(maxWidth: .infinity, alignment: .leading)
       if !comment.deleted { DeleteButton { isConfirmingDelete = true } }
     }
@@ -791,7 +803,7 @@ private struct DeleteButton: View {
   var body: some View {
     Button(action: action) {
       Image(systemName: "trash")
-        .font(.system(size: 13))
+        .scaledFont(size: 13, relativeTo: .footnote)
         .foregroundStyle(.black.opacity(0.5))
         .frame(width: 30, height: 30)
         .contentShape(Rectangle())

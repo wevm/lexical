@@ -139,14 +139,14 @@ struct PageBreakComponent: View {
       .background(Color(white: 0.933))
       HStack {
         Image(systemName: "scissors")
-          .font(.system(size: 13))
+          .scaledFont(size: 13, relativeTo: .footnote)
           .foregroundStyle(.black)
           .opacity(selection.isSelected ? 1 : 0.5)
           .padding(.leading, 12)
         Spacer()
       }
       Text("PAGE BREAK")
-        .font(.system(size: 12, weight: .semibold))
+        .scaledFont(size: 12, weight: .semibold, relativeTo: .caption)
         .foregroundStyle(.black)
         .padding(.horizontal, 6).padding(.vertical, 2)
         .background(Color.white)

@@ -28,6 +28,8 @@ struct LexicalPlaygroundApp: App {
 struct PlaygroundView: View {
   @State private var model = PlaygroundModel()
   @State private var sheet: PlaygroundSheet?
+  /// The comment sheet's height, for its box at the text's size.
+  @ScaledMetric(relativeTo: .subheadline) private var commentSheetHeight: CGFloat = 200
   #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
     private var isWide: Bool { sizeClass == .regular }
@@ -79,7 +81,7 @@ struct PlaygroundView: View {
           // `CharacterLimitPlugin`'s counter (`.characters-limit`).
           if let remaining = model.remainingCharacters {
             Text("\(remaining)")
-              .font(.system(size: 12))
+              .scaledFont(size: 12, relativeTo: .caption)
               .foregroundStyle(remaining < 0 ? .red : Color(white: 0.53))
               .padding(.leading, 12).padding(.bottom, 5)
               .accessibilityIdentifier("characters-limit")
@@ -129,7 +131,7 @@ struct PlaygroundView: View {
     ) {
       CommentInputBox(comments: model.comments)
         .padding()
-        .presentationDetents([.height(200)])
+        .presentationDetents([.height(commentSheetHeight)])
     }
     .sheet(isPresented: $model.isInsertingPoll) { InsertPollDialog(editor: model.editor) }
     .sheet(isPresented: $model.isInsertingEquation) { InsertEquationDialog(editor: model.editor) }
@@ -179,58 +181,68 @@ struct ActionsView: View {
   #endif
 
   var body: some View {
-    @Bindable var model = model
+    // The buttons scroll where they do not fit, as at the larger text
+    // sizes on a phone; Settings stays at the end.
     HStack(spacing: 16) {
-      // `ActionsPlugin`'s Keyboard shortcuts button.
-      Button("Keyboard shortcuts", systemImage: "keyboard") {
-        #if os(macOS)
-          openWindow(id: "keyboard-shortcuts")
-        #else
-          model.showsShortcuts = true
-        #endif
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 16) { buttons }
       }
-      .help("Show keyboard shortcuts")
-      Button("JSON", systemImage: "curlybraces") { sheet = .importExport(.json) }
-        .help("Import or export the editor state as JSON")
-      Button("HTML", systemImage: "chevron.left.forwardslash.chevron.right") {
-        sheet = .importExport(.html)
-      }
-      .help("Import or export the editor state as HTML")
-      if model.isRichText {
-        Button("Markdown", systemImage: "m.square") { sheet = .importExport(.markdown) }
-          .help("Import or export the document as Markdown")
-      }
-      // `ActionsPlugin`'s Import and Export (`@lexical/file`).
-      Button("Import", systemImage: "square.and.arrow.down") {
-        model.files.importDocument(model.editor)
-      }
-      .help("Import editor state from JSON")
-      Button("Export", systemImage: "square.and.arrow.up") {
-        model.files.exportDocument(model.editor)
-      }
-      .help("Export editor state to JSON")
-      Button("Clear", systemImage: "trash") { model.clearEditor() }
-        .help("Clear")
-      #if os(iOS)
-        // Without a hardware keyboard there is no ⌘F, which is the web's
-        // only way to open the find panel.
-        Button("Find and Replace", systemImage: "magnifyingglass") {
-          model.findReplace.dispatch(TOGGLE_FIND_REPLACE_COMMAND)
-        }
-      #endif
-      Toggle(isOn: $model.isEditable) {
-        Label(
-          model.isEditable ? "Unlocked" : "Read-Only",
-          systemImage: model.isEditable ? "lock.open" : "lock")
-      }
-      .toggleStyle(.button)
-      .help(model.isEditable ? "Make read-only" : "Make editable")
-      Spacer()
+      .scrollBounceBehavior(.basedOnSize)
       Button("Settings", systemImage: "gearshape") { sheet = .settings }
     }
     .labelStyle(.iconOnly)
-    .buttonStyle(.borderless)
+    .buttonStyle(BarButtonStyle())
     .padding(.horizontal, 12)
     .padding(.vertical, 8)
+    .barDynamicTypeSize()
+  }
+
+  @ViewBuilder private var buttons: some View {
+    @Bindable var model = model
+    // `ActionsPlugin`'s Keyboard shortcuts button.
+    Button("Keyboard shortcuts", systemImage: "keyboard") {
+      #if os(macOS)
+        openWindow(id: "keyboard-shortcuts")
+      #else
+        model.showsShortcuts = true
+      #endif
+    }
+    .help("Show keyboard shortcuts")
+    Button("JSON", systemImage: "curlybraces") { sheet = .importExport(.json) }
+      .help("Import or export the editor state as JSON")
+    Button("HTML", systemImage: "chevron.left.forwardslash.chevron.right") {
+      sheet = .importExport(.html)
+    }
+    .help("Import or export the editor state as HTML")
+    if model.isRichText {
+      Button("Markdown", systemImage: "m.square") { sheet = .importExport(.markdown) }
+        .help("Import or export the document as Markdown")
+    }
+    // `ActionsPlugin`'s Import and Export (`@lexical/file`).
+    Button("Import", systemImage: "square.and.arrow.down") {
+      model.files.importDocument(model.editor)
+    }
+    .help("Import editor state from JSON")
+    Button("Export", systemImage: "square.and.arrow.up") {
+      model.files.exportDocument(model.editor)
+    }
+    .help("Export editor state to JSON")
+    Button("Clear", systemImage: "trash") { model.clearEditor() }
+      .help("Clear")
+    #if os(iOS)
+      // Without a hardware keyboard there is no ⌘F, which is the web's
+      // only way to open the find panel.
+      Button("Find and Replace", systemImage: "magnifyingglass") {
+        model.findReplace.dispatch(TOGGLE_FIND_REPLACE_COMMAND)
+      }
+    #endif
+    Toggle(isOn: $model.isEditable) {
+      Label(
+        model.isEditable ? "Unlocked" : "Read-Only",
+        systemImage: model.isEditable ? "lock.open" : "lock")
+    }
+    .toggleStyle(.button)
+    .help(model.isEditable ? "Make read-only" : "Make editable")
+    .accessibilityShowsLargeContentViewer()
   }
 }

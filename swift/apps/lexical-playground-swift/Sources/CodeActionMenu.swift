@@ -57,10 +57,13 @@ struct CodeActionMenuView: View {
       .accessibilityLabel("copy")
       .accessibilityIdentifier("code-copy")
     }
-    .font(.system(size: 10))
+    .scaledFont(size: 10, relativeTo: .caption2)
     .foregroundStyle(.primary.opacity(0.5))
     .frame(height: 35.8)
     .fixedSize()
+    // It floats over the block's first line, so it grows only as a bar
+    // does.
+    .barDynamicTypeSize()
   }
 }
 
@@ -79,7 +82,7 @@ private struct CodeLanguageLabel: View {
       HStack(spacing: 2) {
         Text(name)
         Image(systemName: "chevron.down")
-          .font(.system(size: 7, weight: .semibold))
+          .scaledFont(size: 7, weight: .semibold, relativeTo: .caption2)
           .opacity(isHovered || state.isLanguageHovered ? 0.8 : 0)
       }
       .contentShape(Rectangle())

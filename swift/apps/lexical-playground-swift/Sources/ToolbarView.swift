@@ -7,6 +7,8 @@ import SwiftUI
 /// alignment and indent. The buttons reflect the selection, as the web toolbar does.
 struct ToolbarView: View {
   let model: PlaygroundModel
+  /// The reader's text size, which the bar's popovers take.
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     ScrollView(.horizontal, showsIndicators: false) {
@@ -33,6 +35,7 @@ struct ToolbarView: View {
             Text(model.blockType.name).frame(minWidth: 90, alignment: .leading)
           }
           .fixedSize()
+          .accessibilityShowsLargeContentViewer()
           .accessibilityLabel("Formatting options for text style")
           .accessibilityValue(model.blockType.name)
           ForEach(BlockType.lists, id: \.type) { item in
@@ -59,11 +62,12 @@ struct ToolbarView: View {
             }
           }
           ColorPickerButton(
-            title: "Formatting text color", symbol: "character", color: model.fontColor
+            title: "Formatting text color", symbol: "character", color: model.fontColor,
+            panelTypeSize: dynamicTypeSize
           ) { model.applyStyleText("color", $0) }
           ColorPickerButton(
             title: "Formatting background color", symbol: "paintbrush.fill",
-            color: model.backgroundColor
+            color: model.backgroundColor, panelTypeSize: dynamicTypeSize
           ) { model.applyStyleText("background-color", $0) }
           FormatButton(title: "Insert Link", symbol: "link", isOn: model.isLink) {
             model.insertLink()
@@ -90,6 +94,7 @@ struct ToolbarView: View {
               Label("Insert", systemImage: "plus").labelStyle(.titleAndIcon)
             }
             .fixedSize()
+            .accessibilityShowsLargeContentViewer()
             .accessibilityLabel("Insert specialized editor node")
           }
         }
@@ -109,14 +114,16 @@ struct ToolbarView: View {
                 ?? "text.alignleft")
           }
           .fixedSize()
+          .accessibilityShowsLargeContentViewer()
           .accessibilityLabel("Formatting options for text alignment")
         }
       }
       .labelStyle(.iconOnly)
-      .buttonStyle(.borderless)
+      .buttonStyle(BarButtonStyle())
       .disabled(!model.isEditable)
       .padding(.horizontal, 8)
       .padding(.vertical, 6)
+      .barDynamicTypeSize()
     }
     .accessibilityIdentifier("toolbar")
   }
@@ -140,6 +147,7 @@ private struct CodeLanguageMenu: View {
       .frame(minWidth: 90, alignment: .leading)
     }
     .fixedSize()
+    .accessibilityShowsLargeContentViewer()
     .accessibilityLabel("Select language")
     .accessibilityIdentifier("code-language")
   }

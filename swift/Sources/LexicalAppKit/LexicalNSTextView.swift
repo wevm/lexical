@@ -1069,6 +1069,21 @@
 
     public override func pasteAsRichText(_ sender: Any?) { paste(sender) }
 
+    // MARK: Context menu
+
+    /// Menu items the context menu (a right or Control click) shows before
+    /// `NSTextView`'s own, for the click `event`, as a page adds its own
+    /// menu to the browser's.
+    public var contextMenuItems: ((_ event: NSEvent) -> [NSMenuItem])?
+
+    public override func menu(for event: NSEvent) -> NSMenu? {
+      let menu = super.menu(for: event) ?? NSMenu()
+      guard let items = contextMenuItems?(event), !items.isEmpty else { return menu }
+      if !menu.items.isEmpty { menu.insertItem(.separator(), at: 0) }
+      for item in items.reversed() { menu.insertItem(item, at: 0) }
+      return menu
+    }
+
     // MARK: Drag and drop
 
     public override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {

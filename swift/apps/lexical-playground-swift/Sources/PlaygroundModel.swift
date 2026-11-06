@@ -422,6 +422,7 @@ final class PlaygroundModel {
             self.stickyNotesHost.attach(to: root, editor: self.editor)
           }
           #if os(macOS)
+            if let self { attachContextMenu(to: root, editor: self.editor) }
             if let self {
               self.draggableBlockHost.attach(
                 to: self.isRichText ? root : nil, editor: self.editor)

@@ -541,6 +541,32 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForExpectations(timeout: 5)
   }
 
+  /// `ContextMenuPlugin`, which on iOS adds the web's items to the edit
+  /// menu: Delete Node there removes the selection's block, and UIKit's own
+  /// items stay.
+  @MainActor
+  func testEditMenuDeletesTheNode() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Hello\nWorld")
+    waitForTree("\"World\"")
+    editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 25, dy: 18))
+      .doubleTap()
+    // The formats come first, so the menu pages; its next page expands into
+    // a full menu whose items are buttons.
+    let delete = app.descendants(matching: .any)
+      .matching(NSPredicate(format: "label == %@", "Delete Node")).firstMatch
+    let next = app.buttons["Next Page"]
+    for _ in 0..<4 where !delete.waitForExistence(timeout: 2) && next.exists { next.tap() }
+    XCTAssertTrue(delete.exists, app.debugDescription)
+    attachScreenshot("edit-menu-context-items")
+    delete.tap()
+    let gone = NSPredicate(format: "NOT (label CONTAINS %@)", "\"Hello\"")
+    expectation(for: gone, evaluatedWith: app.staticTexts["tree-view"])
+    waitForExpectations(timeout: 5)
+    XCTAssertTrue(tree.contains("\"World\""), tree)
+  }
+
   /// `ImagesExtension`: the "/" menu's Image option opens the insert
   /// dialog, whose sample inserts an image node that draws in the editor.
   @MainActor

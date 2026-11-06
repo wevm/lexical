@@ -96,5 +96,9 @@
   "native/equations-katex-in-web-views": {
     "category": "platform-rendering",
     "description": "The playground's EquationNode is the web's (the same JSON, and HTML byte for byte with KaTeX's markup), with KaTeX 0.16.27 bundled in the app rather than a native math renderer, so equations look and parse exactly as on the web. Each equation draws in a small WKWebView sized to what KaTeX reports, and exportDOM runs the same katex.min.js in JavaScriptCore over a minimal DOM that serializes as Chromium does. The double-click editor is a native text field between grey $ (or $$) markers, and the Insert Equation dialog is a native form with an Inline toggle in place of a checkbox."
+  },
+  "native/context-menu-system-items": {
+    "category": "platform-behavior",
+    "description": "The playground's ContextMenuPlugin adds Remove Link, Copy as Markdown, Paste as Plain Text and Delete Node before the system's own menu items: the macOS context menu and, on iOS, the edit menu after the selection's formats. The web draws a custom menu, only with its shouldUseLexicalContextMenu setting (off by default), that also has its own Cut, Copy and Paste; native always adds its items, which leave the browser's or system's menu in place, and leaves Cut, Copy and Paste to the system's items. On iOS, where the edit menu belongs to the selection rather than a click, Remove Link and Delete Node act on the selection's anchor node instead of the node under the pointer."
   }
 }

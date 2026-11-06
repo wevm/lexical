@@ -146,8 +146,12 @@ final class FloatingTextFormatToolbarHost: TypeaheadMenuAttaching {
       }
       refresh()
     #else
-      (root as? LexicalUITextView)?.editMenuElements = { [weak self] _ in
-        MainActor.assumeIsolated { self?.editMenuElements() ?? [] }
+      // The formats, then `ContextMenuPlugin`'s items, before the system's.
+      let textView = root as? LexicalUITextView
+      textView?.editMenuElements = { [weak self, weak textView] _ in
+        MainActor.assumeIsolated {
+          (self?.editMenuElements() ?? []) + (textView.map(contextMenuElements) ?? [])
+        }
       }
     #endif
   }

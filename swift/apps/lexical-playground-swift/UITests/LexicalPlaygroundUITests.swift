@@ -673,6 +673,43 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForExpectations(timeout: 5)
   }
 
+  /// `EmojisExtension` turns an emoticon into an emoji in the document and
+  /// in an image's caption, and the caption has the mentions menu, as its
+  /// nested editor does on the web.
+  @MainActor
+  func testCaptionHasMentionsAndEmoji() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Smile :) ")
+    waitForTree(") emoji \"\u{1F642}\"")
+    editor.typeText("/imag")
+    let option = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    option.tap()
+    let sample = app.buttons["image-modal-option-sample"]
+    XCTAssertTrue(sample.waitForExistence(timeout: 5))
+    sample.tap()
+    let image = app.descendants(matching: .any)["editor-image"]
+    XCTAssertTrue(image.waitForExistence(timeout: 5), app.debugDescription)
+    image.tap()
+    waitForTree("selection: node")
+    let button = app.buttons["image-caption-button"]
+    XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription)
+    button.tap()
+    let caption = app.textViews["image-caption"]
+    XCTAssertTrue(caption.waitForExistence(timeout: 5), app.debugDescription)
+    caption.typeText("By @Luk")
+    let first = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(first.waitForExistence(timeout: 5), app.debugDescription)
+    XCTAssertTrue(first.label.contains("Luke Skywalker"), first.label)
+    first.tap()
+    caption.typeText(" <3")
+    let typed = NSPredicate(format: "value CONTAINS %@", "By Luke Skywalker \u{2764}")
+    expectation(for: typed, evaluatedWith: caption)
+    waitForExpectations(timeout: 5)
+    attachScreenshot("caption-mention-emoji")
+  }
+
   /// The playground's text entities and the "/" menu's Page Break and date
   /// options: a keyword becomes a keyword node, brackets a special text
   /// node once the setting is on, and the options insert their nodes.

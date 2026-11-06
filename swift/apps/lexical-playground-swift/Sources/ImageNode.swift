@@ -52,21 +52,28 @@ enum ImageDimension: Equatable {
 }
 
 /// `CaptionEditorExtension`: the caption's nested editor, empty until it
-/// is given a state, sharing its parent's history and theme. Upstream's
-/// caption also has emoji and mentions, which the Swift playground does not
-/// register there yet.
+/// is given a state, sharing its parent's history and theme, with emoji and
+/// the mentions menu (`MentionsPlugin`, a decorator there). Upstream's
+/// caption registers only `EmojiNode`, so choosing a mention there throws
+/// that `MentionNode` is not configured; this one registers it.
 let CaptionEditorExtension = defineExtension(
   name: "@lexical/playground/ImageNodeCaption",
   dependencies: [
     SharedHistoryExtension, NestedEditorExtension, RichTextExtension, HashtagExtension,
-    LinkExtension, KeywordsExtension,
+    LinkExtension, KeywordsExtension, EmojisExtension,
   ],
+  nodes: { [.klass(MentionNode.self)] },
   editorConfig: InitialEditorConfig(
     namespace: "Playground/ImageNodeCaption", initialEditorState: InitialEditorStateType.none),
   register: { editor, _, _ in
-    editor.registerRootListener { root, _ in
+    nonisolated(unsafe) var mentions:
+      (host: TypeaheadMenuHost<MentionTypeaheadOption>, unregister: () -> Void)!
+    nonisolated(unsafe) let captionEditor = editor
+    MainActor.assumeIsolated { mentions = registerMentions(captionEditor) }
+    let unregisterRoot = editor.registerRootListener { root, _ in
       nonisolated(unsafe) let root = root
       MainActor.assumeIsolated {
+        mentions.host.attach(to: root)
         // `.ImageNode__contentEditable` and `.ImageNode__placeholder`: 12px
         // text, the placeholder in #888. The view attaches before its first
         // render, so the theme is in place for it.
@@ -75,6 +82,8 @@ let CaptionEditorExtension = defineExtension(
           controller.theme["placeholder"] = TextKitStyle(
             fontSize: .points(12), foregroundColor: TextKitColor(136, 136, 136))
           controller.theme["keyword"] = TextKitStyle(css: keywordThemeStyle)
+          controller.theme["mention"] = TextKitStyle(
+            css: "background-color: \(mentionBackgroundColor)")
         }
         // The caption container draws the background.
         #if os(macOS)
@@ -88,6 +97,10 @@ let CaptionEditorExtension = defineExtension(
         #endif
       }
       return nil
+    }
+    return {
+      unregisterRoot()
+      mentions.unregister()
     }
   })
 

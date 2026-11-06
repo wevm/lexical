@@ -270,6 +270,7 @@ final class PlaygroundModel {
     let always: [any AnyLexicalExtensionArgument] = [
       HashtagExtension, OverflowExtension, MaxLengthExtension, KeywordsExtension,
       DateTimeExtension, SpecialTextExtension, MarkExtension, FindReplaceExtension,
+      EmojisExtension,
     ]
     return try buildEditorFromExtensions(
       defineExtension(

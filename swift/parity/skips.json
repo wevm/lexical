@@ -13749,5 +13749,21 @@
   "lexical-react/src/__tests__/unit/useMenuAnchorRef.test.tsx::useMenuAnchorRef > should return null if CAN_USE_DOM is false": {
     "reason": "dom-only",
     "note": "Tests the DOM anchor element without CAN_USE_DOM; the Swift views position a native popover from the range rect."
+  },
+  "lexical-code-prism/src/__tests__/unit/CodePrismLanguageOptions.test.ts::Prism code language options > includes Go (#7704)": {
+    "reason": "deviation",
+    "note": "Tests @lexical/code-prism's Prism language registry (getCodeLanguageOptions, getLanguageFriendlyName, normalizeCodeLanguage, isCodeLanguageLoaded over Prism.languages). The Swift port has no Prism: LexicalCodeCore's CodeTokenizer reports languages through languageState, and each tokenizer product names its own languages."
+  },
+  "lexical-code-prism/src/__tests__/unit/CodePrismLanguageOptions.test.ts::Prism code language options > returns a string for a language named after an Object member": {
+    "reason": "deviation",
+    "note": "Tests @lexical/code-prism's Prism language registry (getCodeLanguageOptions, getLanguageFriendlyName, normalizeCodeLanguage, isCodeLanguageLoaded over Prism.languages). The Swift port has no Prism: LexicalCodeCore's CodeTokenizer reports languages through languageState, and each tokenizer product names its own languages."
+  },
+  "lexical-code-prism/src/__tests__/unit/CodePrismLanguageOptions.test.ts::Prism code language options > still maps and names the languages it knows": {
+    "reason": "deviation",
+    "note": "Tests @lexical/code-prism's Prism language registry (getCodeLanguageOptions, getLanguageFriendlyName, normalizeCodeLanguage, isCodeLanguageLoaded over Prism.languages). The Swift port has no Prism: LexicalCodeCore's CodeTokenizer reports languages through languageState, and each tokenizer product names its own languages."
+  },
+  "lexical-code-prism/src/__tests__/unit/LexicalCodeNodeTabs.test.ts::LexicalCodeNode tests > tabSize (#8410): outdent space-indented lines > tabSize=2.5 is rejected by the guard (n…": {
+    "reason": "deviation",
+    "note": "CodeIndentConfig.tabSize is an Int? in Swift, so a fractional tabSize such as 2.5 cannot be configured; the integer guard cases (0, nil) are ported."
   }
 }

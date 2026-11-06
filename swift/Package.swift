@@ -133,8 +133,8 @@ let package = Package(
       name: "LexicalCodeCoreTests",
       dependencies: [
         "Lexical", "LexicalClipboard", "LexicalCodeCore", "LexicalExtension", "LexicalHistory",
-        "LexicalHTML", "LexicalLink", "LexicalList", "LexicalRichText", "LexicalSelection",
-        "LexicalTesting", "LexicalUtils",
+        "LexicalHTML", "LexicalLink", "LexicalList", "LexicalMarkdown", "LexicalRichText",
+        "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/markdown: markdown import, export and shortcuts.
     .target(

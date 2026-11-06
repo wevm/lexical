@@ -38,7 +38,10 @@
       let lines = CGRect(
         x: textContainerInset.left + padding, y: textContainerInset.top + frame.minY,
         width: textContainer.size.width - 2 * padding, height: frame.height)
-      guard let layout = controller.blockBoxes[key] else { return lines }
+      guard
+        let layout = controller.blockBoxes[key]?.scaled(
+          by: traitCollection.preferredContentSizeCategory.themeScale)
+      else { return lines }
       let box = layout.box
       return CGRect(
         x: layout.isRightToLeft ? lines.minX : lines.minX + box.offset,

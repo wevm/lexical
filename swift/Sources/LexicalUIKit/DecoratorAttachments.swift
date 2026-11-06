@@ -117,6 +117,9 @@
     /// Read by layout, which TextKit runs on the main thread.
     nonisolated(unsafe) private var size = CGSize.zero
     nonisolated(unsafe) private var isInline = true
+    /// A block decorator's height at the line's width, the last width it
+    /// was measured at.
+    nonisolated(unsafe) private var blockHeight: (width: CGFloat, height: CGFloat)?
     /// A horizontal rule's view, which TextKit shows in place of the
     /// hosting view; its line is only as tall as its box.
     nonisolated(unsafe) private(set) var ruleView: HorizontalRuleView?
@@ -166,6 +169,7 @@
           MainActor.assumeIsolated { attachment?.isDragDisabled = disabled }
         })
       size = host.sizeThatFits(in: CGSize(width: 10_000, height: 10_000))
+      blockHeight = nil
       self.isInline = isInline
     }
 
@@ -210,8 +214,9 @@
     }
 
     /// The decorator's frame on its line: an inline decorator takes its
-    /// view's size, a block decorator the line's width. A rule sits on the
-    /// line's descent, so the line is no taller than its box, as an `<hr>`.
+    /// view's size, a block decorator the line's width and its view's
+    /// height at that width. A rule sits on the line's descent, so the line
+    /// is no taller than its box, as an `<hr>`.
     func bounds(proposedLineFragment: CGRect, font: UIFont?) -> CGRect {
       if isInline {
         // No wider than the line, keeping its aspect, as an image's
@@ -222,9 +227,23 @@
         return CGRect(
           origin: .zero, size: CGSize(width: size.width * scale, height: size.height * scale))
       }
+      let width = max(proposedLineFragment.width, 1)
       return CGRect(
-        x: 0, y: isRule ? font?.descender ?? 0 : 0, width: max(proposedLineFragment.width, 1),
-        height: size.height)
+        x: 0, y: isRule ? font?.descender ?? 0 : 0, width: width,
+        height: isRule ? size.height : height(atWidth: width))
+    }
+
+    /// A block decorator's height at the line's `width`, which its view is
+    /// laid out at, so text in it wraps to the line as in a block element
+    /// (as it must at the larger Dynamic Type sizes).
+    private func height(atWidth width: CGFloat) -> CGFloat {
+      if let blockHeight, blockHeight.width == width { return blockHeight.height }
+      nonisolated(unsafe) let host = host
+      let height = MainActor.assumeIsolated {
+        host.sizeThatFits(in: CGSize(width: width, height: 10_000)).height
+      }
+      blockHeight = (width, height)
+      return height
     }
   }
 

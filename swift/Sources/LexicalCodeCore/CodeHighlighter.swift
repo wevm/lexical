@@ -108,16 +108,27 @@ private func codeNodeTransform(
     guard let currentNode = try getNodeByKey(nodeKey) as? CodeNode, try currentNode.isAttached()
     else { return false }
     let currentLanguage = try nonEmpty(currentNode.getLanguage()) ?? tokenizer.defaultLanguage
-    let highlightNodes =
-      if let currentLanguage, tokenizer.languageState(currentLanguage) != .loaded {
-        try plainifyCodeContent(currentNode.getTextContent())
-      } else {
-        try tokenizer.tokenize(codeNode: currentNode, currentLanguage)
+    let isLoaded = currentLanguage.map { tokenizer.languageState($0) == .loaded } ?? false
+    let children = try currentNode.getChildren()
+    // A tokenizer that builds the nodes itself (`$tokenize`).
+    if isLoaded, let highlightNodes = try tokenizer.tokenize(codeNode: currentNode, currentLanguage)
+    {
+      let (from, to, nodesForReplacement) = getDiffRange(children, highlightNodes)
+      if from != to || !nodesForReplacement.isEmpty {
+        try node.splice(from, to - from, nodesForReplacement)
+        return true
       }
-    let (from, to, nodesForReplacement) = try getDiffRange(
-      currentNode.getChildren(), highlightNodes)
-    if from != to || !nodesForReplacement.isEmpty {
-      try node.splice(from, to - from, nodesForReplacement)
+      return false
+    }
+    // Otherwise the tokens are compared with the children first, and only
+    // those that differ become nodes.
+    let code = try currentNode.getTextContent()
+    let runs = try codeRuns(
+      isLoaded && currentLanguage != nil
+        ? tokenizer.tokenize(code, currentLanguage!) : [.text(code)])
+    let (from, to, runsForReplacement) = getDiffRange(children, runs)
+    if from != to || !runsForReplacement.isEmpty {
+      try node.splice(from, to - from, runsForReplacement.map { try $0.createNode() })
       return true
     }
     return false
@@ -184,13 +195,12 @@ private func updateAndRetainSelection(
 }
 
 /// `getDiffRange`: the range `from..<to` of `prevNodes` to replace with
-/// `nodesForReplacement`, the part of `nextNodes` that differs.
-private func getDiffRange(
-  _ prevNodes: [LexicalNode], _ nextNodes: [LexicalNode]
-) throws -> (from: Int, to: Int, nodesForReplacement: [LexicalNode]) {
+/// the part of `nextNodes` that differs.
+private func getDiffRange<Next>(
+  _ prevNodes: [LexicalNode], _ nextNodes: [Next], _ isEqual: (LexicalNode, Next) -> Bool
+) -> (from: Int, to: Int, nodesForReplacement: [Next]) {
   var leadingMatch = 0
-  while leadingMatch < prevNodes.count,
-    leadingMatch < nextNodes.count,
+  while leadingMatch < prevNodes.count, leadingMatch < nextNodes.count,
     isEqual(prevNodes[leadingMatch], nextNodes[leadingMatch])
   {
     leadingMatch += 1
@@ -208,6 +218,18 @@ private func getDiffRange(
     leadingMatch, prevNodes.count - trailingMatch,
     Array(nextNodes[leadingMatch..<(nextNodes.count - trailingMatch)])
   )
+}
+
+private func getDiffRange(
+  _ prevNodes: [LexicalNode], _ nextNodes: [LexicalNode]
+) -> (from: Int, to: Int, nodesForReplacement: [LexicalNode]) {
+  getDiffRange(prevNodes, nextNodes, isEqual)
+}
+
+private func getDiffRange(
+  _ prevNodes: [LexicalNode], _ runs: [CodeRun]
+) -> (from: Int, to: Int, nodesForReplacement: [CodeRun]) {
+  getDiffRange(prevNodes, runs) { $1.matches($0) }
 }
 
 /// `isEqual`: CodeHighlightNodes of the same text and type, tabs and line

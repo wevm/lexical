@@ -59,27 +59,87 @@ public protocol CodeTokenizer {
   func tokenize(_ code: String, _ language: String) -> [CodeToken]
 
   /// `$tokenize(codeNode, language)`: the children that highlight
-  /// `codeNode`, CodeHighlightNodes, TabNodes and LineBreakNodes. The
-  /// default maps `tokenize` of the block's text, or splits it into plain
-  /// tokens without a language.
-  func tokenize(codeNode: CodeNode, _ language: String?) throws -> [LexicalNode]
+  /// `codeNode`, CodeHighlightNodes, TabNodes and LineBreakNodes, for a
+  /// tokenizer that builds them itself. The default, `nil`, has the
+  /// highlighter map `tokenize` of the block's text (or plain tokens without
+  /// a language) and create nodes only for the tokens that changed.
+  func tokenize(codeNode: CodeNode, _ language: String?) throws -> [LexicalNode]?
 }
 
 extension CodeTokenizer {
   public func loadLanguage(_ language: String, onReady: @escaping () -> Void) {}
 
-  public func tokenize(codeNode: CodeNode, _ language: String?) throws -> [LexicalNode] {
-    let code = try codeNode.getTextContent()
-    guard let language = nonEmpty(language) ?? defaultLanguage else {
-      return try plainifyCodeContent(code)
-    }
-    return try mapTokensToLexicalStructure(tokenize(code, language))
-  }
+  public func tokenize(codeNode: CodeNode, _ language: String?) throws -> [LexicalNode]? { nil }
 
   /// This tokenizer with `defaultLanguage` replaced, as upstream spreads
   /// `{...PrismTokenizer, defaultLanguage: null}`.
   public func withDefaultLanguage(_ defaultLanguage: String?) -> any CodeTokenizer {
     DefaultLanguageCodeTokenizer(base: self, defaultLanguage: defaultLanguage)
+  }
+}
+
+/// A child of a highlighted code block: a token's text and type, a tab or
+/// a line break.
+enum CodeRun: Equatable {
+  case text(String, String?)
+  case tab
+  case linebreak
+
+  /// Whether `node` is this run, as the highlighter's `isEqual` compares
+  /// children: a CodeHighlightNode of the same text and type, a tab or a
+  /// line break.
+  func matches(_ node: LexicalNode) -> Bool {
+    switch self {
+    case .text(let text, let type):
+      guard let node = node as? CodeHighlightNode else { return false }
+      return node.__text == text && node.__highlightType == type
+    case .tab: return node is TabNode
+    case .linebreak: return node is LineBreakNode
+    }
+  }
+
+  func createNode() throws -> LexicalNode {
+    switch self {
+    case .text(let text, let type): try createCodeHighlightNode(text, type)
+    case .tab: try createTabNode()
+    case .linebreak: try createLineBreakNode()
+    }
+  }
+}
+
+/// The runs of `tokens`, each text run typed by its innermost token (a
+/// diff's `prefix` by its alias, `unchanged` by none).
+func codeRuns(_ tokens: [CodeToken], _ type: String? = nil) throws -> [CodeRun] {
+  var runs: [CodeRun] = []
+  runs.reserveCapacity(tokens.count)
+  try addCodeRuns(tokens, type, &runs)
+  return runs
+}
+
+private func addCodeRuns(_ tokens: [CodeToken], _ type: String?, _ runs: inout [CodeRun]) throws {
+  for token in tokens {
+    switch token {
+    case .text(let text):
+      // Most tokens hold no tab or line break; they skip the split, which
+      // costs a UTF-16 copy per token.
+      if !text.utf8.contains(where: { $0 == 0x0A || $0 == 0x0D || $0 == 0x09 }) {
+        if !text.isEmpty { runs.append(.text(text, type)) }
+        continue
+      }
+      var split: [CodeRun] = []
+      try tokenizeRawText(
+        text,
+        RawTextVisitor(
+          linebreak: { split.append(.linebreak) }, tab: { split.append(.tab) },
+          text: { split.append(.text($0, type)) }))
+      runs.append(contentsOf: split)
+    case .token(let tokenType, let content, let alias):
+      if content.count == 1, case .text = content[0] {
+        try addCodeRuns(content, tokenType == "prefix" && alias != nil ? alias : tokenType, &runs)
+      } else {
+        try addCodeRuns(content, tokenType == "unchanged" ? nil : tokenType, &runs)
+      }
+    }
   }
 }
 
@@ -89,27 +149,7 @@ extension CodeTokenizer {
 public func mapTokensToLexicalStructure(
   _ tokens: [CodeToken], _ type: String? = nil
 ) throws -> [LexicalNode] {
-  var nodes: [LexicalNode] = []
-  for token in tokens {
-    switch token {
-    case .text(let text):
-      try tokenizeRawText(
-        text,
-        RawTextVisitor(
-          linebreak: { nodes.append(try createLineBreakNode()) },
-          tab: { nodes.append(try createTabNode()) },
-          text: { nodes.append(try createCodeHighlightNode($0, type)) }))
-    case .token(let tokenType, let content, let alias):
-      if content.count == 1, case .text = content[0] {
-        nodes += try mapTokensToLexicalStructure(
-          content, tokenType == "prefix" && alias != nil ? alias : tokenType)
-      } else {
-        nodes += try mapTokensToLexicalStructure(
-          content, tokenType == "unchanged" ? nil : tokenType)
-      }
-    }
-  }
-  return nodes
+  try codeRuns(tokens, type).map { try $0.createNode() }
 }
 
 /// A tokenizer that knows no language: every code block is split into
@@ -158,10 +198,10 @@ public struct ComposedCodeTokenizer: CodeTokenizer {
     select(language)?.0.tokenize(code, language) ?? [.text(code)]
   }
 
-  public func tokenize(codeNode: CodeNode, _ language: String?) throws -> [LexicalNode] {
+  public func tokenize(codeNode: CodeNode, _ language: String?) throws -> [LexicalNode]? {
     guard let language = nonEmpty(language) ?? defaultLanguage,
       let (tokenizer, _) = select(language)
-    else { return try plainifyCodeContent(codeNode.getTextContent()) }
+    else { return nil }
     return try tokenizer.tokenize(codeNode: codeNode, language)
   }
 }
@@ -180,10 +220,8 @@ private struct DefaultLanguageCodeTokenizer: CodeTokenizer {
     base.tokenize(code, language)
   }
 
-  func tokenize(codeNode: CodeNode, _ language: String?) throws -> [LexicalNode] {
-    guard let language = nonEmpty(language) ?? defaultLanguage else {
-      return try plainifyCodeContent(codeNode.getTextContent())
-    }
+  func tokenize(codeNode: CodeNode, _ language: String?) throws -> [LexicalNode]? {
+    guard let language = nonEmpty(language) ?? defaultLanguage else { return nil }
     return try base.tokenize(codeNode: codeNode, language)
   }
 }

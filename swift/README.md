@@ -83,6 +83,25 @@ Offsets in selections and points are UTF-16 code units, as in JS and
 `JSParity` article; `Examples/LexicalDemo` and `apps/lexical-playground-swift`
 are complete apps.
 
+## Code highlighting
+
+`LexicalCodeCore`'s `CodeHighlighterExtension` highlights code blocks with
+the `CodeTokenizer` in its config, as upstream swaps Prism for Shiki.
+`LexicalCodeTreeSitter` is a tokenizer built on
+[tree-sitter](https://tree-sitter.github.io) (its C core, vendored), whose
+captures are mapped to Prism's token names, so a theme's `codeHighlight`
+colors apply. Each grammar is its own product, so an app links only the
+languages it uses: `LexicalCodeTreeSitterJavaScript`, `…TypeScript`,
+`…Swift`, `…Python`, `…JSON`, `…HTML`, `…CSS`, `…Rust`, `…Go` and `…Bash`.
+
+```swift
+configExtension(CodeHighlighterExtension) {
+  $0.tokenizer = TreeSitterTokenizer([.javaScript, .swift])
+}
+```
+
+`scripts/vendor-tree-sitter.sh` pins and refreshes the vendored sources.
+
 ## Development
 
 This package is developed in [wevm/lexical](https://github.com/wevm/lexical),
@@ -102,4 +121,6 @@ pnpm --filter lexical-conformance run check-ledger  # ported/skipped counts per 
 
 ## License
 
-MIT. Lexical is copyright Meta Platforms, Inc. and affiliates.
+MIT. Lexical is copyright Meta Platforms, Inc. and affiliates. The vendored
+tree-sitter core and grammars under `Sources/CTreeSitter` and
+`Sources/TreeSitter*` keep their own licenses, in each directory.

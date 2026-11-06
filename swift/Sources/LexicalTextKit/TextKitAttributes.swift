@@ -117,6 +117,16 @@ public struct TextKitColor: Hashable, Sendable {
 /// The default theme's secondary text (quotes, `h2`) and code background.
 private let secondaryText = TextKitColor(101, 103, 107).withDark(TextKitColor(160, 163, 170))
 private let codeBackground = TextKitColor(240, 242, 245).withDark(TextKitColor(44, 46, 51))
+// The `PlaygroundEditorTheme__token*` colors, lighter in a dark appearance
+// for the darker code background.
+private let commentToken = TextKitColor(112, 128, 144).withDark(TextKitColor(139, 150, 162))
+private let punctuationToken = TextKitColor(153, 153, 153).withDark(TextKitColor(160, 160, 166))
+private let propertyToken = TextKitColor(153, 0, 85).withDark(TextKitColor(240, 128, 180))
+private let selectorToken = TextKitColor(102, 153, 0).withDark(TextKitColor(152, 195, 121))
+private let operatorToken = TextKitColor(154, 110, 58).withDark(TextKitColor(212, 170, 112))
+private let attrToken = TextKitColor(0, 119, 170).withDark(TextKitColor(86, 182, 238))
+private let variableToken = TextKitColor(238, 153, 0).withDark(TextKitColor(255, 184, 77))
+private let functionToken = TextKitColor(221, 74, 104).withDark(TextKitColor(255, 123, 145))
 
 /// The CSS basic color keywords, plus `orange`, `grey` and `transparent`.
 private let namedColors: [String: TextKitColor] = [
@@ -852,6 +862,37 @@ public struct TextKitTheme: Hashable, Sendable {
       fontFamily: ["Menlo", "Consolas", "Monaco", "monospace"], fontSize: .scale(0.94),
       backgroundColor: codeBackground),
     "text.highlight": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
+    // `theme.codeHighlight`: Prism's token names, each with its
+    // `PlaygroundEditorTheme__token*` color (`deleted`, `inserted` and
+    // `unchanged`, the diff lines' backgrounds, are not drawn).
+    "codeHighlight.atrule": TextKitStyle(foregroundColor: attrToken),
+    "codeHighlight.attr": TextKitStyle(foregroundColor: attrToken),
+    "codeHighlight.boolean": TextKitStyle(foregroundColor: propertyToken),
+    "codeHighlight.builtin": TextKitStyle(foregroundColor: selectorToken),
+    "codeHighlight.cdata": TextKitStyle(foregroundColor: commentToken),
+    "codeHighlight.char": TextKitStyle(foregroundColor: selectorToken),
+    "codeHighlight.class": TextKitStyle(foregroundColor: functionToken),
+    "codeHighlight.class-name": TextKitStyle(foregroundColor: functionToken),
+    "codeHighlight.comment": TextKitStyle(foregroundColor: commentToken),
+    "codeHighlight.constant": TextKitStyle(foregroundColor: propertyToken),
+    "codeHighlight.doctype": TextKitStyle(foregroundColor: commentToken),
+    "codeHighlight.entity": TextKitStyle(foregroundColor: operatorToken),
+    "codeHighlight.function": TextKitStyle(foregroundColor: functionToken),
+    "codeHighlight.important": TextKitStyle(foregroundColor: variableToken),
+    "codeHighlight.keyword": TextKitStyle(foregroundColor: attrToken),
+    "codeHighlight.namespace": TextKitStyle(foregroundColor: variableToken),
+    "codeHighlight.number": TextKitStyle(foregroundColor: propertyToken),
+    "codeHighlight.operator": TextKitStyle(foregroundColor: operatorToken),
+    "codeHighlight.prolog": TextKitStyle(foregroundColor: commentToken),
+    "codeHighlight.property": TextKitStyle(foregroundColor: propertyToken),
+    "codeHighlight.punctuation": TextKitStyle(foregroundColor: punctuationToken),
+    "codeHighlight.regex": TextKitStyle(foregroundColor: variableToken),
+    "codeHighlight.selector": TextKitStyle(foregroundColor: selectorToken),
+    "codeHighlight.string": TextKitStyle(foregroundColor: selectorToken),
+    "codeHighlight.symbol": TextKitStyle(foregroundColor: propertyToken),
+    "codeHighlight.tag": TextKitStyle(foregroundColor: propertyToken),
+    "codeHighlight.url": TextKitStyle(foregroundColor: operatorToken),
+    "codeHighlight.variable": TextKitStyle(foregroundColor: variableToken),
     "text.subscript": TextKitStyle(fontSize: .scale(0.8), baselineShift: -0.2),
     "text.superscript": TextKitStyle(fontSize: .scale(0.8), baselineShift: 0.33),
     "text.lowercase": TextKitStyle(textTransform: .lowercase),
@@ -988,7 +1029,7 @@ public struct TextKitTheme: Hashable, Sendable {
   public func textAttributes(for node: TextNode) throws -> TextKitTextAttributes {
     try textAttributes(
       format: node.getFormat(), style: node.getStyle(),
-      ancestors: node.getParents().reversed().map(TextKitElement.init), type: node.getType())
+      ancestors: node.getParents().reversed().map(TextKitElement.init), type: styleType(of: node))
   }
 
   /// The placeholder's look: the root's text with the `placeholder` style.

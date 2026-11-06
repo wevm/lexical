@@ -166,6 +166,26 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForExpectations(timeout: 5)
   }
 
+  /// Picking a language highlights the block with tree-sitter: its code
+  /// splits into typed CodeHighlightNodes, which the theme colors.
+  @MainActor
+  func testPickingACodeLanguageHighlightsTheBlock() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("``` const x = 'a'")
+    waitForTree(") code")
+    let picker = app.buttons["code-language"]
+    XCTAssertTrue(picker.waitForExistence(timeout: 5))
+    picker.tap()
+    app.buttons["JavaScript"].tap()
+    app.buttons["JSON"].tap()
+    let text = app.textViews["import-export-text"]
+    XCTAssertTrue(text.waitForExistence(timeout: 5))
+    let value = text.value as? String ?? ""
+    XCTAssertTrue(value.contains("\"highlightType\": \"keyword\""), value)
+    XCTAssertTrue(value.contains("\"highlightType\": \"string\""), value)
+  }
+
   @MainActor
   func testFontControlsPatchTheSelectionStyle() {
     launch()

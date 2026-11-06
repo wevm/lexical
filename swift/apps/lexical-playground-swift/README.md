@@ -16,7 +16,12 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   button at its top right, shown on hover on macOS and while the caret is
   in the block on iOS. The languages and their display names are the web's
   Prism list, kept in `Sources/CodeLanguages.swift`. Prettier's button is
-  not ported.
+  not ported. Code is highlighted by `LexicalCodeTreeSitter`, not Prism, in
+  the theme's token colors (`PlaygroundEditorTheme.css`, with dark
+  variants): JavaScript, TypeScript, Swift, Python, HTML, CSS, Rust and Go
+  from the picker, and JSON and shell by name. C, C++, Java, Markdown,
+  Objective-C, PowerShell, SQL and XML stay plain until their grammars are
+  added. A block with no language stays plain, as on the web.
 - **Embeds** (`YouTubeNode`, `TweetNode`, `FigmaNode`, `AutoEmbedPlugin`):
   the Insert menu and "/" open the embed dialog for a YouTube video, a
   tweet or a Figma document, and pasting a link to one offers to embed it.

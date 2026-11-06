@@ -13,6 +13,9 @@
 
 import Foundation
 import Lexical
+import LexicalCodeCore
+import LexicalCodeTreeSitter
+import LexicalCodeTreeSitterJavaScript
 import LexicalExtension
 import LexicalHistory
 import LexicalRichText
@@ -155,7 +158,8 @@ let middle = try editor.read { try getRoot().getChildAtIndex(paragraphCount / 2)
 
 /// Times `body` `count` times and reports it, when `name` is selected.
 @MainActor func bench(
-  _ name: String, _ count: Int, target: Double? = nil, _ body: () throws -> Void
+  _ name: String, _ count: Int, target: Double? = nil, gating: Bool = true,
+  _ body: () throws -> Void
 ) rethrows {
   guard selected(name) else { return }
   var samples: [Duration] = []
@@ -164,7 +168,7 @@ let middle = try editor.read { try getRoot().getChildAtIndex(paragraphCount / 2)
     try body()
     samples.append(clock.now - start)
   }
-  report(name, samples, target: target)
+  report(name, samples, target: target, gating: gating)
 }
 
 try caretAtEnd(of: middle)
@@ -198,6 +202,43 @@ try bench("undo and redo the last change", 10) {
   _ = try editor.dispatchCommand(REDO_COMMAND, ())
 }
 precondition(storage.units.count == controller.document.length)
+
+// Typing in the middle of a 200-line JavaScript code block highlighted by
+// tree-sitter: each keystroke re-tokenizes the block (an incremental parse)
+// and splices in the tokens that changed. Not gating: about 7.5 ms p50 and
+// 8.3 ms p95 on Linux, of which tokenizing is about 2 ms and the rest is
+// the update and reconcile of the block's ~5,200 children.
+if selected("code") {
+  let codeEditor = try buildEditorFromExtensions(
+    defineExtension(
+      name: "[benchmark-code]",
+      dependencies: [
+        RichTextExtension, configExtension(HistoryExtension) { $0.now = { 0 } },
+        configExtension(CodeHighlighterExtension) {
+          $0.tokenizer = TreeSitterTokenizer([.javaScript])
+        },
+      ]))
+  let (codeController, codeStorage) = mount(codeEditor)
+  let code = (0..<200).map {
+    "  const value\($0) = compute(items[$0], { key: 'v', count: 42 }); // note"
+  }
+  .joined(separator: "\n")
+  try codeEditor.update(discrete: true) {
+    try getRoot().clear().append(createCodeNode("javascript").append(createTextNode(code)))
+  }
+  // The caret after `const ` on the middle line.
+  let offset = code.split(separator: "\n").prefix(100).reduce(0) { $0 + $1.utf16.count + 1 } + 8
+  let codeKey = try codeEditor.read { try getRoot().getFirstChildOrThrow().getKey() }
+  let start = codeController.document.span(codeKey)!.location
+  try codeController.setSelectedRange(location: start + offset, length: 0)
+  try bench("code: insert a character in a 200-line code block", 200, target: 8, gating: false) {
+    try codeController.insertText("a")
+  }
+  try bench("code: delete a character in a 200-line code block", 200, target: 8, gating: false) {
+    try codeController.beforeInput("deleteContentBackward")
+  }
+  precondition(codeStorage.units.count == codeController.document.length)
+}
 
 if let index = CommandLine.arguments.firstIndex(of: "--markdown"),
   index + 1 < CommandLine.arguments.count

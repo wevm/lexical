@@ -44,42 +44,48 @@ struct ToolbarView: View {
           }
           Divider().frame(height: 20)
         }
-        FontFamilyMenu(model: model)
-        Divider().frame(height: 20)
-        FontSizeStepper(model: model)
-        Divider().frame(height: 20)
-        ForEach(toolbarFormats, id: \.format) { item in
-          FormatButton(
-            title: item.title, symbol: item.symbol, isOn: model.formats.contains(item.format)
-          ) {
-            model.toggleFormat(item.format)
-          }
-        }
-        ColorPickerButton(
-          title: "Formatting text color", symbol: "character", color: model.fontColor
-        ) { model.applyStyleText("color", $0) }
-        ColorPickerButton(
-          title: "Formatting background color", symbol: "paintbrush.fill",
-          color: model.backgroundColor
-        ) { model.applyStyleText("background-color", $0) }
-        FormatButton(title: "Insert Link", symbol: "link", isOn: model.isLink) {
-          model.insertLink()
-        }
-        Button("Clear Formatting", systemImage: "eraser") { model.clearFormatting() }
-        if model.isRichText {
+        if model.blockType == .code && model.isRichText {
+          CodeLanguageMenu(model: model)
+        } else {
+          FontFamilyMenu(model: model)
           Divider().frame(height: 20)
-          // The web toolbar's Insert dropdown, with the nodes the Swift
-          // port has.
-          Menu {
-            Button("Horizontal Rule", systemImage: "minus") { model.insertHorizontalRule() }
-            Button("Page Break", systemImage: "scissors") { model.insertPageBreak() }
-            Button("Image", systemImage: "photo") { model.isInsertingImage = true }
-            Button("Date", systemImage: "calendar") { model.insertDate() }
-          } label: {
-            Label("Insert", systemImage: "plus").labelStyle(.titleAndIcon)
+          FontSizeStepper(model: model)
+          Divider().frame(height: 20)
+          ForEach(toolbarFormats, id: \.format) { item in
+            FormatButton(
+              title: item.title, symbol: item.symbol, isOn: model.formats.contains(item.format)
+            ) {
+              model.toggleFormat(item.format)
+            }
           }
-          .fixedSize()
-          .accessibilityLabel("Insert specialized editor node")
+          ColorPickerButton(
+            title: "Formatting text color", symbol: "character", color: model.fontColor
+          ) { model.applyStyleText("color", $0) }
+          ColorPickerButton(
+            title: "Formatting background color", symbol: "paintbrush.fill",
+            color: model.backgroundColor
+          ) { model.applyStyleText("background-color", $0) }
+          FormatButton(title: "Insert Link", symbol: "link", isOn: model.isLink) {
+            model.insertLink()
+          }
+          Button("Clear Formatting", systemImage: "eraser") { model.clearFormatting() }
+          if model.isRichText {
+            Divider().frame(height: 20)
+            // The web toolbar's Insert dropdown, with the nodes the Swift
+            // port has.
+            Menu {
+              Button("Horizontal Rule", systemImage: "minus") { model.insertHorizontalRule() }
+              Button("Page Break", systemImage: "scissors") { model.insertPageBreak() }
+              Button("Image", systemImage: "photo") { model.isInsertingImage = true }
+              Button("Date", systemImage: "calendar") { model.insertDate() }
+            } label: {
+              Label("Insert", systemImage: "plus").labelStyle(.titleAndIcon)
+            }
+            .fixedSize()
+            .accessibilityLabel("Insert specialized editor node")
+          }
+        }
+        if model.isRichText {
           Divider().frame(height: 20)
           Menu {
             ForEach(toolbarAlignments, id: \.format) { item in
@@ -105,6 +111,38 @@ struct ToolbarView: View {
       .padding(.vertical, 6)
     }
     .accessibilityIdentifier("toolbar")
+  }
+}
+
+/// The web toolbar's code language dropdown (`CODE_LANGUAGE_OPTIONS_PRISM`),
+/// shown instead of the font and format controls in a code block.
+private struct CodeLanguageMenu: View {
+  let model: PlaygroundModel
+
+  var body: some View {
+    let current = normalizeCodeLanguage(model.codeLanguage)
+    Menu {
+      item("(No language)", isOn: model.codeLanguage.isEmpty) { model.setCodeLanguage(nil) }
+      ForEach(codeLanguageOptions, id: \.value) { option in
+        item(option.name, isOn: option.value == current) { model.setCodeLanguage(option.value) }
+      }
+    } label: {
+      Text(
+        model.codeLanguage.isEmpty
+          ? "(No language)"
+          : codeLanguageOptions.first { $0.value == current }?.name ?? ""
+      )
+      .frame(minWidth: 90, alignment: .leading)
+    }
+    .fixedSize()
+    .accessibilityLabel("Select language")
+    .accessibilityIdentifier("code-language")
+  }
+
+  private func item(_ name: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+      if isOn { Label(name, systemImage: "checkmark") } else { Text(name) }
+    }
   }
 }
 

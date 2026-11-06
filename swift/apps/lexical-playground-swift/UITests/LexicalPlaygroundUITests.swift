@@ -140,6 +140,32 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertTrue(tree.contains("\"x\""), tree)
   }
 
+  /// The toolbar's language dropdown sets the code block's language, which
+  /// the code action menu at the block shows (CodeActionMenuPlugin).
+  @MainActor
+  func testCodeLanguagePickerAndActionMenu() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("``` let x")
+    waitForTree(") code")
+    let label = app.staticTexts["code-highlight-language"]
+    XCTAssertTrue(label.waitForExistence(timeout: 5))
+    XCTAssertEqual(label.label, "(No language)")
+    XCTAssertTrue(app.buttons["code-copy"].exists)
+    let picker = app.buttons["code-language"]
+    XCTAssertTrue(picker.waitForExistence(timeout: 5))
+    picker.tap()
+    app.buttons["JavaScript"].tap()
+    expectation(for: NSPredicate(format: "label == 'JavaScript'"), evaluatedWith: label)
+    waitForExpectations(timeout: 5)
+    // Out of the block, the menu hides.
+    app.buttons["code-copy"].tap()
+    editor.typeText("\n\n\n")
+    waitForTree(") paragraph")
+    expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: label)
+    waitForExpectations(timeout: 5)
+  }
+
   @MainActor
   func testFontControlsPatchTheSelectionStyle() {
     launch()

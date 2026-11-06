@@ -44,6 +44,17 @@
     }
   }
 
+  extension NSTextLayoutManager {
+    /// The middle of the text of the first line at `location`, in the text
+    /// container's coordinates (`NSTextLineFragment.textMidY`).
+    func firstLineTextMidY(at location: any NSTextLocation) -> CGFloat? {
+      guard let fragment = textLayoutFragment(for: location),
+        let line = fragment.textLineFragments.first
+      else { return nil }
+      return fragment.layoutFragmentFrame.minY + line.textMidY
+    }
+  }
+
   /// Gives each paragraph a `CenteredLineLayoutFragment`.
   final class CenteredLineLayoutDelegate: NSObject, NSTextLayoutManagerDelegate {
     func textLayoutManager(
@@ -84,9 +95,39 @@
     /// How far above where TextKit put it text of `ascent` and `descent`
     /// is drawn, so it is centered in the line: for a line without text,
     /// such as the extra line after a final newline, the caret's font
-    /// stands in for the line's.
+    /// stands in for the line's. It stays on the baseline of an inline
+    /// decorator taller than that (an image), which TextKit puts at the
+    /// decorator's bottom edge, as CSS puts an inline image's.
     func textOffset(ascent: CGFloat, descent: CGFloat) -> CGFloat {
-      max(0, glyphOrigin.y - (typographicBounds.height + ascent - descent) / 2)
+      let centered = (typographicBounds.height + ascent - descent) / 2
+      return max(0, glyphOrigin.y - max(centered, attachmentAscent))
+    }
+
+    /// The middle of the line's text as `CenteredLineLayoutFragment` draws
+    /// it, in its layout fragment's coordinates: the line's middle, or
+    /// above it for text on a tall inline decorator's baseline.
+    var textMidY: CGFloat {
+      guard let (ascent, descent) = fontExtents else { return typographicBounds.midY }
+      return typographicBounds.minY + glyphOrigin.y - textOffset - (ascent - descent) / 2
+    }
+
+    /// How far above the baseline the line's attachments reach, at most
+    /// to the line's top.
+    private var attachmentAscent: CGFloat {
+      let range = NSIntersectionRange(
+        characterRange, NSRange(location: 0, length: attributedString.length))
+      guard range.length > 0 else { return 0 }
+      var top: CGFloat = 0
+      attributedString.enumerateAttribute(.attachment, in: range) { value, _, _ in
+        guard let attachment = value as? NSTextAttachment else { return }
+        // A decorator's view provider sizes it; its unscaled size bounds
+        // the one TextKit laid out.
+        let bounds =
+          (attachment as? LexicalDecoratorAttachment)?.bounds(
+            proposedLineFragment: .zero, font: nil) ?? attachment.bounds
+        top = max(top, bounds.maxY)
+      }
+      return min(top, glyphOrigin.y)
     }
   }
 #endif

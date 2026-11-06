@@ -349,11 +349,17 @@
               location: span.location,
               length: min(max(span.length, 1), document.length - span.location)))
         else { continue }
-        // The line in view coordinates, starting where line fragments do.
+        // The line in view coordinates, starting where line fragments do,
+        // around its text as drawn: the marker is on the text's baseline,
+        // which a tall inline decorator puts low in its line.
+        let midY =
+          textRange(NSRange(location: span.location, length: 0)).flatMap {
+            layoutManager.firstLineTextMidY(at: $0.location)
+          } ?? line.midY
         drawListMarker(
           layout,
           line: NSRect(
-            x: origin.x + padding, y: origin.y + line.minY, width: lineWidth,
+            x: origin.x + padding, y: origin.y + midY - line.height / 2, width: lineWidth,
             height: line.height))
       }
       for (key, bars) in controller.blockBars {
@@ -470,8 +476,8 @@
       return frame
     }
 
-    /// Where the item's text sits in its first line `line`: centered, as
-    /// `CenteredLineLayoutFragment` draws it.
+    /// Where the item's text sits in its first line `line`, centered on
+    /// the text as `CenteredLineLayoutFragment` draws it.
     private func glyphBox(_ layout: TextKitListMarkerLayout, _ line: NSRect) -> NSRect {
       let font = layout.text.nsFont
       let height = font.ascender - font.descender

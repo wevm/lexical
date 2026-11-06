@@ -478,6 +478,17 @@
       // scrolled into view; a range selection doesn't scroll (as in JS), so
       // bring its text back on screen, where UIKit shows its handles.
       print("HANDLES-DIAG offsetBeforeScroll=\(view.contentOffset) block=\(block)")
+      if ProcessInfo.processInfo.environment["HANDLES_INVALIDATE"] != nil, let lm = view.textLayoutManager {
+        lm.invalidateLayout(for: lm.documentRange)
+        if ProcessInfo.processInfo.environment["HANDLES_INVALIDATE"] == "viewport" {
+          lm.textViewportLayoutController.layoutViewport()
+        }
+      }
+      if let away = ProcessInfo.processInfo.environment["HANDLES_SCROLL_AWAY"].flatMap(Double.init) {
+        view.setContentOffset(CGPoint(x: 0, y: away), animated: false)
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.3))
+        print("HANDLES-DIAG scrolledAway offset=\(view.contentOffset)")
+      }
       if let wait = ProcessInfo.processInfo.environment["HANDLES_WAIT_BEFORE_SCROLL"].flatMap(Double.init) {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: wait))
         let display = view.interactions.compactMap { $0 as? UITextSelectionDisplayInteraction }.first

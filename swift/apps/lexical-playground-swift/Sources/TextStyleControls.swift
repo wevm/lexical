@@ -39,6 +39,7 @@ struct FontFamilyMenu: View {
       Label(model.fontFamily, systemImage: "textformat").labelStyle(.titleAndIcon)
     }
     .fixedSize()
+    .accessibilityShowsLargeContentViewer()
     .accessibilityLabel("Formatting options for font family")
     .accessibilityValue(model.fontFamily)
   }
@@ -50,6 +51,8 @@ struct FontSizeStepper: View {
   let model: PlaygroundModel
   @State private var inputValue = ""
   @FocusState private var isFocused: Bool
+  /// Two digits' room, at the text's size.
+  @ScaledMetric private var fieldWidth: CGFloat = 34
 
   private var selectionFontSize: String { toolbarFontSize(model.fontSize) }
 
@@ -68,7 +71,7 @@ struct FontSizeStepper: View {
       .help("Decrease font size")
       TextField("", text: $inputValue)
         .multilineTextAlignment(.center)
-        .frame(width: 34)
+        .frame(width: fieldWidth)
         .textFieldStyle(.roundedBorder)
         .focused($isFocused)
         #if os(iOS)
@@ -104,6 +107,9 @@ struct ColorPickerButton: View {
   let title: String
   let symbol: String
   let color: String
+  /// The text size of the picker, which the bar's own size limit leaves
+  /// out.
+  var panelTypeSize: DynamicTypeSize = .large
   let onChange: (String) -> Void
   @State private var isOpen = false
 
@@ -125,7 +131,7 @@ struct ColorPickerButton: View {
     .accessibilityValue(color)
     .help(title)
     .popover(isPresented: $isOpen) {
-      ColorPickerPanel(color: color, onChange: onChange)
+      ColorPickerPanel(color: color, onChange: onChange).dynamicTypeSize(panelTypeSize)
     }
   }
 }

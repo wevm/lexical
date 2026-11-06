@@ -127,6 +127,13 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   selection, the last commands and the editor's settings, or the exported
   HTML. It sits beside the editor in a regular-width window and below it
   otherwise.
+- **Dynamic Type** (iOS): the document scales as body text, its indents,
+  spacing and markers with it (`LexicalUIKit`), and the playground's popups,
+  panels, dialogs and decorators take the web's pixel sizes at the default
+  text size and grow with the setting (`Sources/DynamicType.swift`). The
+  toolbar, the bottom bar and the other controls that float over the text
+  stop growing at the largest standard size and show the large content
+  viewer on a long press, as UIKit's bars do.
 - **Actions:** import and export as JSON, HTML or Markdown, clear, read-only, and
   settings (rich or plain text, the debug view, editable, autocomplete,
   the welcome document).

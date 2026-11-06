@@ -20,7 +20,7 @@ struct ImportExportView: View {
     NavigationStack {
       VStack(alignment: .leading, spacing: 8) {
         TextEditor(text: $text)
-          .font(.system(size: 12, design: .monospaced))
+          .scaledFont(size: 12, design: .monospaced, relativeTo: .caption)
           .autocorrectionDisabled()
           .accessibilityIdentifier("import-export-text")
         if let error {

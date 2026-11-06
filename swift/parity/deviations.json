@@ -120,5 +120,9 @@
   "native/dynamic-type-theme-scale": {
     "category": "platform-rendering",
     "description": "On iOS the text view scales the theme with the reader's Dynamic Type setting: every font as body text (UIFontMetrics(forTextStyle: .body)), and the theme's lengths (indents, paragraph spacing, list markers and check boxes, quote bars, code blocks' padding and gutter, horizontal rules, baseline shifts) by the same factor, so the document keeps its proportions, as a page does under browser zoom. In a browser the system's text size setting leaves the web playground's pixel sizes as they are (only fonts given as -apple-system text styles follow it). At the default size nothing differs. See DESIGN.md, Dynamic Type."
+  },
+  "native/playground-dynamic-type": {
+    "category": "platform-rendering",
+    "description": "On iOS the Swift playground's own UI follows Dynamic Type, which the web playground's pixel sizes do not: its popups, panels, dialogs and decorators (the typeahead menus, the link editor, the find panel, comments, the table of contents, the debug view, image captions, polls, sticky notes, dates, page breaks and KaTeX's equations) take the web's sizes at the default text size and grow with the setting. The toolbar, the bottom bar, the Show Comments button, the code block's language label and the sticky note's buttons stop growing at the largest standard size and show the large content viewer on a long press, as UIKit's bars do; the bottom bar's buttons scroll where they do not fit, with Settings kept at its end. At the accessibility sizes the comment box's buttons stack, the find panel's Replace and All get a row of their own, and a poll option's votes go below its field. A poll and the typeahead menus grow wider with the text, up to the editor's width."
   }
 }

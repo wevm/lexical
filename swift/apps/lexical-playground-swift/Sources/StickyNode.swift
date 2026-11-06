@@ -476,6 +476,9 @@ struct StickyComponent: View {
   let note: StickyNote
   /// A drag of the paper by a translation, and whether it ended there.
   let onDrag: (CGSize, Bool) -> Void
+  /// `.sticky-note`'s 120 pixels, as its 24-point text grows with the
+  /// reader's text size, up to most of a phone's width.
+  @ScaledMetric private var width: CGFloat = 120
 
   var body: some View {
     let isPink = note.color == .pink
@@ -483,7 +486,7 @@ struct StickyComponent: View {
     let corner = isPink ? Color(hex: 0xE7BFE1) : Color(hex: 0xFFFFC6)
     LexicalEditor(note.caption, placeholder: "What's up?")
       .sizedToContent(minHeight: 30, maxHeight: 400)
-      .frame(width: 120)
+      .frame(width: min(width, 280))
       .padding(.vertical, 20).padding(.horizontal, 10)
       .background {
         // The 135° gradient, which reaches its corner color only in the
@@ -505,14 +508,17 @@ struct StickyComponent: View {
         // Targets that fire in a hosted view on each platform
         // (`stickyNoteTap`).
         HStack(spacing: 2) {
-          Image(systemName: "drop.fill").font(.system(size: 11))
+          Image(systemName: "drop.fill").scaledFont(size: 11, relativeTo: .caption2)
             .stickyNoteButton("Change sticky note color", id: "sticky-color", action: toggleColor)
-          Text("X").font(.system(size: 10))
+          Text("X").scaledFont(size: 10, relativeTo: .caption2)
             .stickyNoteButton("Delete sticky note", id: "sticky-delete", action: delete)
         }
         .foregroundStyle(.black)
         .opacity(0.5)
         .padding(.top, 1).padding(.trailing, 4)
+        // Their targets keep their 22 points (the macOS drag area leaves
+        // them out by that size), so their glyphs grow only as a bar's do.
+        .barDynamicTypeSize()
       }
       .environment(\.colorScheme, .light)
       // `.sticky-note`'s margin, with room for its shadow.

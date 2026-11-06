@@ -75,9 +75,9 @@ struct FloatingTextFormatToolbarView: View {
   /// icons are letters.
   @ViewBuilder private func icon(_ symbol: String) -> some View {
     if symbol.hasPrefix("glyph:") {
-      Text(symbol.dropFirst(6)).font(.system(size: 13, weight: .semibold))
+      Text(symbol.dropFirst(6)).scaledFont(size: 13, weight: .semibold, relativeTo: .footnote)
     } else {
-      Image(systemName: symbol).font(.system(size: 15))
+      Image(systemName: symbol).scaledFont(size: 15, relativeTo: .subheadline)
     }
   }
 

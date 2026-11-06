@@ -380,7 +380,7 @@ private struct ImageResizer: View {
         // 0.3 and white text, `rgba(60, 132, 244, 0.5)` while hovered.
         Button(action: addCaption) {
           Text("Add Caption")
-            .font(.system(size: 13))
+            .scaledFont(size: 13, relativeTo: .footnote)
             .foregroundStyle(.white)
             .padding(10)
             .frame(width: max(100, size.width * 0.3))

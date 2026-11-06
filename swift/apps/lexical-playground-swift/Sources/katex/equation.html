@@ -65,8 +65,10 @@
       }
       new ResizeObserver(post).observe(measure);
       document.fonts.addEventListener('loadingdone', post);
-      function show(equation, isInline) {
+      // fontSize is the page's 16px at the reader's text size (Dynamic Type).
+      function show(equation, isInline, fontSize) {
         inline = isInline;
+        document.body.style.fontSize = fontSize + 'px';
         measure.textContent = '';
         var holder = document.createElement(inline ? 'span' : 'div');
         measure.appendChild(holder);

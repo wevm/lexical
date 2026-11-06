@@ -22,7 +22,7 @@ struct TreeView: View {
       .padding(8)
       ScrollView([.vertical, .horizontal]) {
         Text(model.tree)
-          .font(.system(size: 11, design: .monospaced))
+          .scaledFont(size: 11, design: .monospaced, relativeTo: .caption2)
           .foregroundStyle(Color.white)
           .textSelection(.enabled)
           .frame(maxWidth: .infinity, alignment: .topLeading)

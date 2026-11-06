@@ -50,6 +50,12 @@ final class TypeaheadMenuModel {
   /// `.mentions-menu { width: 250px }`, which the default renderer gives
   /// every menu.
   var width: CGFloat = 250
+  /// The editor's visible width, which the menu stays within at the
+  /// larger text sizes.
+  var maxWidth: CGFloat = .infinity
+  /// The room below or above the query, whichever is taller, which the
+  /// menu stays within, scrolling, at the larger text sizes.
+  var maxHeight: CGFloat = .infinity
   @ObservationIgnored var choose: (Int) -> Void = { _ in }
   @ObservationIgnored var highlight: (Int) -> Void = { _ in }
 }
@@ -57,6 +63,11 @@ final class TypeaheadMenuModel {
 struct TypeaheadMenuView: View {
   let model: TypeaheadMenuModel
   static let shadowMargin: CGFloat = 16
+  /// How much the reader's text size scales the web's sizes: a row is 36
+  /// points tall (`li`'s 20-point line and 8 points of padding), and the
+  /// menu at most 200, at the default size.
+  @ScaledMetric(relativeTo: .subheadline) private var scale: CGFloat = 1
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   var body: some View {
     ScrollViewReader { proxy in
@@ -75,7 +86,10 @@ struct TypeaheadMenuView: View {
       }
     }
     // `ul { max-height: 200px }`.
-    .frame(width: model.width, height: min(200, CGFloat(model.rows.count) * 36))
+    .frame(
+      width: menuWidth,
+      height: min(200 * scale, model.maxHeight, model.rows.reduce(0) { $0 + rowHeight($1) })
+    )
     .clipShape(RoundedRectangle(cornerRadius: 8))
     // `.typeahead-popover`: white, radius 8, `0 5px 10px rgba(0,0,0,.3)`.
     .floatingSurface()
@@ -83,6 +97,28 @@ struct TypeaheadMenuView: View {
     .accessibilityElement(children: .contain)
     .accessibilityLabel("Typeahead menu")
     .accessibilityIdentifier("typeahead-menu")
+  }
+
+  private var menuWidth: CGFloat {
+    min(model.width * scale, model.maxWidth - 2 * Self.shadowMargin)
+  }
+
+  /// A row's height: 36 points, scaled, on one line, and at the
+  /// accessibility sizes, where a title wraps, its lines' height and the
+  /// padding.
+  private func rowHeight(_ row: TypeaheadMenuRow) -> CGFloat {
+    let height = 36 * scale
+    #if canImport(UIKit)
+      guard dynamicTypeSize.isAccessibilitySize else { return height }
+      let icon = row.glyph != nil || row.symbol != nil ? 20 * scale + 8 : 0
+      let title = (row.title as NSString).boundingRect(
+        with: CGSize(width: menuWidth - 16 * scale - icon, height: .greatestFiniteMagnitude),
+        options: .usesLineFragmentOrigin,
+        attributes: [.font: UIFont.systemFont(ofSize: 14 * scale)], context: nil)
+      return max(height, ceil(title.height) + 16 * scale)
+    #else
+      return height
+    #endif
   }
 
   /// `li.item`: padding 8 (`ul li { margin: 0 }` wins over `li`'s side
@@ -97,17 +133,18 @@ struct TypeaheadMenuView: View {
     let isSelected = model.selectedIndex == index
     return HStack(spacing: 8) {
       if let glyph = row.glyph {
-        Text(glyph).font(.system(size: 14)).frame(width: 20, height: 20)
+        Text(glyph).font(.system(size: 14 * scale)).frame(width: 20 * scale, height: 20 * scale)
       } else if let symbol = row.symbol {
-        Image(systemName: symbol).font(.system(size: 14)).frame(width: 20, height: 20)
+        Image(systemName: symbol).font(.system(size: 14 * scale))
+          .frame(width: 20 * scale, height: 20 * scale)
       }
       Text(row.title)
-        .font(.system(size: 14))
-        .lineLimit(1)
-        .frame(minWidth: 150, maxWidth: .infinity, minHeight: 20, alignment: .leading)
+        .font(.system(size: 14 * scale))
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+        .frame(maxWidth: .infinity, minHeight: 20 * scale, alignment: .leading)
     }
     .foregroundStyle(Color.primary)
-    .padding(8)
+    .padding(8 * scale)
     .background(isSelected ? selectedBackground : .clear)
     .contentShape(Rectangle())
     .id(row.id)
@@ -147,6 +184,11 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
   #else
     private let hostingController: UIHostingController<TypeaheadMenuView>
     private var offsetObservation: NSKeyValueObservation?
+    /// The keyboard's frame in the screen's space, from its notifications:
+    /// the window's `keyboardLayoutGuide`, once made, keeps sheets from
+    /// rising above the keyboard.
+    private var keyboardFrame: CGRect = .null
+    private var keyboardObserver: (any NSObjectProtocol)?
   #endif
   private weak var textView: TextView?
   private var hostingView: PlatformView { hostingController.view }
@@ -171,6 +213,14 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
     }
     model.highlight = { [weak self] index in self?.menu.setHighlightedIndex(index) }
     menu.onChange = { [weak self] in self?.refresh() }
+    #if !os(macOS)
+      keyboardObserver = NotificationCenter.default.addObserver(
+        forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main
+      ) { [weak self] notification in
+        let frame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
+        MainActor.assumeIsolated { self?.keyboardFrame = frame ?? .null }
+      }
+    #endif
     removeScroll = menu.editor.registerCommand(
       SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND,
       { [weak self] payload, _ in
@@ -182,7 +232,18 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
   isolated deinit {
     removeScroll?()
     if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
+    #if !os(macOS)
+      if let keyboardObserver { NotificationCenter.default.removeObserver(keyboardObserver) }
+    #endif
     hide()
+  }
+
+  private var isShown: Bool {
+    #if os(macOS)
+      panel.isVisible
+    #else
+      !hostingView.isHidden
+    #endif
   }
 
   private func hide() {
@@ -206,11 +267,12 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
         clipView.postsBoundsChangedNotifications = true
         scrollObserver = NotificationCenter.default.addObserver(
           forName: NSView.boundsDidChangeNotification, object: clipView, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.position() } }
+        ) { [weak self] _ in MainActor.assumeIsolated { self?.position(isScroll: true) } }
       }
     #else
       offsetObservation = textView?.observe(\.contentOffset) { [weak self] _, _ in
-        MainActor.assumeIsolated { self?.position() }
+        // After the text view has laid out the scroll's text.
+        DispatchQueue.main.async { self?.position(isScroll: true) }
       }
     #endif
     refresh()
@@ -223,7 +285,9 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
     DispatchQueue.main.async { [weak self] in self?.position() }
   }
 
-  private func position() {
+  /// `isScroll`: the text scrolled, rather than the menu or its query
+  /// changing.
+  private func position(isScroll: Bool = false) {
     // A node menu's anchor is its node (`LexicalNodeMenuPlugin` anchors at
     // the node's element): an element spans its children.
     let elementSize =
@@ -250,9 +314,12 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
       let rootVisible = textView.bounds.inset(by: textView.adjustedContentInset)
     #endif
     // `isTriggerVisibleInNearestScrollContainer`: a query scrolled out of
-    // the editor (with a 6-point margin) closes the menu.
+    // the editor (with a 6-point margin) closes the menu. A query typed
+    // below the editor's bottom is out of it until the text view scrolls
+    // its caret into view, after this: the menu waits, hidden, as the
+    // web's check waits for a scroll event.
     if range.minY < rootVisible.minY - 6 || range.minY > rootVisible.maxY + 6 {
-      menu.close()
+      if isScroll, isShown { menu.close() } else { hide() }
       return
     }
     // The query, the root and the bottom of the viewport in one space whose
@@ -280,7 +347,13 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
       let rect = textView.convert(range, to: container)
       let root = textView.convert(rootVisible, to: container)
       // `window.innerHeight`: what the keyboard leaves of the window.
-      let bottom = min(container.bounds.maxY, container.keyboardLayoutGuide.layoutFrame.minY)
+      let keyboard = container.convert(keyboardFrame, from: container.screen.coordinateSpace)
+      let bottom =
+        keyboardFrame.isNull ? container.bounds.maxY : min(container.bounds.maxY, keyboard.minY)
+      model.maxWidth = root.width
+      model.maxHeight = max(
+        44, bottom - rect.maxY - 3 - 2 * TypeaheadMenuView.shadowMargin,
+        rect.minY - root.minY - rect.height - 2 * TypeaheadMenuView.shadowMargin)
       let size = hostingController.sizeThatFits(
         in: CGSize(width: container.bounds.width, height: .greatestFiniteMagnitude))
     #endif

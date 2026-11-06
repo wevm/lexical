@@ -95,6 +95,8 @@ struct FloatingLinkEditorView: View {
 
   /// The transparent margin around the panel, which its shadow draws in.
   static let shadowMargin: CGFloat = 16
+  /// `.link-edit`'s 35 points, at the text's size.
+  @ScaledMetric private var iconSize: CGFloat = 35
 
   var body: some View {
     @Bindable var model = model
@@ -174,7 +176,7 @@ struct FloatingLinkEditorView: View {
       .labelStyle(.iconOnly)
       .buttonStyle(.borderless)
       .foregroundStyle(.primary)
-      .frame(width: 35, height: 35)
+      .frame(width: iconSize, height: iconSize)
       .contentShape(Rectangle())
       .help(title)
   }

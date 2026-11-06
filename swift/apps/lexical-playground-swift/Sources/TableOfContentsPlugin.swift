@@ -105,6 +105,12 @@ struct TableOfContentsPanel: View {
   /// short.
   var isCompact = false
 
+  /// The web's 200 by 220 points, grown with the text up to about half
+  /// as much again, where the headings wrap.
+  @ScaledMetric(relativeTo: .callout) private var width: CGFloat = 200
+  @ScaledMetric(relativeTo: .callout) private var height: CGFloat = 220
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
   private static let blue = Color(red: 0x35 / 255, green: 0x78 / 255, blue: 0xe5 / 255)
   private static let gray = Color(red: 0x65 / 255, green: 0x67 / 255, blue: 0x6b / 255)
 
@@ -118,9 +124,9 @@ struct TableOfContentsPanel: View {
       .frame(maxWidth: .infinity, alignment: .leading)
     }
     .scrollIndicators(.hidden)
-    .frame(width: 200)
-    .frame(height: isCompact ? nil : 220)
-    .frame(maxHeight: 220)
+    .frame(width: min(width, 300))
+    .frame(height: isCompact ? nil : min(height, 440))
+    .frame(maxHeight: min(height, 440))
     .fixedSize(horizontal: false, vertical: isCompact)
     .background(alignment: .leading) {
       // `.headings::before`.
@@ -143,9 +149,9 @@ struct TableOfContentsPanel: View {
       model.scrollToNode(entry.key)
     } label: {
       Text(truncated(entry.text, isFirst ? 20 : 27))
-        .font(.system(size: 16, weight: isFirst ? .bold : .regular))
+        .scaledFont(size: 16, weight: isFirst ? .bold : .regular, relativeTo: .callout)
         .foregroundStyle(isFirst ? .black : isSelected ? Self.blue : Self.gray)
-        .lineLimit(1)
+        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
         .frame(minHeight: 20)
         // `.first-heading` sits a line above the next (its `<br />`).
         .padding(.bottom, isFirst ? 20 : 0)

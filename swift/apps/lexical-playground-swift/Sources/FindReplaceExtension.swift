@@ -483,6 +483,9 @@ final class FindReplaceModel {
 struct FindReplacePanel: View {
   @Bindable var model: FindReplaceModel
   @FocusState private var isSearchFocused: Bool
+  @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+  /// The buttons' 28 points, at the text's size.
+  @ScaledMetric(relativeTo: .footnote) private var controlSize: CGFloat = 28
 
   #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -502,14 +505,26 @@ struct FindReplacePanel: View {
             countLabel
           }
           replaceField
-          HStack(spacing: 4) {
-            toggles
-            separator
-            navigation
-            Spacer(minLength: 4)
+          if dynamicTypeSize.isAccessibilitySize {
+            // Replace and All get a row of their own too.
+            HStack(spacing: 4) {
+              toggles
+              separator
+              navigation
+              Spacer(minLength: 4)
+              closeButton
+            }
             actions
-            separator
-            closeButton
+          } else {
+            HStack(spacing: 4) {
+              toggles
+              separator
+              navigation
+              Spacer(minLength: 4)
+              actions
+              separator
+              closeButton
+            }
           }
         }
       } else {
@@ -537,7 +552,7 @@ struct FindReplacePanel: View {
         .shadow(color: .black.opacity(0.2), radius: 14, y: 12)
         .shadow(color: .black.opacity(0.1), radius: 2, y: 2)
     )
-    .font(.system(size: 13))
+    .scaledFont(size: 13, relativeTo: .footnote)
     .foregroundStyle(Color(white: 0.02))
     .environment(\.colorScheme, .light)
     #if os(macOS)
@@ -562,7 +577,7 @@ struct FindReplacePanel: View {
 
   private var countLabel: some View {
     Text(model.countText)
-      .font(.system(size: 11))
+      .scaledFont(size: 11, relativeTo: .caption2)
       .foregroundStyle(Color(white: 0.47))
       .frame(minWidth: 70)
       .accessibilityIdentifier("find-replace-count")
@@ -604,7 +619,8 @@ struct FindReplacePanel: View {
 
   /// `.find-replace-separator`.
   private var separator: some View {
-    Rectangle().fill(Color(white: 0.87)).frame(width: 1, height: 18).padding(.horizontal, 2)
+    Rectangle().fill(Color(white: 0.87)).frame(width: 1, height: controlSize * 18 / 28)
+      .padding(.horizontal, 2)
   }
 
   private func field(
@@ -632,10 +648,11 @@ struct FindReplacePanel: View {
   ) -> some View {
     Button(action: action) {
       Text(title)
-        .font(.system(size: 12, weight: .medium))
+        .scaledFont(size: 12, weight: .medium, relativeTo: .caption)
+        .fixedSize()
         .foregroundStyle(isOn ? Color(red: 60 / 255, green: 132 / 255, blue: 244 / 255) : .gray)
         .padding(.horizontal, 6)
-        .frame(height: 28)
+        .frame(height: controlSize)
         .background(
           RoundedRectangle(cornerRadius: 6)
             .fill(
@@ -654,8 +671,8 @@ struct FindReplacePanel: View {
   ) -> some View {
     Button(action: action) {
       Image(systemName: symbol)
-        .font(.system(size: 12, weight: .semibold))
-        .frame(width: 28, height: 28)
+        .scaledFont(size: 12, weight: .semibold, relativeTo: .caption)
+        .frame(width: controlSize, height: controlSize)
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
@@ -671,7 +688,7 @@ struct FindReplacePanel: View {
   {
     // `.find-replace-btn`: text on the panel's background.
     Button(action: action) {
-      Text(title).padding(.horizontal, 8).frame(height: 28).contentShape(Rectangle())
+      Text(title).padding(.horizontal, 8).frame(height: controlSize).contentShape(Rectangle())
     }
     .buttonStyle(.plain)
     .foregroundStyle(Color(white: 0.2))

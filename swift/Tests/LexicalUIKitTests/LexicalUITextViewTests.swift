@@ -477,6 +477,12 @@
       // Loading the document left the caret at its end, which the view
       // scrolled into view; a range selection doesn't scroll (as in JS), so
       // bring its text back on screen, where UIKit shows its handles.
+      print("HANDLES-DIAG offsetBeforeScroll=\(view.contentOffset) block=\(block)")
+      if let wait = ProcessInfo.processInfo.environment["HANDLES_WAIT_BEFORE_SCROLL"].flatMap(Double.init) {
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: wait))
+        let display = view.interactions.compactMap { $0 as? UITextSelectionDisplayInteraction }.first
+        print("HANDLES-DIAG beforeScroll handleViews=\(display?.handleViews.map { "\($0.frame.integral)\($0.isHidden ? "h" : "")" } ?? [])")
+      }
       view.setContentOffset(.zero, animated: false)
       let textHandles = settledHandles()
       do {

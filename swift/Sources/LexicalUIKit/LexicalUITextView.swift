@@ -333,6 +333,8 @@
       }
       showMarkedText()
       showHighlights()
+      Self.selectionRectsLog.append(
+        "render sel=\(update.selectedRange.map { "\($0.location),\($0.length)" } ?? "nil") nodes=\(update.selectedNodes.count) decorators=\(update.decorators.count) edits=\(update.edits.count) activated=\(interactions.compactMap { ($0 as? UITextSelectionDisplayInteraction)?.isActivated }) fr=\(isFirstResponder)")
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange != selected { selectedRange = selected }
@@ -853,8 +855,13 @@
     package nonisolated(unsafe) static var selectionRectsLog: [String] = []
 
     public override func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
-      let result = trimmedSelectionRects(for: range)
+      var result = trimmedSelectionRects(for: range)
       let rects = super.selectionRects(for: range)
+      if let empty = ProcessInfo.processInfo.environment["HANDLES_EMPTY_FIRST"].flatMap(Int.init),
+        Self.selectionRectsLog.first == "-- text selection --", Self.selectionRectsLog.count <= empty
+      {
+        result = []
+      }
       func describe(_ rects: [UITextSelectionRect]) -> String {
         rects.map {
           "\($0.rect.integral)\($0.containsStart ? "S" : "")\($0.containsEnd ? "E" : "")"
@@ -864,7 +871,12 @@
         "\(String(format: "%.3f", Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 1000))) "
           + "range=\(offset(from: beginningOfDocument, to: range.start))..\(offset(from: beginningOfDocument, to: range.end)) "
           + "super=[\(describe(rects))] result=[\(describe(result))] "
-          + "layoutValid=\(textLayoutManager.map { $0.textViewportLayoutController.viewportRange != nil } ?? false)")
+          + "bounds=\(bounds.integral) visible=\(window.map { convert($0.bounds, from: $0).intersection(bounds).integral } ?? .null) "
+          + "layoutValid=\(textLayoutManager.map { $0.textViewportLayoutController.viewportRange != nil } ?? false)"
+          + (Self.selectionRectsLog.filter { $0.contains(" range=") }.count < 2
+            ? " stack=" + Thread.callStackSymbols.prefix(14).dropFirst().map {
+              $0.split(separator: " ", omittingEmptySubsequences: true).dropFirst(3).prefix(2).joined(separator: " ")
+            }.joined(separator: "<") : ""))
       return result
     }
 
@@ -934,6 +946,7 @@
         let display = interactions.lazy.compactMap({ $0 as? UITextSelectionDisplayInteraction })
           .first
       else { return }
+      Self.selectionRectsLog.append("showSelectionDisplay text=\(showsTextSelection) activated=\(display.isActivated) fr=\(isFirstResponder)")
       if !showsTextSelection {
         if display.isActivated { display.isActivated = false }
       } else if isFirstResponder, !display.isActivated {

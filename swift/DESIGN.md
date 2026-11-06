@@ -45,6 +45,19 @@ editing produces (native input never splits a pair). Upstream tests or
 vectors that depend on a lone surrogate are skipped as `deviation`, with a
 note pointing here; fuzz vectors keep offsets off pair interiors.
 
+### Integer properties
+
+A schema's `numberValue()` accepts any finite number, and JS stores and
+writes back what it read: a `format` of 1.5 or 1e300 exports as 1.5 or
+1e300, while JS's bitwise operators read it as `ToInt32`. Swift keeps
+`format`, `detail`, `textFormat`, `indent`, a list's `start` and an item's
+`value` in an `Int`. A fraction or an out-of-range number parses to an
+integer instead of trapping (the flags to the `ToInt32` JS's operators
+read, indents clamped to `Int`'s range), and exports as that integer. No
+editing produces such a document, so it is treated like the surrogates
+(proposed when the property vectors found it, for tmm to review): the
+property generators keep these numbers integral and within 32 bits.
+
 ## Conformance tooling
 
 - **Vectors** (Q25): `packages/lexical-conformance` runs the real upstream
@@ -62,6 +75,46 @@ note pointing here; fuzz vectors keep offsets off pair interiors.
   record the same. Fuzz vectors are scripts generated from fixed seeds. A
   headless JS editor has no window for `Selection.modify`, so scripts only
   delete within text where the model resolves it.
+- **Property vectors** (decided after v0.1.4): `src/property.ts` draws
+  random inputs with upstream's `@lexical/fast-check`, whose
+  `nodeArbitrary` reads the serialization schema each node declares on
+  `$config`, so every node property is drawn from the domain its parser
+  accepts, present or absent. Two kinds, JS's answers recorded by
+  `src/property.test.ts` from a fixed seed into `vectors/property/`:
+  - `documents.json`: random editor states over every enforced node
+    (rich text, list, link, code, overflow, hashtag), shaped as the editor
+    builds them. Each records both JSON forms of the parsed state, a second
+    parse when that is not a fixed point, text content, markdown export
+    and HTML export (in jsdom). An input JS refuses records only that.
+  - `sequences.json`: a random document, then random steps, each a
+    selection set in one update and a command dispatched outside it as a
+    key handler would (text insertion, the deletions, Enter, line breaks,
+    text and element formats, indent and outdent, the list commands,
+    `TOGGLE_LINK_COMMAND`, undo and redo), or `$setBlocksType`, on a rich
+    text editor with lists, check lists, links, hashtags, code and history.
+    The state, selection and text are recorded after every step. The
+    editor gets the jsdom window with no root element, as upstream's unit
+    tests have one; a headless editor has none, and its deletions throw
+    reading `Selection.modify`. History is enabled with no merge delay.
+
+  `PropertyTests` replays both byte for byte. The generators keep to what
+  Swift can hold: text has no lone surrogates and points fall off pair
+  interiors (above), integer properties are integers in range (below),
+  and inline styles are either no declaration or valid ones, because the
+  Swift DOM keeps a declaration jsdom drops as invalid (see the DOM, in
+  the M2 conventions).
+  The nightly `Swift property run` workflow (`swift-property.yml`, Linux,
+  not gating) draws fresh seeds in `src/propertyNightly.test.ts`: Swift
+  answers each candidate over two named pipes from the `PropertyServer`
+  suite, a trap counting as a failure, so fast-check shrinks against
+  Swift's real answers. It prints the seed and the minimized input, which
+  goes into `src/propertyRegressions.ts` so the checked-in vectors replay
+  it from then on.
+  `@lexical/fast-check` has no ledger entry: it generates test inputs in
+  JS and ships nothing a Swift app would call, so there is no port to hold
+  to its tests. Its arbitraries are used, not ported; a Swift version would
+  only be needed for property tests written in Swift, and the oracle here
+  is JS.
 - **Parity ledger** (Q15, Q34): `parity/upstream-tests.json` lists every
   upstream unit test of the packages in `parity/packages.json`. Each is
   ported (`@Test(.upstream("<id>"))`) or skipped in `parity/skips.json` with a

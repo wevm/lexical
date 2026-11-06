@@ -55,7 +55,7 @@ struct ScriptTests {
 }
 
 /// Where `got` and `want` first differ, with some context.
-private func difference(_ got: String, _ want: String) -> String {
+func difference(_ got: String, _ want: String) -> String {
   let a = Array(got.unicodeScalars)
   let b = Array(want.unicodeScalars)
   var i = 0

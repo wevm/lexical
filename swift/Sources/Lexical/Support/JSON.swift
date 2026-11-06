@@ -512,3 +512,21 @@ struct JSONParser {
     return Double(String(decoding: bytes[start..<i], as: UTF8.self))!
   }
 }
+
+/// JS `ToInt32(value)`: the integer a bitwise operator reads from a number
+/// (truncated, wrapped to 32 bits; NaN and infinities are 0). Bit flags
+/// parsed from JSON go through it, so any number a document carries becomes
+/// the flags JS would test, instead of trapping outside `Int`'s range.
+package func jsToInt32(_ value: Double) -> Int {
+  guard value.isFinite else { return 0 }
+  let wrapped = value.rounded(.towardZero).truncatingRemainder(dividingBy: 4_294_967_296)
+  return Int(Int32(truncatingIfNeeded: Int64(wrapped)))
+}
+
+/// `value` as an `Int`, clamped to its range instead of trapping.
+package func clampedInt(_ value: Double) -> Int {
+  guard !value.isNaN else { return 0 }
+  if value >= 9_223_372_036_854_775_807 { return Int.max }
+  if value <= -9_223_372_036_854_775_808 { return Int.min }
+  return Int(value)
+}

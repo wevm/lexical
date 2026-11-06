@@ -1,0 +1,59 @@
+name: Swift property run
+
+# Nightly differential property testing of the Swift port against upstream
+# JS (swift/DESIGN.md, Conformance tooling): a fresh random seed, with
+# fast-check drawing and shrinking in JS and Swift answering every
+# candidate. Not gating: it runs on a schedule, never on pull requests. A
+# failure prints the seed and the minimized counterexample (also in the job
+# summary), to add to packages/lexical-conformance/src/propertyRegressions.ts.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: Seed (empty for a random one)
+        required: false
+      runs:
+        description: Cases of each kind
+        required: false
+        default: '5000'
+
+permissions:
+  contents: read
+
+jobs:
+  property:
+    name: Property run (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.4.2-bookworm
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.24.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        working-directory: swift
+        run: swift build --build-tests
+      - name: Run
+        env:
+          PROPERTY_NIGHTLY: '1'
+          PROPERTY_SEED: ${{ inputs.seed }}
+          PROPERTY_RUNS: ${{ inputs.runs || '5000' }}
+        run: |
+          if [ -z "$PROPERTY_SEED" ]; then
+            PROPERTY_SEED=$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')
+            PROPERTY_SEED=$((PROPERTY_SEED % 2147483648))
+          fi
+          export PROPERTY_SEED
+          echo "Seed: $PROPERTY_SEED"
+          pnpm --filter lexical-conformance exec vitest run src/propertyNightly.test.ts --silent=false

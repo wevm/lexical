@@ -41,11 +41,11 @@ open class ElementNode: LexicalNode, SlotNode {
         SchemaField(
           "indent", numberValue(0, integer: true, min: 0), of: ElementNode.self,
           get: { try .int($0.getIndent()) },
-          set: { try $0.setIndent(Int($1?.numberValue ?? 0)) }),
+          set: { try $0.setIndent(clampedInt($1?.numberValue ?? 0)) }),
         SchemaField(
           "textFormat", numberValue(), of: ElementNode.self,
           get: { try $0.getSerializedTextFormat().map(JSONValue.int) },
-          set: { try $0.setTextFormat(Int($1?.numberValue ?? 0)) }),
+          set: { try $0.setTextFormat(jsToInt32($1?.numberValue ?? 0)) }),
         SchemaField(
           "textStyle", stringValue(), of: ElementNode.self,
           get: { try $0.getSerializedTextStyle().map(JSONValue.string) },

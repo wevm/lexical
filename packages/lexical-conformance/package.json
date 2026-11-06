@@ -19,6 +19,7 @@
     "@lexical/code-core": "workspace:*",
     "@lexical/devtools-core": "workspace:*",
     "@lexical/extension": "workspace:*",
+    "@lexical/fast-check": "workspace:*",
     "@lexical/hashtag": "workspace:*",
     "@lexical/headless": "workspace:*",
     "@lexical/history": "workspace:*",
@@ -31,6 +32,7 @@
     "@lexical/rich-text": "workspace:*",
     "@lexical/selection": "workspace:*",
     "entities": "2.2.0",
+    "fast-check": "^4.10.2",
     "lexical": "workspace:*"
   }
 }

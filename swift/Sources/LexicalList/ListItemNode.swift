@@ -58,7 +58,7 @@ open class ListItemNode: ElementNode, NodeStructureLiftHook {
           "indent",
           numberValue(0, integer: true, min: 0, max: MAX_LIST_ITEM_INDENT, clamp: true),
           of: ListItemNode.self, get: { try .int($0.getIndent()) },
-          set: { try $0.setIndent(Int($1?.numberValue ?? 0)) }, derived: true),
+          set: { try $0.setIndent(clampedInt($1?.numberValue ?? 0)) }, derived: true),
         // Derived: the list renumbers its items.
         SchemaField("value", numberValue(1), field: \ListItemNode.__value, derived: true),
       ],

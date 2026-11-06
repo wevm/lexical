@@ -66,7 +66,8 @@ public final class TextKitReconciler {
   @discardableResult
   public func render(_ editorState: EditorState) throws -> [TextKitEdit] {
     let oldLength = document.length
-    document = try editorState.read { try TextKitDocument(root: getRoot()) }
+    let suffix = document.suffix
+    document = try editorState.read { try TextKitDocument(root: getRoot(), suffix: suffix) }
     self.editorState = editorState
     return [
       TextKitEdit(location: 0, length: oldLength, string: document.string, runs: document.runs)
@@ -91,7 +92,9 @@ public final class TextKitReconciler {
     } catch {
       // The rendering no longer matches the previous state; start over.
       fallbacks += 1
+      let suffix = document.suffix
       document = TextKitDocument()
+      document.suffix = suffix
       var edits = try render(payload.editorState)
       edits[0] = TextKitEdit(
         location: 0, length: oldLength, string: edits[0].string, runs: edits[0].runs)
@@ -99,6 +102,28 @@ public final class TextKitReconciler {
     }
     self.editorState = payload.editorState
     return context.edits
+  }
+
+  /// Shows `suffix` after its text node in place of the current one, and
+  /// returns the edits to the rendered text, in descending order.
+  public func setSuffix(_ suffix: TextKitSuffix?) -> [TextKitEdit] {
+    let old = document.suffix
+    guard old != suffix else { return [] }
+    // The edit lower in the text goes second, so each applies as it comes.
+    let oldLocation = old.flatMap { document.span($0.key)?.location } ?? -1
+    let newLocation = suffix.flatMap { document.span($0.key)?.location } ?? -1
+    var edits: [TextKitEdit] = []
+    if let old, old.key != suffix?.key, oldLocation > newLocation {
+      edits += document.replaceSuffix(of: old.key, with: "", type: old.type)
+    }
+    if let suffix {
+      edits += document.replaceSuffix(of: suffix.key, with: suffix.text, type: suffix.type)
+    }
+    if let old, old.key != suffix?.key, oldLocation <= newLocation {
+      edits += document.replaceSuffix(of: old.key, with: "", type: old.type)
+    }
+    document.suffix = suffix
+    return edits
   }
 }
 
@@ -209,24 +234,46 @@ extension TextKitDocument {
     switch kind {
     case .text:
       guard let next = next as? TextNode else { throw TextKitMismatch() }
-      let content = try next.getTextContent()
+      let text = try next.getTextContent()
       let format = try next.getFormat()
       let style = try next.getStyle()
       applyPendingEdits(before: start + oldLength, &context)
       let utf16 = string.utf16
       let lower = utf16.index(utf16.startIndex, offsetBy: start)
       let upper = utf16.index(lower, offsetBy: oldLength)
+      var suffix = suffix?.key == key ? suffix : nil
+      if suffix != nil,
+        !utf16[lower..<utf16.index(lower, offsetBy: entries[key]!.contentLength)].elementsEqual(
+          text.utf16)
+      {
+        // Typing ends the suggestion, as JS drops the ghost on a new
+        // prefix before it looks the next one up.
+        suffix = nil
+        self.suffix = nil
+      }
+      let content = text + (suffix?.text ?? "")
+      // The same characters may split differently between the text and
+      // the suffix (an accepted suggestion), which restyles them.
       if format == entries[key]!.format, style == entries[key]!.style,
+        entries[key]!.suffixLength == content.utf16.count - text.utf16.count,
         utf16[lower..<upper].elementsEqual(content.utf16)
       {
         return oldLength
       }
       let length = content.utf16.count
-      replace(
-        start, oldLength, with: content,
-        runs: [TextKitRun(key: key, location: start, length: length, format: format, style: style)],
-        &context)
+      let textLength = text.utf16.count
+      var runs = [
+        TextKitRun(key: key, location: start, length: textLength, format: format, style: style)
+      ]
+      if let suffix, length > textLength {
+        runs.append(
+          TextKitRun(
+            key: key, location: start + textLength, length: length - textLength, format: format,
+            style: style, type: suffix.type))
+      }
+      replace(start, oldLength, with: content, runs: runs, &context)
       entries[key]!.length = length
+      entries[key]!.suffixLength = length - textLength
       entries[key]!.format = format
       entries[key]!.style = style
       return length

@@ -483,6 +483,62 @@
       _ = window
     }
 
+    /// A `TextKitSuffix` is laid out with the text, so the node after it
+    /// moves aside, and stays out of the model; a suggestion accepted
+    /// mid-composition ends the input method's marked text with the model's.
+    @Test func laysOutASuffixAndEndsTheCompositionWithTheModel() throws {
+      let (view, window) = try makeView()
+      try view.editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createParagraphNode().append(
+            createTextNode("a "), try createTextNode("cd").toggleFormat("bold")))
+        _ = try (getRoot().getFirstDescendant() as! TextNode).select(2, 2)
+      }
+      let key = try view.editor.read { try getRoot().getFirstDescendant()!.getKey() }
+      func x(_ location: Int) -> CGFloat {
+        view.layoutSubtreeIfNeeded()
+        return view.firstRect(
+          forCharacterRange: NSRange(location: location, length: 1), actualRange: nil
+        ).minX
+      }
+      let before = x(2)
+      let model = try json(view)
+      try view.controller.setSuffix(TextKitSuffix(key: key, text: "xyz", type: "autocomplete"))
+      #expect(view.string == "a xyzcd")
+      #expect(x(5) > before + 10)
+      #expect(try json(view) == model)
+      #expect(view.selectedRange() == NSRange(location: 2, length: 0))
+      // Composing at the node's end drops the suggestion with the text.
+      view.setMarkedText(
+        "사", selectedRange: NSRange(location: 1, length: 0),
+        replacementRange: NSRange(location: NSNotFound, length: 0))
+      #expect(view.string == "a 사cd")
+      try view.controller.setSuffix(TextKitSuffix(key: key, text: "용", type: "autocomplete"))
+      #expect(view.string == "a 사용cd")
+      #expect(view.markedRange() == NSRange(location: 2, length: 1))
+      // Accepted as the playground does it.
+      try view.editor.update(discrete: true) {
+        let node = try getNodeByKey(key) as! TextNode
+        try node.setTextContent(try node.getTextContent() + "용")
+        try setCompositionKey(nil)
+        _ = try node.select()
+      }
+      #expect(!view.hasMarkedText())
+      #expect(!view.editor.isComposing())
+      #expect(view.string == "a 사용cd")
+      #expect(view.selectedRange() == NSRange(location: 4, length: 0))
+      #expect(try view.controller.selectedRange() == TextKitRange(location: 4, length: 0))
+      // The IME's next syllable is a composition of its own.
+      view.setMarkedText(
+        "ㄱ", selectedRange: NSRange(location: 1, length: 0),
+        replacementRange: NSRange(location: NSNotFound, length: 0))
+      #expect(view.markedRange() == NSRange(location: 4, length: 1))
+      view.unmarkText()
+      #expect(view.string == "a 사용ㄱcd")
+      #expect(try json(view).contains(#""text":"a 사용ㄱ""#))
+      _ = window
+    }
+
     @Test func composesMarkedTextThroughTheModel() throws {
       let (view, window) = try makeView()
       insert(view, "a")

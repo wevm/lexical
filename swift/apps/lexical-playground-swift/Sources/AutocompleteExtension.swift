@@ -2,17 +2,16 @@ import Foundation
 import Lexical
 import LexicalExtension
 import LexicalSelection
+import LexicalTextKit
 
 #if os(macOS)
   import AppKit
   import LexicalAppKit
   private typealias GhostTextView = LexicalNSTextView
-  private typealias GhostLabel = NSTextField
 #else
   import UIKit
   import LexicalUIKit
   private typealias GhostTextView = LexicalUITextView
-  private typealias GhostLabel = UILabel
 #endif
 
 // Port of packages/lexical-playground/src/plugins/AutocompleteExtension: at
@@ -20,14 +19,13 @@ import LexicalSelection
 // 200 ms, drawn as grey ghost text after the caret; Tab or the right arrow
 // (a swipe right on iOS) accepts it.
 //
-// JS appends the ghost as an unmanaged `<span>` inside the text node's DOM.
-// A text view has no such child, so the ghost is a label over the text
-// view at the end of the node (`AutocompleteGhostHost`), outside the
-// editor state as on the web; text after the caret on the same line is
-// covered rather than pushed aside (parity/deviations.json). Only the
-// English dictionary is bundled (`autocomplete-english.txt`, upstream's
-// `dictionaries/english.ts`); the Korean one and the IME
-// composition-idle suggestions are follow-ups.
+// JS appends the ghost as an unmanaged `<span>` inside the text node's DOM;
+// the text view shows it the same way, as a `TextKitSuffix` after the
+// node (`AutocompleteGhostHost`): in the text layout, so the text after it
+// moves aside and a long ghost wraps, and outside the editor state and the
+// history. The dictionaries are upstream's English and Korean ones, picked
+// by `detectLanguage`; while an IME composes, a pause of
+// `compositionIdleDebounce` looks up the word being composed.
 
 /// `AutocompleteDictionary`.
 struct AutocompleteDictionary: Sendable {
@@ -39,22 +37,36 @@ struct AutocompleteDictionary: Sendable {
 
 /// `createWordlistDictionary(words, {minPrefixLength, caseSensitive})`:
 /// the earliest-listed word that starts with the prefix and is longer than
-/// it. Upstream binary-searches a sorted index for the same answer; the
-/// playground's list is short enough to scan.
+/// it. As upstream, the words are indexed in the order of their folded
+/// UTF-16 text, so the words sharing a prefix are one block that a binary
+/// search finds.
 func createWordlistDictionary(
   _ words: [String], minPrefixLength: Int = 2, caseSensitive: Bool = false
 ) -> AutocompleteDictionary {
-  let fold: @Sendable (String) -> String = { caseSensitive ? $0 : $0.lowercased() }
+  let fold: @Sendable (String) -> [UInt16] = {
+    Array((caseSensitive ? $0 : $0.lowercased()).utf16)
+  }
   let folded = words.map(fold)
+  let order = folded.indices.sorted {
+    folded[$0].lexicographicallyPrecedes(folded[$1]) || (folded[$0] == folded[$1] && $0 < $1)
+  }
   return AutocompleteDictionary(minPrefixLength: minPrefixLength) { prefix in
     let length = prefix.utf16.count
     guard length >= minPrefixLength else { return nil }
     let needle = fold(prefix)
-    for (i, word) in words.enumerated()
-    where folded[i].hasPrefix(needle) && word.utf16.count > length {
-      return String(decoding: word.utf16.dropFirst(length), as: UTF16.self)
+    // The first position whose folded word is not before the needle.
+    var (lo, hi) = (0, order.count)
+    while lo < hi {
+      let mid = (lo + hi) / 2
+      if folded[order[mid]].lexicographicallyPrecedes(needle) { lo = mid + 1 } else { hi = mid }
     }
-    return nil
+    var best: Int?
+    for k in lo..<order.count {
+      let index = order[k]
+      guard folded[index].starts(with: needle) else { break }
+      if words[index].utf16.count > length, best.map({ index < $0 }) ?? true { best = index }
+    }
+    return best.map { String(decoding: words[$0].utf16.dropFirst(length), as: UTF16.self) }
   }
 }
 
@@ -121,15 +133,30 @@ private func formatSuggestionText(_ suggestion: String) -> String {
   #endif
 }
 
-/// The English wordlist, loaded once.
-@MainActor
-private let englishDictionary: AutocompleteDictionary = {
-  let words =
-    Bundle.main.url(forResource: "autocomplete-english", withExtension: "txt")
-    .flatMap { try? String(contentsOf: $0, encoding: .utf8) }?
-    .split(separator: "\n").map(String.init) ?? []
-  return createWordlistDictionary(words, minPrefixLength: 4)
-}()
+/// `defaultDictionaries`: English (upstream's `dictionaries/english.ts`,
+/// as `autocomplete-english.txt`) and Korean (`dictionaries/korean.ts`,
+/// as `autocomplete-korean.txt`, 217 KB), each loaded and indexed on first
+/// use, by the language `detectLanguage` gives.
+enum AutocompleteDictionaries {
+  static let english = load("autocomplete-english", minPrefixLength: 4)
+  static let korean = load("autocomplete-korean", minPrefixLength: 2)
+
+  static func dictionary(_ language: String) -> AutocompleteDictionary? {
+    switch language {
+    case "en": english
+    case "ko": korean
+    default: nil
+    }
+  }
+
+  private static func load(_ name: String, minPrefixLength: Int) -> AutocompleteDictionary {
+    let words =
+      Bundle.main.url(forResource: name, withExtension: "txt")
+      .flatMap { try? String(contentsOf: $0, encoding: .utf8) }?
+      .split(separator: "\n").map(String.init) ?? []
+    return createWordlistDictionary(words, minPrefixLength: minPrefixLength)
+  }
+}
 
 /// A callback the extension, whose state lives on the main thread, hands
 /// to the main queue.
@@ -146,6 +173,10 @@ struct AutocompleteGhost: Equatable {
 
 struct AutocompleteConfig {
   var disabled = false
+  /// `compositionIdleDebounceMs`, in seconds: while an IME composes, a
+  /// suggestion is looked up after this long without a change to the
+  /// marked text (0 turns it off).
+  var compositionIdleDebounce: TimeInterval = 0.2
 }
 
 struct AutocompleteOutput {
@@ -168,13 +199,21 @@ private func isEditorFocused(_ editor: Editor) -> Bool {
   }
 }
 
+/// Runs `body` on the main queue after `delay`, unless cancelled first.
+private func schedule(_ delay: TimeInterval, _ body: @escaping () -> Void) -> DispatchWorkItem {
+  let callback = MainThreadCallback(body)
+  let item = DispatchWorkItem { MainActor.assumeIsolated { callback.callback() } }
+  DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+  return item
+}
+
 /// `AutocompleteExtension`.
 let AutocompleteExtension = defineExtension(
   name: "@lexical/playground/autocomplete", config: AutocompleteConfig(),
   build: { _, config, _ in
     AutocompleteOutput(disabled: signal(config.disabled), ghost: signal(nil))
   },
-  register: { editor, _, state in
+  register: { editor, config, state in
     let output = state.getOutput()
     var activeTextNodeKey: NodeKey?
     var lastMatch: String?
@@ -182,6 +221,12 @@ let AutocompleteExtension = defineExtension(
     // Stands in for the AbortController: a query answers only while it is
     // the latest.
     var generation = 0
+    var pendingCompositionTimer: DispatchWorkItem?
+
+    func clearPendingCompositionTimer() {
+      pendingCompositionTimer?.cancel()
+      pendingCompositionTimer = nil
+    }
 
     func syncGhost(_ key: NodeKey?, _ text: String?) {
       let ghost = key.flatMap { key in text.map { AutocompleteGhost(key: key, text: $0) } }
@@ -196,10 +241,70 @@ let AutocompleteExtension = defineExtension(
       syncGhost(nil, nil)
     }
 
-    func applyAsyncSuggestion(_ ref: Int, _ newSuggestion: String?) {
-      guard generation == ref, let newSuggestion,
-        isEditorFocused(editor)
+    /// `query`: the dictionary's answer for `prefix`, after the simulated
+    /// server's latency, while `ref` is the latest query.
+    func query(_ prefix: String, _ ref: Int, _ answer: @escaping (String?) -> Void) {
+      let language = detectLanguage(prefix)
+      _ = schedule(QUERY_LATENCY) {
+        guard generation == ref else { return }
+        answer(AutocompleteDictionaries.dictionary(language)?.query(prefix))
+      }
+    }
+
+    /// The text node the IME composes in: the one the caret is in while
+    /// it composes, as `IMEExtension` finds it, but read each time, since
+    /// a change to the marked text can replace the node
+    /// (`composingTextNode` keeps the node it started in).
+    func composingKey() -> NodeKey? {
+      guard editor.isComposing() else { return nil }
+      return try? editor.read(.latest) {
+        try ((getSelection() as? RangeSelection)?.anchor.getNode() as? TextNode)?.getKey()
+      }
+    }
+
+    /// The composing node's text as the IME has it so far. The marked text
+    /// is in the model, as a browser writes it into the DOM.
+    func compositionText(_ key: NodeKey) -> String? {
+      try? editor.read(.latest) { try (getNodeByKey(key) as? TextNode)?.getTextContent() }
+    }
+
+    /// `tryCompositionSuggestion`: the composition went idle; suggest the
+    /// rest of the word it ends in.
+    func tryCompositionSuggestion() {
+      pendingCompositionTimer = nil
+      guard let key = composingKey(), let text = compositionText(key), !text.isEmpty
       else { return }
+      let prefix = extractTrailingWord(text)
+      guard !prefix.isEmpty, prefix != lastMatch else { return }
+      generation += 1
+      syncGhost(nil, nil)
+      lastMatch = prefix
+      lastSuggestion = nil
+      activeTextNodeKey = nil
+      let ref = generation
+      query(prefix, ref) { newSuggestion in
+        // The user may have typed past the prefix while the query ran.
+        guard let newSuggestion, composingKey() == key,
+          let text = compositionText(key), extractTrailingWord(text) == prefix
+        else { return }
+        activeTextNodeKey = key
+        lastSuggestion = newSuggestion
+        syncGhost(key, formatSuggestionText(newSuggestion))
+      }
+    }
+
+    /// `onCompositionUpdateDOM`: each change to the marked text restarts
+    /// the idle wait. The ghost stays until the next lookup replaces it,
+    /// so a Tab right after a pause still has it.
+    func onCompositionUpdate() {
+      let debounce = config.compositionIdleDebounce
+      guard debounce > 0 else { return }
+      clearPendingCompositionTimer()
+      pendingCompositionTimer = schedule(debounce) { tryCompositionSuggestion() }
+    }
+
+    func applyAsyncSuggestion(_ newSuggestion: String?) {
+      guard let newSuggestion, isEditorFocused(editor) else { return }
       try? editor.read(.latest) {
         let selection = try getSelection()
         let (hasMatch, match) = try search(selection)
@@ -217,7 +322,12 @@ let AutocompleteExtension = defineExtension(
         dismiss()
         return
       }
-      if !payload.tags.contains(COMPOSITION_END_TAG) && editor.isComposing() { return }
+      // While composing, the idle wait takes over; the update that ends
+      // the composition (tagged COMPOSITION_END_TAG) comes back here.
+      if !payload.tags.contains(COMPOSITION_END_TAG) && editor.isComposing() {
+        if !payload.dirtyLeaves.isEmpty { onCompositionUpdate() }
+        return
+      }
       try payload.editorState.read(editor: editor) {
         let selection = try getSelection()
         let (hasMatch, match) = try search(selection)
@@ -242,16 +352,7 @@ let AutocompleteExtension = defineExtension(
         lastMatch = match
         lastSuggestion = nil
         activeTextNodeKey = nil
-        let ref = generation
-        let language = detectLanguage(match)
-        let answer = MainThreadCallback {
-          guard generation == ref else { return }
-          let dictionary = language == "en" ? MainActor.assumeIsolated { englishDictionary } : nil
-          applyAsyncSuggestion(ref, dictionary?.query(match))
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + QUERY_LATENCY) {
-          MainActor.assumeIsolated { answer.callback() }
-        }
+        query(match, generation) { applyAsyncSuggestion($0) }
       }
     }
 
@@ -260,6 +361,19 @@ let AutocompleteExtension = defineExtension(
       guard let node = try getNodeByKey(activeTextNodeKey) as? TextNode else {
         dismiss()
         return false
+      }
+      // Accepted while the IME composes the node: the marked text is kept
+      // as composed so far, with the suggestion after it, and the
+      // composition ends there (the text view then drops its marked text),
+      // so the IME does not merge its next syllable into the accepted word.
+      if editor.isComposing(),
+        try (getSelection() as? RangeSelection)?.anchor.key == activeTextNodeKey
+      {
+        try node.setTextContent(try node.getTextContent() + lastSuggestion)
+        try setCompositionKey(nil)
+        _ = try node.select()
+        dismiss()
+        return true
       }
       // The raw suggestion, without the "(TAB)" hint.
       _ = try node.spliceText(try node.getTextContentSize(), 0, lastSuggestion, moveSelection: true)
@@ -275,6 +389,11 @@ let AutocompleteExtension = defineExtension(
 
     return try effect { () -> (() -> Void)? in
       if output.disabled.value { return nil }
+      // Loads the wordlists off the main thread, ahead of the first query.
+      DispatchQueue.global(qos: .utility).async {
+        _ = AutocompleteDictionaries.english
+        _ = AutocompleteDictionaries.korean
+      }
       return mergeRegister([
         editor.registerUpdateListener { try handleUpdate($0) },
         editor.registerCommand(
@@ -282,10 +401,18 @@ let AutocompleteExtension = defineExtension(
           { _, _ in
             dismiss(); return false
           }, COMMAND_PRIORITY_LOW),
+        // A clean slate for the new prefix the composition types.
         editor.registerCommand(
           COMPOSITION_START_COMMAND,
           { _, _ in
             dismiss(); return false
+          }, COMMAND_PRIORITY_LOW),
+        // `onCompositionEndDOM`: the update this command makes is tagged
+        // COMPOSITION_END_TAG and looks the committed word up.
+        editor.registerCommand(
+          COMPOSITION_END_COMMAND,
+          { _, _ in
+            clearPendingCompositionTimer(); return false
           }, COMMAND_PRIORITY_LOW),
         editor.registerCommand(
           KEY_TAB_COMMAND, { event, _ in try handleCommitCommand(event) }, COMMAND_PRIORITY_LOW),
@@ -297,6 +424,7 @@ let AutocompleteExtension = defineExtension(
         editor.registerCommand(
           AUTOCOMPLETE_SWIPE_RIGHT_COMMAND, { _, _ in try commitSuggestion() },
           COMMAND_PRIORITY_LOW),
+        clearPendingCompositionTimer,
         dismiss,
       ])
     }
@@ -306,13 +434,14 @@ let AutocompleteExtension = defineExtension(
 /// (`addSwipeRightListener`).
 let AUTOCOMPLETE_SWIPE_RIGHT_COMMAND = LexicalCommand<Void>("AUTOCOMPLETE_SWIPE_RIGHT_COMMAND")
 
-/// Draws `AutocompleteOutput.ghost` over the editor's text view, after the
-/// end of its text node, in the text's font and `#ccc`
-/// (`.PlaygroundEditorTheme__autocomplete`).
+/// Shows `AutocompleteOutput.ghost` in the editor's text view after the
+/// end of its text node, as a `TextKitSuffix` of the theme's
+/// `autocomplete` type (`.PlaygroundEditorTheme__autocomplete`, `#ccc`):
+/// in the text layout, outside the editor state, as JS appends the ghost
+/// `<span>` to the text node's DOM.
 @MainActor
 final class AutocompleteGhostHost: TypeaheadMenuAttaching {
   private let editor: Editor
-  private let label = GhostLabel()
   private weak var textView: GhostTextView?
   private var unsubscribe: (() -> Void)?
   #if os(iOS)
@@ -321,43 +450,31 @@ final class AutocompleteGhostHost: TypeaheadMenuAttaching {
 
   init(editor: Editor) {
     self.editor = editor
-    #if os(macOS)
-      label.isEditable = false
-      label.isSelectable = false
-      label.isBordered = false
-      label.drawsBackground = false
-      // `#ccc` in a light appearance; dimmed text in a dark one.
-      label.textColor = .tertiaryLabelColor
-      label.setAccessibilityIdentifier("autocomplete-ghost")
-    #else
-      label.textColor = .tertiaryLabel
-      label.isUserInteractionEnabled = false
+    #if os(iOS)
       swipe.direction = .right
       // Typing and selecting go on as before.
       swipe.cancelsTouchesInView = false
-      label.accessibilityIdentifier = "autocomplete-ghost"
     #endif
-    label.isHidden = true
     let ghost = try? getExtensionDependencyFromEditor(editor, AutocompleteExtension).output.ghost
+    // After the commit that changed it, outside the view's own rendering.
     unsubscribe = try? ghost?.subscribe { [weak self] _ in
-      DispatchQueue.main.async { self?.position() }
+      DispatchQueue.main.async { self?.show() }
     }
   }
 
   isolated deinit { unsubscribe?() }
 
   func attach(to root: AnyObject?) {
-    label.removeFromSuperview()
     #if os(iOS)
       textView?.removeGestureRecognizer(swipe)
     #endif
+    try? textView?.controller.setSuffix(nil)
     textView = root as? GhostTextView
     guard let textView else { return }
-    textView.addSubview(label)
     #if os(iOS)
       textView.addGestureRecognizer(swipe)
     #endif
-    position()
+    show()
   }
 
   #if os(iOS)
@@ -366,53 +483,10 @@ final class AutocompleteGhostHost: TypeaheadMenuAttaching {
     }
   #endif
 
-  private func position() {
-    guard let textView,
-      let ghost = try? getExtensionDependencyFromEditor(editor, AutocompleteExtension).output
-        .ghost.peek(),
-      let size = try? editor.read(
-        .latest,
-        {
-          try (getNodeByKey(ghost.key) as? TextNode)?
-            .getTextContentSize()
-        }),
-      let rect = textView.rect(
-        from: createPoint(ghost.key, size, .text), to: createPoint(ghost.key, size, .text)),
-      let location = textView.controller.document.location(
-        for: createPoint(ghost.key, size, .text))
-    else {
-      label.isHidden = true
-      return
-    }
-    #if os(macOS)
-      let font =
-        location > 0
-        ? textView.textStorage?.attribute(.font, at: location - 1, effectiveRange: nil) as? NSFont
-        : nil
-      label.font = font ?? .systemFont(ofSize: 16)
-      label.stringValue = ghost.text
-    #else
-      let font =
-        location > 0
-        ? textView.textStorage.attribute(.font, at: location - 1, effectiveRange: nil) as? UIFont
-        : nil
-      label.font = font ?? .systemFont(ofSize: 16)
-      label.text = ghost.text
-    #endif
-    label.sizeToFit()
-    // On the caret's line, centered on it, and cut off at the text
-    // container's right edge, where the web's inline ghost would wrap.
-    let height = label.frame.height
-    #if os(macOS)
-      let right = textView.bounds.maxX - textView.textContainerInset.width
-      label.cell?.lineBreakMode = .byTruncatingTail
-    #else
-      let right = textView.bounds.maxX - textView.textContainerInset.right
-      label.lineBreakMode = .byTruncatingTail
-    #endif
-    label.frame = CGRect(
-      x: rect.maxX, y: rect.midY - height / 2,
-      width: max(0, min(label.frame.width, right - rect.maxX)), height: height)
-    label.isHidden = false
+  private func show() {
+    let ghost = try? getExtensionDependencyFromEditor(editor, AutocompleteExtension).output
+      .ghost.peek()
+    try? textView?.controller.setSuffix(
+      ghost.map { TextKitSuffix(key: $0.key, text: $0.text, type: "autocomplete") })
   }
 }

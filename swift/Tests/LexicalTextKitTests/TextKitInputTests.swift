@@ -217,6 +217,113 @@ private func key(
     #expect(try c.selectedRange() == TextKitRange(location: 3, length: 0))
   }
 
+  @Test func showsASuffixOutsideTheModel() throws {
+    try withIsApple(true) {
+      let c = try makeController()
+      try type(c, "He ")
+      #expect(try c.keyDown(key("b", code: "KeyB", meta: true)))
+      try type(c, "b")
+      try c.beforeInput("insertParagraph")
+      try type(c, "next")
+      try c.setSelectedRange(location: 3, length: 0)
+      let before = c.editor.getEditorState()
+      let model = try json(c)
+      // The view's text, built from the edits it is sent.
+      var shown = c.document.string
+      c.onRender = { update in
+        for edit in update.edits.map(\.edit) {
+          let utf16 = shown.utf16
+          let lower = utf16.index(utf16.startIndex, offsetBy: edit.location)
+          shown.replaceSubrange(
+            lower..<utf16.index(lower, offsetBy: edit.length), with: edit.string)
+        }
+      }
+      let key = c.document.runs[0].key
+      try c.setSuffix(TextKitSuffix(key: key, text: "llo", type: "autocomplete"))
+      // The text after it moves aside: the bold node and the next block.
+      #expect(c.document.string == "He llob\nnext")
+      #expect(shown == c.document.string)
+      #expect(c.document.runs.map(\.length) == [3, 3, 1, 4])
+      #expect(c.document.runs[1].type == "autocomplete")
+      #expect(c.document.location(c.document.runs[2].key, 0, .text) == 6)
+      // The model, its selection and the history don't see it.
+      #expect(c.editor.getEditorState() === before)
+      #expect(try json(c) == model)
+      #expect(try c.selectedRange() == TextKitRange(location: 3, length: 0))
+      // A caret can't stop in it: a click there lands at the node's end,
+      // and the arrows cross it in one step.
+      try c.setSelectedRange(location: 5, length: 0)
+      #expect(try c.selectedRange() == TextKitRange(location: 3, length: 0))
+      try c.setSelectedRange(location: 6, length: 0)
+      #expect(try c.selectedRange() == TextKitRange(location: 6, length: 0))
+      for (location, isBackward, target) in [
+        (3, false, 6), (6, true, 3), (7, true, 6), (2, false, 3),
+      ] {
+        #expect(
+          c.document.move(location, isBackward: isBackward, granularity: .character) == target)
+      }
+      // Replacing it edits only it.
+      try c.setSuffix(TextKitSuffix(key: key, text: "llo world", type: "autocomplete"))
+      #expect(c.document.string == "He llo worldb\nnext")
+      #expect(shown == c.document.string)
+      // Typing into its node drops it, and the history has only the typing.
+      try c.setSelectedRange(location: 3, length: 0)
+      try type(c, "l")
+      #expect(c.document.string == "He lb\nnext")
+      #expect(c.document.suffix == nil)
+      #expect(shown == c.document.string)
+      try c.beforeInput("historyUndo")
+      #expect(try json(c) == model)
+      // Accepted: the same characters, now the node's own, at its look.
+      try c.setSuffix(TextKitSuffix(key: key, text: "llo", type: "autocomplete"))
+      try c.editor.update(discrete: true) {
+        let node = try getNodeByKey(key) as! TextNode
+        _ = try node.spliceText(3, 0, "llo", moveSelection: true)
+      }
+      #expect(c.document.string == "He llob\nnext")
+      #expect(c.document.suffix == nil)
+      #expect(c.document.runs.map(\.length) == [6, 1, 4])
+      #expect(c.document.runs.allSatisfy { $0.type == nil })
+      #expect(try c.selectedRange() == TextKitRange(location: 6, length: 0))
+      try c.beforeInput("historyUndo")
+      #expect(try json(c) == model)
+      shown = c.document.string
+      // Shown again, then removed.
+      try c.setSuffix(TextKitSuffix(key: key, text: "llo", type: "autocomplete"))
+      try c.setSuffix(nil)
+      #expect(c.document.string == "He b\nnext")
+      #expect(shown == c.document.string)
+    }
+  }
+
+  @Test func endsTheMarkedTextWhenTheModelEndsTheComposition() throws {
+    let c = try makeController()
+    try type(c, "a ")
+    try c.setMarkedText("사", selectedRange: TextKitRange(location: 1, length: 0))
+    try c.setMarkedText("사요", selectedRange: TextKitRange(location: 2, length: 0))
+    var ended: [Bool] = []
+    c.onRender = { ended.append($0.endsComposition) }
+    // A suggestion accepted mid-composition, as the playground's
+    // autocomplete does it.
+    try c.editor.update {
+      let node = try getRoot().getFirstDescendant() as! TextNode
+      try node.setTextContent(try node.getTextContent() + "약")
+      try setCompositionKey(nil)
+      _ = try node.select()
+    }
+    #expect(ended.first == true)
+    #expect(c.markedRange == nil)
+    #expect(!c.editor.isComposing())
+    #expect(c.document.string == "a 사요약")
+    // The IME's next marked text starts a composition of its own after it.
+    try c.setMarkedText("ㄱ", selectedRange: TextKitRange(location: 1, length: 0))
+    #expect(c.editor.isComposing())
+    #expect(c.markedRange == TextKitRange(location: 5, length: 1))
+    try c.unmarkText()
+    #expect(c.document.string == "a 사요약ㄱ")
+    #expect(try c.selectedRange() == TextKitRange(location: 6, length: 0))
+  }
+
   @Test func undoesAndRedoes() throws {
     let clock = Clock()
     let c = try makeController(clock: clock)

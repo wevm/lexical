@@ -305,6 +305,12 @@
       decorators.select(update.selectedNodes)
       canShowPlaceholder = update.canShowPlaceholder
       setNeedsLayout()
+      // The model ended the composition: the keyboard starts afresh, as
+      // after any change to the text it didn't make.
+      if update.endsComposition {
+        inputDelegate?.textWillChange(self)
+        inputDelegate?.textDidChange(self)
+      }
       showMarkedText()
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)

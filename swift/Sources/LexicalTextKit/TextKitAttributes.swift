@@ -807,6 +807,10 @@ public struct TextKitTheme: Hashable, Sendable {
     // `__hashtag`; its `border-bottom: 1px solid rgba(88, 144, 255, 0.3)` is
     // not drawn.
     "hashtag": TextKitStyle(backgroundColor: TextKitColor(88, 144, 255, alpha: 0.15)),
+    // `__autocomplete`, the playground's ghost suggestion (a
+    // `TextKitSuffix` of this type).
+    "autocomplete": TextKitStyle(
+      foregroundColor: TextKitColor(204, 204, 204).withDark(TextKitColor(99, 99, 102))),
     // `__characterLimit`.
     "characterLimit": TextKitStyle(backgroundColor: TextKitColor(255, 187, 187)),
     "heading.h1": TextKitStyle(

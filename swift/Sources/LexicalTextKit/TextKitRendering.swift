@@ -67,6 +67,10 @@ public struct TextKitUpdate: Sendable {
   /// Whether the view shows its placeholder: `canShowPlaceholder` of the
   /// committed state, as upstream's `ContentEditable` decides it.
   public var canShowPlaceholder = false
+  /// Whether the model ended the IME composition the view shows, so the
+  /// view discards its marked text: the input method's composition ends
+  /// with the model's.
+  public var endsComposition = false
 
   public init() {}
 }
@@ -137,8 +141,9 @@ extension TextKitTheme {
           let parent = try document.entries[run.key]?.parent.flatMap {
             try getNodeByKey($0) as? ElementNode
           }
-          // A text node of another type (a hashtag) takes its type's style.
-          let type = (try getNodeByKey(run.key) as? TextNode)?.getType() ?? "text"
+          // A text node of another type (a hashtag) takes its type's style,
+          // and a suffix its own.
+          let type = try run.type ?? (getNodeByKey(run.key) as? TextNode)?.getType() ?? "text"
           return TextKitStyledRun(
             range: TextKitRange(location: run.location, length: run.length),
             attributes: try attributes(
@@ -227,7 +232,11 @@ extension TextKitTheme {
         update.restyled.append(
           TextKitStyledRun(
             range: TextKitRange(location: run.location, length: run.length),
-            attributes: try attributes(for: node)))
+            attributes: try run.type.map {
+              try attributes(
+                format: node.getFormat(), style: node.getStyle(), parent: node.getParent(), type: $0
+              )
+            } ?? attributes(for: node)))
       }
     }
 

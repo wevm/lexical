@@ -567,7 +567,7 @@
     /// line, or TextKit's extra line fragment at the end of the text. It is
     /// the block's line all the same, as a trailing `<br>` gives the web's
     /// block an empty line box, so the line at the block's end joins it.
-    private func blockLinesFrame(
+    func blockLinesFrame(
       _ layoutManager: NSTextLayoutManager, _ span: TextKitSpan
     )
       -> NSRect?

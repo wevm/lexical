@@ -34,6 +34,28 @@
       return union.offsetBy(dx: origin.x, dy: origin.y)
     }
 
+    /// The rect, in this view's coordinates, of the rendered block `key`:
+    /// its box (the background and padding of a code block) where it has
+    /// one, otherwise its lines across the text's width, as JS reads the
+    /// block element's `getBoundingClientRect()`. `nil` when the block isn't
+    /// shown or the view has no layout.
+    public func blockRect(for key: NodeKey) -> CGRect? {
+      guard let layoutManager = textLayoutManager, let span = controller.document.span(key),
+        let frame = blockLinesFrame(layoutManager, span)
+      else { return nil }
+      let origin = textContainerOrigin
+      let padding = textContainer?.lineFragmentPadding ?? 0
+      let lines = CGRect(
+        x: origin.x + padding, y: origin.y + frame.minY,
+        width: (textContainer?.size.width ?? bounds.width) - 2 * padding, height: frame.height)
+      guard let layout = controller.blockBoxes[key] else { return lines }
+      let box = layout.box
+      return CGRect(
+        x: layout.isRightToLeft ? lines.minX : lines.minX + box.offset,
+        y: lines.minY - box.paddingTop, width: lines.width - box.offset,
+        height: lines.height + box.paddingTop + box.paddingBottom)
+    }
+
     /// `rect(from:to:)` in screen coordinates, or `nil` while the view is
     /// not in a window.
     public func screenRect(from start: Point, to end: Point) -> CGRect? {

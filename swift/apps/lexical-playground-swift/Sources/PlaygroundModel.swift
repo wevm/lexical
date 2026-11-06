@@ -227,6 +227,11 @@ final class PlaygroundModel {
   var showsShortcuts = false
   var editedLinkURL = "https://"
   @ObservationIgnored private lazy var linkEditorHost = FloatingLinkEditorHost(model: self)
+  @ObservationIgnored private let codeActionMenuHost = CodeActionMenuHost()
+  /// The selection's code block and its language (`codeLanguage` and
+  /// `selectedElementKey` of the toolbar's state).
+  private(set) var codeLanguage = ""
+  @ObservationIgnored private var selectedCodeKey: NodeKey?
   /// The typeahead menus' hosts (`ComponentPickerPlugin`, …), kept while
   /// their editor is.
   @ObservationIgnored private var menuHosts: [AnyObject & TypeaheadMenuAttaching] = []
@@ -385,6 +390,7 @@ final class PlaygroundModel {
           }
           self?.linkEditorHost.attach(to: root)
           self?.formatToolbarHost.attach(to: root)
+          if let self { self.codeActionMenuHost.attach(to: root, editor: self.editor) }
           self?.menuHosts.forEach { $0.attach(to: root) }
         }
         return nil
@@ -518,6 +524,9 @@ final class PlaygroundModel {
         default: blockType = .paragraph
         }
       }
+      let code = blockType == .code ? block as? CodeNode : nil
+      selectedCodeKey = code?.getKey()
+      codeLanguage = try code?.getLanguage() ?? ""
       let format = try (block as? ElementNode)?.getFormatType() ?? ""
       alignment = format.isEmpty || format == "start" ? "left" : format
       // `$isLinkNode(parent) || $isLinkNode(node)` in the toolbar, for the
@@ -528,7 +537,18 @@ final class PlaygroundModel {
       try refreshFloatingToolbar(selection)
     }
     formatToolbarHost.refresh()
+    codeActionMenuHost.refresh(selectedCodeKey: selectedCodeKey)
     refreshTree()
+  }
+
+  /// The toolbar's `onCodeLanguageSelect`: sets the selection's code
+  /// block's language, `nil` for none.
+  func setCodeLanguage(_ language: String?) {
+    guard let key = selectedCodeKey else { return }
+    try? editor.update {
+      try addUpdateTag(SKIP_SELECTION_FOCUS_TAG)
+      _ = try (getNodeByKey(key) as? CodeNode)?.setLanguage(language)
+    }
   }
 
   /// `updatePopup` of the floating text format toolbar.

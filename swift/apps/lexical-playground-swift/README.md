@@ -9,7 +9,14 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   color pickers (inline styles through `patchStyleText`), an Insert menu
   with a horizontal rule, bold, italic, underline, strikethrough, code,
   subscript, superscript and highlight, a link button, clear formatting,
-  alignment, and indent and outdent. The buttons follow the selection.
+  alignment, and indent and outdent. The buttons follow the selection. In
+  a code block a language dropdown replaces the font and format controls,
+  as on the web.
+- **Code blocks** (`CodeActionMenuPlugin`): the block's language and a copy
+  button at its top right, shown on hover on macOS and while the caret is
+  in the block on iOS. The languages and their display names are the web's
+  Prism list, kept in `Sources/CodeLanguages.swift`. Prettier's button is
+  not ported.
 - **Typeahead menus:** "/" opens the component picker
   (`ComponentPickerPlugin`): paragraph, headings 1–3, the lists, quote,
   code, divider and the alignments, filtered by what follows the slash,

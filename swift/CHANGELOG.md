@@ -4,6 +4,14 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.6
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- [fix] `LexicalNSTextView` and `LexicalUITextView` paint `TextKitInputController.highlights` (comment marks, find matches) over each line's text box, the font's content area, as the selection is drawn and as an inline background is on the web, instead of over the whole line box; and the selection beside an inline decorator taller than the line is on the text, which is on the decorator's baseline, instead of in the middle of the line.
+
 ## 0.1.5
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

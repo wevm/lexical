@@ -469,6 +469,7 @@
       #expect(decorator.most == 0, "\(decorator.shown)")
       #expect(!selectionDisplayActivated())
       // Text selected again shows its handles.
+      LexicalUITextView.selectionRectsLog = ["-- text selection --"]
       try select {
         let text = try #require(try getRoot().getFirstDescendant() as? TextNode)
         _ = try text.select(0, 5)
@@ -478,6 +479,24 @@
       // bring its text back on screen, where UIKit shows its handles.
       view.setContentOffset(.zero, animated: false)
       let textHandles = settledHandles()
+      do {
+        let display = view.interactions.compactMap { $0 as? UITextSelectionDisplayInteraction }.first
+        let highlight = display?.highlightView.selectionRects.map {
+          "\($0.rect.integral)\($0.containsStart ? "S" : "")\($0.containsEnd ? "E" : "")"
+        } ?? []
+        let handles = display?.handleViews.map { "\($0.frame.integral)\($0.isHidden ? "h" : "")" } ?? []
+        let now = view.selectedTextRange.map { view.selectionRects(for: $0).count } ?? -1
+        display?.setNeedsSelectionUpdate()
+        let after = settledHandles()
+        print(
+          """
+          HANDLES-DIAG block=\(block) shown=\(textHandles.shown.count) most=\(textHandles.most) \
+          highlightRects=\(highlight) handleViews=\(handles) selectionRectsNow=\(now) \
+          afterSetNeedsSelectionUpdate=\(after.shown.count) \
+          tracking=\(view.isTracking) dragging=\(view.isDragging) decelerating=\(view.isDecelerating)
+          HANDLES-LOG block=\(block) \(LexicalUITextView.selectionRectsLog.joined(separator: " | "))
+          """)
+      }
       // The view's part: it turns UIKit's selection display back on for text.
       #expect(selectionDisplayActivated())
       // UIKit's part: it shows the two handles. On iOS 26 it sometimes leaves

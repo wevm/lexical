@@ -849,7 +849,26 @@
     /// The selection covers only each line's text, as a browser
     /// highlights it: `UITextView`'s rects are whole line boxes, from the
     /// container's edge on each line the selection runs through.
+    /// Scratch diagnostic: every `selectionRects(for:)` call.
+    package nonisolated(unsafe) static var selectionRectsLog: [String] = []
+
     public override func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
+      let result = trimmedSelectionRects(for: range)
+      let rects = super.selectionRects(for: range)
+      func describe(_ rects: [UITextSelectionRect]) -> String {
+        rects.map {
+          "\($0.rect.integral)\($0.containsStart ? "S" : "")\($0.containsEnd ? "E" : "")"
+        }.joined(separator: ",")
+      }
+      Self.selectionRectsLog.append(
+        "\(String(format: "%.3f", Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 1000))) "
+          + "range=\(offset(from: beginningOfDocument, to: range.start))..\(offset(from: beginningOfDocument, to: range.end)) "
+          + "super=[\(describe(rects))] result=[\(describe(result))] "
+          + "layoutValid=\(textLayoutManager.map { $0.textViewportLayoutController.viewportRange != nil } ?? false)")
+      return result
+    }
+
+    private func trimmedSelectionRects(for range: UITextRange) -> [UITextSelectionRect] {
       let rects = super.selectionRects(for: range)
       guard let layoutManager = textLayoutManager else { return rects }
       let origin = CGPoint(x: textContainerInset.left, y: textContainerInset.top)

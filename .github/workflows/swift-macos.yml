@@ -28,6 +28,7 @@ permissions:
 
 jobs:
   macos:
+    if: false
     name: Swift (macOS)
     runs-on: xcode-27
     timeout-minutes: 45
@@ -46,7 +47,7 @@ jobs:
         run: scripts/api-breaks.sh
 
   ios:
-    name: Swift (iOS ${{ matrix.ios }} Simulator)
+    name: Swift (iOS ${{ matrix.ios }} Simulator) ${{ matrix.copy }}
     runs-on: xcode-27
     timeout-minutes: 45
     strategy:
@@ -55,7 +56,8 @@ jobs:
         # The newest runtime and the deployment target's. A runtime the image
         # lacks is downloaded, which takes a full version (the xcode-27 image
         # has only iOS 27 runtimes).
-        ios: ['27', '26.5']
+        ios: ['26.5']
+        copy: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     defaults:
       run:
         working-directory: swift
@@ -103,5 +105,10 @@ jobs:
           fi
           # The macro expansion tests link swift-syntax for the host; they run
           # in the macOS job and cannot load in the simulator.
-          xcodebuild test -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
-            -skip-testing:LexicalMacrosTests
+          xcodebuild build-for-testing -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation -quiet
+          for i in 1 2 3 4 5 6 7 8; do
+            xcodebuild test-without-building -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
+              -only-testing:LexicalUIKitTests/LexicalUITextViewTests > "$RUNNER_TEMP/uikit-$i.log" 2>&1
+            echo "iteration $i: exit $?"
+            grep -E "HANDLES-|recorded a known issue|recorded an issue|Unable to boot|Unable to find a device" "$RUNNER_TEMP/uikit-$i.log" | cut -c1-4000 || true
+          done

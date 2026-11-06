@@ -32,10 +32,16 @@ targets:
       - path: Sources/katex
         type: folder
         buildPhase: resources
+      # The app icon, an Icon Composer document written by
+      # scripts/make-app-icon.py; actool compiles it for iOS and macOS.
+      - path: Resources/AppIcon.icon
+        type: file
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground
         INFOPLIST_KEY_CFBundleDisplayName: Lexical Playground
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight'
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES

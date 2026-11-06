@@ -130,6 +130,13 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
 - **Actions:** import and export as JSON, HTML or Markdown, clear, read-only, and
   settings (rich or plain text, the debug view, editable, autocomplete,
   the welcome document).
+- **App icon:** the Lexical logo mark, as an Icon Composer document
+  (`Resources/AppIcon.icon`) that Xcode compiles for iOS and macOS. Its
+  layers are the mark's paths from the site's `logo.svg`, with
+  per-appearance fills: the dark mark on white as `logo.svg`, and the
+  white mark on `#1c1d1f` as `logo-dark.svg`; the system derives the clear
+  and tinted icons. `scripts/make-app-icon.py` writes it; run it again
+  after a change to the logo.
 
 The Xcode project is generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 and not checked in:

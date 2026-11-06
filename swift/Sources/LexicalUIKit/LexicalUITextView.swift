@@ -4,6 +4,9 @@
   import LexicalTextKit
   import UIKit
 
+  /// A block separator and a LineBreakNode's character.
+  private let lineBreaks = CharacterSet(charactersIn: "\n\u{2028}")
+
   // The UIKit editor view: a TextKit 2 `UITextView` that never edits its own
   // storage (Q11, Q12, Q28, Q40). Hardware key presses go to
   // `KEY_DOWN_COMMAND` first; what a handler leaves to the platform reaches
@@ -267,12 +270,20 @@
           attributes[.paragraphStyle] = style
           lastBlockAttributes = attributes
         }
-        if range.length > 0,
-          (textStorage.string as NSString).character(at: range.upperBound - 1) == 0x0A
-        {
-          textStorage.addAttributes(
-            paragraph.text.uiAttributes(contentSize),
-            range: NSRange(location: range.upperBound - 1, length: 1))
+        // The separator after the text, and each line break in it, take
+        // the block's own look, so an empty block's line, and an empty
+        // line after a break, have its height and caret, as the web's
+        // `<br>` takes its block's font.
+        let text = textStorage.string as NSString
+        var start = range.location
+        while start < range.upperBound {
+          let found = text.rangeOfCharacter(
+            from: lineBreaks, range: NSRange(location: start, length: range.upperBound - start))
+          guard found.location != NSNotFound else { break }
+          if text.character(at: found.location) == 0x2028 || found.upperBound == range.upperBound {
+            textStorage.addAttributes(paragraph.text.uiAttributes(contentSize), range: found)
+          }
+          start = found.upperBound
         }
       }
       for decorator in update.decorators where decorator.location < length {

@@ -432,7 +432,9 @@ final class PlaygroundModel {
           self?.linkEditorHost.attach(to: root)
           self?.formatToolbarHost.attach(to: root)
           if let self {
-            self.codeActionMenuHost.attach(to: root, editor: self.editor)
+            self.codeActionMenuHost.attach(to: root, editor: self.editor) {
+              [weak self] key, language in self?.setCodeLanguage(language, in: key)
+            }
             self.stickyNotesHost.attach(to: root, editor: self.editor)
           }
           #if os(macOS)
@@ -593,10 +595,11 @@ final class PlaygroundModel {
     refreshTree()
   }
 
-  /// The toolbar's `onCodeLanguageSelect`: sets the selection's code
-  /// block's language, `nil` for none.
-  func setCodeLanguage(_ language: String?) {
-    guard let key = selectedCodeKey else { return }
+  /// The toolbar's `onCodeLanguageSelect`: sets the language of code block
+  /// `key`, by default the selection's, `nil` for none. One update, so one
+  /// undo step, which re-highlights the block and keeps the selection.
+  func setCodeLanguage(_ language: String?, in key: NodeKey? = nil) {
+    guard let key = key ?? selectedCodeKey else { return }
     try? editor.update {
       try addUpdateTag(SKIP_SELECTION_FOCUS_TAG)
       _ = try (getNodeByKey(key) as? CodeNode)?.setLanguage(language)

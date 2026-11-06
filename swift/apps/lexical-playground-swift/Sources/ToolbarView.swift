@@ -130,10 +130,7 @@ private struct CodeLanguageMenu: View {
   var body: some View {
     let current = normalizeCodeLanguage(model.codeLanguage)
     Menu {
-      item("(No language)", isOn: model.codeLanguage.isEmpty) { model.setCodeLanguage(nil) }
-      ForEach(codeLanguageOptions, id: \.value) { option in
-        item(option.name, isOn: option.value == current) { model.setCodeLanguage(option.value) }
-      }
+      CodeLanguageMenuItems(language: model.codeLanguage) { model.setCodeLanguage($0) }
     } label: {
       Text(
         model.codeLanguage.isEmpty
@@ -146,11 +143,30 @@ private struct CodeLanguageMenu: View {
     .accessibilityLabel("Select language")
     .accessibilityIdentifier("code-language")
   }
+}
 
-  private func item(_ name: String, isOn: Bool, action: @escaping () -> Void) -> some View {
-    Button(action: action) {
-      if isOn { Label(name, systemImage: "checkmark") } else { Text(name) }
+/// The code language dropdown's items, "(No language)" and then
+/// `CODE_LANGUAGE_OPTIONS_PRISM`, with a check on `language`'s: the
+/// toolbar's and the code action menu's.
+struct CodeLanguageMenuItems: View {
+  let language: String
+  let select: (String?) -> Void
+
+  var body: some View {
+    // An inline picker, so the menu checks the current item natively.
+    Picker(
+      "Language",
+      selection: Binding(
+        get: { language.isEmpty ? "" : normalizeCodeLanguage(language) },
+        set: { select($0.isEmpty ? nil : $0) })
+    ) {
+      Text("(No language)").tag("")
+      ForEach(codeLanguageOptions, id: \.value) { option in
+        Text(option.name).tag(option.value)
+      }
     }
+    .pickerStyle(.inline)
+    .labelsHidden()
   }
 }
 

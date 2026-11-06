@@ -148,7 +148,7 @@ final class LexicalPlaygroundUITests: XCTestCase {
     let editor = clearedEditor()
     editor.typeText("``` let x")
     waitForTree(") code")
-    let label = app.staticTexts["code-highlight-language"]
+    let label = app.descendants(matching: .any)["code-highlight-language"].firstMatch
     XCTAssertTrue(label.waitForExistence(timeout: 5))
     XCTAssertEqual(label.label, "(No language)")
     XCTAssertTrue(app.buttons["code-copy"].exists)
@@ -164,6 +164,42 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForTree(") paragraph")
     expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: label)
     waitForExpectations(timeout: 5)
+  }
+
+  /// The code action menu's language label is a dropdown too: picking a
+  /// language there sets the block's `language` in one undo step,
+  /// highlights it and keeps the caret in the block.
+  @MainActor
+  func testCodeActionMenuLabelSetsTheLanguage() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("``` let x = 1")
+    waitForTree(") code")
+    let label = app.descendants(matching: .any)["code-highlight-language"].firstMatch
+    XCTAssertTrue(label.waitForExistence(timeout: 5))
+    label.tap()
+    let python = app.buttons["Python"]
+    XCTAssertTrue(python.waitForExistence(timeout: 5))
+    python.tap()
+    expectation(for: NSPredicate(format: "label == 'Python'"), evaluatedWith: label)
+    waitForExpectations(timeout: 5)
+    // One undo step takes back only the language.
+    toolbarButton("Undo").tap()
+    expectation(for: NSPredicate(format: "label == '(No language)'"), evaluatedWith: label)
+    waitForExpectations(timeout: 5)
+    XCTAssertTrue(tree.contains("let x = 1"), tree)
+    toolbarButton("Redo").tap()
+    expectation(for: NSPredicate(format: "label == 'Python'"), evaluatedWith: label)
+    waitForExpectations(timeout: 5)
+    // The caret is still in the block: typing goes into the code.
+    editor.typeText("2")
+    waitForTree("\"12\"")
+    app.buttons["JSON"].tap()
+    let text = app.textViews["import-export-text"]
+    XCTAssertTrue(text.waitForExistence(timeout: 5))
+    let value = text.value as? String ?? ""
+    XCTAssertTrue(value.contains("\"language\": \"py\""), value)
+    XCTAssertTrue(value.contains("\"highlightType\": \"number\""), value)
   }
 
   /// Picking a language highlights the block with tree-sitter: its code

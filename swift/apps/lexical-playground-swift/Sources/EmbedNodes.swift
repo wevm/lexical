@@ -310,9 +310,11 @@ private func iframeHTML(src: String, allow: String?, title: String?) -> String {
 /// The origin the embeds' pages load from.
 private let embedBaseURL = URL(string: "https://playground.lexical.dev/")!
 
-/// `TweetComponent`: Twitter's widget for the tweet, 550 points wide, with
-/// "Loading..." until it has drawn. The widget's height is its own, so it
-/// is measured once drawn, and the node is redrawn at it.
+/// `TweetComponent`: Twitter's widget for the tweet, up to 550 points wide,
+/// with "Loading..." until it has drawn. The widget's height is its own, so
+/// it is measured once drawn, with its margins (the body is a block
+/// formatting context, so they do not collapse out of `scrollHeight`), and
+/// the node is redrawn at it.
 struct TweetComponent: View {
   let editor: Editor
   let nodeKey: NodeKey
@@ -327,7 +329,8 @@ struct TweetComponent: View {
       EmbedWebView(
         html: """
           <!doctype html><meta name="viewport" content="width=device-width,initial-scale=1">\
-          <style>html,body{margin:0;background:transparent}</style><div id="tweet"></div>\
+          <style>html,body{margin:0;background:transparent}body{display:flow-root}</style>\
+          <div id="tweet"></div>\
           <script src="https://platform.twitter.com/widgets.js"></script>\
           <script>twttr.ready(function(t){t.widgets.createTweet(\(jsonString(tweetID)),\
           document.getElementById('tweet')).then(function(){new ResizeObserver(function(){\
@@ -343,7 +346,10 @@ struct TweetComponent: View {
         })
       if isLoading && Self.heights[tweetID] == nil { Text("Loading...") }
     }
-    .frame(width: 550, height: Self.heights[tweetID] ?? 200, alignment: .topLeading)
+    // At most 550 points wide, as the widget is, and narrower on a phone,
+    // where the widget reflows (to 250 at the least) and reports its height.
+    .frame(maxWidth: 550, alignment: .topLeading)
+    .frame(height: Self.heights[tweetID] ?? 200, alignment: .topLeading)
     .accessibilityLabel("Tweet")
   }
 }

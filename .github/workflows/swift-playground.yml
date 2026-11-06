@@ -1,0 +1,69 @@
+name: Swift playground
+
+# Nightly run of the Swift playground's tests (swift/apps/lexical-playground-
+# swift): its UI tests and unit tests on the iOS 27 Simulator. Not gating: it
+# runs on a schedule, never on pull requests, so the macOS runners are not
+# loaded for every change. A failure keeps the result bundle, with the
+# screenshots, the screen recording and the element tree, as an artifact.
+
+on:
+  schedule:
+    - cron: '43 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios:
+    name: Swift playground (iOS 27 Simulator)
+    runs-on: xcode-27
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: swift/apps/lexical-playground-swift
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Generate the Xcode project
+        run: |
+          command -v xcodegen >/dev/null || brew install xcodegen
+          xcodegen generate
+      - name: Test (iOS 27 Simulator)
+        run: |
+          # An iPhone on the newest installed iOS 27 runtime, created when
+          # there is none.
+          runtime="$(xcrun simctl list runtimes available -j | python3 -c '
+          import json, sys
+          found = [r for r in json.load(sys.stdin)["runtimes"]
+                   if r["platform"] == "iOS" and r["version"].split(".")[0] == "27"]
+          print(max(found, key=lambda r: [int(x) for x in r["version"].split(".")])["identifier"] if found else "")
+          ')"
+          [ -n "$runtime" ] || { echo "::error::No iOS 27 simulator runtime"; exit 1; }
+          device="$(xcrun simctl list devices available -j | RUNTIME="$runtime" python3 -c '
+          import json, os, sys
+          phones = [d for d in json.load(sys.stdin)["devices"].get(os.environ["RUNTIME"], [])
+                    if d["name"].startswith("iPhone")]
+          print(phones[0]["udid"] if phones else "")
+          ')"
+          if [ -z "$device" ]; then
+            type="$(xcrun simctl list devicetypes -j | python3 -c '
+          import json, sys
+          print([t["identifier"] for t in json.load(sys.stdin)["devicetypes"] if t["name"].startswith("iPhone")][-1])
+          ')"
+            device="$(xcrun simctl create "iPhone (iOS 27)" "$type" "$runtime")"
+          fi
+          echo "Runtime: $runtime, device: $device"
+          # One simulator at a time: the UI tests type into the same app.
+          xcodebuild test -project LexicalPlayground.xcodeproj -scheme LexicalPlayground \
+            -destination "id=$device" -parallel-testing-enabled NO \
+            -skipMacroValidation -skipPackagePluginValidation \
+            -resultBundlePath "$RUNNER_TEMP/LexicalPlayground.xcresult"
+      - name: Keep the result bundle
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: LexicalPlayground-ios-xcresult
+          path: ${{ runner.temp }}/LexicalPlayground.xcresult
+          retention-days: 14

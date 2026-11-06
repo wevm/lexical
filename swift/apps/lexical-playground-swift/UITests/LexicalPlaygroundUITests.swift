@@ -255,8 +255,11 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertTrue(input.waitForExistence(timeout: 5))
     input.typeText("lexical.dev\n")
     waitForTree(") link")
-    // A tap in the link puts the caret in it, which shows the panel.
+    // A tap in the link puts the caret in it, which shows the panel. The
+    // tap also opens the edit menu, whose row covers the panel's buttons;
+    // an arrow key hides it and leaves the caret in the link.
     editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 20, dy: 22)).tap()
+    app.typeKey(.rightArrow, modifierFlags: [])
     let view = app.buttons["link-view"]
     XCTAssertTrue(view.waitForExistence(timeout: 5))
     XCTAssertEqual(view.label, "https://lexical.dev")
@@ -369,20 +372,15 @@ final class LexicalPlaygroundUITests: XCTestCase {
     editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 25, dy: 18))
       .doubleTap()
     XCTAssertTrue(app.menuItems["Bold"].waitForExistence(timeout: 5), app.debugDescription)
-    // The edit menu pages its actions; Insert comment follows the formats.
-    // The last page lists its actions as buttons.
-    let insert = app.descendants(matching: .any).matching(
-      NSPredicate(
-        format: "label == %@ AND (elementType == %d OR elementType == %d)",
-        "Insert comment", XCUIElement.ElementType.menuItem.rawValue,
-        XCUIElement.ElementType.button.rawValue)
-    ).firstMatch
-    let forward = app.buttons["Forward"]
-    for _ in 0..<8 where !insert.exists && forward.exists { forward.tap() }
-    XCTAssertTrue(insert.waitForExistence(timeout: 5), app.debugDescription)
+    // Insert comment follows the formats, on a later page of the menu.
+    let insert = editMenuItem("Insert comment")
+    XCTAssertTrue(insert.exists, app.debugDescription)
     insert.tap()
     let input = app.descendants(matching: .any)["comment-input"]
     XCTAssertTrue(input.waitForExistence(timeout: 5), app.debugDescription)
+    // The box takes focus as it opens, which a slower run may not have
+    // finished, so the tap makes sure.
+    input.tap()
     input.typeText("Nice greeting")
     attachScreenshot("playground-comment-input")
     app.buttons["comment-submit"].tap()
@@ -599,12 +597,8 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForTree("\"World\"")
     editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 25, dy: 18))
       .doubleTap()
-    // The formats come first, so the menu pages; its next page expands into
-    // a full menu whose items are buttons.
-    let delete = app.descendants(matching: .any)
-      .matching(NSPredicate(format: "label == %@", "Delete Node")).firstMatch
-    let next = app.buttons["Next Page"]
-    for _ in 0..<4 where !delete.waitForExistence(timeout: 2) && next.exists { next.tap() }
+    // The formats come first, so Delete Node is on a later page.
+    let delete = editMenuItem("Delete Node")
     XCTAssertTrue(delete.exists, app.debugDescription)
     attachScreenshot("edit-menu-context-items")
     delete.tap()
@@ -787,6 +781,41 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForTree(") page-break")
     XCTAssertFalse(tree.contains("/page"), tree)
     attachScreenshot("playground-page-break")
+  }
+
+  /// The open edit menu's action labelled `label`, paging the menu until
+  /// it shows (it does not exist when no page has it). A compact menu lists
+  /// its actions as menu items in one row; paging past its last one expands
+  /// it into a full menu that lists them as buttons.
+  @MainActor
+  private func editMenuItem(_ label: String) -> XCUIElement {
+    let item = app.descendants(matching: .any).matching(
+      NSPredicate(
+        format: "label == %@ AND (elementType == %d OR elementType == %d)", label,
+        XCUIElement.ElementType.menuItem.rawValue, XCUIElement.ElementType.button.rawValue)
+    ).firstMatch
+    for _ in 0..<8 where !item.waitForExistence(timeout: 2) {
+      guard let next = editMenuNextPageButton() else { break }
+      next.tap()
+    }
+    return item
+  }
+
+  /// The compact edit menu's next-page button: the first button past the
+  /// trailing end of its row of menu items. Found by where it is, since its
+  /// label differs across iOS versions ("Forward", "Next Page").
+  @MainActor
+  private func editMenuNextPageButton() -> XCUIElement? {
+    let items = app.menuItems.allElementsBoundByIndex.map(\.frame).filter { !$0.isEmpty }
+    guard let first = items.first else { return nil }
+    let row = items.filter { abs($0.midY - first.midY) < first.height / 2 }
+      .reduce(first) { $0.union($1) }
+    return app.buttons.allElementsBoundByIndex
+      .filter {
+        let frame = $0.frame
+        return frame.midX > row.maxX && frame.minY < row.maxY && frame.maxY > row.minY
+      }
+      .min { $0.frame.minX < $1.frame.minX }
   }
 
   /// Keeps a screenshot in the result bundle, to compare with the web.

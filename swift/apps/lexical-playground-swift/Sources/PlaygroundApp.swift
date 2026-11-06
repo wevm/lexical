@@ -9,7 +9,7 @@ import SwiftUI
 @main
 struct LexicalPlaygroundApp: App {
   var body: some Scene {
-    WindowGroup("Lexical Playground") {
+    WindowGroup("Lexical") {
       PlaygroundView()
     }
     #if os(macOS)

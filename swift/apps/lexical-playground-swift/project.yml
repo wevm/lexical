@@ -40,7 +40,12 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground
-        INFOPLIST_KEY_CFBundleDisplayName: Lexical Playground
+        # The app is "Lexical" on the home screen, in the Dock, the menu bar
+        # and Finder: Lexical.app, whose CFBundleName is the product name.
+        # The module keeps the target's name for `@testable import`.
+        PRODUCT_NAME: Lexical
+        PRODUCT_MODULE_NAME: LexicalPlayground
+        INFOPLIST_KEY_CFBundleDisplayName: Lexical
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight'
@@ -163,8 +168,10 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground.tests
-        # XcodeGen writes the iOS host path for a multiplatform app.
-        TEST_HOST[sdk=macosx*]: $(BUILT_PRODUCTS_DIR)/LexicalPlayground.app/Contents/MacOS/LexicalPlayground
+        # XcodeGen derives the host path from the target's name, not its
+        # product name, and writes only the iOS one for a multiplatform app.
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Lexical.app/Lexical
+        TEST_HOST[sdk=macosx*]: $(BUILT_PRODUCTS_DIR)/Lexical.app/Contents/MacOS/Lexical
 schemes:
   LexicalPlayground:
     build:

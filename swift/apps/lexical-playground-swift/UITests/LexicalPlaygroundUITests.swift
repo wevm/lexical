@@ -458,6 +458,34 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertFalse(tree.contains("/youtube"), tree)
   }
 
+  /// `TweetComponent`: the widget is at most 550 points wide, as on the
+  /// web, so on a phone it fits the editor instead of overflowing it.
+  @MainActor
+  func testEmbedsATweetThatFitsTheWindow() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/tweet")
+    let option = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    XCTAssertTrue(option.label.contains("Embed X(Tweet)"), option.label)
+    option.tap()
+    let url = app.textFields["tweet-embed-modal-url"]
+    XCTAssertTrue(url.waitForExistence(timeout: 5))
+    url.tap()
+    url.typeText("https://x.com/jack/status/20")
+    let embed = app.buttons["tweet-embed-modal-submit-btn"]
+    expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: embed)
+    waitForExpectations(timeout: 5)
+    embed.tap()
+    waitForTree(") tweet")
+    let tweet = app.descendants(matching: .any)["Tweet"].firstMatch
+    XCTAssertTrue(tweet.waitForExistence(timeout: 5))
+    let window = app.windows.firstMatch.frame
+    XCTAssertGreaterThan(tweet.frame.width, 0)
+    XCTAssertGreaterThanOrEqual(tweet.frame.minX, window.minX, "\(tweet.frame)")
+    XCTAssertLessThanOrEqual(tweet.frame.maxX, window.maxX, "\(tweet.frame)")
+  }
+
   /// `PollExtension`: the "/" menu's Poll asks for the question and
   /// inserts a poll with two options; a vote counts, and a third option
   /// can be added.

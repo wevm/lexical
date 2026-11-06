@@ -2,6 +2,9 @@
   import AppKit
   import Lexical
   import LexicalAppKit
+  import LexicalExtension
+  import LexicalList
+  import LexicalRichText
   import LexicalSwiftUI
   import LexicalTextKit
   import SwiftUI
@@ -274,6 +277,75 @@
       // From another view it is not this view's to move.
       let other = Drag(from: NSView(), over: window, at: point, pasteboard)
       #expect(view.draggingUpdated(other) != .move)
+    }
+
+    /// A line with an inline decorator taller than the line height, as an
+    /// image is, in a paragraph or a list item: its text and the item's
+    /// marker sit on the decorator's baseline, as an inline image's line's
+    /// do in CSS, and the next line's text is drawn on its own line only,
+    /// not a second time beside the decorator.
+    @Test(arguments: [(false, 80.0), (true, 250.0)])
+    func drawsTextBesideATallInlineDecoratorOnItsBaseline(_ list: Bool, _ height: Double) throws {
+      TallNode.size = CGSize(width: height == 80 ? 24 : 200, height: height)
+      NSApplication.shared.setActivationPolicy(.accessory)
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "tall", dependencies: [RichTextExtension, ListExtension],
+          nodes: { [.klass(TallNode.self)] }))
+      let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 420, height: 460), styleMask: [.titled],
+        backing: .buffered, defer: false)
+      window.appearance = NSAppearance(named: .aqua)
+      let view = LexicalNSTextView(editor: editor, frame: window.contentLayoutRect)
+      window.contentView = view
+      try editor.update(discrete: true) {
+        let children: [LexicalNode] = try [
+          createTextNode("Ab"), create(TallNode.self),
+          createTextNode(" cd" + String(repeating: " mmmm", count: 16)),
+        ]
+        let block: ElementNode =
+          list
+          ? try createListNode("bullet").append(createListItemNode().append(contentsOf: children))
+          : try createParagraphNode().append(contentsOf: children)
+        try getRoot().clear().append(block)
+      }
+      window.orderFrontRegardless()
+      settle(view)
+      try writePNG(view, "appkit-tall-inline-\(list)-\(Int(height)).png")
+      let hosted = try #require(hostingViews(in: view).first)
+      let image = hosted.convert(hosted.bounds, to: view)
+      try #require(image.height > 70, "\(image)")
+      let rep = try #require(view.bitmapImageRepForCachingDisplay(in: view.bounds))
+      view.cacheDisplay(in: view.bounds, to: rep)
+      let scale = CGFloat(rep.pixelsHigh) / view.bounds.height
+      /// The rows of `rect` with text's dark ink.
+      func inkedRows(_ rect: NSRect) -> [CGFloat] {
+        stride(from: rect.minY, to: rect.maxY, by: 0.5).filter { y in
+          stride(from: rect.minX, to: rect.maxX, by: 0.5).contains { x in
+            guard
+              let color = rep.colorAt(x: Int(x * scale), y: Int(y * scale))?
+                .usingColorSpace(.sRGB)
+            else { return false }
+            return color.redComponent < 0.4 && color.greenComponent < 0.4
+              && color.blueComponent < 0.4
+          }
+        }
+      }
+      // Beside the decorator, before and after it, the text is on the
+      // decorator's bottom edge, the baseline: no ink above a line of
+      // 16-point text standing on it.
+      let band = { (minX: CGFloat, maxX: CGFloat) in
+        NSRect(x: minX, y: image.minY, width: maxX - minX, height: image.height)
+      }
+      for (side, rect) in [
+        ("before", band(0, image.minX - 1)), ("after", band(image.maxX + 1, view.bounds.maxX - 8)),
+      ] {
+        let ink = inkedRows(rect)
+        try #require(!ink.isEmpty, "\(side): no text beside \(image)")
+        #expect(ink.min()! >= image.maxY - 18, "\(side): ink at \(ink.min()!) in \(image)")
+        #expect(ink.max()! <= image.maxY + 5, "\(side): ink at \(ink.max()!) in \(image)")
+      }
+      _ = window
     }
 
     @Test func rendersTheDemoDocument() throws {

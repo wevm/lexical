@@ -290,15 +290,15 @@ let package = Package(
       dependencies: [
         "LexicalA11y",
         "Lexical", "LexicalAppKit", "LexicalCodeCore", "LexicalExtension", "LexicalHistory",
-        "LexicalLink", "LexicalRichText", "LexicalSwiftUI", "LexicalTextKit",
+        "LexicalLink", "LexicalList", "LexicalRichText", "LexicalSwiftUI", "LexicalTextKit",
       ]),
     .target(name: "LexicalUIKit", dependencies: ["Lexical", "LexicalA11y", "LexicalTextKit"]),
     .testTarget(
       name: "LexicalUIKitTests",
       dependencies: [
         "LexicalA11y",
-        "Lexical", "LexicalCodeCore", "LexicalExtension", "LexicalHistory", "LexicalRichText",
-        "LexicalSwiftUI", "LexicalTextKit", "LexicalUIKit",
+        "Lexical", "LexicalCodeCore", "LexicalExtension", "LexicalHistory", "LexicalList",
+        "LexicalRichText", "LexicalSwiftUI", "LexicalTextKit", "LexicalUIKit",
       ]),
     .target(
       name: "LexicalSwiftUI",

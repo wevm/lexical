@@ -472,11 +472,15 @@
           return true
         }
         guard let line else { continue }
+        // Around the line's text as drawn: the marker is on the text's
+        // baseline, which a tall inline decorator puts low in its line.
+        let midY = layoutManager.firstLineTextMidY(at: range.location) ?? line.midY
         markers.append(
           (
             key,
             CGRect(
-              x: textContainerInset.left + padding, y: textContainerInset.top + line.minY,
+              x: textContainerInset.left + padding,
+              y: textContainerInset.top + midY - line.height / 2,
               width: textContainer.size.width - 2 * padding, height: line.height),
             layout
           ))
@@ -1128,8 +1132,8 @@
       }
     }
 
-    /// Where text in `font` sits in its first line `line`: centered, as
-    /// `CenteredLineLayoutFragment` draws it.
+    /// Where text in `font` sits in its first line `line`, centered on the
+    /// text as `CenteredLineLayoutFragment` draws it.
     private func glyphBox(_ font: UIFont, _ line: CGRect) -> CGRect {
       let height = font.ascender - font.descender
       return CGRect(x: line.minX, y: line.midY - height / 2, width: line.width, height: height)

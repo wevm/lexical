@@ -1,5 +1,8 @@
 #if canImport(UIKit)
   import Lexical
+  import LexicalExtension
+  import LexicalList
+  import LexicalRichText
   import LexicalSwiftUI
   import LexicalTextKit
   import LexicalUIKit
@@ -183,6 +186,78 @@
       }
       #expect(shown == 2)
       #expect(keptEditing == 2)
+    }
+
+    /// A line with an inline decorator taller than the line height, as an
+    /// image is, in a paragraph or a list item: its text sits on the
+    /// decorator's baseline, as an inline image's line's does in CSS, and
+    /// the next line's text is drawn on its own line only.
+    @Test(arguments: [(false, 80.0), (true, 250.0)])
+    func drawsTextBesideATallInlineDecoratorOnItsBaseline(_ list: Bool, _ height: Double) throws {
+      TallNode.size = CGSize(width: height == 80 ? 24 : 200, height: height)
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "tall", dependencies: [RichTextExtension, ListExtension],
+          nodes: { [.klass(TallNode.self)] }))
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 520))
+      window.overrideUserInterfaceStyle = .light
+      let view = LexicalUITextView(editor: editor, frame: window.bounds)
+      window.addSubview(view)
+      window.makeKeyAndVisible()
+      try editor.update(discrete: true) {
+        let children: [LexicalNode] = try [
+          createTextNode("Ab"), create(TallNode.self),
+          createTextNode(" cd" + String(repeating: " mmmm", count: 16)),
+        ]
+        let block: ElementNode =
+          list
+          ? try createListNode("bullet").append(createListItemNode().append(contentsOf: children))
+          : try createParagraphNode().append(contentsOf: children)
+        try getRoot().clear().append(block)
+      }
+      settle(view)
+      try writePNG(view, "uikit-tall-inline-\(list)-\(Int(height)).png")
+      let hosted = try #require(hostedViews(view).first)
+      let image = hosted.convert(hosted.bounds, to: view)
+      try #require(image.height > 70, "\(image)")
+      let format = UIGraphicsImageRendererFormat()
+      format.scale = 2
+      let rendered = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image {
+        context in
+        UIColor.white.setFill()
+        context.fill(view.bounds)
+        view.layer.render(in: context.cgContext)
+      }
+      let cgImage = try #require(rendered.cgImage)
+      let data = try #require(cgImage.dataProvider?.data)
+      let bytes = try #require(CFDataGetBytePtr(data))
+      /// The rows of `rect` (view coordinates) with text's dark ink.
+      func inkedRows(_ rect: CGRect) -> [CGFloat] {
+        let rect = rect.intersection(view.bounds)
+        return stride(from: rect.minY, to: rect.maxY, by: 0.5).filter { y in
+          stride(from: rect.minX, to: rect.maxX, by: 0.5).contains { x in
+            let px = Int((x - view.bounds.minX) * 2)
+            let py = Int((y - view.bounds.minY) * 2)
+            guard px >= 0, py >= 0, px < cgImage.width, py < cgImage.height else { return false }
+            let pixel = bytes + py * cgImage.bytesPerRow + px * cgImage.bitsPerPixel / 8
+            return pixel[0] < 100 && pixel[1] < 100 && pixel[2] < 100
+          }
+        }
+      }
+      // Beside the decorator, before and after it, the text stands on the
+      // decorator's bottom edge, the baseline.
+      let band = { (minX: CGFloat, maxX: CGFloat) in
+        CGRect(x: minX, y: image.minY, width: maxX - minX, height: image.height)
+      }
+      for (side, rect) in [
+        ("before", band(0, image.minX - 1)), ("after", band(image.maxX + 1, view.bounds.maxX - 8)),
+      ] {
+        let ink = inkedRows(rect)
+        try #require(!ink.isEmpty, "\(side): no text beside \(image)")
+        #expect(ink.min()! >= image.maxY - 18, "\(side): ink at \(ink.min()!) in \(image)")
+        #expect(ink.max()! <= image.maxY + 5, "\(side): ink at \(ink.max()!) in \(image)")
+      }
+      _ = window
     }
 
     @Test func rendersTheDemoDocument() throws {

@@ -30,6 +30,17 @@
     }
   }
 
+  /// An inline decorator taller than a line, as an inline image is.
+  final class TallNode: DecoratorNode {
+    override class func config() throws -> NodeConfig? {
+      NodeConfig(TallNode.self, type: "demo-tall", extends: DecoratorNode.self)
+    }
+    nonisolated(unsafe) static var size = CGSize(width: 24, height: 80)
+    override func decorate(_ editor: Editor) throws -> Any? {
+      Color.green.frame(width: TallNode.size.width, height: TallNode.size.height)
+    }
+  }
+
   /// A block decorator: a SwiftUI card.
   final class CardNode: DecoratorNode {
     override class func config() throws -> NodeConfig? {

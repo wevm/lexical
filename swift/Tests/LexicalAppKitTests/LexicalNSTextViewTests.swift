@@ -1147,5 +1147,27 @@
       #expect(storage.attribute(.cursor, at: 0, effectiveRange: nil) == nil)
       _ = window
     }
+
+    /// The app's context menu items come first, and `NSTextView`'s own
+    /// (Cut, Copy, Paste and the rest) stay after them.
+    @Test func addsContextMenuItemsBeforeTheSystemOnes() throws {
+      let (view, window) = try makeView()
+      insert(view, "Hello")
+      let event = try #require(
+        NSEvent.mouseEvent(
+          with: .rightMouseDown, location: view.convert(NSPoint(x: 20, y: 12), to: nil),
+          modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber, context: nil,
+          eventNumber: 0, clickCount: 1, pressure: 1))
+      var events: [NSEvent] = []
+      view.contextMenuItems = { event in
+        events.append(event)
+        return [NSMenuItem(title: "Delete Node", action: nil, keyEquivalent: "")]
+      }
+      let menu = try #require(view.menu(for: event))
+      #expect(menu.items.first?.title == "Delete Node")
+      #expect(menu.items.dropFirst().first?.isSeparatorItem == true)
+      #expect(menu.items.contains { $0.action == #selector(NSText.copy(_:)) })
+      #expect(events.count == 1)
+    }
   }
 #endif

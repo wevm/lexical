@@ -105,6 +105,10 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   the editor's left edge. Dragging the grip moves the block, with a blue
   line where it will go; the `+` adds a paragraph below (above with
   Option or Control) with the "/" menu open in it. iOS has no handle.
+- **Context menu** (`ContextMenuPlugin`): a right or Control click on macOS,
+  and the edit menu after the formats on iOS, show Remove Link (in a link),
+  Copy as Markdown, Paste as Plain Text and Delete Node before the system's
+  Cut, Copy and Paste.
 - **Keyboard shortcuts:** the web playground's (`ShortcutsExtension`), from
   the editor and the Format menu: ⌥⌘0–3 for normal and headings 1–3,
   ⇧⌘7/8/9 for numbered, bulleted and check lists, ⌥⌘C code block, ⌃⇧Q

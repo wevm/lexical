@@ -43,6 +43,11 @@ struct PlaygroundView: View {
     VStack(spacing: 0) {
       ToolbarView(model: model)
       Divider()
+      // A compact width puts the find panel above the editor, which it
+      // would cover.
+      if model.findReplace.isOpen && !isWide {
+        FindReplacePanel(model: model.findReplace).padding(8)
+      }
       layout {
         // Editor.tsx's placeholder.
         LexicalEditor(
@@ -51,10 +56,16 @@ struct PlaygroundView: View {
         )
         .id(model.generation)
         .accessibilityIdentifier("editor")
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, minHeight: isWide ? nil : 120, maxHeight: .infinity)
         .overlay(alignment: .topTrailing) {
           // `CommentPlugin`'s Show Comments button.
           ShowCommentsButton(comments: model.comments).padding(10)
+        }
+        .overlay(alignment: .topTrailing) {
+          // `FindReplacePanel`, at the top right as on the web.
+          if model.findReplace.isOpen && isWide {
+            FindReplacePanel(model: model.findReplace).padding(12)
+          }
         }
         .overlay(alignment: .bottomLeading) {
           // `CharacterLimitPlugin`'s counter (`.characters-limit`).
@@ -68,8 +79,11 @@ struct PlaygroundView: View {
         }
         if model.showsTreeView {
           Divider()
+          // Below the editor, it shrinks with it when the find panel and
+          // the keyboard leave little room.
           TreeView(model: model)
-            .frame(width: isWide ? 440 : nil, height: isWide ? nil : 280)
+            .frame(width: isWide ? 440 : nil)
+            .frame(minHeight: isWide ? nil : 80, maxHeight: isWide ? nil : 280)
         }
       }
       .overlay(alignment: .trailing) {
@@ -172,6 +186,13 @@ struct ActionsView: View {
       }
       Button("Clear", systemImage: "trash") { model.clearEditor() }
         .help("Clear")
+      #if os(iOS)
+        // Without a hardware keyboard there is no ⌘F, which is the web's
+        // only way to open the find panel.
+        Button("Find and Replace", systemImage: "magnifyingglass") {
+          model.findReplace.dispatch(TOGGLE_FIND_REPLACE_COMMAND)
+        }
+      #endif
       Toggle(isOn: $model.isEditable) {
         Label(
           model.isEditable ? "Unlocked" : "Read-Only",

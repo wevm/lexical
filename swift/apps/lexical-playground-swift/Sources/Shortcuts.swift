@@ -270,6 +270,12 @@ struct PlaygroundCommands: Commands {
       item(.clearFormatting)
       item(.insertLink)
     }
+    CommandGroup(after: .textEditing) {
+      // `FindReplaceExtension`'s ⌘F, for when the editor isn't focused.
+      Button("Find and Replace…") { model?.findReplace.dispatch(TOGGLE_FIND_REPLACE_COMMAND) }
+        .keyboardShortcut("f")
+        .disabled(model == nil)
+    }
     CommandGroup(replacing: .help) {
       Button("Keyboard Shortcuts") {
         #if os(macOS)

@@ -242,6 +242,8 @@ final class PlaygroundModel {
   @ObservationIgnored private var menuHosts: [AnyObject & TypeaheadMenuAttaching] = []
   /// `CommentPlugin`'s threads and panel.
   let comments = CommentsModel()
+  /// `FindReplaceExtension`'s panel.
+  let findReplace = FindReplaceModel()
 
   private(set) var tree = ""
   private(set) var commandsLog: [LexicalCommandLogEntry] = []
@@ -273,7 +275,7 @@ final class PlaygroundModel {
     // The rest of the playground's AppExtension, in both modes.
     let always: [any AnyLexicalExtensionArgument] = [
       HashtagExtension, OverflowExtension, MaxLengthExtension, KeywordsExtension,
-      DateTimeExtension, SpecialTextExtension, MarkExtension,
+      DateTimeExtension, SpecialTextExtension, MarkExtension, FindReplaceExtension,
     ]
     return try buildEditorFromExtensions(
       defineExtension(
@@ -392,6 +394,9 @@ final class PlaygroundModel {
     comments.onInputChange = { [weak self] in self?.formatToolbarHost.refresh() }
     if let unregisterComments = try? comments.register(editor) {
       unregister.append(unregisterComments)
+    }
+    if let unregisterFindReplace = try? findReplace.register(editor) {
+      unregister.append(unregisterFindReplace)
     }
     syncMaxLength()
     syncSpecialText()

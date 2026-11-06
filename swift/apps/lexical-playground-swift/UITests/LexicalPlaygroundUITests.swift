@@ -357,6 +357,32 @@ final class LexicalPlaygroundUITests: XCTestCase {
     attachScreenshot("playground-comments-panel")
   }
 
+  /// `FindReplaceExtension`: the panel counts the matches, steps through
+  /// them and replaces them all.
+  @MainActor
+  func testFindAndReplace() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("one two one three one")
+    app.buttons["Find and Replace"].tap()
+    let search = app.textFields["Search text"]
+    XCTAssertTrue(search.waitForExistence(timeout: 5), app.debugDescription)
+    search.tap()
+    search.typeText("one")
+    let count = app.staticTexts["find-replace-count"]
+    XCTAssertTrue(count.waitForExistence(timeout: 5))
+    XCTAssertEqual(count.label, "1 / 3")
+    app.buttons["Next match"].tap()
+    XCTAssertEqual(count.label, "2 / 3")
+    attachScreenshot("playground-find-replace")
+    let replace = app.textFields["Replace text"]
+    replace.tap()
+    replace.typeText("1")
+    app.buttons["Replace all matches"].tap()
+    waitForTree(#"text "1 two 1 three 1""#)
+    XCTAssertEqual(count.label, "No results")
+  }
+
   /// The first element whose label contains `text`.
   @MainActor
   private func element(containing text: String) -> XCUIElement {

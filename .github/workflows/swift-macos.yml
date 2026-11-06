@@ -108,7 +108,14 @@ jobs:
           for i in 1 2 3; do
             xcrun simctl shutdown "$device" >/dev/null 2>&1 || true
             xcodebuild test -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
-              -skip-testing:LexicalMacrosTests > "$RUNNER_TEMP/full-$i.log" 2>&1
-            echo "iteration $i: exit $?"
+              -skip-testing:LexicalMacrosTests > "$RUNNER_TEMP/full-$i.log" 2>&1 && status=0 || status=$?
+            echo "iteration $i: exit $status"
             grep -E "HANDLES-DIAG|recorded a known issue|recorded an issue|Unable to boot|Unable to find a device|Test run with" "$RUNNER_TEMP/full-$i.log" | cut -c1-3000 || true
+            grep -E "✘ Test .*recorded an issue|error:.*Test|BUILD FAILED|TEST FAILED|Testing failed" "$RUNNER_TEMP/full-$i.log" | grep -v "exit code 0" | cut -c1-400 | head -20 || true
           done
+      - name: Upload the test logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-logs-${{ matrix.copy }}
+          path: ${{ runner.temp }}/full-*.log

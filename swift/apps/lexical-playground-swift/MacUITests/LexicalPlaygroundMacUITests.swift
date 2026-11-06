@@ -14,6 +14,19 @@ final class LexicalPlaygroundMacUITests: XCTestCase {
   /// without a click.
   @MainActor
   func testInsertLinkFocusesTheLinkURLField() {
+    assertLinksHello { _ in app.buttons["Insert Link"].firstMatch.click() }
+  }
+
+  /// ⌘K, the shortcut for Insert Link, focuses the URL field the same way.
+  @MainActor
+  func testCommandKFocusesTheLinkURLField() {
+    assertLinksHello { editor in editor.typeKey("k", modifierFlags: .command) }
+  }
+
+  /// Types "Hello", selects it, runs `insertLink`, then types a URL with no
+  /// click and checks that it became the link's.
+  @MainActor
+  private func assertLinksHello(_ insertLink: (XCUIElement) -> Void) {
     app = XCUIApplication()
     app.launch()
     // The identifier is on the editor's scroll view.
@@ -23,7 +36,7 @@ final class LexicalPlaygroundMacUITests: XCTestCase {
     editor.click()
     editor.typeText("Hello")
     editor.typeKey(.leftArrow, modifierFlags: [.shift, .option])
-    app.buttons["Insert Link"].firstMatch.click()
+    insertLink(editor)
     // The panel draws in the text view, which does not expose it to
     // accessibility; what the typing did shows it. No click: the URL
     // field has the focus, with its `https://` selected.

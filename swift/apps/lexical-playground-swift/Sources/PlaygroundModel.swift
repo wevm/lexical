@@ -3,6 +3,17 @@ import Lexical
 import LexicalA11y
 import LexicalAutoEmbed
 import LexicalCodeCore
+import LexicalCodeTreeSitter
+import LexicalCodeTreeSitterBash
+import LexicalCodeTreeSitterCSS
+import LexicalCodeTreeSitterGo
+import LexicalCodeTreeSitterHTML
+import LexicalCodeTreeSitterJSON
+import LexicalCodeTreeSitterJavaScript
+import LexicalCodeTreeSitterPython
+import LexicalCodeTreeSitterRust
+import LexicalCodeTreeSitterSwift
+import LexicalCodeTreeSitterTypeScript
 import LexicalDevtoolsCore
 import LexicalExtension
 import LexicalHTML
@@ -98,35 +109,15 @@ let PlaygroundMarkdownShortcutsExtension = defineExtension(
   dependencies: [ListExtension, CheckListExtension, LinkExtension, CodeExtension],
   register: { editor, _, _ in try registerMarkdownShortcuts(editor, playgroundTransformers) })
 
-/// The web playground's code highlighting with no language
-/// (`NULL_LANG_PRISM_TOKENIZER`), which is all a code block gets until a
-/// highlighter is ported: text in a code block is a `CodeHighlightNode`,
-/// whose lines `CodeIndentExtension` indents and outdents, and one that
-/// leaves its code block is text again, as `$textNodeTransform` does.
-let PlaygroundCodeHighlightExtension = defineExtension(
-  name: "@lexical/playground-swift/CodeHighlight",
-  dependencies: [CodeExtension],
-  register: { editor, _, _ in
-    /// Replaces `node` with `replacement`, keeping the selection's offsets
-    /// in it (`replace` moves them to its end).
-    func replace(_ node: TextNode, with replacement: TextNode) throws {
-      let points = (try getSelection() as? RangeSelection).map { [$0.anchor, $0.focus] } ?? []
-      let offsets = points.map { $0.key == node.getKey() ? $0.offset : nil }
-      try node.replace(replacement)
-      for (point, offset) in zip(points, offsets) {
-        if let offset { try point.set(replacement.getKey(), offset, .text) }
-      }
-    }
-    return mergeRegister(
-      try editor.registerNodeTransform(TextNode.self) { node in
-        guard type(of: node) == TextNode.self, try node.getParent() is CodeNode else { return }
-        try replace(node, with: createCodeHighlightNode(node.getTextContent()))
-      },
-      try editor.registerNodeTransform(CodeHighlightNode.self) { node in
-        guard !(try node.getParent() is CodeNode) else { return }
-        try replace(node, with: createTextNode(node.getTextContent()))
-      })
-  })
+/// Every grammar the playground links, for the languages of the code
+/// language picker that tree-sitter can highlight; the others stay plain.
+/// A block with no language stays plain, as the web playground's
+/// `NULL_LANG_PRISM_TOKENIZER` (`defaultLanguage: null`) does.
+func makePlaygroundCodeTokenizer() -> TreeSitterTokenizer {
+  TreeSitterTokenizer(
+    [.bash, .css, .go, .html, .javaScript, .json, .python, .rust, .swift, .typeScript],
+    defaultLanguage: nil)
+}
 
 /// The text formats the toolbar toggles, in its order.
 let toolbarFormats: [(format: TextFormatType, title: String, symbol: String)] = [
@@ -290,7 +281,9 @@ final class PlaygroundModel {
             DragDropPasteExtension, PlaygroundDOMRenderExtension,
             // The web playground's `CodeHighlightExtension` brings both:
             // Tab and Shift+Tab indent and outdent code lines.
-            PlaygroundCodeHighlightExtension,
+            configExtension(CodeHighlighterExtension) {
+              $0.tokenizer = makePlaygroundCodeTokenizer()
+            },
             configExtension(CodeIndentExtension) {
               $0.escapeWithArrows = true
               $0.tabSize = 2

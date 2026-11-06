@@ -84,5 +84,9 @@
   "native/embeds-in-web-views": {
     "category": "platform-rendering",
     "description": "The playground's YouTube, X and Figma embeds draw their iframe (and, for a tweet, Twitter's widgets.js) in a WKWebView inside the embed block, loaded from a page at https://playground.lexical.dev/ so that YouTube's player accepts the embedding origin. A tweet's widget sets its own height, which the page reports so the block grows to it; until then the block is 200 points tall with \"Loading...\". On iOS the web view does not scroll on its own, and a click or tap on the video goes to the player, as an iframe takes its own clicks; the rest of the line selects the block. The menu that offers to embed a pasted link is the default node menu (Dismiss, Embed), drawn at the link as the typeahead menus are."
+  },
+  "native/tree-sitter-code-tokens": {
+    "category": "native-only",
+    "description": "The playground highlights code with LexicalCodeTreeSitter, not Prism, so a block's CodeHighlightNodes split and are typed as the grammar's highlights query captures them, mapped to Prism's token names (prismTokenType): the text is the same, the token boundaries and highlightType values can differ. In ``console.log(`Hello, ${who}!`)``, Prism leaves `console` and `${who}` untyped and types the backticks as punctuation, where tree-sitter types `console` as builtin, the backticks and `who` as string and `${` and `}` as punctuation; tree-sitter also types numbers and booleans as constant in some grammars (Rust, JSON) and builtin types as builtin. Only the ten bundled grammars highlight (JS, TS, Swift, Python, JSON, HTML, CSS, Rust, Go, shell); the picker's C, C++, Java, Markdown, Objective-C, PowerShell, SQL and XML stay plain until their grammars are added. No conformance vector depends on Prism's tokens: serialization/code builds its highlight nodes by hand."
   }
 }

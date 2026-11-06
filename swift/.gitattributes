@@ -1,0 +1,4 @@
+# Vendored by scripts/vendor-tree-sitter.sh: collapsed in diffs and left out
+# of the language statistics.
+Sources/CTreeSitter/** linguist-vendored
+Sources/TreeSitter*/** linguist-vendored linguist-generated

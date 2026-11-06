@@ -1,4 +1,5 @@
 import Lexical
+import LexicalCodeCore
 import LexicalExtension
 import LexicalHashtag
 import LexicalOverflow
@@ -516,6 +517,29 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     try controller.insertText("say #tag")
     let tagged = runs.filter { near($0.attributes.backgroundColor, hashtagBackground) }
     #expect(tagged.map(\.range) == [TextKitRange(location: 4, length: 4)])
+  }
+
+  /// A code token takes the color of its type in `theme.codeHighlight`,
+  /// `.PlaygroundEditorTheme__tokenAttr` for a keyword; one without a type
+  /// keeps the code block's.
+  @Test func aCodeTokenTakesItsTypesColor() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(name: "test", dependencies: [RichTextExtension, CodeExtension]))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      try getRoot().clear().append(
+        createCodeNode("js").append(
+          createCodeHighlightNode("let", "keyword"), createCodeHighlightNode(" x")))
+    }
+    let colors = try editor.read {
+      try getRoot().getAllTextNodes().map { try theme.textAttributes(for: $0).foregroundColor }
+    }
+    func light(_ color: TextKitColor) -> [Double] { [color.red, color.green, color.blue] }
+    let keyword = TextKitColor(0, 119, 170)
+    #expect(light(colors[0]) == light(keyword))
+    #expect(light(colors[1]) != light(keyword))
+    // Lighter on the dark code background.
+    #expect(light(colors[0].darkAppearance) != light(keyword))
   }
 
   @Test func overflowTakesTheCharacterLimitStyle() {

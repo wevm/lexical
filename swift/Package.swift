@@ -5,6 +5,14 @@ import PackageDescription
 // One module per upstream package, added as each one is ported. The non-UI
 // modules build and test on Linux; the UIKit, AppKit, and SwiftUI layers are
 // Apple-only.
+/// The vendored tree-sitter grammars: the target suffix, the grammar's
+/// source directory, and whether it has an external scanner.
+let treeSitterGrammars: [(name: String, src: String, hasScanner: Bool)] = [
+  ("Bash", "src", true), ("CSS", "src", true), ("Go", "src", false), ("HTML", "src", true),
+  ("JavaScript", "src", true), ("JSON", "src", false), ("Python", "src", true),
+  ("Rust", "src", true), ("Swift", "src", true), ("TypeScript", "typescript/src", true),
+]
+
 let package = Package(
   name: "Lexical",
   platforms: [.iOS(.v26), .macOS(.v26)],
@@ -256,13 +264,13 @@ let package = Package(
       ]),
     // The platform-neutral half of the text views: the document they show
     // and the input controller that turns native input into commands.
-    .target(name: "LexicalTextKit", dependencies: ["Lexical", "LexicalText"]),
+    .target(name: "LexicalTextKit", dependencies: ["Lexical", "LexicalCodeCore", "LexicalText"]),
     .testTarget(
       name: "LexicalTextKitTests",
       dependencies: [
         "Lexical", "LexicalExtension", "LexicalHashtag", "LexicalHistory", "LexicalList",
         "LexicalOverflow", "LexicalPlainText", "LexicalRichText", "LexicalSelection",
-        "LexicalTesting", "LexicalTextKit",
+        "LexicalTesting", "LexicalTextKit", "LexicalCodeCore",
       ]),
     // The TextKit 2 editor views (Apple-only; empty modules elsewhere).
     .target(name: "LexicalAppKit", dependencies: ["Lexical", "LexicalA11y", "LexicalTextKit"]),
@@ -297,7 +305,8 @@ let package = Package(
     .executableTarget(
       name: "LexicalBenchmarks",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHistory", "LexicalRichText", "LexicalTextKit",
+        "Lexical", "LexicalCodeCore", "LexicalExtension", "LexicalHistory", "LexicalRichText",
+        "LexicalTextKit",
       ],
       path: "Benchmarks/LexicalBenchmarks"),
     // Replays packages/lexical-conformance/vectors, which only the monorepo
@@ -320,3 +329,46 @@ let package = Package(
   ],
   swiftLanguageModes: [.v6]
 )
+
+// LexicalCodeTreeSitter: syntax highlighting with tree-sitter, whose C core
+// and grammars are vendored by scripts/vendor-tree-sitter.sh. Each grammar
+// is a product of its own, so an app links only the languages it uses.
+package.products.append(
+  .library(name: "LexicalCodeTreeSitter", targets: ["LexicalCodeTreeSitter"]))
+package.targets += [
+  .target(
+    name: "CTreeSitter", exclude: ["LICENSE", "VERSION"], sources: ["lib/src/lib.c"],
+    publicHeadersPath: "lib/include",
+    cSettings: [
+      .headerSearchPath("lib/src"), .define("_POSIX_C_SOURCE", to: "200112L"),
+      .define("_DEFAULT_SOURCE"),
+    ]),
+  .target(
+    name: "LexicalCodeTreeSitter", dependencies: ["CTreeSitter", "Lexical", "LexicalCodeCore"]),
+  .testTarget(
+    name: "LexicalCodeTreeSitterTests",
+    dependencies: [
+      "Lexical", "LexicalCodeCore", "LexicalCodeTreeSitter", "LexicalExtension",
+      "LexicalRichText", "LexicalTesting", "TreeSitterJavaScript",
+    ] + treeSitterGrammars.map { .byName(name: "LexicalCodeTreeSitter\($0.name)") }),
+]
+// The benchmark's code block row highlights JavaScript.
+package.targets.first { $0.name == "LexicalBenchmarks" }!.dependencies += [
+  "LexicalCodeTreeSitter", "LexicalCodeTreeSitterJavaScript",
+]
+for grammar in treeSitterGrammars {
+  package.products.append(
+    .library(
+      name: "LexicalCodeTreeSitter\(grammar.name)",
+      targets: ["LexicalCodeTreeSitter\(grammar.name)"]))
+  package.targets += [
+    .target(
+      name: "TreeSitter\(grammar.name)", exclude: ["LICENSE", "VERSION", "queries"],
+      sources: ["\(grammar.src)/parser.c", "highlights.c"]
+        + (grammar.hasScanner ? ["\(grammar.src)/scanner.c"] : []),
+      publicHeadersPath: "include", cSettings: [.headerSearchPath(grammar.src)]),
+    .target(
+      name: "LexicalCodeTreeSitter\(grammar.name)",
+      dependencies: ["LexicalCodeTreeSitter", .byName(name: "TreeSitter\(grammar.name)")]),
+  ]
+}

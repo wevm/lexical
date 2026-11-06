@@ -1,4 +1,5 @@
 import Lexical
+import LexicalCodeCore
 
 // What a text view applies after a commit: the reconciler's edits with the
 // theme's attributes for their runs, and the paragraphs and decorators the
@@ -129,7 +130,7 @@ extension TextKitTheme {
     func attributes(for node: TextNode) throws -> TextKitTextAttributes {
       try attributes(
         format: node.getFormat(), style: node.getStyle(), parent: node.getParent(),
-        type: node.getType())
+        type: styleType(of: node))
     }
     update.isFull = dirtyElements == nil
     update.edits = try edits.map { edit in
@@ -143,7 +144,7 @@ extension TextKitTheme {
           }
           // A text node of another type (a hashtag) takes its type's style,
           // and a suffix its own.
-          let type = try run.type ?? (getNodeByKey(run.key) as? TextNode)?.getType() ?? "text"
+          let type = try run.type ?? (getNodeByKey(run.key) as? TextNode).map(styleType) ?? "text"
           return TextKitStyledRun(
             range: TextKitRange(location: run.location, length: run.length),
             attributes: try attributes(
@@ -268,4 +269,14 @@ extension TextKitTheme {
     }
     return update
   }
+}
+
+/// The theme key of a text node's own style: its type (a hashtag's
+/// `hashtag`), or for a code token with a type, `codeHighlight.<type>`, the
+/// class `CodeHighlightNode.createDOM` takes from `theme.codeHighlight`.
+func styleType(of node: TextNode) throws -> String {
+  if let token = node as? CodeHighlightNode, let type = try token.getHighlightType() {
+    return "codeHighlight.\(type)"
+  }
+  return node.getType()
 }

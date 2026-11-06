@@ -44,6 +44,28 @@ targets:
       - package: Lexical
         product: LexicalCodeCore
       - package: Lexical
+        product: LexicalCodeTreeSitter
+      - package: Lexical
+        product: LexicalCodeTreeSitterBash
+      - package: Lexical
+        product: LexicalCodeTreeSitterCSS
+      - package: Lexical
+        product: LexicalCodeTreeSitterGo
+      - package: Lexical
+        product: LexicalCodeTreeSitterHTML
+      - package: Lexical
+        product: LexicalCodeTreeSitterJavaScript
+      - package: Lexical
+        product: LexicalCodeTreeSitterJSON
+      - package: Lexical
+        product: LexicalCodeTreeSitterPython
+      - package: Lexical
+        product: LexicalCodeTreeSitterRust
+      - package: Lexical
+        product: LexicalCodeTreeSitterSwift
+      - package: Lexical
+        product: LexicalCodeTreeSitterTypeScript
+      - package: Lexical
         product: LexicalDecoratorBlockNode
       - package: Lexical
         product: LexicalDevtoolsCore

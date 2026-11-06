@@ -3,6 +3,7 @@ import LexicalCodeCore
 import LexicalExtension
 import LexicalLink
 import LexicalList
+import LexicalMark
 import LexicalOverflow
 import LexicalRichText
 import LexicalTesting
@@ -753,6 +754,29 @@ private final class StatefulLinkNode: LinkNode {
 
   @Test(
     .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block in a mark keeps the mark on its content"
+    ))
+  func blockInAMarkKeepsTheMark() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "mark", dependencies: [RichTextExtension, NodeStructureExtension],
+        nodes: { [.klass(MarkNode.self)] },
+        editorConfig: InitialEditorConfig(
+          initialEditorState: .update { _ in
+            try getRoot().append(
+              createParagraphNode().append(
+                createTextNode("a"),
+                createMarkNode(["m"]).append(
+                  createTextNode("b"), createHeadingNode("h1").append(createTextNode("h")))))
+          })))
+    defer { editor.dispose() }
+    #expect(
+      try rootShape(editor)
+        == #"[["paragraph","a",["mark","b"]],["heading",["mark","h"]]]"#)
+  }
+
+  @Test(
+    .upstream(
       "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > the importers read whether an editor enforces the structure"
     ))
   func importersReadEnforcement() throws {
@@ -1099,7 +1123,7 @@ private func buildCaretEditor(_ withStructure: Bool = true) throws -> Editor {
       name: "node-structure-carets",
       dependencies: [RichTextExtension, ListExtension, LinkExtension, HorizontalRuleExtension]
         + (withStructure ? [NodeStructureExtension] : []),
-      nodes: { [.klass(OverflowNode.self)] },
+      nodes: { [.klass(MarkNode.self), .klass(OverflowNode.self)] },
       editorConfig: InitialEditorConfig(onError: { error, _ in throw error })))
 }
 
@@ -1835,6 +1859,30 @@ private final class SubListNode: ListNode {
       })
     try editor.update(discrete: true) { try getSelection()!.insertText("Z") }
     return try content(editor)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an element caret after a mark split around a paragraph keeps its place in the content"
+    ))
+  func caretAfterSplitMark() throws {
+    let result = try typeAtElementCaret(
+      {
+        [
+          try put(
+            createParagraphNode(),
+            [
+              try put(
+                createMarkNode(["m"]),
+                [
+                  try createTextNode("a"),
+                  try put(createParagraphNode(), [try createTextNode("b")]),
+                  try createTextNode("c"),
+                ])
+            ])
+        ]
+      }, [0], 1)
+    #expect(result == "abcZ")
   }
 
   @Test(

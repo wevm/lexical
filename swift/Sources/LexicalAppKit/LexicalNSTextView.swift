@@ -150,6 +150,9 @@
       // Attaching commits what is pending; the view starts from the full
       // render below, so it renders nothing before then.
       controller.report { try editor.setRootElement(self) }
+      controller.onHighlightsChange = { [weak self] in
+        MainActor.assumeIsolated { self?.showHighlights() }
+      }
       controller.onRender = { [weak self] update in
         MainActor.assumeIsolated { self?.apply(update) }
       }
@@ -242,6 +245,7 @@
       // The model ended the composition: so does the input method.
       if update.endsComposition { inputContext?.discardMarkedText() }
       showMarkedText()
+      showHighlights()
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange() != selected { setSelectedRange(selected) }
@@ -296,6 +300,30 @@
       }
     }
 
+    /// Draws the controller's highlights again: `drawBackground` paints
+    /// them behind the text, so the storage keeps the model's attributes.
+    private func showHighlights() {
+      needsDisplay = true
+    }
+
+    /// The controller's highlights, behind the text, each range's rects
+    /// filled with its color.
+    private func drawHighlights(_ layoutManager: NSTextLayoutManager, in rect: NSRect) {
+      let origin = textContainerOrigin
+      for (range, highlight) in controller.highlightedRanges() {
+        guard let color = highlight.backgroundColor,
+          let textRange = textRange(NSRange(location: range.location, length: range.length))
+        else { continue }
+        color.nsColor.setFill()
+        layoutManager.enumerateTextSegments(in: textRange, type: .highlight, options: []) {
+          _, frame, _, _ in
+          let frame = frame.offsetBy(dx: origin.x, dy: origin.y)
+          if frame.intersects(rect) { frame.fill(using: .sourceOver) }
+          return true
+        }
+      }
+    }
+
     /// Quote bars and list markers, behind the text.
     public override func drawBackground(in rect: NSRect) {
       super.drawBackground(in: rect)
@@ -339,6 +367,7 @@
           ).fill()
         }
       }
+      drawHighlights(layoutManager, in: rect)
       if let frame = placeholderFrame, let placeholder {
         placeholderString(placeholder).draw(
           with: frame, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine])

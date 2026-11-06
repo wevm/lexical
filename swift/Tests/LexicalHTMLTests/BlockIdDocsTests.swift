@@ -3,6 +3,7 @@ import LexicalExtension
 import LexicalHTML
 import LexicalLink
 import LexicalList
+import LexicalMark
 import LexicalRichText
 import Testing
 
@@ -424,6 +425,55 @@ nonisolated(unsafe) private let EmptyInlineExtension = defineExtension(
       #expect(try !setBlockText(token, "see @Bob"))
     }
     #expect(try editorJSON(editor) == before)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: text added at the edge of a link in a mark goes outside both"
+    ))
+  func textAddedAtTheEdgeOfALinkInAMark() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "set-block-text-mark-link",
+        dependencies: [RichTextExtension, LinkExtension, MarkExtension, BlockIdExtension],
+        editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none)))
+    defer { editor.dispose() }
+    func children() throws -> [String] {
+      try editor.read {
+        let paragraph = try #require(try getRoot().getFirstChildOrThrow() as? ElementNode)
+        return try paragraph.getChildren().map {
+          "\($0 is MarkNode ? "mark" : "text"):\(try $0.getTextContent())"
+        }
+      }
+    }
+    for (next, after) in [
+      ("See plan!", ["text:See ", "mark:plan", "text:!"]),
+      ("See the plan", ["text:See the ", "mark:plan"]),
+    ] {
+      try editor.update(discrete: true) {
+        _ = try getRoot().clear().append(
+          createParagraphNode().append(
+            createTextNode("See "),
+            createMarkNode(["comment"]).append(
+              createLinkNode("https://example.com").append(createTextNode("plan")))))
+      }
+      try editor.update(discrete: true) { () throws -> Void in
+        #expect(try setBlockText(getRoot().getFirstChildOrThrow(), next))
+      }
+      #expect(try children() == after, "\(next)")
+    }
+    // At the start of the block: before both.
+    try editor.update(discrete: true) {
+      _ = try getRoot().clear().append(
+        createParagraphNode().append(
+          createMarkNode(["comment"]).append(
+            createLinkNode("https://example.com").append(createTextNode("Plan"))),
+          createTextNode(" is ready.")))
+    }
+    try editor.update(discrete: true) { () throws -> Void in
+      #expect(try setBlockText(getRoot().getFirstChildOrThrow(), "The Plan is ready."))
+    }
+    #expect(try children() == ["text:The ", "mark:Plan", "text: is ready."])
   }
 
   @Test(

@@ -9,6 +9,7 @@ import LexicalHashtag
 import LexicalHistory
 import LexicalLink
 import LexicalList
+import LexicalMark
 import LexicalMarkdown
 import LexicalOverflow
 import LexicalPlainText
@@ -238,6 +239,8 @@ final class PlaygroundModel {
   /// The typeahead menus' hosts (`ComponentPickerPlugin`, …), kept while
   /// their editor is.
   @ObservationIgnored private var menuHosts: [AnyObject & TypeaheadMenuAttaching] = []
+  /// `CommentPlugin`'s threads and panel.
+  let comments = CommentsModel()
 
   private(set) var tree = ""
   private(set) var commandsLog: [LexicalCommandLogEntry] = []
@@ -269,7 +272,7 @@ final class PlaygroundModel {
     // The rest of the playground's AppExtension, in both modes.
     let always: [any AnyLexicalExtensionArgument] = [
       HashtagExtension, OverflowExtension, MaxLengthExtension, KeywordsExtension,
-      DateTimeExtension, SpecialTextExtension,
+      DateTimeExtension, SpecialTextExtension, MarkExtension,
     ]
     return try buildEditorFromExtensions(
       defineExtension(
@@ -377,6 +380,10 @@ final class PlaygroundModel {
       menuHosts.append(AutocompleteGhostHost(editor: editor))
     }
     unregister += [picker.unregister, emoji.unregister, mentions.unregister]
+    comments.onInputChange = { [weak self] in self?.formatToolbarHost.refresh() }
+    if let unregisterComments = try? comments.register(editor) {
+      unregister.append(unregisterComments)
+    }
     syncMaxLength()
     syncSpecialText()
     syncCharacterLimit()
@@ -401,6 +408,7 @@ final class PlaygroundModel {
             }
           #endif
           self?.menuHosts.forEach { $0.attach(to: root) }
+          self?.comments.attach(to: root)
         }
         return nil
       })
@@ -723,6 +731,11 @@ final class PlaygroundModel {
     _ = try? editor.dispatchCommand(INSERT_DATETIME_COMMAND, midnight())
   }
 
+  /// The popup's and the shortcut's Insert comment.
+  func insertComment() {
+    _ = try? editor.dispatchCommand(INSERT_INLINE_COMMAND)
+  }
+
   func indent() { _ = try? editor.dispatchCommand(INDENT_CONTENT_COMMAND) }
   func outdent() { _ = try? editor.dispatchCommand(OUTDENT_CONTENT_COMMAND) }
   func undo() { _ = try? editor.dispatchCommand(UNDO_COMMAND) }
@@ -742,6 +755,7 @@ final class PlaygroundModel {
     case .checkList: setBlockType(.check)
     case .codeBlock: setBlockType(.code)
     case .quote: if blockType != .quote { setBlockType(.quote) }
+    case .addComment: insertComment()
     case .increaseFontSize: stepFontSize(.increment, from: toolbarFontSize(fontSize))
     case .decreaseFontSize: stepFontSize(.decrement, from: toolbarFontSize(fontSize))
     case .insertCodeBlock: toggleFormat("code")

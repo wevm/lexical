@@ -1,6 +1,9 @@
 import Lexical
+import LexicalExtension
 import LexicalHashtag
 import LexicalList
+import LexicalMark
+import LexicalRichText
 import LexicalTesting
 import LexicalText
 import Testing
@@ -9,8 +12,8 @@ import Testing
 //
 // #9704: joining a block onto text that ends in another format (or a tab)
 // turns a hashtag at the start of the joined block into text (`word#tag`
-// holds no hashtag), and its characters keep their NodeState. The tests that
-// use `@lexical/mark` (`MarkStateExtension`, `$addMarkID`) are not ported.
+// holds no hashtag), and its characters keep their NodeState (comment ids
+// stored as NodeState included).
 
 // A NodeState on the hashtag, as a comment mark stored as NodeState is.
 nonisolated(unsafe) private let note = createState("note", parse: { $0?.stringValue ?? "" })
@@ -80,6 +83,13 @@ private final class MentionNode: TextNode {
 private final class SegmentedNode: TextNode {
   override class func config() -> NodeConfig? {
     NodeConfig(SegmentedNode.self, type: "join-segmented", extends: TextNode.self)
+  }
+  override func isTextEntity() -> Bool { true }
+}
+
+private final class PhraseNode: TextNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(PhraseNode.self, type: "join-phrase", extends: TextNode.self)
   }
   override func isTextEntity() -> Bool { true }
 }
@@ -226,6 +236,42 @@ private final class Counter {
 
   @Test(
     .upstream(
+      "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::with MarkStateExtension comments (#9704) > a commented hashtag joined onto text in another format keeps its comment ids"
+    ))
+  func commentedHashtagKeepsItsCommentIDs() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "test",
+        dependencies: [
+          RichTextExtension, ListExtension, HashtagExtension, MarkExtension, MarkStateExtension,
+        ]))
+    defer { editor.dispose() }
+    try editor.update(discrete: true) {
+      try getRoot().clear().append(
+        createParagraphNode().append(
+          createTextNode("one "), createTextNode("word").setFormat("italic")),
+        list(createHashtagNode("#tag"), createTextNode(" more")))
+    }
+    try editor.update(discrete: true) {
+      let hashtag =
+        try (getRoot().getLastChildOrThrow() as! ElementNode).getFirstDescendant() as! TextNode
+      try addMarkID("c1", hashtag.select(0, 4))
+      try addMarkID("c4", hashtag.select(0, 4))
+      try setSelection(nil)
+    }
+    try editor.update(discrete: true) { try joinLastBlock() }
+    let ids = try editor.read {
+      try getRoot().getAllTextNodes().map {
+        (try $0.getTextContent(), try getNodeMarkIDs($0).joined(separator: ","))
+      }
+    }
+    let tag = try #require(ids.first { $0.0.contains("#tag") })
+    #expect(tag.0 == "#tag")
+    #expect(tag.1 == "c1,c4")
+  }
+
+  @Test(
+    .upstream(
       "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::entities of two registrations that touch > typing before a hashtag that a token and a segmented entity follow settles"
     ))
   func twoRegistrationsThatTouchSettle() throws {
@@ -307,6 +353,57 @@ private final class Counter {
         try $0.getTextContent()
       }
       #expect(hashtags.contains("#d"))
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::an entity that may not be kept does not grow > after text with 7 earlier matches, the text after it keeps its format and NodeState"
+    ),
+    .upstream(
+      "lexical-text/src/__tests__/unit/registerLexicalTextEntityJoin.test.ts::an entity that may not be kept does not grow > after text with 8 earlier matches, the text after it keeps its format and NodeState"
+    ),
+    arguments: [7, 8])
+  func textAfterKeepsFormatAndNodeState(_ repeatCount: Int) throws {
+    let editor = try createEditor(
+      CreateEditorArgs(
+        nodes: [.klass(HashtagNode.self), .klass(PhraseNode.self)], onError: { throw $0 }))
+    _ = try registerLexicalTextEntity(
+      editor, HashtagConfig().getHashtagMatch, HashtagNode.self
+    ) { try createHashtagNode($0.getTextContent()) }
+    _ = try registerLexicalTextEntity(
+      editor,
+      { text in
+        text.wholeMatch(of: /a .*cat/) != nil ? EntityMatch(start: 0, end: text.utf16.count) : nil
+      },
+      PhraseNode.self
+    ) { try create(PhraseNode.self).setTextContent($0.getTextContent()) }
+    let phraseText = "a " + String(repeating: "#x ", count: repeatCount) + "cat"
+    try editor.update(discrete: true) {
+      // Made in document order: the transforms run in that order
+      let first = try createTextNode("y")
+      let bold = try createTextNode("x").setFormat("bold")
+      let phrase = try create(PhraseNode.self).setTextContent(phraseText).setFormat("bold")
+      let hashtag = try setState(createHashtagNode("#c"), note, "entity")
+      let suffix = try setState(createTextNode("z!").setFormat("italic"), note, "suffix")
+      try getRoot().append(
+        createParagraphNode().append(first, bold, phrase, hashtag, suffix))
+      // Comment ids too, as MarkStateExtension keeps them
+      try addMarkID("entity", hashtag.select(0, 2))
+      try addMarkID("suffix", suffix.select(0, 2))
+      _ = try suffix.select(2, 2)
+    }
+    try editor.read {
+      #expect(try getRoot().getTextContent() == "yx" + phraseText + "#cz!")
+      let suffix = try #require(
+        try getRoot().getAllTextNodes().first { try $0.getTextContent().contains("z") })
+      #expect(try suffix.getTextContent() == "z!")
+      #expect(try suffix.getFormat() == 2)
+      #expect(try getState(suffix, note) == "suffix")
+      #expect(try getNodeMarkIDs(suffix) == ["suffix"])
+      let selection = try #require(try getSelection() as? RangeSelection)
+      #expect(try selection.anchor.getNode().is(suffix))
+      #expect(selection.anchor.offset == 2)
     }
   }
 }

@@ -2,6 +2,7 @@ import Lexical
 import LexicalExtension
 import LexicalLink
 import LexicalList
+import LexicalMark
 import LexicalOverflow
 import LexicalRichText
 import LexicalSelection
@@ -9,9 +10,7 @@ import LexicalTesting
 import Testing
 
 // Port of packages/lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts.
-// The cases that build a MarkNode or a list wait for
-// those packages, and are skipped in parity/skips.json with the packages
-// they need. The two cost cases count LexicalNode.getParent calls with a spy,
+// The two cost cases count LexicalNode.getParent calls with a spy,
 // which has no Swift equivalent, and are skipped as deviations.
 
 /// `InlineShadowNode` from the upstream test.
@@ -88,10 +87,10 @@ struct WrapScopeCase: Sendable, CustomTestStringConvertible {
   let structure: Bool
   var testDescription: String { "\(scope), \(content), \(place)\(structureSuffix(structure))" }
 
-  /// The scopes that use only ported nodes (not the one in a mark).
   static let all: [WrapScopeCase] = [false, true].flatMap { structure in
     [
-      "inline, in the paragraph", "block, at the root", "block, the paragraph's slot value",
+      "inline, in the paragraph", "inline, in a mark in the paragraph", "block, at the root",
+      "block, the paragraph's slot value",
     ].flatMap { scope in
       [
         ("empty", "caret in the empty scope"), ("holding a paragraph", "caret in the inner text"),
@@ -118,12 +117,15 @@ struct WrapMixCase: Sendable, CustomTestStringConvertible {
     "\(container), mix \(mix), \(span)\(backward ? ", backward" : "")\(structureSuffix(structure))"
   }
 
-  /// The upstream MIXES without a paragraph at index 1, which upstream puts
-  /// in a MarkNode.
-  static let mixes: [Int: [WrapMixPart]] = [
-    1: [.paragraph("AA"), .text("BB"), .paragraph("CC")],
-    2: [.text("AA"), .text("BB"), .paragraph("CC"), .text("DD")],
-    4: [.text("AA"), .text("BB"), .text("CC")],
+  /// The upstream MIXES. A paragraph at index 1 holds its text in a
+  /// MarkNode.
+  static let mixes: [[WrapMixPart]] = [
+    [.text("AA"), .paragraph("BB"), .text("CC")],
+    [.paragraph("AA"), .text("BB"), .paragraph("CC")],
+    [.text("AA"), .text("BB"), .paragraph("CC"), .text("DD")],
+    [.paragraph("AA"), .paragraph("BB"), .text("CC")],
+    [.text("AA"), .text("BB"), .text("CC")],
+    [.paragraph("AA"), .paragraph("BB"), .paragraph("CC")],
   ]
 
   static let all: [WrapMixCase] = [false, true].flatMap { structure in
@@ -131,7 +133,7 @@ struct WrapMixCase: Sendable, CustomTestStringConvertible {
       "block shadow root at the root", "block shadow root, a paragraph's slot value",
       "inline shadow root in a paragraph",
     ].flatMap { container in
-      [1, 2, 4].flatMap { mix in
+      mixes.indices.flatMap { mix in
         ["all of it", "first text to the middle", "middle to the last text"].flatMap { span in
           [false, true].map {
             WrapMixCase(
@@ -206,11 +208,10 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
     depth == 0 ? [[]] : nestings(depth - 1).flatMap { rest in wrappers.map { [$0] + rest } }
   }
 
-  /// The upstream WRAPPERS without `mark`, whose shapes wait for
-  /// `lexical-mark`.
-  static let wrappers = ["link", "overflow"]
+  /// The upstream WRAPPERS.
+  static let wrappers = ["link", "mark", "overflow"]
 
-  /// The upstream SHAPES of links and OverflowNodes.
+  /// The upstream SHAPES.
   static let all: [WrapInlineCase] = [false, true].flatMap { structure in
     // Under NodeStructureExtension a quote holds inline content only, so a
     // quote wrapping quotes is not a shape it allows.
@@ -236,16 +237,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret before the wrappers, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret before the wrappers, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret before the wrappers, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret before the wrappers, in the root"
@@ -254,22 +273,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret before the wrappers, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret before the wrappers, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret before the wrappers, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret before the wrappers, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret before the wrappers, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret before the wrappers, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret before the wrappers, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret before the wrappers, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret before the wrappers, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret before the wrappers, in the root"
@@ -278,16 +354,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret inside the inner text, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret inside the inner text, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret inside the inner text, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret inside the inner text, in the root"
@@ -296,22 +390,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret inside the inner text, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret inside the inner text, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret inside the inner text, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret inside the inner text, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret inside the inner text, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret inside the inner text, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret inside the inner text, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret inside the inner text, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret inside the inner text, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret inside the inner text, in the root"
@@ -320,16 +471,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, the whole paragraph, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, the whole paragraph, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, the whole paragraph, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, the whole paragraph, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, the whole paragraph, in the root"
@@ -338,22 +507,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, the whole paragraph, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, the whole paragraph, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, the whole paragraph, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, the whole paragraph, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, the whole paragraph, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, the whole paragraph, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, the whole paragraph, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, the whole paragraph, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, the whole paragraph, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, the whole paragraph, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, the whole paragraph, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, the whole paragraph, in the root"
@@ -362,16 +588,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, from the inner text to the end, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, from the inner text to the end, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, from the inner text to the end, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, from the inner text to the end, in the root"
@@ -380,22 +624,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, from the inner text to the end, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, from the inner text to the end, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, from the inner text to the end, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, from the inner text to the end, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, from the inner text to the end, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, from the inner text to the end, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, from the inner text to the end, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, from the inner text to the end, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, from the inner text to the end, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, from the inner text to the end, in the root"
@@ -404,16 +705,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, this paragraph and the next, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, this paragraph and the next, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, this paragraph and the next, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, this paragraph and the next, in the root"
@@ -422,22 +741,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, this paragraph and the next, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, this paragraph and the next, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, this paragraph and the next, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, this paragraph and the next, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, this paragraph and the next, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, this paragraph and the next, in the root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, this paragraph and the next, in the root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, this paragraph and the next, in the root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, this paragraph and the next, in the root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, this paragraph and the next, in the root"
@@ -446,16 +822,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret before the wrappers, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret before the wrappers, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret before the wrappers, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret before the wrappers, in the shadow root"
@@ -464,22 +858,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret before the wrappers, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret before the wrappers, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret before the wrappers, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret before the wrappers, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret before the wrappers, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret before the wrappers, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret before the wrappers, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret before the wrappers, in the shadow root"
@@ -488,16 +939,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret inside the inner text, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret inside the inner text, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret inside the inner text, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret inside the inner text, in the shadow root"
@@ -506,22 +975,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret inside the inner text, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret inside the inner text, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret inside the inner text, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret inside the inner text, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret inside the inner text, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret inside the inner text, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret inside the inner text, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret inside the inner text, in the shadow root"
@@ -530,16 +1056,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, the whole paragraph, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, the whole paragraph, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, the whole paragraph, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, the whole paragraph, in the shadow root"
@@ -548,22 +1092,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, the whole paragraph, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, the whole paragraph, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, the whole paragraph, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, the whole paragraph, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, the whole paragraph, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, the whole paragraph, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, the whole paragraph, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, the whole paragraph, in the shadow root"
@@ -572,16 +1173,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, from the inner text to the end, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, from the inner text to the end, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, from the inner text to the end, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, from the inner text to the end, in the shadow root"
@@ -590,22 +1209,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, from the inner text to the end, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, from the inner text to the end, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, from the inner text to the end, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, from the inner text to the end, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, from the inner text to the end, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, from the inner text to the end, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, from the inner text to the end, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, from the inner text to the end, in the shadow root"
@@ -614,16 +1290,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, this paragraph and the next, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, this paragraph and the next, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, this paragraph and the next, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, this paragraph and the next, in the shadow root"
@@ -632,22 +1326,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, this paragraph and the next, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, this paragraph and the next, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, this paragraph and the next, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, this paragraph and the next, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, this paragraph and the next, in the shadow root"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, this paragraph and the next, in the shadow root"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, this paragraph and the next, in the shadow root"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, this paragraph and the next, in the shadow root"
@@ -656,16 +1407,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret before the wrappers, in the root, with a wrapping element"
@@ -674,22 +1443,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret before the wrappers, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret before the wrappers, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret before the wrappers, in the root, with a wrapping element"
@@ -698,16 +1524,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret inside the inner text, in the root, with a wrapping element"
@@ -716,22 +1560,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret inside the inner text, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret inside the inner text, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret inside the inner text, in the root, with a wrapping element"
@@ -740,16 +1641,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, the whole paragraph, in the root, with a wrapping element"
@@ -758,22 +1677,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, the whole paragraph, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, the whole paragraph, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, the whole paragraph, in the root, with a wrapping element"
@@ -782,16 +1758,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, from the inner text to the end, in the root, with a wrapping element"
@@ -800,22 +1794,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, from the inner text to the end, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, from the inner text to the end, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, from the inner text to the end, in the root, with a wrapping element"
@@ -824,16 +1875,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, this paragraph and the next, in the root, with a wrapping element"
@@ -842,22 +1911,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, this paragraph and the next, in the root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, this paragraph and the next, in the root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, this paragraph and the next, in the root, with a wrapping element"
@@ -866,16 +1992,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
@@ -884,22 +2028,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret before the wrappers, in the shadow root, with a wrapping element"
@@ -908,16 +2109,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
@@ -926,22 +2145,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret inside the inner text, in the shadow root, with a wrapping element"
@@ -950,16 +2226,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, the whole paragraph, in the shadow root, with a wrapping element"
@@ -968,22 +2262,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, the whole paragraph, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, the whole paragraph, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, the whole paragraph, in the shadow root, with a wrapping element"
@@ -992,16 +2343,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
@@ -1010,22 +2379,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, from the inner text to the end, in the shadow root, with a wrapping element"
@@ -1034,16 +2460,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
@@ -1052,22 +2496,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, this paragraph and the next, in the shadow root, with a wrapping element"
@@ -1076,16 +2577,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret before the wrappers, in the root, NodeStructureExtension"
@@ -1094,22 +2613,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret before the wrappers, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret before the wrappers, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret before the wrappers, in the root, NodeStructureExtension"
@@ -1118,16 +2694,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret inside the inner text, in the root, NodeStructureExtension"
@@ -1136,22 +2730,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret inside the inner text, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret inside the inner text, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret inside the inner text, in the root, NodeStructureExtension"
@@ -1160,16 +2811,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, the whole paragraph, in the root, NodeStructureExtension"
@@ -1178,22 +2847,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, the whole paragraph, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, the whole paragraph, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, the whole paragraph, in the root, NodeStructureExtension"
@@ -1202,16 +2928,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, from the inner text to the end, in the root, NodeStructureExtension"
@@ -1220,22 +2964,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, from the inner text to the end, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, from the inner text to the end, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, from the inner text to the end, in the root, NodeStructureExtension"
@@ -1244,16 +3045,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, this paragraph and the next, in the root, NodeStructureExtension"
@@ -1262,22 +3081,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, this paragraph and the next, in the root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, this paragraph and the next, in the root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, this paragraph and the next, in the root, NodeStructureExtension"
@@ -1286,16 +3162,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
@@ -1304,22 +3198,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret before the wrappers, in the shadow root, NodeStructureExtension"
@@ -1328,16 +3279,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
@@ -1346,22 +3315,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, caret inside the inner text, in the shadow root, NodeStructureExtension"
@@ -1370,16 +3396,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
@@ -1388,22 +3432,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, the whole paragraph, in the shadow root, NodeStructureExtension"
@@ -1412,16 +3513,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
@@ -1430,22 +3549,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, from the inner text to the end, in the shadow root, NodeStructureExtension"
@@ -1454,16 +3630,34 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
@@ -1472,22 +3666,79 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > link, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > mark, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > link > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > link > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > link > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > mark > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > mark > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > mark > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > link > overflow > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > mark > overflow > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps the inline content of the blocks it wraps (#9612) > overflow > overflow > overflow, this paragraph and the next, in the shadow root, NodeStructureExtension"
@@ -1497,8 +3748,8 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
     let editor = try buildEditor(
       "@wrapNodes-inline-content-test", c.structure,
       [
-        .klass(LinkNode.self), .klass(OverflowNode.self), .klass(QuoteNode.self),
-        .klass(TestShadowRootNode.self),
+        .klass(LinkNode.self), .klass(MarkNode.self), .klass(OverflowNode.self),
+        .klass(QuoteNode.self), .klass(TestShadowRootNode.self),
       ])
     defer { editor.dispose() }
     var expected = ""
@@ -1507,7 +3758,11 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       var inner: LexicalNode = try createTextNode("inner")
       for kind in c.shape.reversed() {
         let wrapper: ElementNode =
-          kind == "link" ? try createLinkNode("https://example.net") : try createOverflowNode()
+          switch kind {
+          case "link": try createLinkNode("https://example.net")
+          case "mark": try createMarkNode(["c1"])
+          default: try createOverflowNode()
+          }
         inner = try wrapper.append(inner)
       }
       let first = try createParagraphNode().append(
@@ -1583,6 +3838,21 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in the paragraph, holding text, the whole inner text"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, empty, caret in the empty scope"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, holding a paragraph, caret in the inner text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, holding a paragraph, the whole inner text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, holding text, caret in the inner text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, holding text, the whole inner text"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > block, at the root, empty, caret in the empty scope"
     ),
     .upstream(
@@ -1628,6 +3898,21 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in the paragraph, holding text, the whole inner text, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, empty, caret in the empty scope, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, holding a paragraph, caret in the inner text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, holding a paragraph, the whole inner text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, holding text, caret in the inner text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > inline, in a mark in the paragraph, holding text, the whole inner text, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes keeps a selection in a shadow root inside that scope > block, at the root, empty, caret in the empty scope, NodeStructureExtension"
     ),
     .upstream(
@@ -1661,7 +3946,10 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
   func keepsSelectionInShadowRootScope(_ c: WrapScopeCase) throws {
     let editor = try buildEditor(
       "@wrapNodes-shadow-scope-test", c.structure,
-      [.klass(InlineShadowNode.self), .klass(QuoteNode.self), .klass(TestShadowRootNode.self)])
+      [
+        .klass(InlineShadowNode.self), .klass(MarkNode.self), .klass(QuoteNode.self),
+        .klass(TestShadowRootNode.self),
+      ])
     defer { editor.dispose() }
     let filled = c.content != "empty"
     var outsideBefore = ""
@@ -1683,6 +3971,8 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
         try createTextNode("outside before").setMode("token"))
       if c.scope == "inline, in the paragraph" {
         try parent.append(shadow)
+      } else if c.scope == "inline, in a mark in the paragraph" {
+        try parent.append(try createMarkNode(["c1"]).append(shadow))
       } else if c.scope.hasSuffix("slot value") {
         try setSlot(parent, "scope", shadow)
       }
@@ -1725,6 +4015,24 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
 
   @Test(
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, middle to the last text, backward"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 1, all of it"
     ),
     .upstream(
@@ -1761,6 +4069,24 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 2, middle to the last text, backward"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, middle to the last text, backward"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 4, all of it"
     ),
     .upstream(
@@ -1777,6 +4103,42 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 4, middle to the last text, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, middle to the last text, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, middle to the last text, backward"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 1, all of it"
@@ -1815,6 +4177,24 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 2, middle to the last text, backward"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, middle to the last text, backward"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 4, all of it"
     ),
     .upstream(
@@ -1831,6 +4211,42 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 4, middle to the last text, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, middle to the last text, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, middle to the last text, backward"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 1, all of it"
@@ -1869,6 +4285,24 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 2, middle to the last text, backward"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, middle to the last text, backward"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 4, all of it"
     ),
     .upstream(
@@ -1885,6 +4319,42 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 4, middle to the last text, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, all of it"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, all of it, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, first text to the middle"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, first text to the middle, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, middle to the last text"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, middle to the last text, backward"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 0, middle to the last text, backward, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 1, all of it, NodeStructureExtension"
@@ -1923,6 +4393,24 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 2, middle to the last text, backward, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 3, middle to the last text, backward, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 4, all of it, NodeStructureExtension"
     ),
     .upstream(
@@ -1939,6 +4427,42 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 4, middle to the last text, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root at the root, mix 5, middle to the last text, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 0, middle to the last text, backward, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 1, all of it, NodeStructureExtension"
@@ -1977,6 +4501,24 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 2, middle to the last text, backward, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 3, middle to the last text, backward, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 4, all of it, NodeStructureExtension"
     ),
     .upstream(
@@ -1993,6 +4535,42 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 4, middle to the last text, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > block shadow root, a paragraph's slot value, mix 5, middle to the last text, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 0, middle to the last text, backward, NodeStructureExtension"
     ),
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 1, all of it, NodeStructureExtension"
@@ -2031,6 +4609,24 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 2, middle to the last text, backward, NodeStructureExtension"
     ),
     .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 3, middle to the last text, backward, NodeStructureExtension"
+    ),
+    .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 4, all of it, NodeStructureExtension"
     ),
     .upstream(
@@ -2048,11 +4644,32 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
     .upstream(
       "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 4, middle to the last text, backward, NodeStructureExtension"
     ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, all of it, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, all of it, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, first text to the middle, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, first text to the middle, backward, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, middle to the last text, NodeStructureExtension"
+    ),
+    .upstream(
+      "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes over a block container that mixes inline content and blocks > inline shadow root in a paragraph, mix 5, middle to the last text, backward, NodeStructureExtension"
+    ),
     arguments: WrapMixCase.all)
   func mixedContainer(_ c: WrapMixCase) throws {
     let editor = try buildEditor(
       "@wrapNodes-mixed-container-test", c.structure,
-      [.klass(InlineShadowNode.self), .klass(QuoteNode.self), .klass(TestShadowRootNode.self)])
+      [
+        .klass(InlineShadowNode.self), .klass(MarkNode.self), .klass(QuoteNode.self),
+        .klass(TestShadowRootNode.self),
+      ])
     defer { editor.dispose() }
     var scopeKey: NodeKey = ""
     var before: [String] = []
@@ -2061,13 +4678,15 @@ struct WrapInlineCase: Sendable, CustomTestStringConvertible {
       let scope: ElementNode =
         c.container.hasPrefix("inline")
         ? try create(InlineShadowNode.self) : try createTestShadowRootNode()
-      for part in WrapMixCase.mixes[c.mix]! {
+      for (i, part) in WrapMixCase.mixes[c.mix].enumerated() {
         switch part {
         case .text(let text):
           try scope.append(try createTextNode(text).setMode("token"))
         case .paragraph(let text):
+          let node = try createTextNode(text).setMode("token")
           try scope.append(
-            try createParagraphNode().append(try createTextNode(text).setMode("token")))
+            try createParagraphNode().append(
+              i == 1 ? try createMarkNode(["c1"]).append(node) : node))
         }
       }
       let host = try createParagraphNode().append(try createTextNode("outside").setMode("token"))

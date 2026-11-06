@@ -920,9 +920,9 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   not ported and the tests of the log are `out-of-scope-package`
   (`lexical-y`). JS compares NodeState JSON that was not parsed yet by
   identity, Swift by value, which differs only for two equal objects that
-  JS would hold apart. `lexical-text` is `enforced`: 109 upstream tests, 92
-  ported, 17 skips (11 of collaboration, 6 that need `lexical-mark`), and
-  the root helper cases in `lexical-utils` are ported.
+  JS would hold apart. `lexical-text` is `enforced`: 109 upstream tests, 98
+  ported, 11 skips (of collaboration), and the root helper cases in
+  `lexical-utils` are ported.
 - **`LexicalHashtag`** ports `@lexical/hashtag`: `HashtagNode` and
   `HashtagExtension`, whose transforms are `LexicalText`'s. JS matches with
   a regular expression with the `i` flag and without `u`, over UTF-16 code
@@ -935,8 +935,24 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   type than `text` with the theme style of its type (`hashtag`), as its
   `createDOM` adds the class. `lexical-hashtag` is `enforced`: 1 upstream
   test, ported, and the 40 hashtag cases that waited for it (34 in
-  `lexical-text`, 6 in `lexical-markdown`) are ported; the ones that also
-  need `lexical-mark` stay skipped.
+  `lexical-text`, 6 in `lexical-markdown`) are ported, as are those that
+  also need `lexical-mark`.
+- **`LexicalMark`** ports `@lexical/mark` in its own library product, so an
+  app without comments does not link it: `MarkNode`,
+  `wrapSelectionInMarkNode`, `unwrapMarkNode`, `getMarkIDs`,
+  `MarkExtension`, and `MarkStateExtension` with its flavors (mark ids as
+  NodeState). JS keeps a flavor's per-editor state in `WeakMap`s; Swift
+  keeps it on the flavor's init result. JS recognizes a split piece by the
+  identity of its frozen ids array; Swift compares the array's storage, so
+  `arraySetValue` returns a canonical input unchanged, as `$isCanonicalSet`
+  does. The views draw marks with the theme's `mark` and `markOverlap`
+  backgrounds (`markOverlap` for a mark with more than one id; the
+  `border-bottom` is not drawn), and `TextKitInputController.highlights`
+  paints named model ranges behind the text without changing the storage,
+  as CSS custom highlights do, for the playground's selected comments and
+  search matches. `lexical-mark` is `enforced`: 366 upstream tests, 328
+  ported, 38 skips (37 that need `lexical-code-prism`'s highlighting, and
+  one type-level check Swift has no string literal types for).
 
 - **`LexicalMenu`** ports the parts of `@lexical/react`'s
   `LexicalTypeaheadMenuPlugin`, `LexicalNodeMenuPlugin` and

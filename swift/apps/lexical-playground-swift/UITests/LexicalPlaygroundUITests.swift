@@ -319,6 +319,51 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForTree("\"Hello\" { format: bold }")
   }
 
+  /// `CommentPlugin`: the edit menu's Insert comment opens the input box,
+  /// whose Comment wraps the selection in a mark and opens the panel with
+  /// the thread, which takes a reply.
+  @MainActor
+  func testCommentsOnTheSelection() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Hello world")
+    editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 25, dy: 18))
+      .doubleTap()
+    XCTAssertTrue(app.menuItems["Bold"].waitForExistence(timeout: 5), app.debugDescription)
+    // The edit menu pages its actions; Insert comment follows the formats.
+    // The last page lists its actions as buttons.
+    let insert = app.descendants(matching: .any).matching(
+      NSPredicate(
+        format: "label == %@ AND (elementType == %d OR elementType == %d)",
+        "Insert comment", XCUIElement.ElementType.menuItem.rawValue,
+        XCUIElement.ElementType.button.rawValue)
+    ).firstMatch
+    let forward = app.buttons["Forward"]
+    for _ in 0..<8 where !insert.exists && forward.exists { forward.tap() }
+    XCTAssertTrue(insert.waitForExistence(timeout: 5), app.debugDescription)
+    insert.tap()
+    let input = app.descendants(matching: .any)["comment-input"]
+    XCTAssertTrue(input.waitForExistence(timeout: 5), app.debugDescription)
+    input.typeText("Nice greeting")
+    attachScreenshot("playground-comment-input")
+    app.buttons["comment-submit"].tap()
+    waitForTree(") mark")
+    XCTAssertTrue(element(containing: "Nice greeting").waitForExistence(timeout: 5))
+    let reply = app.descendants(matching: .any)["comment-reply"]
+    reply.tap()
+    reply.typeText("Thanks")
+    app.buttons["Send"].tap()
+    XCTAssertTrue(element(containing: "Thanks").waitForExistence(timeout: 5))
+    attachScreenshot("playground-comments-panel")
+  }
+
+  /// The first element whose label contains `text`.
+  @MainActor
+  private func element(containing text: String) -> XCUIElement {
+    app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text))
+      .firstMatch
+  }
+
   /// `ImagesExtension`: the "/" menu's Image option opens the insert
   /// dialog, whose sample inserts an image node that draws in the editor.
   @MainActor

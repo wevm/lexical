@@ -2,6 +2,7 @@ import Lexical
 import LexicalExtension
 import LexicalHashtag
 import LexicalHistory
+import LexicalMark
 import LexicalMarkdown
 import LexicalTesting
 import LexicalText
@@ -371,6 +372,33 @@ private func unordered(_ object: JSONObject?) -> [String: JSONValue]? {
     ))
   func otherConfigForKey() throws {
     try OtherConfigForKey.run()
+  }
+
+  @Test(
+    .upstream(
+      "lexical-text/src/__tests__/unit/registerLexicalTextEntityNodeState.test.ts::registerLexicalTextEntity keeps NodeState > a hashtag inside a MarkNode stays inside it when it becomes text"
+    ))
+  func hashtagInMarkStaysInIt() throws {
+    let editor = try createHashtagEditor([.klass(MarkNode.self)])
+    try update(editor) {
+      try getRoot().append(
+        paragraph(
+          createTextNode("one "),
+          createMarkNode(["c1"]).append(setState(createHashtagNode("#tag"), note, "n1")),
+          createTextNode(" more")))
+    }
+    try update(editor) {
+      let hashtag = try getRoot().getAllTextNodes()[1]
+      try hashtag.select(0, 1).removeText()
+    }
+    try editor.getEditorState().read {
+      let node = try getRoot().getAllTextNodes()[1]
+      #expect(node.getType() == "text")
+      #expect(try node.getTextContent() == "tag")
+      #expect(try getState(node, note) == "n1")
+      let mark = try #require(try node.getParent() as? MarkNode)
+      #expect(try mark.getIDs() == ["c1"])
+    }
   }
 
   @Test(

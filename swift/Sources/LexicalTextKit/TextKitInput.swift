@@ -47,6 +47,15 @@ public final class TextKitInputController {
   /// styled, the paragraphs and decorators to style again, the selection
   /// and the update's tags.
   public var onRender: ((TextKitUpdate) -> Void)?
+  /// Ranges the view paints over the text without changing it, by name, as
+  /// a page's CSS custom highlights: an app's search matches or the marks of
+  /// the selected comment. The view draws them again after each commit,
+  /// where their points are then.
+  public var highlights: [String: TextKitHighlight] = [:] {
+    didSet { if highlights != oldValue { onHighlightsChange?() } }
+  }
+  /// Called when `highlights` changes; the view draws them again.
+  public var onHighlightsChange: (() -> Void)?
   private var removeListener: (() -> Void)?
 
   public init(editor: Editor) {

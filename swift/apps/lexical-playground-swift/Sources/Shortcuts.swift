@@ -14,7 +14,6 @@ private let CONTROL_SHIFT = KeyboardEventModifierMask(ctrlKey: true, shiftKey: t
 
 /// A shortcut of the web playground's panel, in its order: those
 /// `ShortcutsExtension` handles, then the editor's own (`BUILTIN_SHORTCUT_BINDINGS`).
-/// Add comment is left out, as comments aren't ported.
 enum PlaygroundShortcut: String, CaseIterable, Identifiable {
   case normal = "NORMAL"
   case heading1 = "HEADING1"
@@ -25,6 +24,7 @@ enum PlaygroundShortcut: String, CaseIterable, Identifiable {
   case checkList = "CHECK_LIST"
   case codeBlock = "CODE_BLOCK"
   case quote = "QUOTE"
+  case addComment = "ADD_COMMENT"
   case increaseFontSize = "INCREASE_FONT_SIZE"
   case decreaseFontSize = "DECREASE_FONT_SIZE"
   case insertCodeBlock = "INSERT_CODE_BLOCK"
@@ -63,6 +63,7 @@ enum PlaygroundShortcut: String, CaseIterable, Identifiable {
     case .checkList: ("9", CONTROL_OR_META_SHIFT, nil)
     case .codeBlock: ("c", CONTROL_OR_META_ALT, nil)
     case .quote: ("q", CONTROL_SHIFT, nil)
+    case .addComment: ("m", CONTROL_OR_META_ALT, nil)
     case .increaseFontSize: (">", CONTROL_OR_META_SHIFT, ".")
     case .decreaseFontSize: ("<", CONTROL_OR_META_SHIFT, ",")
     case .insertCodeBlock: ("c", CONTROL_OR_META_SHIFT, nil)
@@ -243,6 +244,8 @@ struct PlaygroundCommands: Commands {
       item(.checkList)
       item(.codeBlock)
       item(.quote)
+      Divider()
+      item(.addComment)
       Divider()
       item(.bold)
       item(.italic)

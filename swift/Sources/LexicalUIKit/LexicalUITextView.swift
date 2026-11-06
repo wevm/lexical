@@ -177,6 +177,9 @@
       // Attaching commits what is pending; the view starts from the full
       // render below, so it renders nothing before then.
       controller.report { try editor.setRootElement(self) }
+      controller.onHighlightsChange = { [weak self] in
+        MainActor.assumeIsolated { self?.showHighlights() }
+      }
       controller.onRender = { [weak self] update in
         MainActor.assumeIsolated { self?.apply(update) }
       }
@@ -321,6 +324,7 @@
         inputDelegate?.textDidChange(self)
       }
       showMarkedText()
+      showHighlights()
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange != selected { selectedRange = selected }
@@ -381,6 +385,30 @@
         layoutManager.addRenderingAttribute(
           .underlineStyle, value: NSUnderlineStyle.single.rawValue, for: range)
       }
+    }
+
+    /// Draws the controller's highlights again: `BlockBarsView` paints
+    /// them behind the text, so the storage keeps the model's attributes.
+    private func showHighlights() {
+      setNeedsLayout()
+    }
+
+    /// The rects of the controller's highlights in content coordinates,
+    /// with their colors.
+    private func highlightRects(_ layoutManager: NSTextLayoutManager) -> [(CGRect, UIColor)] {
+      var rects: [(CGRect, UIColor)] = []
+      for (range, highlight) in controller.highlightedRanges() {
+        guard let color = highlight.backgroundColor?.uiColor,
+          let textRange = textRange(NSRange(location: range.location, length: range.length))
+        else { continue }
+        layoutManager.enumerateTextSegments(in: textRange, type: .highlight, options: []) {
+          _, frame, _, _ in
+          rects.append(
+            (frame.offsetBy(dx: textContainerInset.left, dy: textContainerInset.top), color))
+          return true
+        }
+      }
+      return rects
     }
 
     /// Puts a `CheckboxControl` over each check box in `markers`, and
@@ -480,6 +508,7 @@
             x: textContainerInset.left + padding, y: textContainerInset.top + frame.minY,
             width: textContainer.size.width - 2 * padding, height: frame.height))
       }
+      blockBarsView.highlights = highlightRects(layoutManager)
       sendSubviewToBack(blockBarsView)
       layoutPlaceholder(layoutManager)
     }
@@ -1070,6 +1099,10 @@
     var markers: [(CGRect, TextKitListMarkerLayout)] = [] {
       didSet { setNeedsDisplay() }
     }
+    /// The highlights' rects, over the boxes and bars.
+    var highlights: [(CGRect, UIColor)] = [] {
+      didSet { setNeedsDisplay() }
+    }
     var contentSizeCategory = UIContentSizeCategory.large
 
     override func draw(_ rect: CGRect) {
@@ -1088,6 +1121,10 @@
       }
       for (line, layout) in markers where line.intersects(rect) {
         draw(layout, line: line)
+      }
+      for (frame, color) in highlights where frame.intersects(rect) {
+        color.setFill()
+        UIRectFillUsingBlendMode(frame, .normal)
       }
     }
 

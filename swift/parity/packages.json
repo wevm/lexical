@@ -19,5 +19,6 @@
   "lexical-text": "enforced",
   "lexical-hashtag": "enforced",
   "lexical-react": "enforced",
-  "lexical-mark": "enforced"
+  "lexical-mark": "enforced",
+  "lexical-file": "enforced"
 }

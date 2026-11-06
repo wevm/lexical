@@ -45,6 +45,7 @@ let package = Package(
     .library(name: "LexicalAutoEmbed", targets: ["LexicalAutoEmbed"]),
     .library(name: "LexicalHashtag", targets: ["LexicalHashtag"]),
     .library(name: "LexicalMark", targets: ["LexicalMark"]),
+    .library(name: "LexicalFile", targets: ["LexicalFile"]),
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
@@ -205,6 +206,13 @@ let package = Package(
       ]),
     // @lexical/hashtag: hashtag nodes, made from text by LexicalText.
     .target(name: "LexicalHashtag", dependencies: ["Lexical", "LexicalText"]),
+    .target(name: "LexicalFile", dependencies: ["Lexical"]),
+    .testTarget(
+      name: "LexicalFileTests",
+      dependencies: [
+        "Lexical", "LexicalExtension", "LexicalFile", "LexicalHistory", "LexicalRichText",
+        "LexicalTesting",
+      ]),
     .testTarget(
       name: "LexicalHashtagTests",
       dependencies: ["Lexical", "LexicalExtension", "LexicalHashtag", "LexicalTesting"]),
@@ -314,8 +322,9 @@ let package = Package(
     .testTarget(
       name: "ConformanceTests",
       dependencies: [
-        "Lexical", "LexicalCodeCore", "LexicalDevtoolsCore", "LexicalExtension", "LexicalHashtag",
-        "LexicalHistory", "LexicalHTML", "LexicalLink", "LexicalList", "LexicalMarkdown",
+        "Lexical", "LexicalCodeCore", "LexicalDevtoolsCore", "LexicalExtension", "LexicalFile",
+        "LexicalHashtag", "LexicalHistory", "LexicalHTML", "LexicalLink", "LexicalList",
+        "LexicalMarkdown",
         "LexicalOverflow", "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalText",
       ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.

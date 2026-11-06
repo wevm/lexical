@@ -20,6 +20,7 @@
     "@lexical/devtools-core": "workspace:*",
     "@lexical/extension": "workspace:*",
     "@lexical/fast-check": "workspace:*",
+    "@lexical/file": "workspace:*",
     "@lexical/hashtag": "workspace:*",
     "@lexical/headless": "workspace:*",
     "@lexical/history": "workspace:*",

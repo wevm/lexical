@@ -81,6 +81,10 @@
     "category": "platform-behavior",
     "description": "The playground moves any selected block decorator (a page break, a horizontal rule) by dragging it, the way ImagesExtension moves an image (DecoratorDragExtension), where the web playground drags only images: a native decorator's view needs a drag to move it, while on the web the other block decorators are moved with the draggable block handle. On iOS a selected decorator lifts on a long press, which UIKit's drag interaction requires, where the web drags it on pointer movement."
   },
+  "native/link-editor-below-edit-menu": {
+    "category": "platform-behavior",
+    "description": "On iOS the playground's floating link editor moves below the edit menu (or above it when that does not fit) while the menu shows over it, as it does when a tap on the selected link opens the menu below the link. The web panel stays 10 pixels below the link, where Safari's callout covers it."
+  },
   "native/draggable-block-macos-only": {
     "category": "platform-behavior",
     "description": "The playground's DraggableBlockPlugin (the + and grip handle at a block's left, drag to reorder, the drop line) is ported on macOS only, where it shows while the window is wider than 1025 points, as the web shows it above a 1025px viewport. iOS does not have it: the web hides it on narrow screens, a touch has no hover to show the handle, and a long press on text is UIKit's own text drag, loupe and selection, which a handle beside every block would fight. Its + button adds a paragraph with the '/' component picker open in it, where the web opens a copy of the picker with a filter field beside the handle."

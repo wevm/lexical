@@ -255,15 +255,23 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertTrue(input.waitForExistence(timeout: 5))
     input.typeText("lexical.dev\n")
     waitForTree(") link")
-    // A tap in the link puts the caret in it, which shows the panel. The
-    // tap also opens the edit menu, whose row covers the panel's buttons;
-    // an arrow key hides it and leaves the caret in the link.
+    // A tap in the still-selected link shows the panel and opens the edit
+    // menu, which goes below the link, where the panel was: the panel moves
+    // out of its way, so its buttons take their taps.
     editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 20, dy: 22)).tap()
-    app.typeKey(.rightArrow, modifierFlags: [])
     let view = app.buttons["link-view"]
     XCTAssertTrue(view.waitForExistence(timeout: 5))
     XCTAssertEqual(view.label, "https://lexical.dev")
-    app.buttons["Remove link"].tap()
+    XCTAssertTrue(app.menuItems.firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+    let menu = app.menuItems.allElementsBoundByIndex.map(\.frame).reduce(CGRect.null) {
+      $0.union($1)
+    }
+    let remove = app.buttons["Remove link"]
+    for button in [view, app.buttons["Edit link"], remove] {
+      XCTAssertFalse(button.frame.intersects(menu), "\(button.frame) under the menu \(menu)")
+    }
+    attachScreenshot("link-editor-below-edit-menu")
+    remove.tap()
     let unlinked = NSPredicate(format: "NOT (label CONTAINS %@)", ") link")
     expectation(for: unlinked, evaluatedWith: app.staticTexts["tree-view"])
     waitForExpectations(timeout: 5)

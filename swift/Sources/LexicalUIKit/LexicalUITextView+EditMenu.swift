@@ -13,5 +13,17 @@
       guard let elements = editMenuElements?(range), !elements.isEmpty else { return nil }
       return UIMenu(children: elements + suggestedActions)
     }
+
+    public func textView(
+      _ textView: UITextView, willPresentEditMenuWith animator: any UIEditMenuInteractionAnimating
+    ) {
+      willPresentEditMenu?(animator)
+    }
+
+    public func textView(
+      _ textView: UITextView, willDismissEditMenuWith animator: any UIEditMenuInteractionAnimating
+    ) {
+      willDismissEditMenu?(animator)
+    }
   }
 #endif

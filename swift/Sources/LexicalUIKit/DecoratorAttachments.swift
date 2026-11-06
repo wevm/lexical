@@ -18,6 +18,11 @@
     private var selectedKeys: Set<NodeKey> = []
     /// Called with the key of a decorator that was tapped.
     var onClick: ((NodeKey) -> Void)?
+    /// The items to drag for the selected decorator with the key, whose
+    /// view is the one given (none leaves it where it is).
+    var dragItems: ((NodeKey, UIView) -> [UIDragItem])?
+    /// Called when a drag of a decorator ended, with how it was dropped.
+    var onDragEnd: ((UIDropOperation) -> Void)?
 
     func attachment(for span: TextKitDecoratorSpan, editor: Editor) -> NSTextAttachment? {
       let view = (editor.getDecorators()[span.key]).flatMap { $0 as? any View }
@@ -27,7 +32,10 @@
       }
       let attachment =
         attachments[span.key]
-        ?? LexicalDecoratorAttachment(key: span.key) { [weak self] key in self?.onClick?(key) }
+        ?? LexicalDecoratorAttachment(key: span.key, owner: self) { [weak self] key in
+          self?.onClick?(key)
+        }
+      attachment.isSelected = selectedKeys.contains(span.key)
       if let view {
         attachment.update(AnyView(view), isInline: span.isInline)
       } else if let rule = span.rule {
@@ -46,6 +54,7 @@
       let changed = keys.symmetricDifference(selectedKeys)
       selectedKeys = keys
       for key in changed {
+        attachments[key]?.isSelected = keys.contains(key)
         attachments[key]?.ruleView?.isSelected = keys.contains(key)
       }
     }
@@ -117,8 +126,9 @@
     nonisolated(unsafe) var textContent = ""
 
     @MainActor
-    init(key: NodeKey, onClick: @escaping (NodeKey) -> Void) {
+    init(key: NodeKey, owner: DecoratorAttachments, onClick: @escaping (NodeKey) -> Void) {
       self.key = key
+      self.owner = owner
       self.onClick = { onClick(key) }
       host = UIHostingController(rootView: AnyView(EmptyView()))
       host.view.backgroundColor = .clear
@@ -130,14 +140,31 @@
       let tap = DecoratorTapRecognizer()
       tap.onTap = self.onClick
       host.view.addGestureRecognizer(tap)
+      // A long press on the selected decorator lifts it to move it, as a
+      // selected image's element is `draggable` on the web. Off by default
+      // on iPhone, so turned on.
+      let drag = UIDragInteraction(delegate: self)
+      drag.isEnabled = true
+      host.view.addInteraction(drag)
     }
+
+    private weak var owner: DecoratorAttachments?
+    /// Whether the decorator is in the editor's node selection.
+    var isSelected = false
+    /// Whether its view asked not to be dragged now
+    /// (`lexicalDecoratorDragDisabled(_:)`, while it resizes).
+    var isDragDisabled = false
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
     @MainActor
     func update(_ view: AnyView, isInline: Bool) {
-      host.rootView = view
+      nonisolated(unsafe) weak let attachment = self
+      host.rootView = AnyView(
+        view.onPreferenceChange(DecoratorDragDisabledKey.self) { disabled in
+          MainActor.assumeIsolated { attachment?.isDragDisabled = disabled }
+        })
       size = host.sizeThatFits(in: CGSize(width: 10_000, height: 10_000))
       self.isInline = isInline
     }
@@ -278,5 +305,36 @@
     }
 
     @objc private func tapped() { onTap?() }
+  }
+
+  extension LexicalDecoratorAttachment: UIDragInteractionDelegate {
+    func dragInteraction(
+      _ interaction: UIDragInteraction, itemsForBeginning session: any UIDragSession
+    ) -> [UIDragItem] {
+      guard isSelected, !isDragDisabled, let view = interaction.view else { return [] }
+      return owner?.dragItems?(key, view) ?? []
+    }
+
+    func dragInteraction(
+      _ interaction: UIDragInteraction, session: any UIDragSession,
+      didEndWith operation: UIDropOperation
+    ) {
+      owner?.onDragEnd?(operation)
+    }
+  }
+
+  /// Whether a decorator's view is not to be dragged now.
+  struct DecoratorDragDisabledKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+  }
+
+  extension View {
+    /// Keeps the text view from moving the decorator this view shows when
+    /// the user drags it while it is selected, as a web component sets
+    /// `draggable` to false (an image while it resizes).
+    public func lexicalDecoratorDragDisabled(_ disabled: Bool) -> some View {
+      preference(key: DecoratorDragDisabledKey.self, value: disabled)
+    }
   }
 #endif

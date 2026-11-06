@@ -144,6 +144,9 @@
       decorators.onClick = { [weak self] key in
         self?.perform { try self?.controller.click(MouseEvent("click", targetKey: key)) }
       }
+      decorators.onDrag = { [weak self] key, event, view in
+        self?.dragDecorator(key, with: event, view: view)
+      }
       // Attaching commits what is pending; the view starts from the full
       // render below, so it renders nothing before then.
       controller.report { try editor.setRootElement(self) }
@@ -1063,6 +1066,25 @@
       return true
     }
 
+    /// A drag of the selected decorator `key`'s view (`view`): what
+    /// `DRAGSTART_COMMAND`'s handlers put in the drag (an image's drag
+    /// data, in the playground) is dragged from where the view is, as JS
+    /// drags a `draggable` element. No handler writing any data leaves the
+    /// decorator where it is.
+    private func dragDecorator(_ key: NodeKey, with event: NSEvent, view: NSView) {
+      guard editor.isEditable() else { return }
+      let frame = convert(view.bounds, from: view)
+      guard
+        let data = controller.report({ try controller.dragStart(x: frame.midX, y: frame.midY) }),
+        let data
+      else { return }
+      let item = NSDraggingItem(pasteboardWriter: data.pasteboardItem())
+      // No image of it, as the playground drags an image with a
+      // transparent one: the drop caret shows where it goes.
+      item.setDraggingFrame(frame, contents: nil)
+      beginDraggingSession(with: [item], event: event, source: self)
+    }
+
     public override func draggingSession(
       _ session: NSDraggingSession, sourceOperationMaskFor context: NSDraggingContext
     ) -> NSDragOperation {
@@ -1084,7 +1106,23 @@
       var accepted = false
       perform { accepted = try controller.dragOver(data, x: point.x, y: point.y) }
       if !operation.isEmpty { return operation }
-      return accepted ? .copy : []
+      if accepted { return .copy }
+      // A decorator's drag payload from this view (a selected image) is
+      // taken as a move, as a contenteditable takes a drop by default;
+      // `DROP_COMMAND`'s handlers place it.
+      return isDecoratorDrag(sender) ? .move : []
+    }
+
+    /// Whether `sender` drags a decorator's payload from this view, which
+    /// `NSTextView` itself would refuse.
+    private func isDecoratorDrag(_ sender: any NSDraggingInfo) -> Bool {
+      let type = NSPasteboard.PasteboardType("dev.lexical.drag")
+      return (sender.draggingSource as AnyObject?) === self
+        && sender.draggingPasteboard.types?.contains(type) == true
+    }
+
+    public override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+      isDecoratorDrag(sender) || super.prepareForDragOperation(sender)
     }
 
     public override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {

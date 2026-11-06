@@ -54,8 +54,11 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   Add Caption button shows its caption over the image's bottom edge: a
   nested editor with rich text, links, hashtags and keywords that shares
   the document's history, and hides again when it loses focus empty. HTML
-  imported from the Import menu restores a `<figure>`'s caption. The
-  caption's emoji and mentions, and dragging an image to move it, are not
+  imported from the Import menu restores a `<figure>`'s caption. A
+  selected image moves when it is dragged (a long press and drag on iOS)
+  to the drop point, inside the link it was in, as on the web; a page
+  break or another block decorator moves the same way
+  (`DecoratorDragExtension`). The caption's emoji and mentions are not
   ported yet.
 - **Editing:** Markdown shortcuts (`# `, `- `, `1. `, `[ ] `, `> `,
   ` ``` `, `**bold**`, …), autolinked URLs and email addresses, and check

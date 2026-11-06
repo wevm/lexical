@@ -353,6 +353,42 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForExpectations(timeout: 5)
   }
 
+  /// A selected image, long-pressed and dragged into the line above, moves
+  /// there (`ImagesExtension`'s `DRAGSTART`/`DROP_COMMAND` handlers), as
+  /// the web playground drags it. The debug view is off, so the editor is
+  /// tall enough for both lines above the keyboard.
+  @MainActor
+  func testDraggingASelectedImageMovesIt() {
+    launch()
+    app.buttons["Settings"].tap()
+    let toggle = app.switches["Debug View"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    app.buttons["Done"].tap()
+    let editor = clearedEditor()
+    editor.typeText("Hello world\n/imag")
+    let option = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    option.tap()
+    let sample = app.buttons["image-modal-option-sample"]
+    XCTAssertTrue(sample.waitForExistence(timeout: 5))
+    sample.tap()
+    let image = app.descendants(matching: .any)["editor-image"]
+    XCTAssertTrue(image.waitForExistence(timeout: 5), app.debugDescription)
+    image.tap()
+    // Between "Hello" and " world", on the line above the image's.
+    let target = image.coordinate(withNormalizedOffset: .zero)
+      .withOffset(CGVector(dx: 42, dy: -14))
+    image.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).press(
+      forDuration: 1, thenDragTo: target, withVelocity: .slow, thenHoldForDuration: 0.5)
+    // The image now splits the first line's text.
+    let moved = NSPredicate(
+      format: "value BEGINSWITH %@ AND NOT (value BEGINSWITH %@)", "Hello", "Hello world")
+    expectation(for: moved, evaluatedWith: editor)
+    waitForExpectations(timeout: 5)
+    attachScreenshot("image-dragged")
+  }
+
   /// `ImageResizer`'s Add Caption button shows the image's caption, a
   /// nested editor that takes the typing, and an empty caption hides again
   /// when it loses focus (`DisableCaptionOnBlur`).

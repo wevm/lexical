@@ -157,6 +157,15 @@
       decorators.onClick = { [weak self] key in
         self?.perform { try self?.controller.click(MouseEvent("click", targetKey: key)) }
       }
+      decorators.dragItems = { [weak self] key, view in
+        self?.dragItems(forDecorator: key, view: view) ?? []
+      }
+      decorators.onDragEnd = { [weak self] operation in
+        guard let self else { return }
+        let isMoveToOtherEditor = operation == .move && !isDropFromSelf
+        isDropFromSelf = false
+        perform { try controller.dragEnd(isMoveToOtherEditor: isMoveToOtherEditor) }
+      }
       // A triple (or later) tap is a click with the tap count as `detail`,
       // after the text view has applied the paragraph selection it makes,
       // as AppKit's `mouseDown(with:)` reports one after tracking.
@@ -944,6 +953,21 @@
     ) -> [UIDragItem] {
       let point = dragRequest.dragSession.location(in: self)
       guard let data = controller.report({ try controller.dragStart(x: point.x, y: point.y) }),
+        let data
+      else { return [] }
+      let item = UIDragItem(itemProvider: data.itemProvider())
+      item.localObject = self
+      return [item]
+    }
+
+    /// The drag of the selected decorator `key`'s view (`view`): what
+    /// `DRAGSTART_COMMAND`'s handlers put in the drag, as JS drags a
+    /// `draggable` element; none leaves the decorator where it is.
+    fileprivate func dragItems(forDecorator key: NodeKey, view: UIView) -> [UIDragItem] {
+      guard editor.isEditable() else { return [] }
+      let frame = convert(view.bounds, from: view)
+      guard
+        let data = controller.report({ try controller.dragStart(x: frame.midX, y: frame.midY) }),
         let data
       else { return [] }
       let item = UIDragItem(itemProvider: data.itemProvider())

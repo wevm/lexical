@@ -72,5 +72,9 @@
   "native/ios-code-action-menu-at-selection": {
     "category": "platform-selection",
     "description": "On iOS the playground's code action menu (CodeActionMenuPlugin: the block's language and the copy button at its top right) is shown while the selection is in a code block, since a touch screen has no hover. The web playground and macOS show it while the mouse is over a code block. Prettier's button is not ported on either platform."
+  },
+  "native/block-decorator-drag": {
+    "category": "platform-behavior",
+    "description": "The playground moves any selected block decorator (a page break, a horizontal rule) by dragging it, the way ImagesExtension moves an image (DecoratorDragExtension), where the web playground drags only images: a native decorator's view needs a drag to move it, while on the web the other block decorators are moved with the draggable block handle. On iOS a selected decorator lifts on a long press, which UIKit's drag interaction requires, where the web drags it on pointer movement."
   }
 }

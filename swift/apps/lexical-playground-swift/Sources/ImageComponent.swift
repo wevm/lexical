@@ -5,9 +5,11 @@ import SwiftUI
 
 #if os(macOS)
   import AppKit
+  import LexicalAppKit
   typealias PlatformImage = NSImage
 #else
   import UIKit
+  import LexicalUIKit
   typealias PlatformImage = UIImage
 #endif
 
@@ -266,6 +268,9 @@ struct ImageComponent: View {
         }
       }
     }
+    // `draggable={isInNodeSelection && !isResizing}`: the views drag a
+    // selected decorator; not while a handle resizes it.
+    .lexicalDecoratorDragDisabled(resizing != nil)
     .onAppear {
       selection.observe(editor, nodeKey)
       captionBlur.observe(editor, nodeKey, caption)

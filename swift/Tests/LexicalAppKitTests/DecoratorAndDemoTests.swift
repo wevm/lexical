@@ -182,7 +182,8 @@
     /// TextKit makes a new view provider for a decorator each time it lays
     /// the decorator's line out again, and releases the old one, which
     /// takes its view out of the text, after it shows the new one's: the
-    /// decorator stays in the new one.
+    /// decorator stays in the new one. It goes there without leaving the
+    /// window, so a text field in it keeps editing.
     @Test func keepsDecoratorsShownWhenTextKitReplacesTheirProviders() throws {
       let (view, window) = try showDemo()
       _ = window
@@ -197,6 +198,7 @@
       defer { viewport.close() }
       let content = try #require(viewport.contentView)
       var shown = 0
+      var keptEditing = 0
       storage.enumerateAttribute(
         .attachment, in: NSRange(location: 0, length: storage.length)
       ) { value, range, _ in
@@ -216,13 +218,21 @@
           return provider
         }
         var old = show()
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 40, height: 20))
+        if let hosted = old?.view.flatMap({ hostingViews(in: $0).first }) {
+          hosted.addSubview(field)
+        }
+        let editing = viewport.makeFirstResponder(field)
         let new = show()
+        if editing && field.currentEditor() != nil { keptEditing += 1 }
+        field.removeFromSuperview()
         old = nil
         _ = old
         // Without its own container, the new view is the old one, now gone.
         if let view = new?.view, view.window != nil, !hostingViews(in: view).isEmpty { shown += 1 }
       }
       #expect(shown == 2)
+      #expect(keptEditing == 2)
     }
 
     /// A decorator's drag payload dragged within the view (a selected

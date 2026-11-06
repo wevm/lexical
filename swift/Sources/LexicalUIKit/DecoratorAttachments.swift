@@ -268,14 +268,18 @@
   /// and removes the old provider's view only after it shows the new one,
   /// so the attachment's view, shared by both, would leave with the old
   /// one. Each provider has its own container instead, and the one shown
-  /// last holds the view.
+  /// last holds the view. It takes the view once it is in the window
+  /// itself (or when the view is in none), so the view goes from one
+  /// container to the other without leaving the window: leaving it would
+  /// end the editing of a text field in it, and the keyboard change that
+  /// follows resizes the text view during its own layout.
   final class DecoratorContainerView: UIView {
     let content: UIView
 
     init(content: UIView) {
       self.content = content
       super.init(frame: content.frame)
-      hold()
+      if content.window == nil { hold() }
     }
 
     @available(*, unavailable)

@@ -136,7 +136,11 @@
     /// TextKit makes a new view provider for a decorator each time it lays
     /// the decorator's line out again, and releases the old one, which
     /// takes its view out of the text, after it shows the new one's: the
-    /// decorator stays in the new one.
+    /// decorator stays in the new one. It goes there without leaving the
+    /// window, so a text field in it stays the first responder: leaving
+    /// the window ended its editing, and the keyboard change that follows
+    /// resized the text view during its own layout, which TextKit 2 raises
+    /// on.
     @Test func keepsDecoratorsShownWhenTextKitReplacesTheirProviders() throws {
       let (view, window) = try showDemo()
       let storage = view.textStorage
@@ -146,6 +150,7 @@
       window.addSubview(content)
       defer { content.removeFromSuperview() }
       var shown = 0
+      var keptEditing = 0
       storage.enumerateAttribute(
         .attachment, in: NSRange(location: 0, length: storage.length)
       ) { value, range, _ in
@@ -165,13 +170,19 @@
           return provider
         }
         var old = show()
+        let field = UITextField(frame: CGRect(x: 0, y: 0, width: 40, height: 20))
+        if let hosted = old?.view.flatMap({ hostedViews($0).first }) { hosted.addSubview(field) }
+        let editing = field.becomeFirstResponder()
         let new = show()
+        if editing && field.isFirstResponder { keptEditing += 1 }
+        field.removeFromSuperview()
         old = nil
         _ = old
         // Without its own container, the new view is the old one, now gone.
         if let view = new?.view, view.window != nil, !hostedViews(view).isEmpty { shown += 1 }
       }
       #expect(shown == 2)
+      #expect(keptEditing == 2)
     }
 
     @Test func rendersTheDemoDocument() throws {

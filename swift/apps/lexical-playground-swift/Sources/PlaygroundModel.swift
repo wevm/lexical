@@ -1,6 +1,7 @@
 import Foundation
 import Lexical
 import LexicalA11y
+import LexicalAutoEmbed
 import LexicalCodeCore
 import LexicalDevtoolsCore
 import LexicalExtension
@@ -283,7 +284,7 @@ final class PlaygroundModel {
             HistoryAnnounceExtension, EditorModeAnnounceExtension,
             configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
             CheckListExtension, CodeExtension, HorizontalRuleExtension, PageBreakExtension,
-            ImagesExtension, DecoratorDragExtension,
+            ImagesExtension, DecoratorDragExtension, EmbedsExtension,
             DragDropPasteExtension, PlaygroundDOMRenderExtension,
             // The web playground's `CodeHighlightExtension` brings both:
             // Tab and Shift+Tab indent and outdent code lines.
@@ -375,6 +376,14 @@ final class PlaygroundModel {
     let emoji = registerEmojiPicker(editor)
     let mentions = registerMentions(editor)
     menuHosts = [picker.host, emoji.host, mentions.host]
+    // Rich text only, as the web registers its embed nodes there.
+    if isRichText,
+      let embeds = try? registerAutoEmbedPlugin(
+        editor, showModal: { [weak self] in self?.embedConfig = $0 })
+    {
+      menuHosts.append(embeds.host)
+      unregister.append(embeds.unregister)
+    }
     if isRichText {
       syncAutocomplete()
       menuHosts.append(AutocompleteGhostHost(editor: editor))
@@ -724,6 +733,14 @@ final class PlaygroundModel {
 
   func insertPageBreak() {
     _ = try? editor.dispatchCommand(INSERT_PAGE_BREAK)
+  }
+
+  /// The embed dialog that is open (`AutoEmbedDialog`), for its config.
+  var embedConfig: PlaygroundEmbedConfig?
+
+  /// The Insert menu's embeds, which open the dialog for their config.
+  func insertEmbed(_ type: String) {
+    _ = try? editor.dispatchCommand(INSERT_EMBED_COMMAND, type)
   }
 
   /// The toolbar's Date: today, at midnight.

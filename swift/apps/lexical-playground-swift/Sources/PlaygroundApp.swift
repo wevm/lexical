@@ -103,6 +103,14 @@ struct PlaygroundView: View {
         .padding()
         .presentationDetents([.height(200)])
     }
+    .sheet(
+      isPresented: Binding(
+        get: { model.embedConfig != nil }, set: { if !$0 { model.embedConfig = nil } })
+    ) {
+      if let embedConfig = model.embedConfig {
+        AutoEmbedDialog(embedConfig: embedConfig, editor: model.editor)
+      }
+    }
     .sheet(item: $sheet) { sheet in
       switch sheet {
       case .settings: SettingsView(model: model)

@@ -78,6 +78,11 @@ struct ToolbarView: View {
               Button("Page Break", systemImage: "scissors") { model.insertPageBreak() }
               Button("Image", systemImage: "photo") { model.isInsertingImage = true }
               Button("Date", systemImage: "calendar") { model.insertDate() }
+              ForEach(EmbedConfigs, id: \.type) { config in
+                Button(config.contentName, systemImage: config.symbol) {
+                  model.insertEmbed(config.type)
+                }
+              }
             } label: {
               Label("Insert", systemImage: "plus").labelStyle(.titleAndIcon)
             }

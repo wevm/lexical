@@ -80,5 +80,9 @@
   "native/draggable-block-macos-only": {
     "category": "platform-behavior",
     "description": "The playground's DraggableBlockPlugin (the + and grip handle at a block's left, drag to reorder, the drop line) is ported on macOS only, where it shows while the window is wider than 1025 points, as the web shows it above a 1025px viewport. iOS does not have it: the web hides it on narrow screens, a touch has no hover to show the handle, and a long press on text is UIKit's own text drag, loupe and selection, which a handle beside every block would fight. Its + button adds a paragraph with the '/' component picker open in it, where the web opens a copy of the picker with a filter field beside the handle."
+  },
+  "native/embeds-in-web-views": {
+    "category": "platform-rendering",
+    "description": "The playground's YouTube, X and Figma embeds draw their iframe (and, for a tweet, Twitter's widgets.js) in a WKWebView inside the embed block, loaded from a page at https://playground.lexical.dev/ so that YouTube's player accepts the embedding origin. A tweet's widget sets its own height, which the page reports so the block grows to it; until then the block is 200 points tall with \"Loading...\". On iOS the web view does not scroll on its own, and a click or tap on the video goes to the player, as an iframe takes its own clicks; the rest of the line selects the block. The menu that offers to embed a pasted link is the default node menu (Dismiss, Embed), drawn at the link as the typeahead menus are."
   }
 }

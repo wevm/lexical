@@ -224,10 +224,22 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
   }
 
   private func position() {
+    // A node menu's anchor is its node (`LexicalNodeMenuPlugin` anchors at
+    // the node's element): an element spans its children.
+    let elementSize =
+      menu.resolution.flatMap { resolution in
+        try? menu.editor.read(.latest) {
+          try (getNodeByKey(resolution.anchorKey) as? ElementNode)?.getChildrenSize()
+        }
+      } ?? nil
     guard let textView, let resolution = menu.resolution, !menu.options.isEmpty,
       let range = textView.rect(
-        from: createPoint(resolution.anchorKey, resolution.startOffset, .text),
-        to: createPoint(resolution.anchorKey, resolution.endOffset, .text))
+        from: createPoint(
+          resolution.anchorKey, elementSize == nil ? resolution.startOffset : 0,
+          elementSize == nil ? .text : .element),
+        to: createPoint(
+          resolution.anchorKey, elementSize ?? resolution.endOffset,
+          elementSize == nil ? .text : .element))
     else {
       hide()
       return

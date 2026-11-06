@@ -1,5 +1,6 @@
 #if canImport(SwiftUI)
   import Lexical
+  import LexicalTextKit
   import SwiftUI
   #if os(macOS)
     import AppKit
@@ -28,6 +29,12 @@
     /// scrolls past it (`sizedToContent(minHeight:maxHeight:)`); `nil`
     /// fills the height it is offered.
     public var heightRange: ClosedRange<CGFloat>?
+    /// The look of the rendered text (`theme(_:)`); `nil` keeps
+    /// `TextKitTheme.default`.
+    public var textKitTheme: TextKitTheme?
+    /// Whether the text view paints its own background (`editorBackground(_:)`);
+    /// `false` shows what is behind it, such as a message bubble.
+    public var drawsBackground = true
 
     public init(_ editor: Editor) {
       self.editor = editor
@@ -46,6 +53,33 @@
       editor.heightRange = minHeight...max(minHeight, maxHeight)
       return editor
     }
+
+    /// Whether the editor paints the text view's background (the default)
+    /// or is transparent, showing the views behind it, as a chat bubble or
+    /// a composer with its own background needs.
+    public func editorBackground(_ visible: Bool) -> Self {
+      var editor = self
+      editor.drawsBackground = visible
+      return editor
+    }
+
+    /// Draws the text with `theme`, such as `TextKitTheme.default` with
+    /// styles for an app's own node types under their theme keys. The text
+    /// is drawn again when the theme changes.
+    public func theme(_ theme: TextKitTheme) -> Self {
+      var editor = self
+      editor.textKitTheme = theme
+      return editor
+    }
+
+    /// Applies `textKitTheme` to the text view's controller, drawing the
+    /// text again when it changes.
+    fileprivate func applyTheme(_ controller: TextKitInputController, length: Int) {
+      let theme = textKitTheme ?? .default
+      guard controller.theme != theme else { return }
+      controller.theme = theme
+      controller.report { try controller.renderAll(replacing: length) }
+    }
   }
 
   #if os(macOS)
@@ -53,6 +87,8 @@
       public func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
+        // Only while the content overflows, as when sized to it.
+        scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
         let textView = LexicalNSTextView(editor: editor)
         textView.minSize = .zero
@@ -69,6 +105,8 @@
         guard let textView = scrollView.documentView as? LexicalNSTextView else { return }
         textView.placeholder = placeholder
         textView.heightRange = heightRange
+        textView.drawsBackground = drawsBackground
+        applyTheme(textView.controller, length: textView.textStorage?.length ?? 0)
       }
 
       public func sizeThatFits(
@@ -96,6 +134,12 @@
       public func updateUIView(_ textView: LexicalUITextView, context: Context) {
         textView.placeholder = placeholder
         textView.heightRange = heightRange
+        if drawsBackground {
+          if textView.backgroundColor == .clear { textView.backgroundColor = .systemBackground }
+        } else {
+          textView.backgroundColor = .clear
+        }
+        applyTheme(textView.controller, length: textView.textStorage.length)
       }
 
       public func sizeThatFits(

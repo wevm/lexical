@@ -470,6 +470,24 @@
       #expect(!selectionDisplayActivated())
       // Text selected again shows its handles.
       LexicalUITextView.selectionRectsLog = ["-- text selection --"]
+      nonisolated(unsafe) let watchedView = view
+      nonisolated(unsafe) let watchedWindow = window
+      let keyboardObservers = [
+        UIResponder.keyboardWillShowNotification, UIResponder.keyboardWillHideNotification,
+        UIResponder.keyboardWillChangeFrameNotification, UIWindow.didBecomeKeyNotification,
+        UIWindow.didResignKeyNotification,
+      ].map { name in
+        NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { note in
+          let frame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect).map { "\($0.integral)" } ?? ""
+          let target = (note.object as? UIWindow).map { $0 === watchedWindow ? "ours" : "other" } ?? ""
+          let noteName = note.name.rawValue
+          MainActor.assumeIsolated {
+            LexicalUITextView.selectionRectsLog.append(
+              "\(String(format: "%.3f", Date().timeIntervalSince1970.truncatingRemainder(dividingBy: 1000))) note=\(noteName) \(target) \(frame) fr=\(watchedView.isFirstResponder)")
+          }
+        }
+      }
+      defer { keyboardObservers.forEach(NotificationCenter.default.removeObserver) }
       try select {
         let text = try #require(try getRoot().getFirstDescendant() as? TextNode)
         _ = try text.select(0, 5)
@@ -478,6 +496,20 @@
       // scrolled into view; a range selection doesn't scroll (as in JS), so
       // bring its text back on screen, where UIKit shows its handles.
       print("HANDLES-DIAG offsetBeforeScroll=\(view.contentOffset) block=\(block)")
+      if let steal = ProcessInfo.processInfo.environment["HANDLES_STEAL"] {
+        let other = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 600))
+        let field = UITextView(frame: other.bounds)
+        other.addSubview(field)
+        other.makeKeyAndVisible()
+        if steal == "responder" { _ = field.becomeFirstResponder() }
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.3))
+        print("HANDLES-DIAG stolen key=\(window.isKeyWindow) fr=\(view.isFirstResponder)")
+        if steal == "responder" { _ = field.resignFirstResponder() }
+        other.isHidden = true
+        window.makeKeyAndVisible()
+        if !view.isFirstResponder { _ = view.becomeFirstResponder() }
+        print("HANDLES-DIAG restored key=\(window.isKeyWindow) fr=\(view.isFirstResponder)")
+      }
       if ProcessInfo.processInfo.environment["HANDLES_INVALIDATE"] != nil, let lm = view.textLayoutManager {
         lm.invalidateLayout(for: lm.documentRange)
         if ProcessInfo.processInfo.environment["HANDLES_INVALIDATE"] == "viewport" {

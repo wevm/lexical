@@ -951,6 +951,7 @@
         if display.isActivated { display.isActivated = false }
       } else if isFirstResponder, !display.isActivated {
         display.isActivated = true
+        Task { @MainActor [weak display] in display?.setNeedsSelectionUpdate() }
       }
     }
 

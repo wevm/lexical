@@ -57,7 +57,7 @@ jobs:
         # lacks is downloaded, which takes a full version (the xcode-27 image
         # has only iOS 27 runtimes).
         ios: ['26.5']
-        copy: [1, 2, 3, 4, 5]
+        copy: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     defaults:
       run:
         working-directory: swift

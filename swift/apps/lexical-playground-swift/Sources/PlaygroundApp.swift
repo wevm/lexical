@@ -119,6 +119,7 @@ struct PlaygroundView: View {
       }
     }
     .sheet(isPresented: $model.isInsertingImage) { InsertImageDialog(model: model) }
+    .lexicalFileDialogs(model.files)
     // A compact width has no room below the selection for the comment
     // input box, so it is a sheet there.
     .sheet(
@@ -199,6 +200,15 @@ struct ActionsView: View {
         Button("Markdown", systemImage: "m.square") { sheet = .importExport(.markdown) }
           .help("Import or export the document as Markdown")
       }
+      // `ActionsPlugin`'s Import and Export (`@lexical/file`).
+      Button("Import", systemImage: "square.and.arrow.down") {
+        model.files.importDocument(model.editor)
+      }
+      .help("Import editor state from JSON")
+      Button("Export", systemImage: "square.and.arrow.up") {
+        model.files.exportDocument(model.editor)
+      }
+      .help("Export editor state to JSON")
       Button("Clear", systemImage: "trash") { model.clearEditor() }
         .help("Clear")
       #if os(iOS)

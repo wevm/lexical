@@ -55,8 +55,9 @@ writes back what it read: a `format` of 1.5 or 1e300 exports as 1.5 or
 integer instead of trapping (the flags to the `ToInt32` JS's operators
 read, indents clamped to `Int`'s range), and exports as that integer. No
 editing produces such a document, so it is treated like the surrogates
-(proposed when the property vectors found it, for tmm to review): the
-property generators keep these numbers integral and within 32 bits.
+(accepted by tmm, and listed in `parity/deviations.json` as
+`model/integer-properties`): the property generators keep these numbers
+integral and within 32 bits.
 
 ## Conformance tooling
 

@@ -8241,5 +8241,8 @@
 "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > markable nodes > extending the default with a block decorator",
 "lexical-mark/src/__tests__/unit/MarkStateProperty.test.ts::MarkStateExtension property test > 40 random edit sequences of 30 steps keep the ids of every character",
 "lexical-mark/src/__tests__/unit/MarkStateProperty.test.ts::MarkStateExtension property test with two mark flavors > 40 random edit sequences of 30 steps keep the ids of every character"
+],
+"lexical-file":[
+
 ]
 }}

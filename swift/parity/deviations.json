@@ -3,6 +3,10 @@
     "category": "platform-input",
     "description": "Every text input is CONTROLLED_TEXT_INSERTION_COMMAND. JS lets the browser insert most typed characters into the DOM and syncs the model from the input event; the native views never edit their own text (Q40). The resulting state is the same."
   },
+  "model/integer-properties": {
+    "category": "platform-behavior",
+    "description": "A fractional or out-of-range format, detail, textFormat, indent, list start or list item value in imported JSON becomes an integer in Swift, which keeps these properties in an Int: the flags read as JS's bitwise operators read them (ToInt32) and an indent is clamped to Int's range, and the integer is what exports. JS stores and writes back the number it read, so a format of 1.5 exports as 1.5. No editing produces such a document, so the @lexical/fast-check property generators (vectors/property) keep these numbers integral and within 32 bits. Accepted by tmm; see DESIGN.md, Integer properties."
+  },
   "native/replacement-keeps-caret": {
     "category": "platform-input",
     "description": "A replacement before a collapsed caret (autocorrection, a spelling fix, Writing Tools) leaves the caret where it was, shifted by the replacement's change in length, as NSTextView and UITextView do. JS leaves the caret after the replaced text unless the key that accepted it follows ($maybeMoveSelectionPastTrailingAcceptanceBoundary)."

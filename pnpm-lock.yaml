@@ -713,6 +713,9 @@ importers:
       '@lexical/fast-check':
         specifier: workspace:*
         version: link:../lexical-fast-check
+      '@lexical/file':
+        specifier: workspace:*
+        version: link:../lexical-file
       '@lexical/hashtag':
         specifier: workspace:*
         version: link:../lexical-hashtag

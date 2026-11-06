@@ -249,6 +249,8 @@ final class PlaygroundModel {
   let findReplace = FindReplaceModel()
   /// `TableOfContentsPlugin`'s headings.
   let tableOfContents = TableOfContentsModel()
+  /// `ActionsPlugin`'s Import and Export of `.lexical` files.
+  let files = LexicalFileModel()
 
   private(set) var tree = ""
   private(set) var commandsLog: [LexicalCommandLogEntry] = []

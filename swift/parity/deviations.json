@@ -73,6 +73,10 @@
     "category": "platform-rendering",
     "description": "The playground's ImageResizer handles are drawn just inside the image's edges, not 6 pixels outside them as the web's .image-resizer CSS places them, because the image's hosting view is the size of the image and neither AppKit nor UIKit hit-tests a point outside it. While a handle is dragged the image draws at its new size only where it shrinks, since the text view keeps the attachment at its old size until the handle is let go, when the node takes the size (the web restyles the <img> on every pointermove)."
   },
+  "native/code-language-label-menu": {
+    "category": "native-only",
+    "description": "A playground UX addition: the language label of the code action menu (CodeActionMenuPlugin's .code-highlight-language) is also a dropdown of the toolbar's languages, with \"(No language)\" and a check on the block's, which sets the block's language through CodeNode.setLanguage in one update (one undo step) and gives the editor the keyboard back. It reads as the web's static label until the pointer is over it, when a chevron shows, on macOS, and opens on a tap on iOS. The web's label is static text."
+  },
   "native/ios-code-action-menu-at-selection": {
     "category": "platform-selection",
     "description": "On iOS the playground's code action menu (CodeActionMenuPlugin: the block's language and the copy button at its top right) is shown while the selection is in a code block, since a touch screen has no hover. The web playground and macOS show it while the mouse is over a code block. Prettier's button is not ported on either platform."

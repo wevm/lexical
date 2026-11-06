@@ -15,7 +15,10 @@ import SwiftUI
 // Port of packages/lexical-playground/src/plugins/CodeActionMenuPlugin: at
 // the top right of a code block, 8 points in, the block's language
 // ("(No language)" without one) and a copy button, which shows a check for
-// a second after copying. Prettier's button is not ported.
+// a second after copying. Prettier's button is not ported. The language is
+// also a dropdown here, with the toolbar's languages: it looks like the
+// web's label until hovered (a chevron on macOS) or tapped
+// (parity/deviations.json).
 //
 // JS shows it while the mouse is over a code block, listening to
 // `mousemove` while the document has one. macOS does the same with a
@@ -29,6 +32,10 @@ final class CodeActionMenuState {
   var language = ""
   var isCopyCompleted = false
   var copy: () -> Void = {}
+  var setLanguage: (String?) -> Void = { _ in }
+  /// Whether the pointer is over the language, from the text view's mouse
+  /// tracking on macOS (SwiftUI's hover does not reach a menu there).
+  var isLanguageHovered = false
 }
 
 /// `CodeActionMenuContainer`: `.code-action-menu-container`, 10-point text
@@ -38,8 +45,7 @@ struct CodeActionMenuView: View {
 
   var body: some View {
     HStack(spacing: 4) {
-      Text(state.language.isEmpty ? "(No language)" : getLanguageFriendlyName(state.language))
-        .accessibilityIdentifier("code-highlight-language")
+      CodeLanguageLabel(state: state)
       Button {
         state.copy()
       } label: {
@@ -55,6 +61,36 @@ struct CodeActionMenuView: View {
     .foregroundStyle(.primary.opacity(0.5))
     .frame(height: 35.8)
     .fixedSize()
+  }
+}
+
+/// `.code-highlight-language`, the block's language, as a dropdown of the
+/// toolbar's languages. It reads as the label until the pointer is over it,
+/// when a chevron shows.
+private struct CodeLanguageLabel: View {
+  let state: CodeActionMenuState
+  @State private var isHovered = false
+
+  var body: some View {
+    let name = state.language.isEmpty ? "(No language)" : getLanguageFriendlyName(state.language)
+    Menu {
+      CodeLanguageMenuItems(language: state.language, select: state.setLanguage)
+    } label: {
+      HStack(spacing: 2) {
+        Text(name)
+        Image(systemName: "chevron.down")
+          .font(.system(size: 7, weight: .semibold))
+          .opacity(isHovered || state.isLanguageHovered ? 0.8 : 0)
+      }
+      .contentShape(Rectangle())
+    }
+    .menuStyle(.button)
+    .buttonStyle(.plain)
+    .menuIndicator(.hidden)
+    .fixedSize()
+    .onHover { isHovered = $0 }
+    .accessibilityLabel(name)
+    .accessibilityIdentifier("code-highlight-language")
   }
 }
 
@@ -114,9 +150,18 @@ final class CodeActionMenuHost {
     state.copy = { [weak self] in self?.copy() }
   }
 
-  /// Moves the menu into `root`, the editor's new root element.
-  func attach(to root: AnyObject?, editor: Editor) {
+  /// Moves the menu into `root`, the editor's new root element;
+  /// `setLanguage` sets a block's language from the menu's dropdown.
+  func attach(
+    to root: AnyObject?, editor: Editor,
+    setLanguage: @escaping (NodeKey, String?) -> Void
+  ) {
     self.editor = editor
+    state.setLanguage = { [weak self] language in
+      guard let self, let key = self.codeKey else { return }
+      setLanguage(key, language)
+      self.focusTextView()
+    }
     hostingView.removeFromSuperview()
     show(nil)
     #if os(macOS)
@@ -191,6 +236,19 @@ final class CodeActionMenuHost {
     hostingView.isHidden = false
   }
 
+  /// Gives the editor the keyboard back after the dropdown, so the caret
+  /// stays where it was.
+  private func focusTextView() {
+    guard let textView else { return }
+    #if os(macOS)
+      if textView.window?.firstResponder !== textView {
+        textView.window?.makeFirstResponder(textView)
+      }
+    #else
+      if !textView.isFirstResponder { textView.becomeFirstResponder() }
+    #endif
+  }
+
   /// `CopyButton`'s `handleClick`: copies the block's text.
   private func copy() {
     guard let key = codeKey,
@@ -213,9 +271,14 @@ final class CodeActionMenuHost {
     /// `getMouseInfo`: the code block under the mouse, keeping the menu
     /// while the mouse is over it.
     private func mouseMoved(_ event: NSEvent?) {
+      state.isLanguageHovered = false
       guard let textView, let event, !codeKeys.isEmpty else { return show(nil) }
       let point = textView.convert(event.locationInWindow, from: nil)
-      if !hostingView.isHidden, hostingView.frame.contains(point) { return }
+      if !hostingView.isHidden, hostingView.frame.contains(point) {
+        // Left of the copy button (24 points and the 4-point spacing).
+        state.isLanguageHovered = point.x < hostingView.frame.maxX - 28
+        return
+      }
       show(codeKeys.first { textView.blockRect(for: $0)?.contains(point) == true })
     }
   #endif

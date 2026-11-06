@@ -100,5 +100,9 @@
   "native/context-menu-system-items": {
     "category": "platform-behavior",
     "description": "The playground's ContextMenuPlugin adds Remove Link, Copy as Markdown, Paste as Plain Text and Delete Node before the system's own menu items: the macOS context menu and, on iOS, the edit menu after the selection's formats. The web draws a custom menu, only with its shouldUseLexicalContextMenu setting (off by default), that also has its own Cut, Copy and Paste; native always adds its items, which leave the browser's or system's menu in place, and leaves Cut, Copy and Paste to the system's items. On iOS, where the edit menu belongs to the selection rather than a click, Remove Link and Delete Node act on the selection's anchor node instead of the node under the pointer."
+  },
+  "native/emoji-glyphs-and-caption-mentions": {
+    "category": "platform-rendering",
+    "description": "The playground's EmojiNode and EmojisExtension are the web's (the same JSON and HTML), in the document and in an image's caption, but the views draw the emoji's own character rather than the web's 16px image behind transparent text (.emoji.happysmile and the others in index.css), since TextKit has no background image for a run of text. The caption's mentions menu inserts a MentionNode: upstream's CaptionEditorExtension shows the menu (MentionsPlugin) but registers only EmojiNode, so choosing a mention there throws that MentionNode is not configured; the Swift caption registers it."
   }
 }

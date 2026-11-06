@@ -40,12 +40,20 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   it. It scrolls with the text, as the web's does with the page. The
   handwriting face is the system's Noteworthy, for the web's Reenie Beanie
   web font. Its JSON is the web's.
+- **Equations** (`EquationNode`, `EquationsExtension`): Insert → Equation,
+  or "/" and Equation, asks for the LaTeX and whether it is inline, with a
+  preview. KaTeX draws it, inline on the text's baseline or centered as a
+  block; a click selects it, a double-click edits its LaTeX in place, and
+  Escape or a click elsewhere puts it back. Its JSON and HTML, KaTeX's
+  markup included, are the web's. `Sources/katex/` is KaTeX 0.16.27, the
+  version the web playground resolves (MIT, `Sources/katex/LICENSE`): the
+  views draw it in a web view, and `exportDOM` runs it in JavaScriptCore.
 - **Typeahead menus:** "/" opens the component picker
   (`ComponentPickerPlugin`): paragraph, headings 1–3, the lists, quote,
-  code, divider, page break, poll, embeds, dates, image and the
+  code, divider, page break, poll, embeds, equation, dates, image and the
   alignments, filtered by what follows the slash, chosen with the arrows and
-  Enter or Tab, a click or a tap. The table, equation and other options
-  insert nodes the port does not have yet. "@" and a name
+  Enter or Tab, a click or a tap. The table and other options insert
+  nodes the port does not have yet. "@" and a name
   (`MentionsPlugin`) list up to five people from the web's dummy lookup,
   which answers after 500 ms, and insert a `MentionNode`. ":" and a
   keyword (`EmojiPickerPlugin`) list up to ten emoji;

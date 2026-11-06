@@ -92,5 +92,9 @@
   "native/poll-and-sticky-note": {
     "category": "platform-rendering",
     "description": "The playground's PollNode and StickyNode are the web's (the same JSON and HTML), drawn natively. A poll is 400 points wide, as .PollNode__container's min-width, and 320 on an iPhone, whose editor is narrower; a vote is cast as one of upstream's animal names, picked at launch, as useCollaborationContext's name is without collaboration. A sticky note is drawn over the text view at its offset from the text's top left corner, as upstream portals it to the document's body at the root element's rect, and scrolls with the text: on macOS it is in the text view, on iOS in the window over the text view and clipped to it, since the text view's gestures take its subviews' touches. Its handwriting face is the system's Noteworthy, for the Reenie Beanie web font, and a SwiftUI drag gesture in the note keeps its buttons from firing, so its drag is a pan of the note's own on iOS and an AppKit view behind the note's content on macOS; its buttons are tap gestures on iOS, where a hosted Button does not fire, and plain Buttons on macOS, where a tap gesture does not. The Insert menu has Sticky Note and the '/' menu does not, as on the web."
+  },
+  "native/equations-katex-in-web-views": {
+    "category": "platform-rendering",
+    "description": "The playground's EquationNode is the web's (the same JSON, and HTML byte for byte with KaTeX's markup), with KaTeX 0.16.27 bundled in the app rather than a native math renderer, so equations look and parse exactly as on the web. Each equation draws in a small WKWebView sized to what KaTeX reports, and exportDOM runs the same katex.min.js in JavaScriptCore over a minimal DOM that serializes as Chromium does. The double-click editor is a native text field between grey $ (or $$) markers, and the Insert Equation dialog is a native form with an Inline toggle in place of a checkbox."
   }
 }

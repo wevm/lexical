@@ -281,6 +281,7 @@ final class PlaygroundModel {
             configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
             CheckListExtension, CodeExtension, HorizontalRuleExtension, PageBreakExtension,
             ImagesExtension, DecoratorDragExtension, EmbedsExtension, PollExtension,
+            EquationsExtension,
             DragDropPasteExtension, PlaygroundDOMRenderExtension,
             // The web playground's `CodeHighlightExtension` brings both:
             // Tab and Shift+Tab indent and outdent code lines.
@@ -374,7 +375,8 @@ final class PlaygroundModel {
     syncClickableLinks()
     let picker = registerComponentPicker(
       editor, showImageDialog: { [weak self] in self?.isInsertingImage = true },
-      showPollDialog: { [weak self] in self?.isInsertingPoll = true })
+      showPollDialog: { [weak self] in self?.isInsertingPoll = true },
+      showEquationDialog: { [weak self] in self?.isInsertingEquation = true })
     let emoji = registerEmojiPicker(editor)
     let mentions = registerMentions(editor)
     menuHosts = [picker.host, emoji.host, mentions.host]
@@ -746,6 +748,9 @@ final class PlaygroundModel {
 
   /// The Insert Poll dialog is open (`showModal('Insert Poll', ...)`).
   var isInsertingPoll = false
+
+  /// The Insert Equation dialog is open (`showModal('Insert Equation', ...)`).
+  var isInsertingEquation = false
 
   /// The Insert menu's Sticky Note: a note at the editor's top left corner,
   /// appended to the root.

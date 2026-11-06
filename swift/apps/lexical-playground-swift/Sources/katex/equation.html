@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link href="katex.min.css" rel="stylesheet" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        overflow: hidden;
+      }
+      body {
+        font-size: 16px;
+        color: #000;
+        cursor: default;
+        -webkit-user-select: none;
+        user-select: none;
+        white-space: nowrap;
+      }
+      @media (prefers-color-scheme: dark) {
+        body {
+          color: #e6e6e6;
+        }
+      }
+      /* Shrinks to what KaTeX drew, which is what the native view measures. */
+      #measure {
+        display: inline-block;
+        vertical-align: baseline;
+      }
+      /* Keeps .katex-display's margins inside the measured box. */
+      #measure > div {
+        display: flow-root;
+      }
+      #baseline {
+        display: inline-block;
+        width: 0;
+        height: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <span id="measure"></span>
+    <span id="baseline"></span>
+    <script src="katex.min.js"></script>
+    <script>
+      // KatexRenderer's katex.render, with the options it passes. The size of what
+      // it drew (and, inline, how far it reaches below the baseline) goes to the
+      // native view each time it changes, as KaTeX's fonts load.
+      var measure = document.getElementById('measure');
+      var baseline = document.getElementById('baseline');
+      var inline = true;
+      function post() {
+        var rect = measure.getBoundingClientRect();
+        var depth = inline
+          ? rect.bottom - baseline.getBoundingClientRect().bottom
+          : 0;
+        window.webkit.messageHandlers.size.postMessage({
+          width: Math.ceil(rect.width),
+          height: Math.ceil(rect.height),
+          depth: Math.max(0, depth),
+        });
+      }
+      new ResizeObserver(post).observe(measure);
+      document.fonts.addEventListener('loadingdone', post);
+      function show(equation, isInline) {
+        inline = isInline;
+        measure.textContent = '';
+        var holder = document.createElement(inline ? 'span' : 'div');
+        measure.appendChild(holder);
+        katex.render(equation, holder, {
+          displayMode: !inline,
+          errorColor: '#cc0000',
+          output: 'html',
+          strict: 'warn',
+          throwOnError: false,
+          trust: false,
+        });
+        post();
+      }
+    </script>
+  </body>
+</html>

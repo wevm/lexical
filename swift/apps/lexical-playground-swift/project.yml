@@ -24,7 +24,14 @@ targets:
   LexicalPlayground:
     type: application
     supportedDestinations: [iOS, macOS]
-    sources: [Sources]
+    sources:
+      - path: Sources
+        excludes: [katex]
+      # KaTeX, kept as a folder so its page, script and fonts keep their
+      # relative paths.
+      - path: Sources/katex
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground

@@ -78,6 +78,7 @@ struct ToolbarView: View {
               Button("Page Break", systemImage: "scissors") { model.insertPageBreak() }
               Button("Image", systemImage: "photo") { model.isInsertingImage = true }
               Button("Poll", systemImage: "chart.bar.xaxis") { model.isInsertingPoll = true }
+              Button("Equation", systemImage: "function") { model.isInsertingEquation = true }
               Button("Sticky Note", systemImage: "note.text") { model.insertStickyNote() }
               Button("Date", systemImage: "calendar") { model.insertDate() }
               ForEach(EmbedConfigs, id: \.type) { config in

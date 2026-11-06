@@ -430,6 +430,10 @@
         let text = try #require(try getRoot().getFirstDescendant() as? TextNode)
         _ = try text.select(0, 5)
       }
+      // Loading the document left the caret at its end, which the view
+      // scrolled into view; a range selection doesn't scroll (as in JS), so
+      // bring its text back on screen, where UIKit shows its handles.
+      view.setContentOffset(.zero, animated: false)
       #expect(shownHandles().count == 2, "\(shownHandles())")
       _ = window
     }

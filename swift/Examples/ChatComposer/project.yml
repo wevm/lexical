@@ -1,0 +1,68 @@
+# The chat composer example: a message list and a composer built on the
+# library's public products only, as an app outside this repository would
+# use them. Generate the Xcode project with `xcodegen generate` (it is not
+# checked in); signing takes DEVELOPMENT_TEAM from the xcodebuild command
+# line, never from this file.
+name: ChatComposer
+options:
+  bundleIdPrefix: dev.lexical.swift
+  deploymentTarget:
+    iOS: '26.0'
+    macOS: '26.0'
+packages:
+  Lexical:
+    path: ../..
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: YES
+    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    LEXICAL_BUNDLE_PREFIX: dev.lexical.swift
+targets:
+  ChatComposer:
+    type: application
+    supportedDestinations: [iOS, macOS]
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).chatcomposer
+        INFOPLIST_KEY_CFBundleDisplayName: Chat Composer
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: 'UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight'
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        # The paperclip's file panel on macOS.
+        ENABLE_USER_SELECTED_FILES: readonly
+    dependencies:
+      - package: Lexical
+        product: Lexical
+      - package: Lexical
+        product: LexicalCodeCore
+      - package: Lexical
+        product: LexicalExtension
+      - package: Lexical
+        product: LexicalHistory
+      - package: Lexical
+        product: LexicalLink
+      - package: Lexical
+        product: LexicalList
+      - package: Lexical
+        product: LexicalMarkdown
+      - package: Lexical
+        product: LexicalMenu
+      - package: Lexical
+        product: LexicalRichText
+      - package: Lexical
+        product: LexicalSelection
+      - package: Lexical
+        product: LexicalSwiftUI
+      - package: Lexical
+        product: LexicalText
+      - package: Lexical
+        product: LexicalTextKit
+schemes:
+  ChatComposer:
+    build:
+      targets:
+        ChatComposer: all

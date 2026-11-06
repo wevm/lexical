@@ -441,5 +441,36 @@
       #expect(abs(try height(lines: 1) - 43.2) <= 1.5)
       _ = window
     }
+
+    /// Typing past `sizedToContent`'s maximum keeps the caret in view, as
+    /// `updateDOMSelection` scrolls it into view (`scrollIntoViewIfNeeded`):
+    /// the scroll view follows it to the end of the text.
+    @Test func keepsTheCaretInViewPastTheMaximum() throws {
+      let editor = try makeDemoEditor()
+      let host = NSHostingView(
+        rootView: VStack(spacing: 0) {
+          LexicalEditor(editor).sizedToContent(maxHeight: 150)
+          Spacer(minLength: 0)
+        })
+      host.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
+      let window = NSWindow(
+        contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+      window.contentView = host
+      settle(host)
+      let textView = try #require(editor.getRootElement() as? LexicalNSTextView)
+      let scrollView = try #require(textView.enclosingScrollView)
+      window.makeFirstResponder(textView)
+      try editor.update(discrete: true) { try getRoot().clear() }
+      for line in 0..<12 {
+        try editor.update(discrete: true) {
+          let paragraph = try createParagraphNode().append(createTextNode("Line \(line)"))
+          try getRoot().append(paragraph)
+          _ = try paragraph.selectEnd()
+        }
+        settle(host)
+      }
+      #expect(textView.frame.height > 300)
+      #expect(scrollView.contentView.bounds.maxY >= textView.frame.height - 30)
+    }
   }
 #endif

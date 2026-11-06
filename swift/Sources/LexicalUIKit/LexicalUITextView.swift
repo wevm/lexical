@@ -328,6 +328,12 @@
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange != selected { selectedRange = selected }
+        // `updateDOMSelection`'s `scrollIntoViewIfNeeded`: a collapsed
+        // caret in the focused editor is kept in view, as when typing at the
+        // end of a scrolled composer.
+        if selected.length == 0, hasFocus, !update.tags.contains(SKIP_SCROLL_INTO_VIEW_TAG) {
+          scrollRangeToVisible(selected)
+        }
       }
       showsTextSelection = update.selectedNodes.isEmpty
       showLastBlockAtCaret()

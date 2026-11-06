@@ -303,7 +303,7 @@ let package = Package(
     .target(
       name: "LexicalSwiftUI",
       dependencies: [
-        "Lexical",
+        "Lexical", "LexicalTextKit",
         .target(name: "LexicalAppKit", condition: .when(platforms: [.macOS])),
         .target(
           name: "LexicalUIKit", condition: .when(platforms: [.iOS, .visionOS, .macCatalyst])),

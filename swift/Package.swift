@@ -11,6 +11,9 @@ let treeSitterGrammars: [(name: String, src: String, hasScanner: Bool)] = [
   ("Bash", "src", true), ("CSS", "src", true), ("Go", "src", false), ("HTML", "src", true),
   ("JavaScript", "src", true), ("JSON", "src", false), ("Python", "src", true),
   ("Rust", "src", true), ("Swift", "src", true), ("TypeScript", "typescript/src", true),
+  ("C", "src", false), ("CPP", "src", true), ("Java", "src", false),
+  ("Markdown", "tree-sitter-markdown/src", true), ("ObjC", "src", false),
+  ("PowerShell", "src", true), ("SQL", "src", true), ("XML", "xml/src", true),
 ]
 
 let package = Package(

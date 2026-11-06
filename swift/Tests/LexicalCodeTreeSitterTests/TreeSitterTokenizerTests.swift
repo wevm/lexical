@@ -2,15 +2,23 @@ import Lexical
 import LexicalCodeCore
 import LexicalCodeTreeSitter
 import LexicalCodeTreeSitterBash
+import LexicalCodeTreeSitterC
+import LexicalCodeTreeSitterCPP
 import LexicalCodeTreeSitterCSS
 import LexicalCodeTreeSitterGo
 import LexicalCodeTreeSitterHTML
 import LexicalCodeTreeSitterJSON
+import LexicalCodeTreeSitterJava
 import LexicalCodeTreeSitterJavaScript
+import LexicalCodeTreeSitterMarkdown
+import LexicalCodeTreeSitterObjC
+import LexicalCodeTreeSitterPowerShell
 import LexicalCodeTreeSitterPython
 import LexicalCodeTreeSitterRust
+import LexicalCodeTreeSitterSQL
 import LexicalCodeTreeSitterSwift
 import LexicalCodeTreeSitterTypeScript
+import LexicalCodeTreeSitterXML
 import LexicalExtension
 import LexicalRichText
 import LexicalTesting
@@ -18,7 +26,8 @@ import Testing
 import TreeSitterJavaScript
 
 private let allGrammars: [TreeSitterGrammar] = [
-  .bash, .css, .go, .html, .javaScript, .json, .python, .rust, .swift, .typeScript,
+  .bash, .c, .cpp, .css, .go, .html, .java, .javaScript, .json, .markdown, .objC, .powerShell,
+  .python, .rust, .sql, .swift, .typeScript, .xml,
 ]
 
 /// The typed tokens of `code`, as `type:text`.
@@ -56,6 +65,19 @@ private func typed(_ grammar: TreeSitterGrammar, _ code: String) -> [String] {
     ),
     (.go, "func main() { return }", ["keyword:func", "function:main", "keyword:return"]),
     (.bash, "echo \"hi\" # c", ["function:echo", "string:\"hi\"", "comment:# c"]),
+    (.c, "int main(void) { return 0; }", ["function:main", "keyword:return", "number:0"]),
+    // C++ and Objective-C: their own captures, and C's (`return`), which
+    // their queries extend.
+    (.cpp, "class A { int f() { return 1; } };", ["keyword:class", "keyword:return"]),
+    (
+      .objC, "@implementation A\n@end\nint f() { return 0; }",
+      ["keyword:@implementation", "keyword:@end", "keyword:return"]
+    ),
+    (.java, "public class A { void f() {} }", ["keyword:public", "class-name:A", "function:f"]),
+    (.markdown, "# Title\n\n- item\n", ["punctuation:#", "punctuation:- "]),
+    (.powerShell, "function Get-X { $a = 1 }", ["keyword:function", "function:Get-X"]),
+    (.sql, "SELECT id FROM users WHERE id = 1", ["keyword:SELECT", "keyword:WHERE"]),
+    (.xml, "<a href=\"x\">t</a>", ["tag:a", "property:href", "string:x"]),
   ])
   func mapsCapturesToPrismNames(grammar: TreeSitterGrammar, code: String, expected: [String]) {
     let tokens = grammar.tokenize(code)

@@ -73,6 +73,22 @@ targets:
       - package: Lexical
         product: LexicalCodeTreeSitterTypeScript
       - package: Lexical
+        product: LexicalCodeTreeSitterC
+      - package: Lexical
+        product: LexicalCodeTreeSitterCPP
+      - package: Lexical
+        product: LexicalCodeTreeSitterJava
+      - package: Lexical
+        product: LexicalCodeTreeSitterMarkdown
+      - package: Lexical
+        product: LexicalCodeTreeSitterObjC
+      - package: Lexical
+        product: LexicalCodeTreeSitterPowerShell
+      - package: Lexical
+        product: LexicalCodeTreeSitterSQL
+      - package: Lexical
+        product: LexicalCodeTreeSitterXML
+      - package: Lexical
         product: LexicalDecoratorBlockNode
       - package: Lexical
         product: LexicalDevtoolsCore

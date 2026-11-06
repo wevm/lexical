@@ -5,15 +5,23 @@ import LexicalAutoEmbed
 import LexicalCodeCore
 import LexicalCodeTreeSitter
 import LexicalCodeTreeSitterBash
+import LexicalCodeTreeSitterC
+import LexicalCodeTreeSitterCPP
 import LexicalCodeTreeSitterCSS
 import LexicalCodeTreeSitterGo
 import LexicalCodeTreeSitterHTML
 import LexicalCodeTreeSitterJSON
+import LexicalCodeTreeSitterJava
 import LexicalCodeTreeSitterJavaScript
+import LexicalCodeTreeSitterMarkdown
+import LexicalCodeTreeSitterObjC
+import LexicalCodeTreeSitterPowerShell
 import LexicalCodeTreeSitterPython
 import LexicalCodeTreeSitterRust
+import LexicalCodeTreeSitterSQL
 import LexicalCodeTreeSitterSwift
 import LexicalCodeTreeSitterTypeScript
+import LexicalCodeTreeSitterXML
 import LexicalDevtoolsCore
 import LexicalExtension
 import LexicalHTML
@@ -109,13 +117,16 @@ let PlaygroundMarkdownShortcutsExtension = defineExtension(
   dependencies: [ListExtension, CheckListExtension, LinkExtension, CodeExtension],
   register: { editor, _, _ in try registerMarkdownShortcuts(editor, playgroundTransformers) })
 
-/// Every grammar the playground links, for the languages of the code
-/// language picker that tree-sitter can highlight; the others stay plain.
+/// Every grammar the playground links, one for each language of the code
+/// language picker but C-like and Plain Text, which stay plain.
 /// A block with no language stays plain, as the web playground's
 /// `NULL_LANG_PRISM_TOKENIZER` (`defaultLanguage: null`) does.
 func makePlaygroundCodeTokenizer() -> TreeSitterTokenizer {
   TreeSitterTokenizer(
-    [.bash, .css, .go, .html, .javaScript, .json, .python, .rust, .swift, .typeScript],
+    [
+      .bash, .c, .cpp, .css, .go, .html, .java, .javaScript, .json, .markdown, .objC,
+      .powerShell, .python, .rust, .sql, .swift, .typeScript, .xml,
+    ],
     defaultLanguage: nil)
 }
 

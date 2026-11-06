@@ -18,10 +18,10 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   Prism list, kept in `Sources/CodeLanguages.swift`. Prettier's button is
   not ported. Code is highlighted by `LexicalCodeTreeSitter`, not Prism, in
   the theme's token colors (`PlaygroundEditorTheme.css`, with dark
-  variants): JavaScript, TypeScript, Swift, Python, HTML, CSS, Rust and Go
-  from the picker, and JSON and shell by name. C, C++, Java, Markdown,
-  Objective-C, PowerShell, SQL and XML stay plain until their grammars are
-  added. A block with no language stays plain, as on the web.
+  variants): every language of the picker but C-like, which stays plain,
+  and JSON and shell by name. Markdown highlights its block markers
+  (headings, lists, quotes, fences), not emphasis or links. A block with no
+  language stays plain, as on the web.
 - **Embeds** (`YouTubeNode`, `TweetNode`, `FigmaNode`, `AutoEmbedPlugin`):
   the Insert menu and "/" open the embed dialog for a YouTube video, a
   tweet or a Figma document, and pasting a link to one offers to embed it.

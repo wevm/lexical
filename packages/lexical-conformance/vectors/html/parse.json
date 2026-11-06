@@ -12,6 +12,7 @@
 {"body":"<p>after <!-- inner --> comment</p>","head":"","html":"<!-- comment --><p>after <!-- inner --> comment</p>"},
 {"body":"<p>&amp; &lt; &gt; \" ' &nbsp; © 😀 &amp;unknown; &amp;</p>","head":"","html":"<p>&amp; &lt; &gt; &quot; &#39; &nbsp; &copy; &#x1F600; &unknown; &amp</p>"},
 {"body":"<p title=\"a &amp; b\" data-x=\"single\" data-y=\"unquoted\" data-z=\"\">attrs</p>","head":"","html":"<p title=\"a &amp; b\" data-x='single' data-y=unquoted data-z>attrs</p>"},
+{"body":"<img alt=\"a&lt;b&gt;c &amp; &quot;d&quot;&nbsp;e\" title=\"x&lt;y\"><p data-q=\"&lt;b&gt;\">t</p>","head":"","html":"<img alt=\"a<b>c &amp; &quot;d&quot;&nbsp;e\" title='x<y'><p data-q=\"<b>\">t</p>"},
 {"body":"<p class=\"Upper\">case</p>","head":"","html":"<P CLASS=\"Upper\">case</P>"},
 {"body":"<ul><li>one</li><li>two</li></ul><ol start=\"3\"><li>three</li></ol>","head":"","html":"<ul><li>one<li>two</ul><ol start=\"3\"><li>three</li></ol>"},
 {"body":"<table><tbody><tr><td>a</td><td>b</td></tr></tbody></table>","head":"","html":"<table><tr><td>a</td><td>b</td></tr></table>"},

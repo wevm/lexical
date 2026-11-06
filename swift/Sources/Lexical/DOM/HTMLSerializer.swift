@@ -1,6 +1,8 @@
 // The HTML fragment serialization algorithm (`innerHTML` and `outerHTML`),
-// escaping as jsdom does: attribute values escape `&`, `"` and U+00A0;
-// text escapes `&`, `<`, `>` and U+00A0, except inside raw-text elements.
+// escaping as browsers do: attribute values escape `&`, `"`, `<`, `>` and
+// U+00A0; text escapes `&`, `<`, `>` and U+00A0, except inside raw-text
+// elements. (The HTML standard added `<` and `>` in attributes in 2025, and
+// Chromium and WebKit follow it; jsdom 30 still leaves them as they are.)
 
 private let voidElements: Set<String> = [
   "area", "base", "basefont", "bgsound", "br", "col", "embed", "frame", "hr", "img", "input",
@@ -52,8 +54,8 @@ private func escapeHTML(_ string: String, attribute: Bool, into out: inout Strin
     case "&": out += "&amp;"
     case "\u{A0}": out += "&nbsp;"
     case "\"" where attribute: out += "&quot;"
-    case "<" where !attribute: out += "&lt;"
-    case ">" where !attribute: out += "&gt;"
+    case "<": out += "&lt;"
+    case ">": out += "&gt;"
     default: out.unicodeScalars.append(scalar)
     }
   }

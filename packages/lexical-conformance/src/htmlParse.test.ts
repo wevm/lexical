@@ -10,6 +10,7 @@ import legacyMap from 'entities/lib/maps/legacy.json';
 import {JSDOM} from 'jsdom';
 import {test} from 'vitest';
 
+import {browserWindow} from './browserWindow';
 import {emitVectors} from './vectors';
 
 // HTML import parses with `DOMParser` (jsdom in the upstream unit tests).
@@ -33,6 +34,9 @@ const corpus = [
   '<!-- comment --><p>after <!-- inner --> comment</p>',
   '<p>&amp; &lt; &gt; &quot; &#39; &nbsp; &copy; &#x1F600; &unknown; &amp</p>',
   '<p title="a &amp; b" data-x=\'single\' data-y=unquoted data-z>attrs</p>',
+  // A browser escapes `<` and `>` in an attribute value, as well as `&`, `"`
+  // and U+00A0.
+  '<img alt="a<b>c &amp; &quot;d&quot;&nbsp;e" title=\'x<y\'><p data-q="<b>">t</p>',
   '<P CLASS="Upper">case</P>',
   '<ul><li>one<li>two</ul><ol start="3"><li>three</li></ol>',
   '<table><tr><td>a</td><td>b</td></tr></table>',
@@ -59,7 +63,7 @@ const corpus = [
 ];
 
 test('html/parse', () => {
-  const {DOMParser} = new JSDOM('').window;
+  const {DOMParser} = browserWindow();
   const parser = new DOMParser();
   const cases: Case[] = corpus.map(html => {
     const doc = parser.parseFromString(html, 'text/html');

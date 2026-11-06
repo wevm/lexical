@@ -76,7 +76,7 @@ struct ImageNodeTests {
     let html = try editor.read { try generateHtmlFromNodes(editor) }
     #expect(
       html
-        == #"<div role="paragraph"><figure><img src="/i.jpg" alt="a<b" width="10" height="20"><figcaption><span style="white-space: pre-wrap;">caption text</span></figcaption></figure></div>"#
+        == #"<div role="paragraph"><figure><img src="/i.jpg" alt="a&lt;b" width="10" height="20"><figcaption><span style="white-space: pre-wrap;">caption text</span></figcaption></figure></div>"#
     )
 
     let imported = try buildEditorFromExtensions(

@@ -62,6 +62,14 @@ struct PlaygroundView: View {
           ShowCommentsButton(comments: model.comments).padding(10)
         }
         .overlay(alignment: .topTrailing) {
+          // A compact width has no room beside the editor.
+          if model.tableOfContents.isShown && !isWide {
+            TableOfContentsPanel(model: model.tableOfContents, isCompact: true)
+              .background(RoundedRectangle(cornerRadius: 8).fill(.background).shadow(radius: 6))
+              .padding(.top, 60).padding(.trailing, 10)
+          }
+        }
+        .overlay(alignment: .topTrailing) {
           // `FindReplacePanel`, at the top right as on the web.
           if model.findReplace.isOpen && isWide {
             FindReplacePanel(model: model.findReplace).padding(12)
@@ -76,6 +84,11 @@ struct PlaygroundView: View {
               .padding(.leading, 12).padding(.bottom, 5)
               .accessibilityIdentifier("characters-limit")
           }
+        }
+        // `TableOfContentsPlugin`, at the right of the page as on the web.
+        if model.tableOfContents.isShown && isWide {
+          TableOfContentsPanel(model: model.tableOfContents).padding(.top, 60)
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         if model.showsTreeView {
           Divider()

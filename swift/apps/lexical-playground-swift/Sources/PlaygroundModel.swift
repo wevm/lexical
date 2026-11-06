@@ -235,6 +235,8 @@ final class PlaygroundModel {
   let comments = CommentsModel()
   /// `FindReplaceExtension`'s panel.
   let findReplace = FindReplaceModel()
+  /// `TableOfContentsPlugin`'s headings.
+  let tableOfContents = TableOfContentsModel()
 
   private(set) var tree = ""
   private(set) var commandsLog: [LexicalCommandLogEntry] = []
@@ -391,6 +393,7 @@ final class PlaygroundModel {
     if let unregisterFindReplace = try? findReplace.register(editor) {
       unregister.append(unregisterFindReplace)
     }
+    unregister.append(tableOfContents.register(editor))
     syncMaxLength()
     syncSpecialText()
     syncCharacterLimit()

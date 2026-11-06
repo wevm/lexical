@@ -403,6 +403,29 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertEqual(count.label, "No results")
   }
 
+  /// `TableOfContentsPlugin`: the setting lists the headings as they are
+  /// typed, and a tap on one selects it.
+  @MainActor
+  func testTableOfContentsListsTheHeadings() {
+    launch()
+    app.buttons["Settings"].tap()
+    let toggle = app.switches["Table Of Contents"]
+    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+    app.buttons["Done"].tap()
+    let editor = clearedEditor()
+    editor.typeText("# Getting started\nSome text.\n## Install\n### From the registry\n")
+    let list = app.descendants(matching: .any)["table-of-contents"]
+    XCTAssertTrue(list.waitForExistence(timeout: 5), app.debugDescription)
+    let install = list.buttons["Install"]
+    XCTAssertTrue(install.waitForExistence(timeout: 5), app.debugDescription)
+    XCTAssertTrue(list.buttons["Getting started"].exists)
+    XCTAssertTrue(list.buttons["From the registry"].exists)
+    install.tap()
+    XCTAssertTrue(install.isSelected)
+    attachScreenshot("playground-table-of-contents")
+  }
+
   /// The first element whose label contains `text`.
   @MainActor
   private func element(containing text: String) -> XCUIElement {

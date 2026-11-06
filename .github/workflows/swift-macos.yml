@@ -49,7 +49,7 @@ jobs:
   ios:
     name: Swift (iOS ${{ matrix.ios }} Simulator) ${{ matrix.copy }}
     runs-on: xcode-27
-    timeout-minutes: 45
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -105,10 +105,10 @@ jobs:
           fi
           # The macro expansion tests link swift-syntax for the host; they run
           # in the macOS job and cannot load in the simulator.
-          xcodebuild build-for-testing -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation -quiet
-          for i in 1 2 3 4 5 6; do
-            xcodebuild test-without-building -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
-              -only-testing:LexicalUIKitTests > "$RUNNER_TEMP/uikit-$i.log" 2>&1
+          for i in 1 2 3; do
+            xcrun simctl shutdown "$device" >/dev/null 2>&1 || true
+            xcodebuild test -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
+              -skip-testing:LexicalMacrosTests > "$RUNNER_TEMP/full-$i.log" 2>&1
             echo "iteration $i: exit $?"
-            grep -E "HANDLES-|CandidateGeneration|recorded a known issue|recorded an issue|Unable to boot|Unable to find a device" "$RUNNER_TEMP/uikit-$i.log" | cut -c1-6000 || true
+            grep -E "HANDLES-DIAG|recorded a known issue|recorded an issue|Unable to boot|Unable to find a device|Test run with" "$RUNNER_TEMP/full-$i.log" | cut -c1-3000 || true
           done

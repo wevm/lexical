@@ -111,10 +111,19 @@ public final class MenuState<Option: MenuOption> {
   public var onSelectOption: MenuSelectOption<Option>
   public var onOpen: ((MenuResolution) -> Void)?
   public var onClose: (() -> Void)?
+  /// An `onClose` that returns a promise: the menu stays drawn, with its
+  /// keys, until it returns or throws, then clears unless a newer query
+  /// opened the menu meanwhile. It runs after `onClose`.
+  public var onCloseAsync: (() async throws -> Void)?
   /// Called whenever the resolution, the options or the highlighted index
   /// change, for the view to draw the menu again.
   public var onChange: (() -> Void)?
+  /// Whether the menu is open as far as `onOpen` and `onClose` are
+  /// concerned: a close whose `onCloseAsync` is pending has `resolution`
+  /// still set, and is closed.
   private var isOpen = false
+  /// Counts the opens, so a pending close clears only the query it closed.
+  private var openGeneration = 0
   private var unregisterCommands: (() -> Void)?
 
   init(
@@ -160,10 +169,12 @@ public final class MenuState<Option: MenuOption> {
   func open(_ resolution: MenuResolution) {
     let queryChanged = resolution.match?.matchingString != self.resolution?.match?.matchingString
     self.resolution = resolution
+    openGeneration += 1
     if queryChanged, preselectFirstItem { rawSelectedIndex = 0 }
     if !isOpen {
       isOpen = true
-      registerCommands()
+      // A pending close left them registered.
+      if unregisterCommands == nil { registerCommands() }
       onOpen?(resolution)
     }
     onChange?()
@@ -173,12 +184,25 @@ public final class MenuState<Option: MenuOption> {
   public func close() {
     guard isOpen else { return }
     isOpen = false
-    unregisterCommands?()
-    unregisterCommands = nil
+    let generation = openGeneration
+    let finish = { [weak self] in
+      guard let self, self.openGeneration == generation else { return }
+      self.unregisterCommands?()
+      self.unregisterCommands = nil
+      self.resolution = nil
+      self.rawSelectedIndex = nil
+      self.onChange?()
+    }
     onClose?()
-    resolution = nil
-    rawSelectedIndex = nil
-    onChange?()
+    guard let onCloseAsync else {
+      finish()
+      return
+    }
+    // A rejected promise finishes the close too.
+    Task {
+      try? await onCloseAsync()
+      finish()
+    }
   }
 
   /// `selectOptionAndCleanUp`.

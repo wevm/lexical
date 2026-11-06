@@ -204,10 +204,11 @@ try bench("undo and redo the last change", 10) {
 precondition(storage.units.count == controller.document.length)
 
 // Typing in the middle of a 200-line JavaScript code block highlighted by
-// tree-sitter: each keystroke re-tokenizes the block (an incremental parse)
-// and splices in the tokens that changed. Not gating: about 7.5 ms p50 and
-// 8.3 ms p95 on Linux, of which tokenizing is about 2 ms and the rest is
-// the update and reconcile of the block's ~5,200 children.
+// tree-sitter: each keystroke re-tokenizes the block (an incremental parse
+// that re-types only the edited lines and keeps the other tokens) and
+// splices in the tokens that changed. Gating, like the other keystrokes:
+// about 4.6 ms p50 and 4.9 ms p95 on Linux, most of it the update and
+// reconcile of the block's ~5,200 children.
 if selected("code") {
   let codeEditor = try buildEditorFromExtensions(
     defineExtension(
@@ -231,10 +232,10 @@ if selected("code") {
   let codeKey = try codeEditor.read { try getRoot().getFirstChildOrThrow().getKey() }
   let start = codeController.document.span(codeKey)!.location
   try codeController.setSelectedRange(location: start + offset, length: 0)
-  try bench("code: insert a character in a 200-line code block", 200, target: 8, gating: false) {
+  try bench("code: insert a character in a 200-line code block", 200, target: 8) {
     try codeController.insertText("a")
   }
-  try bench("code: delete a character in a 200-line code block", 200, target: 8, gating: false) {
+  try bench("code: delete a character in a 200-line code block", 200, target: 8) {
     try codeController.beforeInput("deleteContentBackward")
   }
   precondition(codeStorage.units.count == codeController.document.length)

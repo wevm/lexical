@@ -40,7 +40,21 @@ private func typed(_ grammar: TreeSitterGrammar, _ code: String) -> [String] {
   }
 }
 
-@Suite struct TreeSitterTokenizerTests {
+/// SplitMix64, so the random edits replay from their seed.
+private struct SplitMix64: RandomNumberGenerator {
+  var state: UInt64
+  mutating func next() -> UInt64 {
+    state &+= 0x9E37_79B9_7F4A_7C15
+    var z = state
+    z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+    z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+    return z ^ (z >> 31)
+  }
+}
+
+/// Serialized: the tests share the grammars' instances, which keep their
+/// last parse and tokens and are used on one thread at a time.
+@Suite(.serialized) struct TreeSitterTokenizerTests {
   @Test(arguments: allGrammars)
   func highlightsQueryCompiles(_ grammar: TreeSitterGrammar) {
     #expect(grammar.isValid, "\(grammar.languages)")
@@ -119,6 +133,23 @@ private func typed(_ grammar: TreeSitterGrammar, _ code: String) -> [String] {
     }
     for _ in 0..<20 {
       code.remove(at: code.index(code.startIndex, offsetBy: 14))
+      #expect(grammar.tokenize(code) == fresh().tokenize(code), "\(code)")
+    }
+    // Edits anywhere, seeded: ones that join or split tokens of the same
+    // type at the edge of the retyped lines (spaces, identifier letters),
+    // and ones that retype lines after them (quotes, comment openers).
+    var random = SplitMix64(state: 20_261_106)
+    let pieces = [" ", "a", "1", "\n", "'", "\"", "`", "/*", "*/", "//", "{", "}", ";", "\t"]
+    for _ in 0..<300 {
+      var units = Array(code.utf16)
+      if !units.isEmpty, Int.random(in: 0..<3, using: &random) == 0 {
+        let at = Int.random(in: 0..<units.count, using: &random)
+        units.removeSubrange(at..<min(at + Int.random(in: 1...4, using: &random), units.count))
+      } else {
+        let piece = pieces.randomElement(using: &random)!
+        units.insert(contentsOf: piece.utf16, at: Int.random(in: 0...units.count, using: &random))
+      }
+      code = String(decoding: units, as: UTF16.self)
       #expect(grammar.tokenize(code) == fresh().tokenize(code), "\(code)")
     }
   }

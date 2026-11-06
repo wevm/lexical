@@ -134,7 +134,9 @@ property generators keep these numbers integral and within 32 bits.
   devices rather than gated. On the Linux CI runner in release:
   - **Keystrokes gate** (the `Benchmarks` job of `swift.yml` fails on a
     miss): typing and deleting 1.5–2.2 ms p95, Enter and joining
-    paragraphs 3.3–4.2 ms.
+    paragraphs 3.3–4.2 ms. Typing in a 200-line code block highlighted by
+    tree-sitter gates too, at about 4.9 ms p95: the tokenizer re-types
+    only the edited lines and returns its last tokens for the rest.
   - **Load is reported, not gating yet**: 253 and 306 ms p95 on two runs
     of one commit (parse 150–180 ms of it), so a gate would fail at
     random. Trimming instructions doesn't move it (10% fewer instructions

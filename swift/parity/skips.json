@@ -13454,34 +13454,6 @@
     "reason": "react-only",
     "note": "Checks the React component renders with or without a menuRenderFn prop."
   },
-  "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > awaits async onClose before unmounting the menu": {
-    "reason": "deviation",
-    "note": "Tests an onClose that returns a Promise the plugin awaits; Swift's MenuState.onClose is synchronous, so the menu clears right after it returns (ported as runsOnCloseBeforeClearingTheMenu)."
-  },
-  "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > preserves a newer query when an earlier onClose promise resolves after 1 close requests": {
-    "reason": "deviation",
-    "note": "Tests an onClose that returns a Promise the plugin awaits; Swift's MenuState.onClose is synchronous, so the menu clears right after it returns (ported as runsOnCloseBeforeClearingTheMenu)."
-  },
-  "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > preserves a newer query when an earlier onClose promise rejects after 1 close requests": {
-    "reason": "deviation",
-    "note": "Tests an onClose that returns a Promise the plugin awaits; Swift's MenuState.onClose is synchronous, so the menu clears right after it returns (ported as runsOnCloseBeforeClearingTheMenu)."
-  },
-  "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > preserves a newer query when an earlier onClose promise resolves after 2 close requests": {
-    "reason": "deviation",
-    "note": "Tests an onClose that returns a Promise the plugin awaits; Swift's MenuState.onClose is synchronous, so the menu clears right after it returns (ported as runsOnCloseBeforeClearingTheMenu)."
-  },
-  "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > preserves a newer query when an earlier onClose promise rejects after 2 close requests": {
-    "reason": "deviation",
-    "note": "Tests an onClose that returns a Promise the plugin awaits; Swift's MenuState.onClose is synchronous, so the menu clears right after it returns (ported as runsOnCloseBeforeClearingTheMenu)."
-  },
-  "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > clears an uncommitted query when onClose is resolved": {
-    "reason": "deviation",
-    "note": "Tests an onClose that returns a Promise the plugin awaits; Swift's MenuState.onClose is synchronous, so the menu clears right after it returns (ported as runsOnCloseBeforeClearingTheMenu)."
-  },
-  "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > clears an uncommitted query when onClose is rejected": {
-    "reason": "deviation",
-    "note": "Tests an onClose that returns a Promise the plugin awaits; Swift's MenuState.onClose is synchronous, so the menu clears right after it returns (ported as runsOnCloseBeforeClearingTheMenu)."
-  },
   "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > calls onClose when the menu hides because its trigger scrolled out of view": {
     "reason": "dom-only",
     "note": "Depends on the DOM range rect and scroll position; the Swift views place the menu from the range rect and close it themselves."

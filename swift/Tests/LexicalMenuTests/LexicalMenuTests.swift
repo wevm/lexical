@@ -564,3 +564,123 @@ func closesOnceCompositionEndsWithoutAMatch() throws {
   #expect(f.box.closed == 1)
   #expect(f.menu.resolution == nil)
 }
+
+/// A promise for `onCloseAsync`: `wait()` suspends until `settle` is called,
+/// and returns or throws at once after it.
+@MainActor
+private final class ClosePromise {
+  private var result: Result<Void, any Error>?
+  private var waiters: [CheckedContinuation<Void, any Error>] = []
+
+  func wait() async throws {
+    if let result { return try result.get() }
+    try await withCheckedThrowingContinuation { waiters.append($0) }
+  }
+
+  func settle(rejecting: Bool) {
+    struct CloseFailed: Error {}
+    let result: Result<Void, any Error> = rejecting ? .failure(CloseFailed()) : .success(())
+    self.result = result
+    for waiter in waiters { waiter.resume(with: result) }
+    waiters = []
+  }
+}
+
+/// Lets the close task that `settle` resumed run to its end.
+@MainActor
+private func settleTasks() async {
+  for _ in 0..<20 { await Task.yield() }
+}
+
+@MainActor
+@Test(
+  .upstream(
+    "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > awaits async onClose before unmounting the menu"
+  ))
+func awaitsAsyncOnCloseBeforeClearingTheMenu() async throws {
+  let f = try Fixture(triggerFn: slash)
+  defer { f.unregister() }
+  let promise = ClosePromise()
+  f.menu.onCloseAsync = { try await promise.wait() }
+  try update(f.editor) { _ = try getRoot().clear().append(createParagraphNode()).select() }
+  try f.insertText("/")
+  #expect(f.menu.resolution != nil)
+  #expect(f.box.closed == 0)
+  try update(f.editor) { _ = try f.editor.dispatchCommand(DELETE_CHARACTER_COMMAND, true) }
+  await settleTasks()
+  #expect(f.box.closed == 1)
+  // Still drawn, with its keys, while onClose is pending.
+  #expect(f.menu.resolution != nil)
+  #expect(try f.press(KEY_ARROW_DOWN_COMMAND).handled)
+  promise.settle(rejecting: false)
+  await settleTasks()
+  #expect(f.menu.resolution == nil)
+  #expect(try !f.press(KEY_ARROW_DOWN_COMMAND).handled)
+}
+
+@MainActor
+@Test(
+  .upstream(
+    "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > preserves a newer query when an earlier onClose promise resolves after 1 close requests"
+  ),
+  .upstream(
+    "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > preserves a newer query when an earlier onClose promise rejects after 1 close requests"
+  ),
+  .upstream(
+    "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > preserves a newer query when an earlier onClose promise resolves after 2 close requests"
+  ),
+  .upstream(
+    "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > preserves a newer query when an earlier onClose promise rejects after 2 close requests"
+  ),
+  arguments: [false, true], [1, 2])
+func aPendingCloseKeepsANewerQuery(rejecting: Bool, closeRequests: Int) async throws {
+  let f = try Fixture(triggerFn: slash)
+  defer { f.unregister() }
+  let promise = ClosePromise()
+  f.menu.onCloseAsync = { try await promise.wait() }
+  try update(f.editor) { _ = try getRoot().clear().append(createParagraphNode()).select() }
+  try f.insertText("/old")
+  #expect(f.menu.resolution?.match?.matchingString == "old")
+  for _ in 0..<closeRequests { try f.insertText(" ") }
+  await settleTasks()
+  // A close that is already pending is not requested again.
+  #expect(f.box.closed == 1)
+  #expect(f.menu.resolution?.match?.matchingString == "old")
+  try f.insertText("/new")
+  // The newer query reopens the menu that onClose was told about.
+  #expect(f.box.opened == 2)
+  #expect(f.menu.resolution?.match?.matchingString == "new")
+  promise.settle(rejecting: rejecting)
+  await settleTasks()
+  #expect(f.menu.resolution?.match?.matchingString == "new")
+  try f.insertText("er")
+  #expect(f.menu.resolution?.match?.matchingString == "newer")
+  try f.insertText(" ")
+  await settleTasks()
+  #expect(f.box.closed == 2)
+  #expect(f.box.opened == 2)
+  #expect(f.menu.resolution == nil)
+}
+
+@MainActor
+@Test(
+  .upstream(
+    "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > clears an uncommitted query when onClose is resolved"
+  ),
+  .upstream(
+    "lexical-react/src/__tests__/unit/LexicalTypeaheadMenuPlugin.test.tsx::LexicalTypeaheadMenuPlugin > onClose > clears an uncommitted query when onClose is rejected"
+  ),
+  arguments: [false, true])
+func anAsyncCloseClearsTheQuery(rejecting: Bool) async throws {
+  let f = try Fixture(triggerFn: slash)
+  defer { f.unregister() }
+  let promise = ClosePromise()
+  promise.settle(rejecting: rejecting)
+  f.menu.onCloseAsync = { try await promise.wait() }
+  try f.type("/old")
+  try f.insertText("er")
+  try f.insertText(" ")
+  await settleTasks()
+  #expect(f.box.closed == 1)
+  #expect(f.menu.resolution == nil)
+}

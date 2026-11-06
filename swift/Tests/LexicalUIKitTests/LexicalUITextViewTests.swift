@@ -46,6 +46,21 @@
     try view.editor.getEditorState().toJSON(true).stringify()
   }
 
+  /// Every selection handle in `window`, shown or not, with where it is:
+  /// for a failure message.
+  @MainActor
+  private func diagnoseHandles(in window: UIWindow) -> String {
+    func handles(_ view: UIView) -> [UIView] {
+      (view is UITextSelectionHandleView ? [view] : []) + view.subviews.flatMap(handles)
+    }
+    return handles(window).map { handle in
+      let path = sequence(first: handle, next: \.superview).map {
+        "\(type(of: $0))\($0.isHidden ? "(hidden)" : "")\($0.alpha < 1 ? "(alpha \($0.alpha))" : "")"
+      }
+      return "\(handle.frame) " + path.joined(separator: " < ")
+    }.description
+  }
+
   @MainActor
   @Suite struct LexicalUITextViewTests {
     @Test func usesTextKit2AndIsTheRootElement() throws {
@@ -458,7 +473,15 @@
       // bring its text back on screen, where UIKit shows its handles.
       view.setContentOffset(.zero, animated: false)
       let textHandles = settledHandles()
-      #expect(textHandles.shown.count == 2, "\(textHandles.shown)")
+      #expect(
+        textHandles.shown.count == 2,
+        """
+        \(textHandles.shown) most=\(textHandles.most) firstResponder=\(view.isFirstResponder) \
+        key=\(window.isKeyWindow) keyWindow=\(String(describing: window.windowScene?.keyWindow)) \
+        activated=\(view.interactions.compactMap { $0 as? UITextSelectionDisplayInteraction }.map(\.isActivated)) \
+        range=\(view.selectedRange) offset=\(view.contentOffset) \
+        inWindow=\(diagnoseHandles(in: window))
+        """)
       _ = window
     }
 

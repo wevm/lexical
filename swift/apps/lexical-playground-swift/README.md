@@ -17,6 +17,12 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   in the block on iOS. The languages and their display names are the web's
   Prism list, kept in `Sources/CodeLanguages.swift`. Prettier's button is
   not ported.
+- **Embeds** (`YouTubeNode`, `TweetNode`, `FigmaNode`, `AutoEmbedPlugin`):
+  the Insert menu and "/" open the embed dialog for a YouTube video, a
+  tweet or a Figma document, and pasting a link to one offers to embed it.
+  The embed draws in a web view, aligns with the toolbar and selects with a
+  click beside it, as `BlockWithAlignableContents` does. Their JSON and
+  HTML are the web's, byte for byte.
 - **Typeahead menus:** "/" opens the component picker
   (`ComponentPickerPlugin`): paragraph, headings 1–3, the lists, quote,
   code, divider and the alignments, filtered by what follows the slash,

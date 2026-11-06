@@ -1,5 +1,6 @@
 import Foundation
 import Lexical
+import LexicalAutoEmbed
 import LexicalCodeCore
 import LexicalExtension
 import LexicalList
@@ -9,11 +10,11 @@ import LexicalSelection
 
 // Port of packages/lexical-playground/src/plugins/ComponentPickerPlugin: a
 // "/" at the start of a word opens a menu of the blocks the Swift
-// playground has, the page break, the dates, and the image, which opens
-// the Insert Image dialog. The table, Excalidraw, poll, embed, equation, GIF,
-// collapsible, card, pull quote, review and columns options insert nodes
-// the port does not have yet, so they are left out, and so is the dynamic
-// "3x4 Table" option.
+// playground has, the page break, the embeds and the image, which open
+// their dialogs, and the dates. The table, Excalidraw, poll, equation,
+// GIF, collapsible, card, pull quote, review and columns options insert
+// nodes the port does not have yet, so they are left out, and so is the
+// dynamic "3x4 Table" option.
 
 /// `ComponentPickerOption`.
 final class ComponentPickerOption: MenuOption {
@@ -102,6 +103,13 @@ func getBaseOptions(
       "Page Break", symbol: "scissors", keywords: ["page break", "divider"]
     ) { _ in _ = try editor.dispatchCommand(INSERT_PAGE_BREAK) },
   ]
+  // The embeds, which open their dialog.
+  for config in EmbedConfigs {
+    options.append(
+      ComponentPickerOption(
+        "Embed \(config.contentName)", symbol: config.symbol, keywords: config.keywords + ["embed"]
+      ) { _ in _ = try editor.dispatchCommand(INSERT_EMBED_COMMAND, config.type) })
+  }
   // The dates, at midnight.
   for (title, days, keyword) in [
     ("Date", 0, nil), ("Today", 0, "today"), ("Tomorrow", 1, "tomorrow"),

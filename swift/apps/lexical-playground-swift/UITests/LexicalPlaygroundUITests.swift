@@ -364,6 +364,31 @@ final class LexicalPlaygroundUITests: XCTestCase {
       .firstMatch
   }
 
+  /// The embeds (`AutoEmbedPlugin`): the "/" menu's Embed Youtube Video
+  /// opens its dialog, whose Embed is enabled once the URL parses, and
+  /// inserts a YouTube node in place of the query.
+  @MainActor
+  func testEmbedsAYouTubeVideoFromTheComponentPicker() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/youtube")
+    let option = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    XCTAssertTrue(option.label.contains("Embed Youtube Video"), option.label)
+    option.tap()
+    let url = app.textFields["youtube-video-embed-modal-url"]
+    XCTAssertTrue(url.waitForExistence(timeout: 5))
+    let embed = app.buttons["youtube-video-embed-modal-submit-btn"]
+    XCTAssertFalse(embed.isEnabled)
+    url.tap()
+    url.typeText("https://www.youtube.com/watch?v=jNQXAC9IVRw")
+    expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: embed)
+    waitForExpectations(timeout: 5)
+    embed.tap()
+    waitForTree(") youtube")
+    XCTAssertFalse(tree.contains("/youtube"), tree)
+  }
+
   /// `ImagesExtension`: the "/" menu's Image option opens the insert
   /// dialog, whose sample inserts an image node that draws in the editor.
   @MainActor

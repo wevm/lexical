@@ -40,7 +40,11 @@ targets:
       - package: Lexical
         product: LexicalAppKit
       - package: Lexical
+        product: LexicalAutoEmbed
+      - package: Lexical
         product: LexicalCodeCore
+      - package: Lexical
+        product: LexicalDecoratorBlockNode
       - package: Lexical
         product: LexicalDevtoolsCore
       - package: Lexical

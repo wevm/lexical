@@ -18,7 +18,8 @@ import LexicalCodeCore
 // so a byte offset halved is a UTF-16 offset, Lexical's unit. Each grammar
 // keeps the last tree it parsed and the code it parsed, and parses an edit
 // to that code incrementally, and re-runs the highlights query only over
-// the lines the edit can change: the other tokens keep their types.
+// the lines the edit can change: the other tokens keep their types, and
+// the last call's tokens there are returned again rather than rebuilt.
 
 /// A grammar and its highlights query, for the code languages it names.
 /// Use it on the thread that owns the editor.
@@ -31,6 +32,9 @@ public final class TreeSitterGrammar: @unchecked Sendable {
   private var parser: OpaquePointer?
   /// The last parse, which the next one edits, with its token types.
   private var last: (code: [UInt16], tree: OpaquePointer, types: [UInt8])?
+  /// The tokens of `last`, with the offset each starts at and, last, the
+  /// code's length.
+  private var lastTokens: (tokens: [CodeToken], starts: [Int])?
 
   /// `language` is the grammar's `const TSLanguage *`, and `highlights` its
   /// highlights query.
@@ -51,23 +55,68 @@ public final class TreeSitterGrammar: @unchecked Sendable {
   /// `code` as Prism-style tokens.
   public func tokenize(_ code: String) -> [CodeToken] {
     let units = Array(code.utf16)
-    guard let query, !units.isEmpty, let types = highlight(units, query) else {
+    if let last, let lastTokens, last.code == units { return lastTokens.tokens }
+    let previous = lastTokens
+    lastTokens = nil
+    guard let query, !units.isEmpty, let (types, retyped) = highlight(units, query) else {
       return [.text(code)]
     }
-    var tokens: [CodeToken] = []
-    var start = 0
-    for i in 1...units.count where i == units.count || types[i] != types[start] {
-      let text = String(decoding: units[start..<i], as: UTF16.self)
-      tokens.append(
-        types[start] == 0 ? .text(text) : .token(query.typeNames[Int(types[start])], text))
-      start = i
+    // Outside the retyped lines the types are the last parse's, so are its
+    // tokens there, as far as a type change on each side: only the lines
+    // between become new strings.
+    var head = 0
+    var from = 0
+    var tail = previous?.tokens.count ?? 0
+    var to = units.count
+    var shift = 0
+    if let previous, let retyped {
+      shift = retyped.shift
+      let starts = previous.starts
+      head = firstIndex(in: starts) { $0 > retyped.range.lowerBound } - 1
+      while head > 0, types[starts[head] - 1] == types[starts[head]] { head -= 1 }
+      from = starts[head]
+      tail = firstIndex(in: starts) { $0 + shift >= retyped.range.upperBound }
+      while tail < previous.tokens.count, starts[tail] + shift > 0,
+        types[starts[tail] + shift - 1] == types[starts[tail] + shift]
+      {
+        tail += 1
+      }
+      to = starts[tail] + shift
     }
+    var tokens: [CodeToken] = []
+    var starts: [Int] = []
+    tokens.reserveCapacity(head + (previous?.tokens.count ?? 0) - tail + 16)
+    starts.reserveCapacity(tokens.capacity + 1)
+    if let previous {
+      tokens.append(contentsOf: previous.tokens[0..<head])
+      starts.append(contentsOf: previous.starts[0..<head])
+    }
+    if from < to {
+      var start = from
+      for i in (from + 1)...to where i == to || types[i] != types[start] {
+        let text = String(decoding: units[start..<i], as: UTF16.self)
+        tokens.append(
+          types[start] == 0 ? .text(text) : .token(query.typeNames[Int(types[start])], text))
+        starts.append(start)
+        start = i
+      }
+    }
+    if let previous {
+      tokens.append(contentsOf: previous.tokens[tail...])
+      starts.append(contentsOf: previous.starts[tail...].lazy.map { $0 + shift })
+    } else {
+      starts.append(units.count)
+    }
+    lastTokens = (tokens, starts)
     return tokens
   }
 
   /// The token type id of each unit of `units`, from the last parse's
-  /// where the edit leaves them be.
-  private func highlight(_ units: [UInt16], _ query: HighlightsQuery) -> [UInt8]? {
+  /// where the edit leaves them be; with, after an edit, the units the
+  /// query typed again and how far the edit moved the units after them.
+  private func highlight(
+    _ units: [UInt16], _ query: HighlightsQuery
+  ) -> ([UInt8], retyped: (range: Range<Int>, shift: Int)?)? {
     if parser == nil {
       parser = ts_parser_new()
       guard ts_parser_set_language(parser, language) else { return nil }
@@ -77,9 +126,9 @@ public final class TreeSitterGrammar: @unchecked Sendable {
       var types = [UInt8](repeating: 0, count: units.count)
       query.highlight(ts_tree_root_node(tree), units, 0..<units.count, &types)
       self.last = (units, tree, types)
-      return types
+      return (types, nil)
     }
-    if last.code == units { return last.types }
+    if last.code == units { return (last.types, (0..<0, 0)) }
     var edit = Self.edit(from: last.code, to: units)
     ts_tree_edit(last.tree, &edit)
     let tree = parse(units, last.tree)
@@ -119,7 +168,7 @@ public final class TreeSitterGrammar: @unchecked Sendable {
     }
     query.highlight(ts_tree_root_node(tree), units, low..<high, &types)
     self.last = (units, tree, types)
-    return types
+    return (types, (low..<high, newEnd - oldEnd))
   }
 
   private func parse(_ units: [UInt16], _ oldTree: OpaquePointer?) -> OpaquePointer? {
@@ -156,6 +205,18 @@ public final class TreeSitterGrammar: @unchecked Sendable {
       new_end_byte: UInt32((new.count - suffix) * 2), start_point: point(old, prefix),
       old_end_point: point(old, old.count - suffix), new_end_point: point(new, new.count - suffix))
   }
+}
+
+/// The first index of the ascending `values` whose value satisfies
+/// `predicate`, which holds from some index on, or `values.count`.
+private func firstIndex(in values: [Int], where predicate: (Int) -> Bool) -> Int {
+  var low = 0
+  var high = values.count
+  while low < high {
+    let middle = (low + high) / 2
+    if predicate(values[middle]) { high = middle } else { low = middle + 1 }
+  }
+  return low
 }
 
 /// A compiled highlights query: its captures as Prism token names, and the

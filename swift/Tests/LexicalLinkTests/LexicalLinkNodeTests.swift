@@ -1,13 +1,12 @@
 import Lexical
 import LexicalExtension
 import LexicalLink
+import LexicalMark
 import LexicalRichText
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts.
-// The test of a link around a @lexical/mark MarkNode is skipped until that
-// package is ported.
 
 private var editorConfig: EditorConfig {
   EditorConfig(
@@ -513,6 +512,68 @@ private func firstParagraph() throws -> ParagraphNode {
       .arrayValue?[0].objectValue
     let link = paragraph?["children"]?.arrayValue?[0].objectValue
     #expect(link?["title"] == .string("Lexical Website"))
+  }
+
+  @Test(
+    .upstream(
+      "lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::LexicalLinkNode tests > $toggleLink correctly removes link when textnode has children(like marknode)"
+    ))
+  func toggleLinkRemovesLinkAroundAMark() throws {
+    let editor = try createLinkTestEditor(nodes: [.klass(MarkNode.self)])
+    try update(editor) {
+      let paragraph = try createParagraphNode()
+      let precedingText = try createTextNode("some ")  // space after
+      let textNode = try createTextNode("text")
+
+      try paragraph.append(precedingText, textNode)
+
+      let linkNode = try createLinkNode(
+        "https://example.com/foo", LinkAttributes(rel: "noreferrer"))
+      try textNode.insertAfter(linkNode)
+      try linkNode.append(textNode)
+
+      let markNode = try createMarkNode(["knetk"])
+      try textNode.insertBefore(markNode)
+      try markNode.append(textNode)
+      try getRoot().append(paragraph)
+    }
+
+    try editor.read { () throws -> Void in
+      let children = try firstParagraph().getChildren()
+      try #require(children.count == 2)
+      // Check first text node
+      #expect(try children[0].getTextContent() == "some ")
+
+      // Check link node and its nested structure
+      let linkNode = try #require(children[1] as? LinkNode)
+      #expect(try linkNode.getURL() == "https://example.com/foo")
+      #expect(try linkNode.getRel() == "noreferrer")
+
+      // Check mark node nested inside link
+      let markNode = try #require(try linkNode.getFirstChild() as? MarkNode)
+      #expect(try markNode.getType() == "mark")
+      #expect(try markNode.getIDs() == ["knetk"])
+      #expect(try markNode.getTextContent() == "text")
+    }
+
+    try update(editor) {
+      try selectAll()
+      try toggleLink(nil)
+    }
+
+    // Verify structure after link removal
+    try editor.read { () throws -> Void in
+      let children = try firstParagraph().getChildren()
+      try #require(children.count == 2)
+      // Check text node remains unchanged
+      #expect(try children[0].getTextContent() == "some ")
+
+      // Check mark node is preserved and moved up to paragraph level
+      let markNode = try #require(children[1] as? MarkNode)
+      #expect(try markNode.getType() == "mark")
+      #expect(try markNode.getIDs() == ["knetk"])
+      #expect(try markNode.getTextContent() == "text")
+    }
   }
 
   @Test(

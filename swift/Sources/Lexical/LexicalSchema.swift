@@ -511,6 +511,13 @@ public func arraySetValue(_ item: SerializationSchema) throws -> SerializationSc
   return SerializationSchema(
     { value in
       guard case .array(let items)? = value else { return .array([]) }
+      if isCanonicalSet(item, items) {
+        // Already canonical (a value read back and written again): keep it,
+        // so that writing it back is the same value (the same array
+        // storage, which stands for JS's identity of the frozen array).
+        // Every Swift value is immutable, as JS's frozen arrays are.
+        return value
+      }
       var members: [String] = []
       for member in items where item.acceptsValue(member) {
         if case .string(let s)? = item(member) { members.append(s) }
@@ -528,6 +535,24 @@ public func arraySetValue(_ item: SerializationSchema) throws -> SerializationSc
       if case .array? = value { return true }
       return false
     })
+}
+
+/// `$isCanonicalSet(item, value)`: whether `value` is already in
+/// `arraySetValue`'s canonical form for `item`: every member accepted and
+/// unchanged by it, strictly ascending.
+private func isCanonicalSet(_ item: SerializationSchema, _ value: [JSONValue]) -> Bool {
+  var prev: String? = nil
+  for member in value {
+    guard case .string(let s) = member else { return false }
+    if let prev, !jsLess(prev, s) {
+      return false
+    }
+    if !item.acceptsValue(member) || item(member) != member {
+      return false
+    }
+    prev = s
+  }
+  return true
 }
 
 /// The `Object.prototype` members a serialized object inherits.

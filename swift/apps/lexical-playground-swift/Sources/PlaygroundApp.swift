@@ -52,6 +52,10 @@ struct PlaygroundView: View {
         .id(model.generation)
         .accessibilityIdentifier("editor")
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .overlay(alignment: .topTrailing) {
+          // `CommentPlugin`'s Show Comments button.
+          ShowCommentsButton(comments: model.comments).padding(10)
+        }
         .overlay(alignment: .bottomLeading) {
           // `CharacterLimitPlugin`'s counter (`.characters-limit`).
           if let remaining = model.remainingCharacters {
@@ -68,9 +72,18 @@ struct PlaygroundView: View {
             .frame(width: isWide ? 440 : nil, height: isWide ? nil : 280)
         }
       }
+      .overlay(alignment: .trailing) {
+        // `CommentsPanel`, over the right of the page as on the web.
+        if model.comments.showComments {
+          CommentsPanel(comments: model.comments)
+            .transition(.move(edge: .trailing).combined(with: .opacity))
+        }
+      }
+      .animation(.easeOut(duration: 0.2), value: model.comments.showComments)
       Divider()
       ActionsView(model: model, sheet: $sheet)
     }
+    .onChange(of: isWide, initial: true) { _, isWide in model.comments.isWide = isWide }
     .focusedSceneValue(\.playgroundModel, model)
     .sheet(isPresented: $model.showsShortcuts) {
       NavigationStack {
@@ -79,6 +92,17 @@ struct PlaygroundView: View {
       }
     }
     .sheet(isPresented: $model.isInsertingImage) { InsertImageDialog(model: model) }
+    // A compact width has no room below the selection for the comment
+    // input box, so it is a sheet there.
+    .sheet(
+      isPresented: Binding(
+        get: { model.comments.showCommentInput && !isWide },
+        set: { if !$0 && model.comments.showCommentInput { model.comments.cancelAddComment() } })
+    ) {
+      CommentInputBox(comments: model.comments)
+        .padding()
+        .presentationDetents([.height(200)])
+    }
     .sheet(item: $sheet) { sheet in
       switch sheet {
       case .settings: SettingsView(model: model)

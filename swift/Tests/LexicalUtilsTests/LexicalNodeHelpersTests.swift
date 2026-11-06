@@ -1,4 +1,5 @@
 import Lexical
+import LexicalMark
 import LexicalTesting
 import LexicalUtils
 import Testing
@@ -185,6 +186,28 @@ private func emptyParagraphEditor() throws -> (Editor, NodeKey) {
       let paragraph = try #require(try root.getFirstChild() as? ElementNode)
       let children = try paragraph.getChildren()
       expectDFS(try dfs(children[1]), [(2, children[1])])
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-utils/src/__tests__/unit/LexicalNodeHelpers.test.ts::LexicalNodeHelpers tests > dfs order > DFS starting at last child of element node should not include parent's siblings"
+    ))
+  func dfsFromLastChildElement() throws {
+    let editor = try createHeadlessTestEditor(
+      nodes: [.klass(TestElementNode.self), .klass(MarkNode.self)])
+    try editor.update {
+      let root = try getRoot()
+      let p1 = try createParagraphNode().append(
+        try createTextNode("Hello"),
+        try createMarkNode().append(try createTextNode("world").toggleFormat("bold")))
+      let p2 = try createParagraphNode().append(try createTextNode("!!"))
+
+      try root.clear().append(p1, p2)
+
+      let markNode = try #require(try p1.getChildAtIndex(1) as? MarkNode)
+      let textNodes = try markNode.getChildren()
+      expectDFS(try dfs(markNode), [(2, markNode), (3, textNodes[0])])
     }
   }
 

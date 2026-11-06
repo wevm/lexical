@@ -21,8 +21,7 @@ import SwiftUI
 // On iOS the same actions join the system edit menu, which UIKit shows
 // above a selection where the popup would go; the web playground leaves
 // the popup out of narrow viewports as well (`isSmallWidthViewport`). See
-// `native/ios-format-toolbar-in-edit-menu` in parity/deviations.json. The
-// comment button is left out: the port has no comments.
+// `native/ios-format-toolbar-in-edit-menu` in parity/deviations.json.
 
 /// The popup's format buttons, in its order: the format, the button's
 /// title, its `aria-label`, and an SF Symbol for the `i.format` icon
@@ -58,6 +57,9 @@ struct FloatingTextFormatToolbarView: View {
         ) { model.toggleFormat(item.format) }
       }
       button("Insert link", "Insert link", "link", active: model.isLink) { model.insertLink() }
+      button("Insert comment", "Insert comment", "text.bubble", active: false) {
+        model.insertComment()
+      }
     }
     .padding(4)
     .frame(height: 43)
@@ -165,7 +167,8 @@ final class FloatingTextFormatToolbarHost: TypeaheadMenuAttaching {
 
     private func position() {
       guard let model, model.isRichText, model.isFloatingText, !model.isLink, model.isEditable,
-        let selection = model.selectionPoints, let textView, let window = textView.window,
+        !model.comments.showCommentInput, let selection = model.selectionPoints, let textView,
+        let window = textView.window,
         let screen = window.screen,
         let range = textView.rect(from: selection.anchor, to: selection.focus)
       else { return hide() }
@@ -226,8 +229,12 @@ final class FloatingTextFormatToolbarHost: TypeaheadMenuAttaching {
       let link = UIAction(title: "Insert link", image: UIImage(systemName: "link")) {
         [weak model] _ in model?.insertLink()
       }
+      let comment = UIAction(title: "Insert comment", image: UIImage(systemName: "text.bubble")) {
+        [weak model] _ in model?.insertComment()
+      }
       // Bold, italic, underline and strikethrough in the menu's row, as
-      // icons; the rest of the popup's buttons in a Format submenu.
+      // icons; the rest of the popup's buttons in a Format submenu, and
+      // Insert comment after it.
       return [
         UIMenu(
           options: .displayInline, preferredElementSize: .small,
@@ -235,6 +242,7 @@ final class FloatingTextFormatToolbarHost: TypeaheadMenuAttaching {
         UIMenu(
           title: "Format", image: UIImage(systemName: "textformat"),
           children: Array(formats.dropFirst(4)) + [link]),
+        comment,
       ]
     }
   #endif

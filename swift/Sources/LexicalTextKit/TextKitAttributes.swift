@@ -470,11 +470,25 @@ public struct TextKitElement: Hashable, Sendable {
   public var value: Int?
   /// A check list item's `checked`; `nil` outside a check list.
   public var checked: Bool?
+  /// The theme keys other than `themeKey` that its `createDOM` adds the
+  /// classes of, such as a mark's `markOverlap` while it has more than one
+  /// id.
+  public var classes: [String]
 
   public init(
     type: String, tag: String? = nil, isInline: Bool = false, format: ElementFormatType = "",
     indent: Int = 0, direction: ElementDirection? = nil, listType: String? = nil,
     value: Int? = nil, checked: Bool? = nil
+  ) {
+    self.init(
+      type: type, tag: tag, isInline: isInline, format: format, indent: indent,
+      direction: direction, listType: listType, value: value, checked: checked, classes: [])
+  }
+
+  public init(
+    type: String, tag: String? = nil, isInline: Bool = false, format: ElementFormatType = "",
+    indent: Int = 0, direction: ElementDirection? = nil, listType: String? = nil,
+    value: Int? = nil, checked: Bool? = nil, classes: [String]
   ) {
     self.type = type
     self.tag = tag
@@ -485,6 +499,7 @@ public struct TextKitElement: Hashable, Sendable {
     self.listType = listType
     self.value = value
     self.checked = checked
+    self.classes = classes
   }
 
   /// Reads `element` (call it in a read or update). The heading tag and the
@@ -492,11 +507,12 @@ public struct TextKitElement: Hashable, Sendable {
   /// dependency on LexicalRichText or LexicalList. The indent is the
   /// element's own `__indent`, which the JS reconciler pads by: a list item
   /// derives `getIndent()` from its nesting, which the list's own margins
-  /// already show.
+  /// already show. A mark's ids are read the same way, so marks need no
+  /// dependency on LexicalMark.
   public init(_ element: ElementNode) throws {
     let type = element.getType()
     let json =
-      type == "heading" || type == "list" || type == "listitem"
+      type == "heading" || type == "list" || type == "listitem" || type == "mark"
       ? try element.exportJSON() : nil
     self.init(
       type: type,
@@ -505,7 +521,8 @@ public struct TextKitElement: Hashable, Sendable {
       indent: try element.getLatest().__indent, direction: try element.getDirection(),
       listType: type == "list" ? json?["listType"]?.stringValue : nil,
       value: type == "listitem" ? json?["value"]?.numberValue.map { Int($0) } : nil,
-      checked: type == "listitem" ? json?["checked"]?.boolValue : nil)
+      checked: type == "listitem" ? json?["checked"]?.boolValue : nil,
+      classes: type == "mark" && (json?["ids"]?.arrayValue?.count ?? 0) > 1 ? ["markOverlap"] : [])
   }
 
   /// The `EditorThemeClasses` key the JS node reads in `createDOM`.
@@ -803,7 +820,10 @@ public struct TextKitTheme: Hashable, Sendable {
       $0.cursor = .pointer
       $0.hoverUnderline = true
     },
+    // `__mark` and `__markOverlap`; their `border-bottom: 2px solid` is not
+    // drawn.
     "mark": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.14)),
+    "markOverlap": TextKitStyle(backgroundColor: TextKitColor(255, 212, 0, alpha: 0.3)),
     // `__hashtag`; its `border-bottom: 1px solid rgba(88, 144, 255, 0.3)` is
     // not drawn.
     "hashtag": TextKitStyle(backgroundColor: TextKitColor(88, 144, 255, alpha: 0.15)),
@@ -841,7 +861,7 @@ public struct TextKitTheme: Hashable, Sendable {
 
   /// The keys an element applies, in cascade order.
   private func styles(of element: TextKitElement) -> [TextKitStyle] {
-    var keys = [element.themeKey]
+    var keys = [element.themeKey] + element.classes
     if let checked = element.checked {
       keys.append(checked ? "listitemChecked" : "listitemUnchecked")
     }

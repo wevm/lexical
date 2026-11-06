@@ -282,7 +282,8 @@ final class LexicalPlaygroundUITests: XCTestCase {
   }
 
   /// `AutocompleteExtension`, turned on in the settings: the rest of the
-  /// word shows as ghost text, and a swipe right accepts it.
+  /// word shows as ghost text in the editor's text, outside the model, and
+  /// a swipe right accepts it.
   @MainActor
   func testAutocompleteSuggestsAndSwipeAccepts() {
     launch()
@@ -293,9 +294,11 @@ final class LexicalPlaygroundUITests: XCTestCase {
     app.buttons["Done"].tap()
     let editor = clearedEditor()
     editor.typeText("Some informa")
-    let ghost = app.staticTexts["autocomplete-ghost"]
-    XCTAssertTrue(ghost.waitForExistence(timeout: 5))
-    XCTAssertTrue(ghost.label.hasPrefix("tion"), ghost.label)
+    expectation(
+      for: NSPredicate(format: "value BEGINSWITH %@", "Some information (SWIPE"),
+      evaluatedWith: editor)
+    waitForExpectations(timeout: 5)
+    waitForTree("\"Some informa\"")
     editor.swipeRight()
     waitForTree("\"Some information\"")
   }

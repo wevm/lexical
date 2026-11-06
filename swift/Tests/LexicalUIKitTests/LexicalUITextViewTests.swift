@@ -107,6 +107,51 @@
       _ = window
     }
 
+    /// A `TextKitSuffix` is laid out with the text, so the node after it
+    /// moves aside, and stays out of the model; a suggestion accepted
+    /// mid-composition ends the keyboard's marked text with the model's.
+    @Test func laysOutASuffixAndEndsTheCompositionWithTheModel() throws {
+      let (view, window) = try makeView()
+      try view.editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createParagraphNode().append(
+            createTextNode("a "), try createTextNode("cd").toggleFormat("bold")))
+        _ = try (getRoot().getFirstDescendant() as! TextNode).select(2, 2)
+      }
+      let key = try view.editor.read { try getRoot().getFirstDescendant()!.getKey() }
+      func x(_ location: Int) -> CGFloat {
+        view.layoutIfNeeded()
+        let position = view.position(from: view.beginningOfDocument, offset: location)!
+        return view.caretRect(for: position).minX
+      }
+      let before = x(2)
+      let model = try json(view)
+      try view.controller.setSuffix(TextKitSuffix(key: key, text: "xyz", type: "autocomplete"))
+      #expect(view.text == "a xyzcd")
+      #expect(x(5) > before + 10)
+      #expect(try json(view) == model)
+      #expect(view.selectedRange == NSRange(location: 2, length: 0))
+      view.setMarkedText("사", selectedRange: NSRange(location: 1, length: 0))
+      #expect(view.text == "a 사cd")
+      try view.controller.setSuffix(TextKitSuffix(key: key, text: "용", type: "autocomplete"))
+      #expect(view.text == "a 사용cd")
+      try view.editor.update(discrete: true) {
+        let node = try getNodeByKey(key) as! TextNode
+        try node.setTextContent(try node.getTextContent() + "용")
+        try setCompositionKey(nil)
+        _ = try node.select()
+      }
+      #expect(view.markedTextRange == nil)
+      #expect(!view.editor.isComposing())
+      #expect(view.text == "a 사용cd")
+      view.setMarkedText("ㄱ", selectedRange: NSRange(location: 1, length: 0))
+      #expect(view.selectedRange == NSRange(location: 5, length: 0))
+      view.unmarkText()
+      #expect(view.text == "a 사용ㄱcd")
+      #expect(try json(view).contains(#""text":"a 사용ㄱ""#))
+      _ = window
+    }
+
     @Test func composesMarkedTextThroughTheModel() throws {
       let (view, window) = try makeView()
       view.insertText("a")

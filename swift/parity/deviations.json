@@ -61,10 +61,6 @@
       "Navigation > native navigation > can navigate through the formatted text word by word (rich)"
     ]
   },
-  "native/autocomplete-ghost-overlay": {
-    "category": "platform-rendering",
-    "description": "The playground's AutocompleteExtension draws its ghost suggestion as a label over the text view at the end of the text node, outside the editor state as on the web. JS appends an unmanaged contenteditable=false <span> inside the text node's DOM, so text after the caret on the same line moves aside and a long ghost wraps; natively that text is covered and the ghost is cut off at the right edge. The IME composition-idle suggestion (which reads the composing DOM) is not ported."
-  },
   "native/ios-format-toolbar-in-edit-menu": {
     "category": "platform-selection",
     "description": "On iOS the playground's floating text format toolbar (FloatingTextFormatToolbarPlugin) is not a popup: its bold, italic, underline and strikethrough join the system edit menu that UIKit shows above a selection, with the rest of its buttons in a Format submenu, so the two do not cover each other. The web playground shows the popup above the selection on wide viewports and leaves it out below 1025 pixels (isSmallWidthViewport). On macOS it is the web's popup."

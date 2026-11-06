@@ -24,6 +24,28 @@ public struct TextKitRun: Equatable, Sendable {
   public let length: Int
   public let format: Int
   public let style: String
+  /// The theme type the run takes its look from in place of its node's
+  /// (a `TextKitSuffix`'s), or `nil` for the node's own.
+  public var type: String? = nil
+}
+
+/// Text shown after a text node that is not in the editor state, as JS
+/// appends an unmanaged `<span>` to a text node's DOM (the playground's
+/// autocomplete ghost). Its characters are in the rendered string, so the
+/// text after it moves aside and it wraps, but every location in it maps
+/// to the end of the node, and a caret skips it.
+public struct TextKitSuffix: Equatable, Sendable {
+  /// The text node it follows.
+  public var key: NodeKey
+  public var text: String
+  /// The theme type it is styled as, over the node's look.
+  public var type: String
+
+  public init(key: NodeKey, text: String, type: String) {
+    self.key = key
+    self.text = text
+    self.type = type
+  }
 }
 
 public struct TextKitDocument: Sendable {
@@ -51,10 +73,17 @@ public struct TextKitDocument: Sendable {
     var format = 0
     var style = ""
     var kids: [Kid] = []
+    /// How many of a text node's last `length` code units are its
+    /// suffix's.
+    var suffixLength = 0
+    /// The length of a text node's text, without its suffix.
+    var contentLength: Int { length - suffixLength }
   }
 
   /// The rendered text.
   public internal(set) var string = ""
+  /// The suffix shown after a text node, if any.
+  public internal(set) var suffix: TextKitSuffix?
   /// Every rendered node, by key.
   var entries: [FastHashKey<NodeKey>: Entry] = [:]
 
@@ -62,6 +91,13 @@ public struct TextKitDocument: Sendable {
 
   /// The document of `root` (call it in a read or update).
   public init(root: RootNode) throws {
+    try self.init(root: root, suffix: nil)
+  }
+
+  /// The document of `root` (call it in a read or update), with `suffix`
+  /// after its text node.
+  public init(root: RootNode, suffix: TextKitSuffix?) throws {
+    self.suffix = suffix
     var text = ""
     var runs: [TextKitRun] = []
     try build(root, parent: nil, index: 0, at: 0, into: &text, runs: &runs)
@@ -75,12 +111,7 @@ public struct TextKitDocument: Sendable {
   public var runs: [TextKitRun] {
     var runs: [TextKitRun] = []
     walk { key, entry, location in
-      if entry.kind == .text {
-        runs.append(
-          TextKitRun(
-            key: key, location: location, length: entry.length, format: entry.format,
-            style: entry.style))
-      }
+      if entry.kind == .text { runs += textRuns(key, entry, at: location) }
     }
     return runs
   }
@@ -91,12 +122,23 @@ public struct TextKitDocument: Sendable {
     guard let location = start(of: key) else { return [] }
     var runs: [TextKitRun] = []
     walk(from: key, at: location) { key, entry, location in
-      if entry.kind == .text {
-        runs.append(
-          TextKitRun(
-            key: key, location: location, length: entry.length, format: entry.format,
-            style: entry.style))
-      }
+      if entry.kind == .text { runs += textRuns(key, entry, at: location) }
+    }
+    return runs
+  }
+
+  /// A text node's run, and its suffix's after it.
+  private func textRuns(_ key: NodeKey, _ entry: Entry, at location: Int) -> [TextKitRun] {
+    var runs = [
+      TextKitRun(
+        key: key, location: location, length: entry.contentLength, format: entry.format,
+        style: entry.style)
+    ]
+    if entry.suffixLength > 0, let suffix, suffix.key == key {
+      runs.append(
+        TextKitRun(
+          key: key, location: location + entry.contentLength, length: entry.suffixLength,
+          format: entry.format, style: entry.style, type: suffix.type))
     }
     return runs
   }
@@ -184,15 +226,14 @@ public struct TextKitDocument: Sendable {
     }
     let entry: Entry
     if let node = node as? TextNode {
-      let content = try node.getTextContent()
-      let length = content.utf16.count
+      let content = try node.getTextContent() + (suffix?.key == key ? suffix!.text : "")
       text += content
-      entry = Entry(
-        kind: .text, parent: parent, index: index, length: length, format: try node.getFormat(),
-        style: try node.getStyle())
-      runs.append(
-        TextKitRun(
-          key: key, location: location, length: length, format: entry.format, style: entry.style))
+      var textEntry = Entry(
+        kind: .text, parent: parent, index: index, length: content.utf16.count,
+        format: try node.getFormat(), style: try node.getStyle())
+      textEntry.suffixLength = suffix?.key == key ? suffix!.text.utf16.count : 0
+      entry = textEntry
+      runs += textRuns(key, entry, at: location)
     } else if node is LineBreakNode {
       text += "\u{2028}"
       entry = Entry(kind: .lineBreak, parent: parent, index: index, length: 1)
@@ -234,7 +275,7 @@ public struct TextKitDocument: Sendable {
   public func location(_ key: NodeKey, _ offset: Int, _ type: PointType) -> Int? {
     guard let entry = entries[key], let start = start(of: key) else { return nil }
     if type == .text {
-      return start + min(offset, entry.length)
+      return start + min(offset, entry.contentLength)
     }
     if offset < entry.kids.count {
       return start + entry.kids[offset].start
@@ -270,8 +311,21 @@ public struct TextKitDocument: Sendable {
       var i = low
       while i < kids.count, base + kids[i].start <= location {
         let start = base + kids[i].start
-        switch entries[kids[i].key]?.kind {
-        case .text: return (kids[i].key, location - start, .text)
+        let entry = entries[kids[i].key]
+        switch entry?.kind {
+        case .text:
+          // In a suffix, the end of the node's text; after it, the next
+          // node, if one starts there.
+          let offset = location - start
+          if let entry, offset > entry.contentLength {
+            if offset < entry.length
+              || !(i + 1 < kids.count && base + kids[i + 1].start == location)
+            {
+              return (kids[i].key, entry.contentLength, .text)
+            }
+            break
+          }
+          return (kids[i].key, offset, .text)
         case .element where child == nil: child = (kids[i].key, start)
         default: break
         }
@@ -293,11 +347,81 @@ public struct TextKitDocument: Sendable {
     return (element, 0, .element)
   }
 
-  /// The location one `granularity` unit before or after `location`.
+  /// Replaces the suffix shown after the text node at `key` with `text`,
+  /// and returns the edit to `string`, or none when the node isn't shown
+  /// or the suffix is unchanged. The node's ancestors grow with it.
+  mutating func replaceSuffix(of key: NodeKey, with text: String, type: String) -> [TextKitEdit] {
+    guard let entry = entries[key], entry.kind == .text, let start = start(of: key) else {
+      return []
+    }
+    let location = start + entry.contentLength
+    let utf16 = string.utf16
+    let lower = utf16.index(utf16.startIndex, offsetBy: location)
+    let upper = utf16.index(lower, offsetBy: entry.suffixLength)
+    guard !utf16[lower..<upper].elementsEqual(text.utf16) else { return [] }
+    string.replaceSubrange(lower..<upper, with: text)
+    let length = text.utf16.count
+    let delta = length - entry.suffixLength
+    entries[key]!.length += delta
+    entries[key]!.suffixLength = length
+    var child = key
+    while let parent = entries[child]?.parent, let index = entries[child]?.index {
+      for i in (index + 1)..<max(index + 1, entries[parent]!.kids.count) {
+        entries[parent]!.kids[i].start += delta
+      }
+      entries[parent]!.length += delta
+      child = parent
+    }
+    return [
+      TextKitEdit(
+        location: location, length: entry.suffixLength, string: text,
+        runs: length == 0
+          ? []
+          : [
+            TextKitRun(
+              key: key, location: location, length: length, format: entry.format,
+              style: entry.style, type: type)
+          ])
+    ]
+  }
+
+  /// Where the suffix is shown, if it is.
+  private var suffixRange: TextKitRange? {
+    guard let suffix, let entry = entries[suffix.key], entry.suffixLength > 0,
+      let start = start(of: suffix.key)
+    else { return nil }
+    return TextKitRange(location: start + entry.contentLength, length: entry.suffixLength)
+  }
+
+  /// The location one `granularity` unit before or after `location`. A
+  /// caret crosses a suffix in one step, as a browser crosses a
+  /// `contenteditable=false` span, and a move that ends in it ends at its
+  /// node's text end.
+  public func move(
+    _ location: Int, isBackward: Bool, granularity: SelectionGranularity
+  ) -> Int {
+    guard let suffix = suffixRange else {
+      return moveInString(location, isBackward: isBackward, granularity: granularity)
+    }
+    let (start, end) = (suffix.location, suffix.end)
+    if isBackward, location > start, location <= end { return start }
+    if !isBackward, location == start {
+      // To the node after the suffix, or past it when none starts there.
+      if point(at: end) != point(at: start) { return end }
+      return moveInString(end, isBackward: false, granularity: granularity)
+    }
+    let target = moveInString(location, isBackward: isBackward, granularity: granularity)
+    if target > start, target < end || (target == end && point(at: end) == point(at: start)) {
+      return start
+    }
+    return target
+  }
+
+  /// `move` over the rendered string alone.
   ///
   /// Walks the string from `location` only, so a move costs the length of
   /// what it crosses, not of the document.
-  public func move(
+  private func moveInString(
     _ location: Int, isBackward: Bool, granularity: SelectionGranularity
   ) -> Int {
     let utf16 = string.utf16

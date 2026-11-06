@@ -92,9 +92,13 @@ public final class TextKitInputController {
     let isFull =
       edits.count == 1 && edits[0].location == 0
       && edits[0].string.utf16.count == reconciler.document.length
-    try publish(
+    let update = try publish(
       edits, payload.editorState, tags: Set(payload.tags),
       dirtyElements: isFull ? nil : payload.dirtyElements, dirtyLeaves: payload.dirtyLeaves)
+    // A program ended the composition (`setCompositionKey(nil)`, as an
+    // accepted suggestion does), so the IME's ends too, as a browser's
+    // `compositionend` follows.
+    if update.endsComposition { try endComposition("") }
   }
 
   /// Renders the whole document again, as one edit replacing the view's
@@ -108,6 +112,27 @@ public final class TextKitInputController {
     edits[0] = TextKitEdit(
       location: 0, length: oldLength, string: edits[0].string, runs: edits[0].runs)
     return try publish(edits, editorState, tags: [], dirtyElements: nil)
+  }
+
+  /// Shows `suffix` after its text node, outside the editor state (none
+  /// removes the one shown), and calls `onRender` with the edit. The
+  /// suffix stays while its node is rendered; the model, its selection and
+  /// the history never see it.
+  public func setSuffix(_ suffix: TextKitSuffix?) throws {
+    let edits = reconciler.setSuffix(suffix)
+    guard !edits.isEmpty, let editorState = reconciler.editorState else { return }
+    // The suffixes' blocks take their paragraph look again.
+    let blocks = JSMap<NodeKey, Bool>()
+    try editorState.read {
+      for edit in edits {
+        for run in edit.runs {
+          for node in try getNodeByKey(run.key)?.getParents() ?? [] {
+            blocks.set(node.getKey(), false)
+          }
+        }
+      }
+    }
+    try publish(edits, editorState, tags: [], dirtyElements: blocks)
   }
 
   @discardableResult
@@ -159,6 +184,10 @@ public final class TextKitInputController {
     for key in blockBoxes.keys where document.span(key) == nil { blockBoxes[key] = nil }
     if let marked = markedRange, marked.end > document.length {
       markedRange = nil
+    }
+    if markedRange != nil, !editor.isComposing() {
+      markedRange = nil
+      update.endsComposition = true
     }
     onRender?(update)
     return update

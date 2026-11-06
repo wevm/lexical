@@ -236,6 +236,8 @@
       }
       decorators.select(update.selectedNodes)
       canShowPlaceholder = update.canShowPlaceholder
+      // The model ended the composition: so does the input method.
+      if update.endsComposition { inputContext?.discardMarkedText() }
       showMarkedText()
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
@@ -627,7 +629,26 @@
         perform { handled = try controller.keyDown(keyboardEvent) }
         if handled { return }
       }
+      // A key the input method commits its marked text with and then
+      // passes on (Tab, Return or an arrow in Korean) reaches the editor
+      // after the commit, in `doCommand(by:)`, as a browser's keydown
+      // follows `compositionend`.
+      composingKeyEvent = hasMarkedText() ? KeyboardEvent(event) : nil
+      defer { composingKeyEvent = nil }
       super.keyDown(with: event)
+    }
+
+    /// The key down that came while the input method had marked text.
+    private var composingKeyEvent: KeyboardEvent?
+
+    public override func doCommand(by selector: Selector) {
+      if let event = composingKeyEvent, !hasMarkedText() {
+        composingKeyEvent = nil
+        var handled = false
+        perform { handled = try controller.keyDown(event) }
+        if handled { return }
+      }
+      super.doCommand(by: selector)
     }
 
     /// Command and Control shortcuts reach the editor's `KEY_DOWN_COMMAND`

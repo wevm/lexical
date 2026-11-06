@@ -36,9 +36,12 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
 - **Autocomplete** (off by default; Settings → Autocomplete): at the end of
   a word the rest of it shows in grey after the caret
   (`AutocompleteExtension`), accepted with Tab or the right arrow, or a
-  swipe right on iOS. Only the English wordlist
-  (`Sources/autocomplete-english.txt`) is bundled; the Korean one and the
-  suggestions during an IME composition are not ported yet.
+  swipe right on iOS. The ghost is drawn in the text layout, so the text
+  after it moves aside, and stays out of the model and the history. The
+  English and Korean wordlists (`Sources/autocomplete-english.txt`,
+  `Sources/autocomplete-korean.txt`) are picked by the word's script, as
+  on the web, and an IME composition that pauses for 200 ms gets a
+  suggestion too.
 - **Images** (`ImagesExtension`, `ImageNode`): Insert → Image, or "/"
   and Image, opens the insert dialog: the sample image, a URL, or a file,
   with its alt text. Dropped or pasted image files are inserted too

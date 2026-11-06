@@ -57,7 +57,7 @@ jobs:
         # lacks is downloaded, which takes a full version (the xcode-27 image
         # has only iOS 27 runtimes).
         ios: ['26.5']
-        copy: [1, 2, 3, 4, 5]
+        copy: [1, 2, 3, 4, 5, 6]
     defaults:
       run:
         working-directory: swift
@@ -110,5 +110,5 @@ jobs:
             xcodebuild test-without-building -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
               -only-testing:LexicalUIKitTests > "$RUNNER_TEMP/uikit-$i.log" 2>&1
             echo "iteration $i: exit $?"
-            grep -E "HANDLES-|CandidateGeneration|recorded a known issue|recorded an issue|Unable to boot|Unable to find a device" "$RUNNER_TEMP/uikit-$i.log" | cut -c1-6000 || true
+            grep -E "HANDLES-|CandidateGeneration|recorded a known issue|recorded an issue|Unable to boot|Unable to find a device" "$RUNNER_TEMP/uikit-$i.log" | cut -c1-30000 || true
           done

@@ -853,6 +853,37 @@
     /// container's edge on each line the selection runs through.
     /// Scratch diagnostic: every `selectionRects(for:)` call.
     package nonisolated(unsafe) static var selectionRectsLog: [String] = []
+    nonisolated(unsafe) private static var swizzled = false
+    static func swizzleNeedsUpdate() {
+      guard !swizzled else { return }
+      swizzled = true
+      let cls: AnyClass = UITextSelectionDisplayInteraction.self
+      for name in ["setNeedsSelectionUpdate", "_setNeedsSelectionUpdate", "setActivated:", "_updateSelectionIfNeededResettingBlinkingAnimation:", "_setNeedsSelectionDisplayUpdate", "layoutManagedSubviews"] {
+        let sel = NSSelectorFromString(name)
+        guard let method = class_getInstanceMethod(cls, sel) else {
+          selectionRectsLog.append("swizzle missing \(name)")
+          continue
+        }
+        let original = method_getImplementation(method)
+        if name.hasSuffix(":") {
+          typealias Fn = @convention(c) (AnyObject, Selector, Bool) -> Void
+          let call = unsafeBitCast(original, to: Fn.self)
+          let block: @convention(block) (AnyObject, Bool) -> Void = { obj, value in
+            selectionRectsLog.append("\(name)\(value) stack=" + Thread.callStackSymbols.prefix(8).dropFirst().map { $0.split(separator: " ", omittingEmptySubsequences: true).dropFirst(3).prefix(2).joined(separator: " ") }.joined(separator: "<"))
+            call(obj, sel, value)
+          }
+          method_setImplementation(method, imp_implementationWithBlock(block))
+        } else {
+          typealias Fn = @convention(c) (AnyObject, Selector) -> Void
+          let call = unsafeBitCast(original, to: Fn.self)
+          let block: @convention(block) (AnyObject) -> Void = { obj in
+            selectionRectsLog.append("\(name) stack=" + Thread.callStackSymbols.prefix(8).dropFirst().map { $0.split(separator: " ", omittingEmptySubsequences: true).dropFirst(3).prefix(2).joined(separator: " ") }.joined(separator: "<"))
+            call(obj, sel)
+          }
+          method_setImplementation(method, imp_implementationWithBlock(block))
+        }
+      }
+    }
 
     public override func selectionRects(for range: UITextRange) -> [UITextSelectionRect] {
       var result = trimmedSelectionRects(for: range)
@@ -947,6 +978,7 @@
           .first
       else { return }
       Self.selectionRectsLog.append("showSelectionDisplay text=\(showsTextSelection) activated=\(display.isActivated) fr=\(isFirstResponder)")
+      Self.swizzleNeedsUpdate()
       if !showsTextSelection {
         if display.isActivated { display.isActivated = false }
       } else if isFirstResponder, !display.isActivated {

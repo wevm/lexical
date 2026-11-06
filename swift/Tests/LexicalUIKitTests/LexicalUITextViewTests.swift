@@ -456,6 +456,7 @@
         view.interactions.compactMap { $0 as? UITextSelectionDisplayInteraction }.first?.isActivated
           == true
       }
+      LexicalUITextView.selectionRectsLog = ["-- node selection --"]
       try select {
         let parent = try block ? getRoot() : #require(getRoot().getChildAtIndex(1) as? ElementNode)
         let node = try #require(
@@ -469,6 +470,7 @@
       #expect(decorator.most == 0, "\(decorator.shown)")
       #expect(!selectionDisplayActivated())
       // Text selected again shows its handles.
+      print("HANDLES-NODELOG block=\(block) " + LexicalUITextView.selectionRectsLog.joined(separator: " | "))
       LexicalUITextView.selectionRectsLog = ["-- text selection --"]
       nonisolated(unsafe) let watchedView = view
       nonisolated(unsafe) let watchedWindow = window

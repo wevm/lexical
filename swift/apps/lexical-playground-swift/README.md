@@ -40,11 +40,13 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   or tap selects it as a whole with the blue outline and the resize
   handles (`ImageResizer`): an edge handle changes the width or height, a
   corner keeps the aspect, and the image takes its new size when the
-  handle is let go. Its JSON and HTML are the web's. A caption shows as its
-  text; editing it in its nested editor and dragging an image to move it
-  are not ported yet, and HTML imported from the Import menu does not
-  restore a `<figure>`'s caption, which upstream imports through the
-  `DOMImportExtension` rules.
+  handle is let go. Its JSON and HTML are the web's. A selected image's
+  Add Caption button shows its caption over the image's bottom edge: a
+  nested editor with rich text, links, hashtags and keywords that shares
+  the document's history, and hides again when it loses focus empty. HTML
+  imported from the Import menu restores a `<figure>`'s caption. The
+  caption's emoji and mentions, and dragging an image to move it, are not
+  ported yet.
 - **Editing:** Markdown shortcuts (`# `, `- `, `1. `, `[ ] `, `> `,
   ` ``` `, `**bold**`, …), autolinked URLs and email addresses, and check
   boxes that toggle on a click or tap. Links open on a click while the
@@ -89,13 +91,23 @@ open LexicalPlayground.xcodeproj
 `UITests/` has smoke tests for the iOS Simulator: the tree view shows the
 welcome document, the Bold button formats the selection, JSON export
 shows the document, the typeahead menus insert blocks, mentions and emoji,
-autocomplete, the edit menu's formats, and inserting an image. `Tests/`
-has unit tests comparing `ImageNode`'s JSON and HTML with the web's.
+autocomplete, the edit menu's formats, and inserting and captioning an
+image. `MacUITests/` has the macOS ones: the toolbar's Insert Link puts
+the caret in the link editor's URL field. `Tests/` has unit tests
+comparing `ImageNode`'s JSON and HTML with the web's, and its caption's
+import and shared history.
 
 ```sh
 xcodebuild test -project LexicalPlayground.xcodeproj -scheme LexicalPlayground \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' \
   -skipMacroValidation -skipPackagePluginValidation
+```
+
+The macOS UI tests have their own scheme:
+
+```sh
+xcodebuild test -project LexicalPlayground.xcodeproj -scheme LexicalPlaygroundMac \
+  -destination 'platform=macOS' -skipMacroValidation -skipPackagePluginValidation
 ```
 
 On a device, pass `-allowProvisioningUpdates DEVELOPMENT_TEAM=<team>`.

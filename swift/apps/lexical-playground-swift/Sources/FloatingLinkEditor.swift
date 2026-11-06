@@ -118,7 +118,15 @@ struct FloatingLinkEditorView: View {
           .background(RoundedRectangle(cornerRadius: 15).fill(Color(white: 0.5, opacity: 0.15)))
           .padding(12)
           .accessibilityIdentifier("link-input")
-          .onAppear { isInputFocused = true }
+          // The panel shows once the view has laid out this update
+          // (`position(at:)`), and a hidden view does not take the focus,
+          // so ask again until it does.
+          .task {
+            for _ in 0..<20 where !isInputFocused {
+              isInputFocused = true
+              try? await Task.sleep(for: .milliseconds(25))
+            }
+          }
         iconButton("Cancel", "xmark") { model.isLinkEditMode = false }
         iconButton("Confirm", "checkmark") { model.submitLink() }
           .padding(.trailing, 6)

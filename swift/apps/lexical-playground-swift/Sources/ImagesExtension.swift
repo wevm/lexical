@@ -48,14 +48,7 @@ nonisolated(unsafe) private let FigureRule = defineImportRule(
   let imported = try ctx.importChildren(el)
   if let figcaption = el.getElementsByTagName("figcaption").first {
     for case let image as ImageNode in imported {
-      try image.setShowCaption(true)
-      // The caption editor is a nested editor with its own (legacy)
-      // import pipeline; route the <figcaption> children through it.
-      let caption = image.caption
-      try caption.update(tag: SKIP_DOM_SELECTION_TAG) {
-        try selectAll().insertNodes(generateNodesFromDOM(caption, figcaption))
-        try setSelection(nil)
-      }
+      try image.importCaption(figcaption)
     }
   }
   return imported

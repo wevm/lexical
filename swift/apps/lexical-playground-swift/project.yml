@@ -86,6 +86,15 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground.uitests
     dependencies:
       - target: LexicalPlayground
+  LexicalPlaygroundMacUITests:
+    type: bundle.ui-testing
+    supportedDestinations: [macOS]
+    sources: [MacUITests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(LEXICAL_BUNDLE_PREFIX).playground.macuitests
+    dependencies:
+      - target: LexicalPlayground
   LexicalPlaygroundTests:
     type: bundle.unit-test
     supportedDestinations: [iOS, macOS]
@@ -106,3 +115,12 @@ schemes:
         LexicalPlaygroundTests: [test]
     test:
       targets: [LexicalPlaygroundTests, LexicalPlaygroundUITests]
+  # The macOS UI tests, in their own scheme: an iOS test run of the one
+  # above must not build them.
+  LexicalPlaygroundMac:
+    build:
+      targets:
+        LexicalPlayground: all
+        LexicalPlaygroundMacUITests: [test]
+    test:
+      targets: [LexicalPlaygroundMacUITests]

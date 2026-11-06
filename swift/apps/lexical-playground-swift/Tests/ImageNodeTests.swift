@@ -1,6 +1,7 @@
 import Lexical
 import LexicalExtension
 import LexicalHTML
+import LexicalHistory
 import LexicalRichText
 import Testing
 
@@ -91,5 +92,53 @@ struct ImageNodeTests {
     #expect(try imported.read { try image?.getSrc() } == "/i.jpg")
     #expect(image?.__showCaption == true)
     #expect(try image?.caption.read { try getRoot().getTextContent() } == "caption text")
+  }
+
+  /// The Import menu's legacy `generateNodesFromDOM` restores a
+  /// `<figure>`'s caption, as the `DOMImportExtension` rules do, and drops
+  /// the `<figcaption>` from the document.
+  @Test func legacyImportRestoresAFiguresCaption() throws {
+    let editor = try makeEditor()
+    let html =
+      #"<figure><img src="/i.jpg" alt="a" width="10" height="20"><figcaption><b>bold</b> caption</figcaption></figure>"#
+    try editor.update {
+      let nodes = try generateNodesFromDOM(editor, DOMParser().parseFromString(html))
+      try getRoot().clear().append(createParagraphNode())
+      try getRoot().selectEnd().insertNodes(nodes)
+    }
+    let image = try editor.read { try getRoot().getFirstDescendant() as? ImageNode }
+    #expect(image?.__showCaption == true)
+    #expect(try editor.read { try getRoot().getTextContent() } == "")
+    #expect(try image?.caption.read { try getRoot().getTextContent() } == "bold caption")
+    let bold = try image?.caption.read {
+      try (getRoot().getFirstDescendant() as? TextNode)?.hasFormat("bold")
+    }
+    #expect(bold == true)
+  }
+
+  /// The caption shares the document's history (`SharedHistoryExtension`),
+  /// so an undo in the document undoes an edit in the caption.
+  @Test func theCaptionSharesTheDocumentsHistory() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "@lexical/playground-swift/ImageNodeTests/History",
+        dependencies: [RichTextExtension, HistoryExtension, ImagesExtension]))
+    try editor.update(discrete: true) {
+      try getRoot().clear().append(
+        createParagraphNode().append(createImageNode(ImagePayload(altText: "a", src: "/i.jpg"))))
+    }
+    let image = try #require(try editor.read { try getRoot().getFirstDescendant() as? ImageNode })
+    try image.caption.update(discrete: true) {
+      try getRoot().clear().append(createParagraphNode().append(createTextNode("a")))
+    }
+    // As upstream, an edit pushes the entry that was current before it, so
+    // the caption's first edit pushes the document's; the second pushes
+    // the caption's.
+    try image.caption.update(tag: HISTORY_PUSH_TAG, discrete: true) {
+      try (getRoot().getFirstDescendant() as? TextNode)?.setTextContent("ab")
+    }
+    #expect(try image.caption.read { try getRoot().getTextContent() } == "ab")
+    _ = try editor.dispatchCommand(UNDO_COMMAND)
+    #expect(try image.caption.read { try getRoot().getTextContent() } == "a")
   }
 }

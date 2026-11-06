@@ -224,7 +224,7 @@ final class CodeActionMenuHost {
 #if os(macOS)
   /// The tracking area's owner, which forwards the mouse's moves (`nil` when
   /// it leaves the view).
-  private final class MouseTracker: NSResponder {
+  final class MouseTracker: NSResponder {
     let onMove: (NSEvent?) -> Void
 
     init(_ onMove: @escaping (NSEvent?) -> Void) {

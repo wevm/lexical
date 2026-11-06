@@ -68,6 +68,11 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   (`FloatingLinkEditorPlugin`): the URL, which opens the link, with edit
   and remove. The toolbar's link button links the selection and edits its
   URL there.
+- **Draggable blocks** (`DraggableBlockPlugin`, macOS): in a window wider
+  than 1025 points, the mouse over a block shows the `+` and ⋮⋮ handle at
+  the editor's left edge. Dragging the grip moves the block, with a blue
+  line where it will go; the `+` adds a paragraph below (above with
+  Option or Control) with the "/" menu open in it. iOS has no handle.
 - **Keyboard shortcuts:** the web playground's (`ShortcutsExtension`), from
   the editor and the Format menu: ⌥⌘0–3 for normal and headings 1–3,
   ⇧⌘7/8/9 for numbered, bulleted and check lists, ⌥⌘C code block, ⌃⇧Q

@@ -228,6 +228,9 @@ final class PlaygroundModel {
   var editedLinkURL = "https://"
   @ObservationIgnored private lazy var linkEditorHost = FloatingLinkEditorHost(model: self)
   @ObservationIgnored private let codeActionMenuHost = CodeActionMenuHost()
+  #if os(macOS)
+    @ObservationIgnored private let draggableBlockHost = DraggableBlockHost()
+  #endif
   /// The selection's code block and its language (`codeLanguage` and
   /// `selectedElementKey` of the toolbar's state).
   private(set) var codeLanguage = ""
@@ -391,6 +394,12 @@ final class PlaygroundModel {
           self?.linkEditorHost.attach(to: root)
           self?.formatToolbarHost.attach(to: root)
           if let self { self.codeActionMenuHost.attach(to: root, editor: self.editor) }
+          #if os(macOS)
+            if let self {
+              self.draggableBlockHost.attach(
+                to: self.isRichText ? root : nil, editor: self.editor)
+            }
+          #endif
           self?.menuHosts.forEach { $0.attach(to: root) }
         }
         return nil

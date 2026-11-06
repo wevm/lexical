@@ -43,6 +43,12 @@
     private let blockBarsView = BlockBarsView()
     /// The text and paragraph look of the last block.
     private var lastBlockAttributes: [NSAttributedString.Key: Any]?
+    /// Whether the selection is text, which shows the caret, the highlight
+    /// and the handles. A node selection shows only its decorators'
+    /// outlines, as on the web, where it has no DOM range.
+    private var showsTextSelection = true {
+      didSet { showSelectionDisplay() }
+    }
     /// Shown while the editor is empty (`canShowPlaceholder`), over its
     /// first line in the theme's `placeholder` style, and spoken as the
     /// view's value then, as an empty text field's placeholder is: upstream
@@ -304,6 +310,7 @@
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange != selected { selectedRange = selected }
       }
+      showsTextSelection = update.selectedNodes.isEmpty
       showLastBlockAtCaret()
       if update.tags.contains(FOCUS_TAG), !hasFocus {
         focus()
@@ -836,8 +843,23 @@
 
     // MARK: Focus
 
+    /// Turns UIKit's caret, highlight and handles off for a node
+    /// selection, and back on (while focused) for text.
+    private func showSelectionDisplay() {
+      guard
+        let display = interactions.lazy.compactMap({ $0 as? UITextSelectionDisplayInteraction })
+          .first
+      else { return }
+      if !showsTextSelection {
+        if display.isActivated { display.isActivated = false }
+      } else if isFirstResponder, !display.isActivated {
+        display.isActivated = true
+      }
+    }
+
     public override func becomeFirstResponder() -> Bool {
       guard super.becomeFirstResponder() else { return false }
+      showSelectionDisplay()
       perform {
         if try editor.read(.latest, { try getSelection() }) == nil {
           let range = selectedRange

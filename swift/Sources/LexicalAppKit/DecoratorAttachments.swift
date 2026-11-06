@@ -18,6 +18,9 @@
     private var selectedKeys: Set<NodeKey> = []
     /// Called with the key of a decorator that was clicked.
     var onClick: ((NodeKey) -> Void)?
+    /// Called with the key, the mouse-dragged event and the view of a
+    /// selected decorator the user drags.
+    var onDrag: ((NodeKey, NSEvent, NSView) -> Void)?
 
     func attachment(for span: TextKitDecoratorSpan, editor: Editor) -> NSTextAttachment? {
       let view = (editor.getDecorators()[span.key]).flatMap { $0 as? any View }
@@ -27,7 +30,10 @@
       }
       let attachment =
         attachments[span.key]
-        ?? LexicalDecoratorAttachment(key: span.key) { [weak self] key in self?.onClick?(key) }
+        ?? LexicalDecoratorAttachment(
+          key: span.key, onClick: { [weak self] key in self?.onClick?(key) },
+          onDrag: { [weak self] key, event, view in self?.onDrag?(key, event, view) })
+      attachment.isSelected = selectedKeys.contains(span.key)
       if let view {
         attachment.update(AnyView(view), isInline: span.isInline)
       } else if let rule = span.rule {
@@ -46,6 +52,7 @@
       let changed = keys.symmetricDifference(selectedKeys)
       selectedKeys = keys
       for key in changed {
+        attachments[key]?.isSelected = keys.contains(key)
         attachments[key]?.ruleView?.isSelected = keys.contains(key)
       }
     }
@@ -105,9 +112,19 @@
     nonisolated(unsafe) private(set) var ruleView: HorizontalRuleView?
     nonisolated(unsafe) var isRule: Bool { ruleView != nil }
     private let onClick: () -> Void
+    /// Whether the decorator is in the editor's node selection, when a
+    /// drag of its view moves it, as JS makes a selected image's element
+    /// `draggable`.
+    @MainActor var isSelected = false
+    /// Whether its view asked not to be dragged now
+    /// (`lexicalDecoratorDragDisabled(_:)`, while it resizes).
+    @MainActor var isDragDisabled = false
 
     @MainActor
-    init(key: NodeKey, onClick: @escaping (NodeKey) -> Void) {
+    init(
+      key: NodeKey, onClick: @escaping (NodeKey) -> Void,
+      onDrag: @escaping (NodeKey, NSEvent, NSView) -> Void
+    ) {
       self.key = key
       self.onClick = { onClick(key) }
       hostingView = DecoratorHostingView(rootView: AnyView(EmptyView()))
@@ -119,6 +136,16 @@
       let click = DecoratorClickRecognizer(target: nil, action: nil)
       click.onClick = self.onClick
       hostingView.addGestureRecognizer(click)
+      let drag = DecoratorDragRecognizer(target: nil, action: nil)
+      drag.canBegin = { [weak self] in
+        guard let self else { return false }
+        return self.isSelected && !self.isDragDisabled
+      }
+      drag.onDrag = { [weak self] event in
+        guard let self else { return }
+        onDrag(key, event, self.hostingView.superview ?? self.hostingView)
+      }
+      hostingView.addGestureRecognizer(drag)
     }
 
     @available(*, unavailable)
@@ -126,7 +153,11 @@
 
     @MainActor
     func update(_ view: AnyView, isInline: Bool) {
-      hostingView.rootView = view
+      nonisolated(unsafe) weak let attachment = self
+      hostingView.rootView = AnyView(
+        view.onPreferenceChange(DecoratorDragDisabledKey.self) { disabled in
+          MainActor.assumeIsolated { attachment?.isDragDisabled = disabled }
+        })
       size = hostingView.fittingSize
       self.isInline = isInline
     }
@@ -245,6 +276,68 @@
       content.frame = bounds
       content.autoresizingMask = [.width, .height]
       addSubview(content)
+    }
+  }
+
+  /// A drag of a selected decorator's view, which moves the decorator: it
+  /// begins once the mouse moves 3 points with its button down, and
+  /// leaves the view's own mouse handling alone until then.
+  final class DecoratorDragRecognizer: NSGestureRecognizer {
+    var canBegin: () -> Bool = { false }
+    var onDrag: (NSEvent) -> Void = { _ in }
+    private var start: NSPoint?
+
+    override init(target: Any?, action: Selector?) {
+      super.init(target: nil, action: nil)
+      delaysPrimaryMouseButtonEvents = false
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    override func mouseDown(with event: NSEvent) {
+      if canBegin() {
+        start = event.locationInWindow
+      } else {
+        state = .failed
+      }
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+      guard let start, state == .possible else { return }
+      let point = event.locationInWindow
+      guard hypot(point.x - start.x, point.y - start.y) >= 3 else { return }
+      // Resizing may have begun in the view since the press.
+      guard canBegin() else {
+        state = .failed
+        return
+      }
+      state = .ended
+      onDrag(event)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+      if state == .possible { state = .failed }
+    }
+
+    override func reset() {
+      start = nil
+      super.reset()
+    }
+  }
+
+  /// Whether a decorator's view is not to be dragged now.
+  struct DecoratorDragDisabledKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+  }
+
+  extension View {
+    /// Keeps the text view from moving the decorator this view shows when
+    /// the user drags it while it is selected, as a web component sets
+    /// `draggable` to false (an image while it resizes).
+    public func lexicalDecoratorDragDisabled(_ disabled: Bool) -> some View {
+      preference(key: DecoratorDragDisabledKey.self, value: disabled)
     }
   }
 

@@ -90,6 +90,40 @@
     view is NSHostingView<AnyView> ? [view] : view.subviews.flatMap { hostingViews(in: $0) }
   }
 
+  /// A drag over `destination` at `location` (window coordinates) from
+  /// `source`, with `pasteboard`'s contents.
+  @MainActor
+  private final class Drag: NSObject, @MainActor NSDraggingInfo {
+    let draggingSource: Any?
+    let draggingPasteboard: NSPasteboard
+    let draggingLocation: NSPoint
+    let draggingDestinationWindow: NSWindow?
+    init(
+      from source: Any?, over window: NSWindow?, at location: NSPoint, _ pasteboard: NSPasteboard
+    ) {
+      draggingSource = source
+      draggingDestinationWindow = window
+      draggingLocation = location
+      draggingPasteboard = pasteboard
+    }
+    var draggingSourceOperationMask: NSDragOperation { [.copy, .move] }
+    var draggedImageLocation: NSPoint { draggingLocation }
+    var draggedImage: NSImage? { nil }
+    var draggingSequenceNumber: Int { 1 }
+    var draggingFormation: NSDraggingFormation = .default
+    var animatesToDestination = false
+    var numberOfValidItemsForDrop = 1
+    var springLoadingHighlight: NSSpringLoadingHighlight { .none }
+    func slideDraggedImage(to screenPoint: NSPoint) {}
+    func enumerateDraggingItems(
+      options enumOpts: NSDraggingItemEnumerationOptions = [], for view: NSView?,
+      classes classArray: [AnyClass],
+      searchOptions: [NSPasteboard.ReadingOptionKey: Any] = [:],
+      using block: (NSDraggingItem, Int, UnsafeMutablePointer<ObjCBool>) -> Void
+    ) {}
+    func resetSpringLoading() {}
+  }
+
   @MainActor
   @Suite struct DecoratorAndDemoTests {
     @Test func rendersDecoratorsAsSwiftUIViews() throws {
@@ -189,6 +223,38 @@
         if let view = new?.view, view.window != nil, !hostingViews(in: view).isEmpty { shown += 1 }
       }
       #expect(shown == 2)
+    }
+
+    /// A decorator's drag payload dragged within the view (a selected
+    /// image's, which `NSTextView` takes for no type it reads) is accepted
+    /// as a move and dropped through `DROP_COMMAND`, as a contenteditable
+    /// takes a drop.
+    @Test func dropsADecoratorDraggedWithinTheView() throws {
+      let (view, window) = try showDemo()
+      var dropped: String?
+      let unregister = view.editor.registerCommand(
+        DROP_COMMAND,
+        { event, _ in
+          dropped = event.dataTransfer?.getData("application/x-lexical-drag")
+          return true
+        }, COMMAND_PRIORITY_HIGH)
+      defer { unregister() }
+      let pasteboard = NSPasteboard(name: .init("lexical-test-\(UUID().uuidString)"))
+      defer { pasteboard.releaseGlobally() }
+      pasteboard.clearContents()
+      let item = NSPasteboardItem()
+      item.setString(#"{"type":"image"}"#, forType: .init("dev.lexical.drag"))
+      item.setString("_", forType: .string)
+      pasteboard.writeObjects([item])
+      let point = view.convert(NSPoint(x: 40, y: 10), to: nil)
+      let drag = Drag(from: view, over: window, at: point, pasteboard)
+      #expect(view.draggingUpdated(drag) == .move)
+      #expect(view.prepareForDragOperation(drag))
+      #expect(view.performDragOperation(drag))
+      #expect(dropped == #"{"type":"image"}"#)
+      // From another view it is not this view's to move.
+      let other = Drag(from: NSView(), over: window, at: point, pasteboard)
+      #expect(view.draggingUpdated(other) != .move)
     }
 
     @Test func rendersTheDemoDocument() throws {

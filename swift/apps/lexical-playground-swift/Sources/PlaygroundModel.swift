@@ -277,7 +277,7 @@ final class PlaygroundModel {
             HistoryAnnounceExtension, EditorModeAnnounceExtension,
             configExtension(ListExtension) { $0.shouldPreserveNumbering = false },
             CheckListExtension, CodeExtension, HorizontalRuleExtension, PageBreakExtension,
-            ImagesExtension,
+            ImagesExtension, DecoratorDragExtension,
             DragDropPasteExtension, PlaygroundDOMRenderExtension,
             // The web playground's `CodeHighlightExtension` brings both:
             // Tab and Shift+Tab indent and outdent code lines.

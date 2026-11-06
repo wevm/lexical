@@ -286,7 +286,8 @@
         let range = NSIntersectionRange(
           NSRange(location: paragraph.range.location, length: paragraph.range.length),
           NSRange(location: 0, length: length))
-        let style = paragraph.attributes.uiParagraphStyle(font: paragraph.text.uiFont(contentSize))
+        let style = paragraph.attributes.uiParagraphStyle(
+          font: paragraph.text.uiFont(contentSize), scale: contentSize.themeScale)
         textStorage.addAttribute(.paragraphStyle, value: style, range: range)
         // The last block, unless it ends before an empty one.
         if paragraph.range.end == length,
@@ -312,7 +313,8 @@
           start = found.upperBound
         }
       }
-      for decorator in update.decorators where decorator.location < length {
+      for var decorator in update.decorators where decorator.location < length {
+        decorator.rule = decorator.rule?.scaled(by: contentSize.themeScale)
         if let attachment = decorators.attachment(for: decorator, editor: editor) {
           textStorage.addAttribute(
             .attachment, value: attachment, range: NSRange(location: decorator.location, length: 1))
@@ -434,7 +436,8 @@
       var keep: Set<NodeKey> = []
       for (key, line, layout) in markers {
         guard case .checkbox = layout.marker else { continue }
-        let (start, side) = layout.checkboxOffset(fontSize: layout.text.fontSize)
+        let font = layout.text.uiFont(traitCollection.preferredContentSizeCategory)
+        let (start, side) = layout.checkboxOffset(fontSize: font.pointSize)
         let box = CGRect(
           x: layout.isRightToLeft ? line.maxX - start - side : line.minX + start,
           y: line.minY, width: side, height: line.height)
@@ -473,8 +476,10 @@
       guard let layoutManager = textLayoutManager else { return }
       let document = controller.document
       let padding = textContainer.lineFragmentPadding
+      // Dynamic Type scales the theme's lengths as it does its fonts.
+      let scale = traitCollection.preferredContentSizeCategory.themeScale
       var markers: [(NodeKey, CGRect, TextKitListMarkerLayout)] = []
-      for (key, layout) in controller.listMarkers {
+      for (key, layout) in controller.listMarkers.mapValues({ $0.scaled(by: scale) }) {
         guard let span = document.span(key),
           let range = textRange(
             NSRange(
@@ -509,7 +514,7 @@
       for (key, blockBars) in controller.blockBars {
         guard let span = document.span(key), let frame = blockLinesFrame(layoutManager, span)
         else { continue }
-        for bar in blockBars {
+        for bar in blockBars.map({ $0.scaled(by: scale) }) {
           bars.append(
             (
               CGRect(
@@ -524,7 +529,7 @@
         guard let span = document.span(key), let frame = blockLinesFrame(layoutManager, span)
         else { return nil }
         return blockBox(
-          layout, span: span, layoutManager,
+          layout.scaled(by: scale), span: span, layoutManager,
           lines: CGRect(
             x: textContainerInset.left + padding, y: textContainerInset.top + frame.minY,
             width: textContainer.size.width - 2 * padding, height: frame.height))
@@ -1161,8 +1166,8 @@
     /// or the playground theme's check box.
     private func draw(_ layout: TextKitListMarkerLayout, line: CGRect) {
       let isRTL = layout.isRightToLeft
-      // The marker's font scales with Dynamic Type as the text's does; its
-      // place does not, as the paragraph's indent does not.
+      // The marker's font and place scale with Dynamic Type as the text and
+      // the paragraph's indent do (`layout` is scaled).
       let font = layout.text.uiFont(contentSizeCategory)
       switch layout.marker {
       case .text(let marker):
@@ -1170,11 +1175,11 @@
           string: marker,
           attributes: [.font: font, .foregroundColor: layout.text.foregroundColor.uiColor])
         let width = string.size().width
-        let end = layout.headIndent - TextKitListMarker.gap
+        let end = layout.headIndent - TextKitListMarker.gap * contentSizeCategory.themeScale
         let x = isRTL ? line.maxX - end : line.minX + end - width
         string.draw(at: CGPoint(x: x, y: glyphBox(font, line).minY))
       case .checkbox(let checked):
-        let (start, side) = layout.checkboxOffset(fontSize: layout.text.fontSize)
+        let (start, side) = layout.checkboxOffset(fontSize: font.pointSize)
         let box = CGRect(
           x: isRTL ? line.maxX - start - side : line.minX + start,
           y: glyphBox(font, line).midY - side / 2, width: side, height: side)

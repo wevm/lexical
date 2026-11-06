@@ -116,5 +116,9 @@
   "native/emoji-glyphs-and-caption-mentions": {
     "category": "platform-rendering",
     "description": "The playground's EmojiNode and EmojisExtension are the web's (the same JSON and HTML), in the document and in an image's caption, but the views draw the emoji's own character rather than the web's 16px image behind transparent text (.emoji.happysmile and the others in index.css), since TextKit has no background image for a run of text. The caption's mentions menu inserts a MentionNode: upstream's CaptionEditorExtension shows the menu (MentionsPlugin) but registers only EmojiNode, so choosing a mention there throws that MentionNode is not configured; the Swift caption registers it."
+  },
+  "native/dynamic-type-theme-scale": {
+    "category": "platform-rendering",
+    "description": "On iOS the text view scales the theme with the reader's Dynamic Type setting: every font as body text (UIFontMetrics(forTextStyle: .body)), and the theme's lengths (indents, paragraph spacing, list markers and check boxes, quote bars, code blocks' padding and gutter, horizontal rules, baseline shifts) by the same factor, so the document keeps its proportions, as a page does under browser zoom. In a browser the system's text size setting leaves the web playground's pixel sizes as they are (only fonts given as -apple-system text styles follow it). At the default size nothing differs. See DESIGN.md, Dynamic Type."
   }
 }

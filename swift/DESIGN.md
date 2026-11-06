@@ -578,10 +578,16 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `UIFontMetrics(forTextStyle: .body)` for the view's content size
   category, headings included, so a heading keeps its ratio to the body
   text (24 and 16 points stay 1.5 to 1 at every size) instead of following
-  the title styles' own curves. A change of category renders the document
-  again. Indents, spacing and quote bars keep their sizes, and a
-  decorator's SwiftUI view scales only if it uses text styles. AppKit has
-  no Dynamic Type.
+  the title styles' own curves. The theme's lengths scale by the same
+  factor, body text's size at the category over its size at the default:
+  indents, paragraph spacing, list markers and check boxes, quote bars,
+  code blocks' padding and gutter, horizontal rules and baseline shifts. A
+  large-text document keeps its proportions, as a page zoomed in a browser
+  does, so a list number is not cut off at the edge and a check box stays
+  as tall as its text; the cost is that a deep indent takes more of a
+  narrow screen. A change of category renders the document again. A
+  decorator's SwiftUI view scales only if it uses text styles or
+  `@ScaledMetric`. AppKit has no Dynamic Type.
 - **A decorator's VoiceOver label is its view's, or else its text.** The
   attachment's `accessibilityLabel` (iOS), or its hosting view's
   `accessibilityLabel()` (macOS), is the labels of the SwiftUI view's
@@ -725,8 +731,9 @@ Reversible choices made porting `@lexical/extension` under Q18.
   whose view provider hosts the SwiftUI view its `decorate(_:)` returned
   (`any View`; anything else renders nothing), in an `NSHostingView` or a
   `UIHostingController`'s view, kept per node key across commits. Inline
-  decorators size to their view; block decorators take the line's width.
-  The size comes from the view provider's `attachmentBounds`, not the
+  decorators size to their view; block decorators take the line's width,
+  and on iOS their view's height at that width, so text in one wraps to
+  the line as at the larger Dynamic Type sizes. The size comes from the view provider's `attachmentBounds`, not the
   attachment's: TextKit 2 never loads the view of an attachment that
   overrides `attachmentBounds`, and draws a file icon in its place. The
   attachment's `image` is a blank one for the same reason.

@@ -95,6 +95,18 @@
     }
   }
 
+  /// A block decorator whose text is longer than a line.
+  private final class NoteNode: DecoratorNode {
+    static let text = String(repeating: "Wraps to the line. ", count: 12)
+    override class func config() throws -> NodeConfig? {
+      NodeConfig(NoteNode.self, type: "test-note", extends: DecoratorNode.self)
+    }
+    override func isInline() throws -> Bool { false }
+    override func decorate(_ editor: Editor) throws -> Any? {
+      Text(NoteNode.text).font(.system(size: 14))
+    }
+  }
+
   @MainActor
   @Suite struct UIKitDecoratorAndDemoTests {
     @Test func rendersDecoratorsAsSwiftUIViews() throws {
@@ -133,6 +145,34 @@
       settle(view)
       #expect(view.editor.getDecorators().count == 1)
       #expect(hostedViews(view).count == 1)
+      _ = window
+    }
+
+    /// A block decorator is as tall as its view is at the line's width,
+    /// so its text wraps there instead of being cut to one line.
+    @Test func wrapsABlockDecoratorsTextToTheLine() throws {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "test", dependencies: [RichTextExtension], nodes: { [.klass(NoteNode.self)] }))
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 520))
+      let view = LexicalUITextView(editor: editor, frame: window.bounds)
+      window.addSubview(view)
+      window.makeKeyAndVisible()
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createParagraphNode().append(createTextNode("Above")), create(NoteNode.self),
+          createParagraphNode().append(createTextNode("Below")))
+      }
+      settle(view)
+      let hosted = try #require(hostedViews(view).first)
+      // The text's own height at the hosted view's width: several lines.
+      let wrapped = (NoteNode.text as NSString).boundingRect(
+        with: CGSize(width: hosted.frame.width, height: .greatestFiniteMagnitude),
+        options: .usesLineFragmentOrigin, attributes: [.font: UIFont.systemFont(ofSize: 14)],
+        context: nil
+      ).height
+      #expect(wrapped > 3 * UIFont.systemFont(ofSize: 14).lineHeight)
+      #expect(hosted.frame.height >= wrapped - 1, "\(hosted.frame) for \(wrapped)")
       _ = window
     }
 
@@ -326,8 +366,17 @@
         let font = view.textStorage.attribute(.font, at: location, effectiveRange: nil) as? UIFont
         return try #require(font).pointSize
       }
+      func paragraph(_ text: String) throws -> NSParagraphStyle {
+        let location = (view.text as NSString).range(of: text).location
+        return try #require(
+          view.textStorage.attribute(.paragraphStyle, at: location, effectiveRange: nil)
+            as? NSParagraphStyle)
+      }
       #expect(try size("Lexical for Swift") == 24)
       #expect(try size("Native editing") == 16)
+      // The quote's 40-point indent and 10-point margin.
+      #expect(try paragraph("A quote").headIndent == 40)
+      #expect(try paragraph("A quote").paragraphSpacing == 10)
       window.traitOverrides.preferredContentSizeCategory = .extraExtraExtraLarge
       settle(view)
       try writePNG(view, "uikit-demo-xxxl.png")
@@ -340,10 +389,15 @@
       let body = try size("Native editing")
       #expect(body > 40)
       #expect(abs(try size("Lexical for Swift") / body - 1.5) < 0.05)
+      // The theme's lengths scale as its fonts do, so the quote's indent
+      // and margin keep their ratio to the text.
+      #expect(abs(try paragraph("A quote").headIndent / body - 40.0 / 16) < 0.05)
+      #expect(abs(try paragraph("A quote").paragraphSpacing / body - 10.0 / 16) < 0.05)
       window.traitOverrides.preferredContentSizeCategory = .large
       settle(view)
       #expect(try size("Lexical for Swift") == 24)
       #expect(try size("Native editing") == 16)
+      #expect(try paragraph("A quote").headIndent == 40)
       _ = window
     }
 

@@ -105,18 +105,76 @@
       if let backgroundColor { attributes[.backgroundColor] = backgroundColor.uiColor }
       if underline { attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue }
       if strikethrough { attributes[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
-      if baselineOffset != 0 { attributes[.baselineOffset] = baselineOffset }
+      if baselineOffset != 0 {
+        attributes[.baselineOffset] = baselineOffset * contentSize.themeScale
+      }
       return attributes
     }
   }
 
+  extension UIContentSizeCategory {
+    /// How much Dynamic Type scales the theme at this category: body
+    /// text's size here over its size at the default category. The theme's
+    /// fonts scale by it (`uiFont(_:)`), and so do its lengths (indents,
+    /// paragraph spacing, list markers, quote bars, code boxes and rules),
+    /// so a document keeps its proportions at every text size.
+    @MainActor
+    var themeScale: CGFloat {
+      UIFontMetrics(forTextStyle: .body).scaledValue(
+        for: 100, compatibleWith: UITraitCollection(preferredContentSizeCategory: self)) / 100
+    }
+  }
+
+  extension TextKitListMarkerLayout {
+    /// The layout with its lengths `scale` times as long.
+    func scaled(by scale: CGFloat) -> Self {
+      var layout = self
+      layout.headIndent *= scale
+      return layout
+    }
+  }
+
+  extension TextKitBlockBar {
+    func scaled(by scale: CGFloat) -> Self {
+      var bar = self
+      bar.offset *= scale
+      bar.width *= scale
+      return bar
+    }
+  }
+
+  extension TextKitBlockBoxLayout {
+    func scaled(by scale: CGFloat) -> Self {
+      var layout = self
+      layout.box.offset *= scale
+      layout.box.paddingTop *= scale
+      layout.box.paddingBottom *= scale
+      layout.box.gutter?.width *= scale
+      layout.box.gutter?.padding *= scale
+      layout.box.gutter?.borderWidth *= scale
+      return layout
+    }
+  }
+
+  extension TextKitRule {
+    func scaled(by scale: CGFloat) -> Self {
+      var rule = self
+      rule.thickness *= scale
+      rule.padding *= scale
+      rule.margin *= scale
+      rule.selectedOutlineWidth *= scale
+      return rule
+    }
+  }
+
   extension TextKitParagraphAttributes {
-    /// The paragraph style of a block whose text is in `font`. A CSS
-    /// `line-height` number is that many times the font size: the line is
-    /// at least that tall, and its text is centered in it by
+    /// The paragraph style of a block whose text is in `font`, with the
+    /// theme's indent and spacing `scale` times as long (Dynamic Type). A
+    /// CSS `line-height` number is that many times the font size: the line
+    /// is at least that tall, and its text is centered in it by
     /// `CenteredLineLayoutFragment`. A `tab-size` is that many of the
     /// font's spaces.
-    func uiParagraphStyle(font: UIFont) -> NSParagraphStyle {
+    func uiParagraphStyle(font: UIFont, scale: CGFloat) -> NSParagraphStyle {
       let fontSize = font.pointSize
       let style = NSMutableParagraphStyle()
       let isRTL = writingDirection == .rightToLeft
@@ -136,10 +194,10 @@
         case .leftToRight: .leftToRight
         case .rightToLeft: .rightToLeft
         }
-      style.firstLineHeadIndent = headIndent
-      style.headIndent = headIndent
-      style.paragraphSpacingBefore = spacingBefore
-      style.paragraphSpacing = spacingAfter
+      style.firstLineHeadIndent = headIndent * scale
+      style.headIndent = headIndent * scale
+      style.paragraphSpacingBefore = spacingBefore * scale
+      style.paragraphSpacing = spacingAfter * scale
       if let lineHeightMultiple { style.minimumLineHeight = lineHeightMultiple * fontSize }
       if let tabSize {
         let space = (" " as NSString).size(withAttributes: [.font: font]).width

@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
+import type {JSDOM} from 'jsdom';
+
 import {$createCodeNode, CodeNode} from '@lexical/code-core';
 import {createHeadlessEditor} from '@lexical/headless';
 import {$generateHtmlFromNodes, $generateNodesFromDOM} from '@lexical/html';
@@ -22,12 +24,12 @@ import {
   TRANSFORMERS,
 } from '@lexical/markdown';
 import {HeadingNode, QuoteNode} from '@lexical/rich-text';
-import {JSDOM} from 'jsdom';
 import {$createTextNode, $getRoot, $insertNodes} from 'lexical';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {expect, test} from 'vitest';
 
+import {browserWindow} from './browserWindow';
 import {emitVectors} from './vectors';
 
 const UPSTREAM_FILE =
@@ -308,7 +310,7 @@ type Case = {
 
 /** Runs `f` with a jsdom window as the global `window` and `document`. */
 function withJSDOM<T>(f: (dom: JSDOM['window']) => T): T {
-  const dom = new JSDOM('').window;
+  const dom = browserWindow();
   const globals = globalThis as {window?: unknown; document?: unknown};
   const prev = [globals.window, globals.document];
   globals.window = dom;

@@ -25,7 +25,7 @@ struct PollStickyNodeTests {
   /// The web playground's `PlaygroundDOMRenderExtension` writes a paragraph
   /// holding a block as `<div role="paragraph">`.
   private let webHTML =
-    #"<p><span data-lexical-poll-question="Q &quot;1&quot; <b>" data-lexical-poll-options="[{&quot;text&quot;:&quot;A &amp; B&quot;,&quot;uid&quot;:&quot;abcde&quot;,&quot;votes&quot;:[&quot;Cat&quot;]},{&quot;text&quot;:&quot;&quot;,&quot;uid&quot;:&quot;fghij&quot;,&quot;votes&quot;:[]}]"></span></p><div role="paragraph"><div style="display: contents;"></div></div>"#
+    #"<p><span data-lexical-poll-question="Q &quot;1&quot; &lt;b&gt;" data-lexical-poll-options="[{&quot;text&quot;:&quot;A &amp; B&quot;,&quot;uid&quot;:&quot;abcde&quot;,&quot;votes&quot;:[&quot;Cat&quot;]},{&quot;text&quot;:&quot;&quot;,&quot;uid&quot;:&quot;fghij&quot;,&quot;votes&quot;:[]}]"></span></p><div role="paragraph"><div style="display: contents;"></div></div>"#
   /// A sticky whose caption has text.
   private let webCaptionJSON =
     #"{"root":{"children":[{"children":[{"caption":{"editorState":{"root":{"children":[{"children":[],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"Hi","type":"text","version":1}],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}},"color":"yellow","xOffset":5,"yOffset":6,"type":"sticky","version":1}],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}"#

@@ -47,7 +47,6 @@ import {
 } from '@lexical/rich-text';
 import {$setBlocksType} from '@lexical/selection';
 import * as fc from 'fast-check';
-import {JSDOM} from 'jsdom';
 import {
   $createParagraphNode,
   $createRangeSelection,
@@ -84,6 +83,7 @@ import {
   UNDO_COMMAND,
 } from 'lexical';
 
+import {browserWindow} from './browserWindow';
 import {$selectionSnapshot, type Json, type PointSpec} from './ops';
 
 type Serialized = {[key: string]: unknown};
@@ -368,7 +368,7 @@ function attempt<T>(f: () => T): T | null {
  * upstream unit tests, as in html.test.ts) while `f` runs.
  */
 export function withJSDOM<T>(f: () => T): T {
-  const dom = new JSDOM('').window;
+  const dom = browserWindow();
   const globals = globalThis as {window?: unknown; document?: unknown};
   const prev = [globals.window, globals.document];
   globals.window = dom;

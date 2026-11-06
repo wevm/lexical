@@ -5,9 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
+import type {JSDOM} from 'jsdom';
+
 import {createHeadlessEditor} from '@lexical/headless';
 import {$generateHtmlFromNodes, $generateNodesFromDOM} from '@lexical/html';
-import {JSDOM} from 'jsdom';
 import {
   $createLineBreakNode,
   $createParagraphNode,
@@ -23,6 +24,7 @@ import {
 import {readFileSync} from 'node:fs';
 import {test} from 'vitest';
 
+import {browserWindow} from './browserWindow';
 import {emitVectors} from './vectors';
 
 type Case = {
@@ -41,7 +43,7 @@ type Case = {
  * happy-dom, which normalizes inline styles differently).
  */
 function withJSDOM<T>(f: (dom: JSDOM['window']) => T): T {
-  const dom = new JSDOM('').window;
+  const dom = browserWindow();
   const globals = globalThis as {window?: unknown; document?: unknown};
   const prev = [globals.window, globals.document];
   globals.window = dom;

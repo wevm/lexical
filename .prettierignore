@@ -32,3 +32,4 @@ dev-examples/dom-import/src/fixtures/
 packages/lexical-conformance/vectors/
 swift/parity/
 swift/.build/
+swift/apps/lexical-playground-swift/Sources/katex/katex.min.*

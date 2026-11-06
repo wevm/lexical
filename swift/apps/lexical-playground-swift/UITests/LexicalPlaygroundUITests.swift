@@ -462,6 +462,36 @@ final class LexicalPlaygroundUITests: XCTestCase {
   /// inserts a poll with two options; a vote counts, and a third option
   /// can be added.
   @MainActor
+  func testInsertsAnEquationFromTheComponentPickerAndEditsIt() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/equation")
+    let option = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(option.waitForExistence(timeout: 5))
+    XCTAssertTrue(option.label.contains("Equation"), option.label)
+    option.tap()
+    let input = app.textFields["equation-input"]
+    XCTAssertTrue(input.waitForExistence(timeout: 5))
+    input.tap()
+    input.typeText("e^{i\\pi} + 1 = 0")
+    app.buttons["equation-submit-btn"].tap()
+    waitForTree(") equation")
+    XCTAssertFalse(tree.contains("/equation"), tree)
+    // KaTeX drew it: the view takes the size it reported, wider than the
+    // placeholder's.
+    let equation = app.descendants(matching: .any)["equation"].firstMatch
+    XCTAssertTrue(equation.waitForExistence(timeout: 5))
+    let deadline = Date().addingTimeInterval(10)
+    while equation.frame.width <= 60, Date() < deadline { usleep(200_000) }
+    XCTAssertGreaterThan(equation.frame.width, 60)
+    // A double tap edits its LaTeX in place.
+    equation.doubleTap()
+    let field = app.descendants(matching: .any)["equation-editor"].firstMatch
+    XCTAssertTrue(field.waitForExistence(timeout: 5), app.debugDescription)
+    XCTAssertEqual(field.value as? String, "e^{i\\pi} + 1 = 0")
+  }
+
+  @MainActor
   func testInsertsAPollAndVotesFromTheComponentPicker() {
     launch()
     let editor = clearedEditor()

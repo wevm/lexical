@@ -11,7 +11,7 @@ import LexicalSelection
 // Port of packages/lexical-playground/src/plugins/ComponentPickerPlugin: a
 // "/" at the start of a word opens a menu of the blocks the Swift
 // playground has, the page break, the embeds and the image, which open
-// their dialogs, and the dates. The table, Excalidraw, poll, equation,
+// their dialogs, and the dates. The table, Excalidraw,
 // GIF, collapsible, card, pull quote, review and columns options insert
 // nodes the port does not have yet, so they are left out, and so is the
 // dynamic "3x4 Table" option.
@@ -43,7 +43,8 @@ final class ComponentPickerOption: MenuOption {
 @MainActor
 func getBaseOptions(
   _ editor: Editor, showImageDialog: @escaping () -> Void = {},
-  showPollDialog: @escaping () -> Void = {}
+  showPollDialog: @escaping () -> Void = {},
+  showEquationDialog: @escaping () -> Void = {}
 ) -> [ComponentPickerOption] {
   func setBlocks(_ create: @escaping () throws -> ElementNode) -> (String) throws -> Void {
     { _ in
@@ -106,6 +107,9 @@ func getBaseOptions(
     ComponentPickerOption(
       "Poll", symbol: "chart.bar.xaxis", keywords: ["poll", "vote"]
     ) { _ in showPollDialog() },
+    ComponentPickerOption(
+      "Equation", symbol: "function", keywords: ["equation", "latex", "math"]
+    ) { _ in showEquationDialog() },
   ]
   // The embeds, which open their dialog.
   for config in EmbedConfigs {
@@ -164,12 +168,14 @@ func filterComponentPickerOptions(
 @MainActor
 func registerComponentPicker(
   _ editor: Editor, showImageDialog: @escaping () -> Void = {},
-  showPollDialog: @escaping () -> Void = {}
+  showPollDialog: @escaping () -> Void = {},
+  showEquationDialog: @escaping () -> Void = {}
 ) -> (
   host: TypeaheadMenuHost<ComponentPickerOption>, unregister: () -> Void
 ) {
   let baseOptions = getBaseOptions(
-    editor, showImageDialog: showImageDialog, showPollDialog: showPollDialog)
+    editor, showImageDialog: showImageDialog, showPollDialog: showPollDialog,
+    showEquationDialog: showEquationDialog)
   var setOptions: ([ComponentPickerOption]) -> Void = { _ in }
   let (menu, unregister) = registerTypeaheadMenu(
     editor, triggerFn: basicTypeaheadTriggerMatch("/", minLength: 0, allowWhitespace: true),

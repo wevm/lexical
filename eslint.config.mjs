@@ -73,6 +73,8 @@ export default [
       '**/*.d.ts',
       '**/playwright*/',
       '**/node_modules/',
+      // KaTeX, vendored into the Swift playground.
+      'swift/apps/lexical-playground-swift/Sources/katex/',
       '.ts-temp/',
       '**/.docusaurus/',
       // Build output that only the package's own .gitignore names, which

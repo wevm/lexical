@@ -333,6 +333,10 @@
       }
       showMarkedText()
       showHighlights()
+      // Before the range changes: UIKit's selection display can miss a
+      // change made while it is off, which on a busy simulator left a text
+      // selection after a node selection without its handles.
+      showsTextSelection = update.selectedNodes.isEmpty
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange != selected { selectedRange = selected }
@@ -343,7 +347,6 @@
           scrollRangeToVisible(selected)
         }
       }
-      showsTextSelection = update.selectedNodes.isEmpty
       showLastBlockAtCaret()
       if update.tags.contains(FOCUS_TAG), !hasFocus {
         focus()
@@ -916,6 +919,8 @@
         if display.isActivated { display.isActivated = false }
       } else if isFirstResponder, !display.isActivated {
         display.isActivated = true
+        // Turning it on doesn't always lay out the handles again.
+        display.setNeedsSelectionUpdate()
       }
     }
 

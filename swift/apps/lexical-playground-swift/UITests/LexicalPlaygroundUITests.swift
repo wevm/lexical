@@ -611,7 +611,7 @@ final class LexicalPlaygroundUITests: XCTestCase {
   /// `ImagesExtension`: the "/" menu's Image option opens the insert
   /// dialog, whose sample inserts an image node that draws in the editor.
   @MainActor
-  func testInsertsAnImageFromTheComponentPicker() {
+  func testInsertsAnImageFromTheComponentPicker() throws {
     launch()
     let editor = clearedEditor()
     editor.typeText("/imag")
@@ -626,14 +626,20 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertFalse(tree.contains("/imag"), tree)
     let image = app.descendants(matching: .any)["editor-image"]
     XCTAssertTrue(image.waitForExistence(timeout: 5), app.debugDescription)
-    // A tap selects it, and dragging its top right handle makes it wider
-    // (`ImageResizer`). The top one, since a keyboard onboarding card on a
-    // fresh Simulator can leave the image's bottom under the debug view.
+    // A tap selects it, and dragging a handle on its right edge makes it
+    // wider (`ImageResizer`). With the keyboard up the image is taller than
+    // the editor's visible part, which scrolls to the caret after it, so
+    // the handle pressed is one the editor shows: its top right, right or
+    // bottom right one.
     image.tap()
     waitForTree("selection: node")
     let width = image.frame.width
-    let corner = image.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0))
-      .withOffset(CGVector(dx: -4, dy: 4))
+    let visible = app.textViews.firstMatch.frame.intersection(app.windows.firstMatch.frame)
+    let dy = [4.0, image.frame.height / 2, image.frame.height - 4].first {
+      visible.contains(CGPoint(x: image.frame.maxX - 4, y: image.frame.minY + $0))
+    }
+    let corner = image.coordinate(withNormalizedOffset: .zero)
+      .withOffset(CGVector(dx: image.frame.width - 4, dy: try XCTUnwrap(dy, "\(visible)")))
     corner.press(
       forDuration: 0.1, thenDragTo: corner.withOffset(CGVector(dx: 60, dy: -10)),
       withVelocity: .slow, thenHoldForDuration: 0.1)

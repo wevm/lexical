@@ -112,7 +112,8 @@ struct TableOfContentsPanel: View {
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
   private static let blue = Color(red: 0x35 / 255, green: 0x78 / 255, blue: 0xe5 / 255)
-  private static let gray = Color(red: 0x65 / 255, green: 0x67 / 255, blue: 0x6b / 255)
+  private static let gray = Color(
+    light: Color(red: 0x65 / 255, green: 0x67 / 255, blue: 0x6b / 255), dark: .webText(0.4))
 
   var body: some View {
     ScrollView {
@@ -131,7 +132,8 @@ struct TableOfContentsPanel: View {
     .background(alignment: .leading) {
       // `.headings::before`.
       RoundedRectangle(cornerRadius: 2).fill(
-        Color(red: 0xcc / 255, green: 0xd0 / 255, blue: 0xd5 / 255)
+        Color(
+          light: Color(red: 0xcc / 255, green: 0xd0 / 255, blue: 0xd5 / 255), dark: .webFill(0.8))
       )
       .frame(width: 4)
       .padding(.top, 5)
@@ -150,7 +152,7 @@ struct TableOfContentsPanel: View {
     } label: {
       Text(truncated(entry.text, isFirst ? 20 : 27))
         .scaledFont(size: 16, weight: isFirst ? .bold : .regular, relativeTo: .callout)
-        .foregroundStyle(isFirst ? .black : isSelected ? Self.blue : Self.gray)
+        .foregroundStyle(isFirst ? .webText(0) : isSelected ? Self.blue : Self.gray)
         .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
         .frame(minHeight: 20)
         // `.first-heading` sits a line above the next (its `<br />`).
@@ -164,7 +166,7 @@ struct TableOfContentsPanel: View {
       // `.selected-heading-wrapper::before`.
       if isSelected {
         Circle().fill(Self.blue).frame(width: 4, height: 4)
-          .padding(4).background(Circle().fill(.white))
+          .padding(4).background(Circle().fill(Color.editorBackground))
           .offset(x: -2, y: 4)
       }
     }

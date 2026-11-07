@@ -169,7 +169,7 @@ struct ColorPickerPanel: View {
           } label: {
             RoundedRectangle(cornerRadius: 4)
               .fill(Color(css: basic) ?? .clear)
-              .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color(white: 0.8)))
+              .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.webLine(0.8)))
               .shadow(color: .black.opacity(basic == hex.lowercased() ? 0.3 : 0), radius: 2)
               .frame(width: 16, height: 16)
           }

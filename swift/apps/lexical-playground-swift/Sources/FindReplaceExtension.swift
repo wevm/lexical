@@ -548,13 +548,12 @@ struct FindReplacePanel: View {
     .padding(.vertical, 8)
     .padding(.horizontal, 10)
     .background(
-      RoundedRectangle(cornerRadius: 8).fill(.white)
+      RoundedRectangle(cornerRadius: 8).fill(Color.panelBackground)
         .shadow(color: .black.opacity(0.2), radius: 14, y: 12)
         .shadow(color: .black.opacity(0.1), radius: 2, y: 2)
     )
     .scaledFont(size: 13, relativeTo: .footnote)
-    .foregroundStyle(Color(white: 0.02))
-    .environment(\.colorScheme, .light)
+    .foregroundStyle(Color.webText(0.02))
     #if os(macOS)
       .onExitCommand { model.close() }
     #endif
@@ -578,7 +577,7 @@ struct FindReplacePanel: View {
   private var countLabel: some View {
     Text(model.countText)
       .scaledFont(size: 11, relativeTo: .caption2)
-      .foregroundStyle(Color(white: 0.47))
+      .foregroundStyle(Color.webText(0.47))
       .frame(minWidth: 70)
       .accessibilityIdentifier("find-replace-count")
   }
@@ -619,7 +618,7 @@ struct FindReplacePanel: View {
 
   /// `.find-replace-separator`.
   private var separator: some View {
-    Rectangle().fill(Color(white: 0.87)).frame(width: 1, height: controlSize * 18 / 28)
+    Rectangle().fill(Color.webLine(0.87)).frame(width: 1, height: controlSize * 18 / 28)
       .padding(.horizontal, 2)
   }
 
@@ -637,8 +636,8 @@ struct FindReplacePanel: View {
       .padding(.vertical, 5)
       .padding(.horizontal, 8)
       .frame(minWidth: 180)
-      .background(RoundedRectangle(cornerRadius: 6).fill(Color(white: 0.98)))
-      .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(white: 0.87)))
+      .background(RoundedRectangle(cornerRadius: 6).fill(Color.webFill(0.98)))
+      .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.webLine(0.87)))
       .accessibilityLabel(label)
       .accessibilityIdentifier(label)
   }
@@ -676,7 +675,7 @@ struct FindReplacePanel: View {
         .contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .foregroundStyle(Color(white: 0.33))
+    .foregroundStyle(Color.webText(0.33))
     .help(help)
     .accessibilityLabel(label)
   }
@@ -691,7 +690,7 @@ struct FindReplacePanel: View {
       Text(title).padding(.horizontal, 8).frame(height: controlSize).contentShape(Rectangle())
     }
     .buttonStyle(.plain)
-    .foregroundStyle(Color(white: 0.2))
+    .foregroundStyle(Color.webText(0.2))
     .accessibilityLabel(label)
   }
 }

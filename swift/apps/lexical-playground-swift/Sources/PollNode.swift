@@ -284,7 +284,7 @@ struct PollComponent: View {
       // `.PollNode__heading`.
       Text(question)
         .scaledFont(size: 18, weight: .bold, relativeTo: .title3)
-        .foregroundStyle(Color(white: 0.267))
+        .foregroundStyle(Color.webText(0.267))
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .padding(.bottom, 15)
@@ -301,14 +301,13 @@ struct PollComponent: View {
     }
     .padding(15)
     .frame(maxWidth: width)
-    .background(Color(white: 0.988), in: RoundedRectangle(cornerRadius: 10))
-    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(white: 0.933), lineWidth: 1))
+    .background(Color.webFill(0.988), in: RoundedRectangle(cornerRadius: 10))
+    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.webLine(0.933), lineWidth: 1))
     .overlay {
       if selection.isSelected {
         RoundedRectangle(cornerRadius: 10).inset(by: -1).stroke(focusBlue, lineWidth: 2)
       }
     }
-    .environment(\.colorScheme, .light)
     .ignoresSafeArea(.keyboard)
     .onAppear { selection.observe(editor, nodeKey) }
     .accessibilityElement(children: .contain)
@@ -356,7 +355,7 @@ private struct PollOptionView: View {
           RoundedRectangle(cornerRadius: 5)
             .fill(checked ? pollBlue : .clear)
             .overlay(
-              RoundedRectangle(cornerRadius: 5).stroke(checked ? pollBlue : Color(white: 0.6))
+              RoundedRectangle(cornerRadius: 5).stroke(checked ? pollBlue : Color.webText(0.6))
             )
             .overlay {
               if checked {
@@ -378,7 +377,7 @@ private struct PollOptionView: View {
           TextField(
             "", text: $text,
             prompt: Text("Option \(index + 1)").font(.system(size: fontSize)).foregroundStyle(
-              Color(white: 0.6))
+              Color.webText(0.6))
           )
           .textFieldStyle(.plain)
           .font(.system(size: fontSize, weight: .bold))
@@ -403,12 +402,15 @@ private struct PollOptionView: View {
         // `.PollNode__optionInputVotes`: the option's share of the votes.
         .background(alignment: .leading) {
           GeometryReader { geometry in
-            Color(red: 236 / 255, green: 243 / 255, blue: 254 / 255)
-              .frame(
-                width: totalVotes == 0
-                  ? 0 : geometry.size.width * Double(votes) / Double(totalVotes)
-              )
-              .animation(.easeInOut(duration: 1), value: votes)
+            Color(
+              light: Color(red: 236 / 255, green: 243 / 255, blue: 254 / 255),
+              dark: pollBlue.opacity(0.25)
+            )
+            .frame(
+              width: totalVotes == 0
+                ? 0 : geometry.size.width * Double(votes) / Double(totalVotes)
+            )
+            .animation(.easeInOut(duration: 1), value: votes)
           }
         }
         .clipShape(RoundedRectangle(cornerRadius: 5))
@@ -419,7 +421,7 @@ private struct PollOptionView: View {
         } label: {
           Image(systemName: "xmark")
             .scaledFont(size: 12, weight: .semibold, relativeTo: .caption)
-            .foregroundStyle(Color(white: 0.6))
+            .foregroundStyle(Color.webText(0.6))
             .frame(width: min(deleteSize, 44), height: min(deleteSize, 44))
             .contentShape(Rectangle())
         }
@@ -450,10 +452,11 @@ struct PlaygroundSmallButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .scaledFont(size: 13, relativeTo: .footnote)
-      .foregroundStyle(.black)
+      .foregroundStyle(Color.webText(0))
       .padding(.vertical, 5).padding(.horizontal, 10)
       .background(
-        Color(white: configuration.isPressed ? 0.867 : 0.933), in: RoundedRectangle(cornerRadius: 5)
+        Color.webFill(configuration.isPressed ? 0.867 : 0.933),
+        in: RoundedRectangle(cornerRadius: 5)
       )
   }
 }

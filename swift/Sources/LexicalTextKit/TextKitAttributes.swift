@@ -841,8 +841,10 @@ public struct TextKitTheme: Hashable, Sendable {
     // `TextKitSuffix` of this type).
     "autocomplete": TextKitStyle(
       foregroundColor: TextKitColor(204, 204, 204).withDark(TextKitColor(99, 99, 102))),
-    // `__characterLimit`.
-    "characterLimit": TextKitStyle(backgroundColor: TextKitColor(255, 187, 187)),
+    // `__characterLimit`, and a translucent red under a dark appearance's
+    // light text.
+    "characterLimit": TextKitStyle(
+      backgroundColor: TextKitColor(255, 187, 187).withDark(TextKitColor(255, 69, 58, alpha: 0.35))),
     "heading.h1": TextKitStyle(
       fontSize: .points(24), fontWeight: 400,
       foregroundColor: TextKitColor(5, 5, 5).withDark(TextKitColor(245, 245, 250))),

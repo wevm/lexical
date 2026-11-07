@@ -82,7 +82,7 @@ struct PlaygroundView: View {
           if let remaining = model.remainingCharacters {
             Text("\(remaining)")
               .scaledFont(size: 12, relativeTo: .caption)
-              .foregroundStyle(remaining < 0 ? .red : Color(white: 0.53))
+              .foregroundStyle(remaining < 0 ? .red : .webText(0.53))
               .padding(.leading, 12).padding(.bottom, 5)
               .accessibilityIdentifier("characters-limit")
           }

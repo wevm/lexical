@@ -130,27 +130,27 @@ struct PageBreakComponent: View {
   var body: some View {
     let border =
       selection.isSelected
-      ? Color(red: 71 / 255, green: 102 / 255, blue: 203 / 255) : Color(white: 0.933)
+      ? Color(red: 71 / 255, green: 102 / 255, blue: 203 / 255) : Color.webLine(0.933)
     ZStack {
       VStack(spacing: 0) {
         DashedLine().stroke(border, style: StrokeStyle(lineWidth: 1, dash: [3, 3])).frame(height: 1)
         DashedLine().stroke(border, style: StrokeStyle(lineWidth: 1, dash: [3, 3])).frame(height: 1)
       }
-      .background(Color(white: 0.933))
+      .background(Color.webFill(0.933))
       HStack {
         Image(systemName: "scissors")
           .scaledFont(size: 13, relativeTo: .footnote)
-          .foregroundStyle(.black)
+          .foregroundStyle(.primary)
           .opacity(selection.isSelected ? 1 : 0.5)
           .padding(.leading, 12)
         Spacer()
       }
       Text("PAGE BREAK")
         .scaledFont(size: 12, weight: .semibold, relativeTo: .caption)
-        .foregroundStyle(.black)
+        .foregroundStyle(.primary)
         .padding(.horizontal, 6).padding(.vertical, 2)
-        .background(Color.white)
-        .border(Color(white: 0.8))
+        .background(Color.panelBackground)
+        .border(Color.webLine(0.8))
     }
     .frame(maxWidth: .infinity)
     .padding(.vertical, 28)

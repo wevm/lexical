@@ -89,6 +89,10 @@
     "category": "platform-behavior",
     "description": "On iOS the playground's floating link editor moves below the edit menu (or above it when that does not fit) while the menu shows over it, as it does when a tap on the selected link opens the menu below the link. The web panel stays 10 pixels below the link, where Safari's callout covers it."
   },
+  "native/dark-appearance": {
+    "category": "platform-rendering",
+    "description": "The web playground and its theme are light only. In a dark system appearance the default theme's colors take their dark variants (TextKitColor.withDark: text, links, code, quote bars, the gutter), and the playground's own UI (popups, the comments panel and input, find and replace, the table of contents, the poll, the equation editor, the page break) keeps the web's colors in a light appearance and uses the system's semantic label, separator, fill and background colors in a dark one. The debug tree view is dark in both, as on the web; a sticky note keeps its yellow or pink paper."
+  },
   "native/draggable-block-macos-only": {
     "category": "platform-behavior",
     "description": "The playground's DraggableBlockPlugin (the + and grip handle at a block's left, drag to reorder, the drop line) is ported on macOS only, where it shows while the window is wider than 1025 points, as the web shows it above a 1025px viewport. iOS does not have it: the web hides it on narrow screens, a touch has no hover to show the handle, and a long press on text is UIKit's own text drag, loupe and selection, which a handle beside every block would fight. Its + button adds a paragraph with the '/' component picker open in it, where the web opens a copy of the picker with a filter field beside the handle."

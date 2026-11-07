@@ -121,11 +121,15 @@ private struct EquationEditor: View {
   @FocusState private var isFocused: Bool
 
   var body: some View {
-    let dollar = Text(inline ? "$" : "$$").foregroundStyle(Color(white: 0.69))
+    let dollar = Text(inline ? "$" : "$$").foregroundStyle(Color.webText(0.69))
     let field = TextField("", text: $equation, axis: inline ? .horizontal : .vertical)
       .textFieldStyle(.plain)
       .texInput()
-      .foregroundStyle(Color(red: 0x84 / 255, green: 0x21 / 255, blue: 0xa2 / 255))
+      .foregroundStyle(
+        Color(
+          light: Color(red: 0x84 / 255, green: 0x21 / 255, blue: 0xa2 / 255),
+          dark: Color(red: 0xd4 / 255, green: 0x8f / 255, blue: 0xec / 255))
+      )
       .focused($isFocused)
       .onKeyPress(.escape) {
         onDone(true)
@@ -154,8 +158,7 @@ private struct EquationEditor: View {
       }
     }
     .scaledFont(size: 15, design: .monospaced, relativeTo: .subheadline)
-    .background(Color(white: 0.933))
-    .environment(\.colorScheme, .light)
+    .background(Color.webFill(0.933))
     .onAppear { isFocused = true }
     .onChange(of: isFocused) { if !isFocused { onDone(false) } }
   }

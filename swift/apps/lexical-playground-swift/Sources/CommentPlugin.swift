@@ -481,13 +481,13 @@ private struct AddCommentBox: View {
     } label: {
       Image(systemName: "text.bubble")
         .scaledFont(size: 18, relativeTo: .title3)
-        .foregroundStyle(.black.opacity(0.7))
+        .foregroundStyle(.primary.opacity(0.7))
         .frame(width: 40, height: 60)
         .contentShape(RoundedRectangle(cornerRadius: 20))
     }
     .buttonStyle(.plain)
     .background(
-      RoundedRectangle(cornerRadius: 20).fill(.white)
+      RoundedRectangle(cornerRadius: 20).fill(Color.panelBackground)
         .shadow(color: .black.opacity(0.2), radius: 1.5)
     )
     .help("Add comment")
@@ -524,7 +524,7 @@ struct CommentInputBox: View {
           RoundedRectangle(cornerRadius: 5)
             .stroke(
               isFocused
-                ? Color(red: 66 / 255, green: 135 / 255, blue: 245 / 255) : Color(white: 0.8))
+                ? Color(red: 66 / 255, green: 135 / 255, blue: 245 / 255) : .webLine(0.8))
         )
         .padding(10)
         .accessibilityIdentifier("comment-input")
@@ -552,10 +552,9 @@ struct CommentInputBox: View {
     .frame(maxWidth: width)
     .frame(minHeight: 80)
     .background(
-      RoundedRectangle(cornerRadius: 5).fill(.white)
+      RoundedRectangle(cornerRadius: 5).fill(Color.panelBackground)
         .shadow(color: .black.opacity(0.1), radius: 2.5)
     )
-    .environment(\.colorScheme, .light)
     .onChange(of: comments.showCommentInput, initial: true) { _, isShown in
       guard isShown else { return }
       content = ""
@@ -573,14 +572,14 @@ private struct CommentButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
       .scaledFont(size: 14, weight: isPrimary ? .bold : .regular, relativeTo: .subheadline)
-      .foregroundStyle(isPrimary ? .white : Color(white: 0.27))
+      .foregroundStyle(isPrimary ? .white : .webText(0.27))
       .frame(maxWidth: .infinity)
       .padding(.vertical, 10)
       .background(
         RoundedRectangle(cornerRadius: 5).fill(
           isPrimary
             ? Color(red: 66 / 255, green: 135 / 255, blue: 245 / 255)
-            : Color(white: 0.93)
+            : .webFill(0.93)
         )
       )
       .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.5)
@@ -597,11 +596,11 @@ struct ShowCommentsButton: View {
     } label: {
       Image(systemName: "bubble.left.and.text.bubble.right")
         .scaledFont(size: 16, relativeTo: .callout)
-        .foregroundStyle(.black.opacity(comments.showComments ? 1 : 0.6))
+        .foregroundStyle(.primary.opacity(comments.showComments ? 1 : 0.6))
         .frame(width: 36, height: 36)
         .background(
           RoundedRectangle(cornerRadius: 10)
-            .fill(Color(white: comments.showComments ? 0.8 : 0.867)))
+            .fill(Color.webFill(comments.showComments ? 0.8 : 0.867)))
     }
     .buttonStyle(.plain)
     .help(comments.showComments ? "Hide Comments" : "Show Comments")
@@ -623,13 +622,13 @@ struct CommentsPanel: View {
     VStack(alignment: .leading, spacing: 0) {
       Text("Comments")
         .scaledFont(size: 20, relativeTo: .title3)
-        .foregroundStyle(Color(white: 0.27))
+        .foregroundStyle(Color.webText(0.27))
         .padding(.leading, 15)
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-      Divider().overlay(Color(white: 0.93))
+      Divider().overlay(Color.webLine(0.93))
       if comments.store.comments.isEmpty {
         Text("No Comments")
-          .foregroundStyle(Color(white: 0.47))
+          .foregroundStyle(Color.webText(0.47))
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       } else {
         ScrollViewReader { proxy in
@@ -653,10 +652,9 @@ struct CommentsPanel: View {
     .frame(width: 300)
     .frame(maxHeight: .infinity)
     .background(
-      UnevenRoundedRectangle(topLeadingRadius: 10).fill(.white)
+      UnevenRoundedRectangle(topLeadingRadius: 10).fill(Color.panelBackground)
         .shadow(color: .black.opacity(0.1), radius: 5)
     )
-    .environment(\.colorScheme, .light)
     .accessibilityElement(children: .contain)
     .accessibilityIdentifier("comments-panel")
   }
@@ -674,7 +672,7 @@ private struct ThreadView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
       HStack(alignment: .top) {
-        Text("\(Text("> ").foregroundStyle(Color(white: 0.8)))\(Text(Self.quote(thread.quote)))")
+        Text("\(Text("> ").foregroundStyle(Color.webText(0.8)))\(Text(Self.quote(thread.quote)))")
           .scaledFont(size: 15, relativeTo: .subheadline)
           .lineSpacing(4)
           .padding(.horizontal, 10)
@@ -696,7 +694,7 @@ private struct ThreadView: View {
         Button(action: send) {
           Image(systemName: "paperplane")
             .scaledFont(size: 16, relativeTo: .callout)
-            .foregroundStyle(.black.opacity(canSend ? 0.5 : 0.3))
+            .foregroundStyle(.primary.opacity(canSend ? 0.5 : 0.3))
         }
         .buttonStyle(.plain)
         .disabled(!canSend)
@@ -704,15 +702,15 @@ private struct ThreadView: View {
         .accessibilityLabel("Send")
       }
       .padding(EdgeInsets(top: 9, leading: 9, bottom: 10, trailing: 10))
-      .background(RoundedRectangle(cornerRadius: 5).stroke(Color(white: 0.8)))
+      .background(RoundedRectangle(cornerRadius: 5).stroke(Color.webLine(0.8)))
       .padding(10)
     }
-    .background(isActive ? Color(white: 0.98) : .clear)
+    .background(isActive ? Color.webFill(0.98) : .clear)
     .overlay(alignment: .leading) {
-      if isActive { Rectangle().fill(Color(white: 0.93)).frame(width: 15) }
+      if isActive { Rectangle().fill(Color.webFill(0.93)).frame(width: 15) }
     }
     .padding(.leading, isActive ? 15 : 0)
-    .overlay(alignment: .top) { Divider().overlay(Color(white: 0.93)) }
+    .overlay(alignment: .top) { Divider().overlay(Color.webLine(0.93)) }
     .contentShape(Rectangle())
     .onTapGesture { comments.selectThread(thread.id) }
     .alert("Delete Thread", isPresented: $isConfirmingDelete) {
@@ -728,7 +726,7 @@ private struct ThreadView: View {
   /// The quote's text, on `rgba(255, 212, 0, 0.4)`.
   private static func quote(_ quote: String) -> AttributedString {
     var text = AttributedString(quote)
-    text.foregroundColor = Color(white: 0.13)
+    text.foregroundColor = Color.webText(0.13)
     text.backgroundColor = Color(red: 1, green: 212 / 255, blue: 0, opacity: 0.4)
     return text
   }
@@ -755,13 +753,13 @@ private struct CommentRow: View {
       VStack(alignment: .leading, spacing: 5) {
         // Refreshed every 10 seconds, as the list's counter does.
         TimelineView(.periodic(from: .now, by: 10)) { context in
-          let author = Text(comment.author).bold().foregroundStyle(Color(white: 0.27))
+          let author = Text(comment.author).bold().foregroundStyle(Color.webText(0.27))
           let time = Text(" · " + Self.time(comment.timeStamp, context.date))
-            .foregroundStyle(Color(white: 0.6))
+            .foregroundStyle(Color.webText(0.6))
           Text("\(author)\(time)")
         }
         Text(comment.content)
-          .foregroundStyle(Color(white: 0.27))
+          .foregroundStyle(Color.webText(0.27))
           .opacity(comment.deleted ? 0.5 : 1)
       }
       .scaledFont(size: 14, relativeTo: .subheadline)
@@ -770,7 +768,7 @@ private struct CommentRow: View {
     }
     .padding(EdgeInsets(top: 15, leading: 15, bottom: 15, trailing: 0))
     .overlay(alignment: .leading) {
-      if thread != nil { Rectangle().fill(Color(white: 0.93)).frame(width: 5) }
+      if thread != nil { Rectangle().fill(Color.webFill(0.93)).frame(width: 5) }
     }
     .alert("Delete Comment", isPresented: $isConfirmingDelete) {
       Button("Delete", role: .destructive) { comments.delete(.comment(comment), in: thread) }
@@ -804,7 +802,7 @@ private struct DeleteButton: View {
     Button(action: action) {
       Image(systemName: "trash")
         .scaledFont(size: 13, relativeTo: .footnote)
-        .foregroundStyle(.black.opacity(0.5))
+        .foregroundStyle(.primary.opacity(0.5))
         .frame(width: 30, height: 30)
         .contentShape(Rectangle())
     }

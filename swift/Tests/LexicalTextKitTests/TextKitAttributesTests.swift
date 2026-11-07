@@ -62,6 +62,19 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     }
   }
 
+  /// Every text background the default theme sets stays dark in a dark
+  /// appearance, under its light text: composited over black, none is
+  /// brighter than a third.
+  @Test func defaultThemeHasDarkBackgrounds() {
+    for (key, style) in TextKitTheme.default.styles {
+      guard let background = style.backgroundColor?.darkAppearance else { continue }
+      let luminance =
+        (0.2126 * background.red + 0.7152 * background.green + 0.0722 * background.blue)
+        * background.alpha
+      #expect(luminance < 1.0 / 3, "\(key): \(background)")
+    }
+  }
+
   @Test func parsesHex() {
     #expect(TextKitColor(css: "#f00") == TextKitColor(255, 0, 0))
     #expect(TextKitColor(css: "#F0A8") == TextKitColor(255, 0, 170, alpha: 136.0 / 255))
@@ -544,11 +557,13 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
 
   @Test func overflowTakesTheCharacterLimitStyle() {
     // OverflowNode's createDOM takes `theme.characterLimit`, whose
-    // background is `.PlaygroundEditorTheme__characterLimit`'s.
+    // background is `.PlaygroundEditorTheme__characterLimit`'s (with a
+    // dark variant).
     let overflow = TextKitElement(type: "overflow", isInline: true)
     #expect(overflow.themeKey == "characterLimit")
     var expected = plain
     expected.backgroundColor = TextKitColor(255, 187, 187)
+      .withDark(TextKitColor(255, 69, 58, alpha: 0.35))
     #expect(
       theme.textAttributes(format: 0, style: "", ancestors: [paragraph, overflow]) == expected)
   }

@@ -195,9 +195,9 @@ integral and within 32 bits.
   A theme color can carry a dark variant (`TextKitColor.withDark`), which
   the views turn into a dynamic system color. The playground is light only,
   so the default theme's dark values are the port's own: light text,
-  dimmed secondary text and bars, a dark code background and a lighter
-  link. Colors from inline CSS have no variant and look the same in both
-  appearances, as on the web.
+  dimmed secondary text and bars, a dark code background, a translucent
+  red past the character limit and a lighter link. Colors from inline CSS
+  have no variant and look the same in both appearances, as on the web.
 - **Accessibility** (Q41): VoiceOver, Dynamic Type, RTL and `direction`, full
   keyboard access on macOS.
 - **Collaboration** (Q14, Q20): deferred. NodeKeys, update tags, and dirty

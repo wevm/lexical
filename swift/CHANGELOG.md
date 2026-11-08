@@ -4,6 +4,18 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.7
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- [fix] The default theme's `characterLimit` background (the overflowing text past `CharacterLimitExtension`'s limit) has a dark variant, a translucent red, instead of the web's opaque `#ffbbbb` under a dark appearance's light text.
+- [fix] `LexicalUITextView` scales the theme's lengths with Dynamic Type as it scales its fonts: indents, paragraph spacing, list markers and check boxes, quote bars, code blocks' padding and gutter, horizontal rules and baseline shifts grow by body text's factor for the content size category, so a large-text document keeps its proportions. At the accessibility sizes a numbered list's markers are no longer cut off at the view's edge and a check box is as tall as its text.
+  
+  A block decorator's view is measured at the line's width on iOS, so text in it wraps to the line instead of being cut off where it is taller than it would be on one line.
+- On iOS 26, `LexicalUITextView` shows the selection handles again when a text selection follows the selection of an inline decorator, such as a mention or emoji chip. UIKit sometimes left them hidden.
+
 ## 0.1.6
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

@@ -924,6 +924,11 @@
         if display.isActivated { display.isActivated = false }
       } else if isFirstResponder, !display.isActivated {
         display.isActivated = true
+        // On iOS 26 the display sometimes never runs the update it
+        // schedules for itself when it is turned back on, and leaves the
+        // handles hidden until something asks again: ask once more after
+        // this turn.
+        Task { @MainActor [weak display] in display?.setNeedsSelectionUpdate() }
       }
     }
 

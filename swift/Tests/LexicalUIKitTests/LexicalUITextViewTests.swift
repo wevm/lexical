@@ -480,29 +480,16 @@
       let textHandles = settledHandles()
       // The view's part: it turns UIKit's selection display back on for text.
       #expect(selectionDisplayActivated())
-      // UIKit's part: it shows the two handles. On iOS 26 it sometimes leaves
-      // them hidden at a zero frame with the display on, the view focused and
-      // the range on screen (about one CI run in twelve, after the inline
-      // badge only), so until that is fixed the count is an intermittent
-      // known issue there.
-      func expectTwoHandles() {
-        #expect(
-          textHandles.shown.count == 2,
-          """
-          \(textHandles.shown) most=\(textHandles.most) firstResponder=\(view.isFirstResponder) \
-          key=\(window.isKeyWindow) keyWindow=\(String(describing: window.windowScene?.keyWindow)) \
-          activated=\(view.interactions.compactMap { $0 as? UITextSelectionDisplayInteraction }.map(\.isActivated)) \
-          range=\(view.selectedRange) offset=\(view.contentOffset) \
-          inWindow=\(diagnoseHandles(in: window))
-          """)
-      }
-      if #available(iOS 27, *) {
-        expectTwoHandles()
-      } else {
-        withKnownIssue("UIKit sometimes leaves the handles hidden", isIntermittent: true) {
-          expectTwoHandles()
-        }
-      }
+      // And UIKit shows the two handles again.
+      #expect(
+        textHandles.shown.count == 2,
+        """
+        \(textHandles.shown) most=\(textHandles.most) firstResponder=\(view.isFirstResponder) \
+        key=\(window.isKeyWindow) keyWindow=\(String(describing: window.windowScene?.keyWindow)) \
+        activated=\(view.interactions.compactMap { $0 as? UITextSelectionDisplayInteraction }.map(\.isActivated)) \
+        range=\(view.selectedRange) offset=\(view.contentOffset) \
+        inWindow=\(diagnoseHandles(in: window))
+        """)
       _ = window
     }
 

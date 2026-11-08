@@ -438,6 +438,27 @@ final class LexicalPlaygroundUITests: XCTestCase {
     attachScreenshot("playground-comments-panel")
   }
 
+  /// `CommentPlugin`'s add comment button, beside a selection in the first
+  /// line, keeps clear of the Show Comments button over the editor's top
+  /// right corner instead of going under it. It shows on an iPad: like the
+  /// web's below 600 pixels, it is hidden in a compact width.
+  @MainActor
+  func testAddCommentButtonClearsTheShowCommentsButton() throws {
+    try XCTSkipUnless(
+      UIDevice.current.userInterfaceIdiom == .pad, "The add comment button shows on an iPad.")
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Hello world")
+    editor.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 25, dy: 18))
+      .doubleTap()
+    let addComment = app.descendants(matching: .any)["add-comment"]
+    XCTAssertTrue(addComment.waitForExistence(timeout: 5), app.debugDescription)
+    let showComments = app.buttons["show-comments"]
+    XCTAssertFalse(
+      addComment.frame.intersects(showComments.frame),
+      "add comment \(addComment.frame), Show Comments \(showComments.frame)")
+  }
+
   /// `FindReplaceExtension`: the panel counts the matches, steps through
   /// them and replaces them all.
   @MainActor

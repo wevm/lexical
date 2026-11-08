@@ -153,6 +153,11 @@ final class CommentsModel {
     rootView: AddCommentBox(comments: self))
   @ObservationIgnored private lazy var inputHost = TextViewOverlayHost(
     rootView: CommentInputBox(comments: self))
+  #if os(macOS)
+    @ObservationIgnored private var scrollObserver: (any NSObjectProtocol)?
+  #else
+    @ObservationIgnored private var offsetObservation: NSKeyValueObservation?
+  #endif
   /// The add comment button shows (the web hides it below 600 pixels).
   var isWide = true {
     didSet { refreshHosts() }
@@ -230,14 +235,46 @@ final class CommentsModel {
         }, COMMAND_PRIORITY_EDITOR))
   }
 
-  /// Moves the button and the input box into `root`, the editor's text view.
+  #if os(macOS)
+    isolated deinit {
+      if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
+    }
+  #endif
+
+  /// Moves the button and the input box into `root`, the editor's text
+  /// view, and moves the button as the text scrolls under the Show Comments
+  /// button.
   func attach(to root: AnyObject?) {
     controller = textController(root)
     addCommentHost.attach(to: root)
     inputHost.attach(to: root)
+    #if os(macOS)
+      // The text view attaches as it is made, before it is in its scroll
+      // view.
+      DispatchQueue.main.async { [weak self] in self?.observeScrolling() }
+    #else
+      offsetObservation = (root as? UIScrollView)?.observe(\.contentOffset) { [weak self] _, _ in
+        // After the text view has laid out the scroll's text.
+        DispatchQueue.main.async { self?.placeAddComment() }
+      }
+    #endif
     refreshHighlights()
     refreshHosts()
   }
+
+  #if os(macOS)
+    /// Places the add comment button again as the text view's scroll view
+    /// scrolls.
+    private func observeScrolling() {
+      if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
+      scrollObserver = nil
+      guard let clipView = addCommentHost.textView?.enclosingScrollView?.contentView else { return }
+      clipView.postsBoundsChangedNotifications = true
+      scrollObserver = NotificationCenter.default.addObserver(
+        forName: NSView.boundsDidChangeNotification, object: clipView, queue: .main
+      ) { [weak self] _ in MainActor.assumeIsolated { self?.placeAddComment() } }
+    }
+  #endif
 
   // MARK: Actions
 
@@ -366,21 +403,31 @@ final class CommentsModel {
 
   /// Places the add comment button at the right of the editor, level with
   /// the selection's first text node, and the input box below the
-  /// selection, once the view has laid out the update.
-  private func refreshHosts() {
+  /// selection, once the view has laid out the update. The playground
+  /// calls it when the editor resizes too, as the web's boxes follow the
+  /// window's `resize`.
+  func refreshHosts() {
     refreshHighlights()
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
       // In a compact width the playground shows the box as a sheet.
       self.inputHost.place(self.showCommentInput && self.isWide ? self.inputFrame() : nil)
-      self.addCommentHost.place(
-        !self.showCommentInput && self.isWide ? self.addCommentFrame() : nil)
+      self.placeAddComment()
     }
+  }
+
+  private func placeAddComment() {
+    addCommentHost.place(!showCommentInput && isWide ? addCommentFrame() : nil)
   }
 
   /// `AddCommentBox`'s `updatePosition`: at the editor's right edge, 30
   /// above the anchor's element. The web centers it on the edge, outside
   /// the editor; here it stays inside the text view it scrolls with.
+  ///
+  /// The web's Show Comments button is in the page's top right corner,
+  /// above the editor. Here it is in the editor's, over the text, so where
+  /// the box would be under it (a selection in the first line, or in a
+  /// line scrolled to the top) the box goes below it.
   private func addCommentFrame() -> CGRect? {
     guard let key = activeAnchorKey, let textView = addCommentHost.textView,
       let anchor = try? editor?.read(
@@ -391,7 +438,14 @@ final class CommentsModel {
         }), let rect = textView.rect(from: anchor, to: anchor)
     else { return nil }
     let visible = Self.visibleRect(textView)
-    return CGRect(x: visible.maxX - 50, y: rect.minY - 30, width: 40, height: 60)
+    var frame = CGRect(x: visible.maxX - 50, y: rect.minY - 30, width: 40, height: 60)
+    // The Show Comments button's corner, with its margin on each side.
+    let editor = Self.editorRect(textView)
+    let corner = ShowCommentsButton.side + 2 * ShowCommentsButton.margin
+    let showComments = CGRect(
+      x: editor.maxX - corner, y: editor.minY, width: corner, height: corner)
+    if frame.intersects(showComments) { frame.origin.y = showComments.maxY }
+    return frame
   }
 
   /// `CommentInputBox`'s `updateLocation`: 250 wide, 20 below the
@@ -407,6 +461,17 @@ final class CommentsModel {
     let left = max(10, isOneLine ? rect.midX - 125 : min(start.minX, end.minX) - 125)
     let height = inputHost.fittingHeight(width: 250)
     return CGRect(x: left, y: rect.maxY + 20, width: 250, height: height)
+  }
+
+  /// The editor's frame, which the Show Comments button is over, in the
+  /// text view's coordinates.
+  private static func editorRect(_ textView: PlatformTextView) -> CGRect {
+    #if os(macOS)
+      textView.enclosingScrollView.map { textView.convert($0.bounds, from: $0) }
+        ?? textView.visibleRect
+    #else
+      textView.bounds
+    #endif
   }
 
   private static func visibleRect(_ textView: PlatformTextView) -> CGRect {
@@ -588,6 +653,12 @@ private struct CommentButtonStyle: ButtonStyle {
 
 /// `CommentPlugin_ShowCommentsButton`.
 struct ShowCommentsButton: View {
+  /// Its side, and its margin from the editor's top right corner
+  /// (`top: 10px; right: 10px`), where the add comment button keeps clear
+  /// of it.
+  static let side: CGFloat = 36
+  static let margin: CGFloat = 10
+
   @Bindable var comments: CommentsModel
 
   var body: some View {
@@ -597,7 +668,7 @@ struct ShowCommentsButton: View {
       Image(systemName: "bubble.left.and.text.bubble.right")
         .scaledFont(size: 16, relativeTo: .callout)
         .foregroundStyle(.primary.opacity(comments.showComments ? 1 : 0.6))
-        .frame(width: 36, height: 36)
+        .frame(width: Self.side, height: Self.side)
         .background(
           RoundedRectangle(cornerRadius: 10)
             .fill(Color.webFill(comments.showComments ? 0.8 : 0.867)))

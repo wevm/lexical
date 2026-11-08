@@ -59,9 +59,12 @@ struct PlaygroundView: View {
         .id(model.generation)
         .accessibilityIdentifier("editor")
         .frame(maxWidth: .infinity, minHeight: isWide ? nil : 120, maxHeight: .infinity)
+        // The comment boxes follow the editor's size, as the web's follow
+        // the window's.
+        .onGeometryChange(for: CGSize.self, of: { $0.size }) { _ in model.comments.refreshHosts() }
         .overlay(alignment: .topTrailing) {
           // `CommentPlugin`'s Show Comments button.
-          ShowCommentsButton(comments: model.comments).padding(10)
+          ShowCommentsButton(comments: model.comments).padding(ShowCommentsButton.margin)
         }
         .overlay(alignment: .topTrailing) {
           // A compact width has no room beside the editor.

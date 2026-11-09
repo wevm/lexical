@@ -66,6 +66,40 @@ final class LexicalPlaygroundMacUITests: XCTestCase {
       "\(panel.identifier) did not move with the text.")
   }
 
+  /// A typeahead menu stays inside the window: in a 640 point window the
+  /// editor is narrower than the "/" menu, which is pulled in at the
+  /// editor's right edge and so went past the window's left edge.
+  @MainActor
+  func testTypeaheadMenuStaysInsideANarrowWindow() {
+    app = XCUIApplication()
+    app.launch()
+    let window = app.windows.firstMatch
+    let editor = app.descendants(matching: .any)["editor"].textViews.firstMatch
+    XCTAssertTrue(editor.waitForExistence(timeout: 10), app.debugDescription)
+    // Drags the window's bottom right corner to make it `width` wide.
+    func resize(to width: CGFloat) {
+      let corner = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 1))
+        .withOffset(CGVector(dx: -2, dy: -2))
+      corner.click(
+        forDuration: 0.3,
+        thenDragTo: corner.withOffset(CGVector(dx: width - window.frame.width, dy: 0)))
+    }
+    let width = window.frame.width
+    addTeardownBlock { @MainActor in resize(to: width) }
+    resize(to: 640)
+    app.buttons["Clear"].click()
+    editor.click()
+    editor.typeText("/")
+    let menu = app.descendants(matching: .any)["typeahead-menu"].firstMatch
+    XCTAssertTrue(menu.waitForExistence(timeout: 5), app.debugDescription)
+    sleep(1)
+    XCTAssertLessThan(
+      editor.frame.width, menu.frame.width,
+      "The editor is not narrower than the menu in \(window.frame).")
+    XCTAssertGreaterThanOrEqual(
+      menu.frame.minX, window.frame.minX, "menu \(menu.frame), window \(window.frame)")
+  }
+
   /// Types "Hello", selects it, runs `insertLink`, then types a URL with no
   /// click and checks that it became the link's.
   @MainActor

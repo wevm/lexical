@@ -120,7 +120,7 @@ final class FloatingTextFormatToolbarHost: TypeaheadMenuAttaching {
     private weak var textView: LexicalNSTextView?
     private let panel = MenuPanel()
     private let hostingController: NSHostingController<FloatingTextFormatToolbarView>
-    private var scrollObserver: NSObjectProtocol?
+    private lazy var scrolling = TextScrollObserver { [weak self] in self?.position() }
   #endif
 
   init(model: PlaygroundModel) {
@@ -135,15 +135,8 @@ final class FloatingTextFormatToolbarHost: TypeaheadMenuAttaching {
   func attach(to root: AnyObject?) {
     #if os(macOS)
       hide()
-      if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
-      scrollObserver = nil
       textView = root as? LexicalNSTextView
-      if let clipView = textView?.enclosingScrollView?.contentView {
-        clipView.postsBoundsChangedNotifications = true
-        scrollObserver = NotificationCenter.default.addObserver(
-          forName: NSView.boundsDidChangeNotification, object: clipView, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.position() } }
-      }
+      scrolling.observe(root)
       refresh()
     #else
       // The formats, then `ContextMenuPlugin`'s items, before the system's.

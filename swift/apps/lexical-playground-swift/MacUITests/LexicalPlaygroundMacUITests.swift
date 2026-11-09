@@ -23,6 +23,49 @@ final class LexicalPlaygroundMacUITests: XCTestCase {
     assertLinksHello { editor in editor.typeKey("k", modifierFlags: .command) }
   }
 
+  /// The floating format toolbar and the "/" menu, panels over the text
+  /// view, move with their selection and query as the text scrolls.
+  @MainActor
+  func testFormatToolbarAndMenuFollowTheScrolledText() {
+    app = XCUIApplication()
+    app.launch()
+    let editor = app.descendants(matching: .any)["editor"].textViews.firstMatch
+    XCTAssertTrue(editor.waitForExistence(timeout: 10), app.debugDescription)
+    app.buttons["Clear"].click()
+    editor.click()
+    editor.typeText((1...40).map { "Line \($0)" }.joined(separator: "\r"))
+    // "Line" in line 6, then a "/" query in a line after it.
+    editor.typeKey(.upArrow, modifierFlags: .command)
+    for _ in 1..<6 { editor.typeKey(.downArrow, modifierFlags: []) }
+    editor.typeKey(.rightArrow, modifierFlags: [.shift, .option])
+    let toolbar = app.descendants(matching: .any)["floating-text-format-toolbar"].firstMatch
+    XCTAssertTrue(toolbar.waitForExistence(timeout: 5), app.debugDescription)
+    assertFollowsTheScrolledText(toolbar, editor)
+    editor.typeKey(.rightArrow, modifierFlags: .command)
+    editor.typeText("\r/")
+    let menu = app.descendants(matching: .any)["typeahead-menu"].firstMatch
+    XCTAssertTrue(menu.waitForExistence(timeout: 5), app.debugDescription)
+    assertFollowsTheScrolledText(menu, editor)
+  }
+
+  /// Scrolls the text up a little and checks that `panel` moved as far.
+  @MainActor
+  private func assertFollowsTheScrolledText(_ panel: XCUIElement, _ editor: XCUIElement) {
+    let panelTop = panel.frame.minY
+    let textTop = editor.frame.minY
+    // The wheel goes to the top of the editor's visible part (its scroll
+    // view), above the panels, which would take it.
+    app.descendants(matching: .any)["editor"].firstMatch
+      .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05))
+      .scroll(byDeltaX: 0, deltaY: -30)
+    sleep(1)
+    let scrolled = editor.frame.minY - textTop
+    XCTAssertLessThan(scrolled, -10, "The text did not scroll: \(editor.frame).")
+    XCTAssertEqual(
+      panel.frame.minY - panelTop, scrolled, accuracy: 1,
+      "\(panel.identifier) did not move with the text.")
+  }
+
   /// Types "Hello", selects it, runs `insertLink`, then types a URL with no
   /// click and checks that it became the link's.
   @MainActor

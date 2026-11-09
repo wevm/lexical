@@ -376,6 +376,7 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
       let root = toDown(rootVisible)
       // `window.innerHeight`: the bottom of the window.
       let bottom = screenTop - window.frame.minY
+      let windowLeft = window.frame.minX
       let size = hostingController.sizeThatFits(
         in: CGSize(width: screen.frame.width, height: .greatestFiniteMagnitude))
     #else
@@ -390,6 +391,7 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
       let keyboard = container.convert(keyboardFrame, from: container.screen.coordinateSpace)
       let bottom =
         keyboardFrame.isNull ? container.bounds.maxY : min(container.bounds.maxY, keyboard.minY)
+      let windowLeft = container.bounds.minX
       model.maxWidth = root.width
       model.maxHeight = max(
         44, bottom - rect.maxY - 3 - 2 * TypeaheadMenuView.shadowMargin,
@@ -407,8 +409,10 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
     if y + height > bottom || y + height > root.maxY, rect.minY - root.minY > height + rect.height {
       y = rect.minY - height - 3
     }
-    // Pulled in at the root's right edge.
-    let x = min(rect.minX, root.maxX - width)
+    // Pulled in at the root's right edge, and, where the root is narrower
+    // than the menu (a narrow window), kept inside the window, where the
+    // web's would pass the root's left edge.
+    let x = max(windowLeft, min(rect.minX, root.maxX - width))
     let frame = CGRect(
       x: x - margin, y: y - margin, width: width + 2 * margin, height: height + 2 * margin)
     #if os(macOS)

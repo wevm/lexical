@@ -4,6 +4,14 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.8
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- On iOS, a long press on a decorator in `LexicalUITextView` no longer opens UIKit's text attachment menu, which offered Copy Image and Save to Camera Roll over a blank preview. That menu could also take the long press that starts dragging a selected decorator, so the drag didn't start.
+
 ## 0.1.7
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

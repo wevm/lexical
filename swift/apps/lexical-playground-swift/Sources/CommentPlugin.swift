@@ -156,6 +156,11 @@ final class CommentsModel {
   @ObservationIgnored private lazy var scrolling = TextScrollObserver { [weak self] in
     self?.placeAddComment()
   }
+  #if os(macOS)
+    /// The frame of the format toolbar's panel on the screen, or `nil`
+    /// while it hides: the add comment button keeps clear of it.
+    @ObservationIgnored var formatToolbarFrame: (() -> CGRect?)?
+  #endif
   /// The add comment button shows (the web hides it below 600 pixels).
   var isWide = true {
     didSet { refreshHosts() }
@@ -396,7 +401,11 @@ final class CommentsModel {
   /// The web's Show Comments button is in the page's top right corner,
   /// above the editor. Here it is in the editor's, over the text, so where
   /// the box would be under it (a selection in the first line, or in a
-  /// line scrolled to the top) the box goes below it.
+  /// line scrolled to the top) the box goes below it. On macOS the box
+  /// goes below the format toolbar too, which is in a panel over the
+  /// window, where it would be under the toolbar (the web draws the box
+  /// over it): beside a selection at the right of a line, and in a narrow
+  /// window, where the toolbar is wider than the editor.
   private func addCommentFrame() -> CGRect? {
     guard let key = activeAnchorKey, let textView = addCommentHost.textView,
       let anchor = try? editor?.read(
@@ -414,6 +423,12 @@ final class CommentsModel {
     let showComments = CGRect(
       x: editor.maxX - corner, y: editor.minY, width: corner, height: corner)
     if frame.intersects(showComments) { frame.origin.y = showComments.maxY }
+    #if os(macOS)
+      if let toolbar = formatToolbarFrame?(), let window = textView.window {
+        let panel = textView.convert(window.convertFromScreen(toolbar), from: nil)
+        if frame.intersects(panel) { frame.origin.y = panel.maxY }
+      }
+    #endif
     return frame
   }
 

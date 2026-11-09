@@ -163,12 +163,25 @@ final class FloatingTextFormatToolbarHost: TypeaheadMenuAttaching {
     }
 
     private func position() {
+      guard let frame = panelFrame(), let window = textView?.window else { return hide() }
+      panel.setFrame(frame, display: true)
+      if panel.parent !== window {
+        panel.parent?.removeChildWindow(panel)
+        window.addChildWindow(panel, ordered: .above)
+      }
+      panel.orderFront(nil)
+    }
+
+    /// The frame of the popup's panel, with the room for its shadow, in
+    /// the screen's coordinates, or `nil` where it hides. The add comment
+    /// button keeps clear of it.
+    func panelFrame() -> CGRect? {
       guard let model, model.isRichText, model.isFloatingText, !model.isLink, model.isEditable,
         !model.comments.showCommentInput, let selection = model.selectionPoints, let textView,
         let window = textView.window,
         let screen = window.screen,
         let range = textView.rect(from: selection.anchor, to: selection.focus)
-      else { return hide() }
+      else { return nil }
       // Screen space with y growing downward, as the DOM's.
       let screenTop = screen.frame.maxY
       func toDown(_ r: CGRect) -> CGRect {
@@ -200,17 +213,10 @@ final class FloatingTextFormatToolbarHost: TypeaheadMenuAttaching {
         left = scroller.minX + horizontalOffset
       }
       // A selection scrolled out of the editor shows no popup.
-      if target.maxY < scroller.minY || target.minY > scroller.maxY { return hide() }
-      panel.setFrame(
-        CGRect(
-          x: left - margin, y: screenTop - (top + height + margin), width: size.width,
-          height: size.height),
-        display: true)
-      if panel.parent !== window {
-        panel.parent?.removeChildWindow(panel)
-        window.addChildWindow(panel, ordered: .above)
-      }
-      panel.orderFront(nil)
+      if target.maxY < scroller.minY || target.minY > scroller.maxY { return nil }
+      return CGRect(
+        x: left - margin, y: screenTop - (top + height + margin), width: size.width,
+        height: size.height)
     }
   #else
     private func editMenuElements() -> [UIMenuElement] {

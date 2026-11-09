@@ -738,12 +738,11 @@ final class LexicalPlaygroundUITests: XCTestCase {
     waitForExpectations(timeout: 5)
   }
 
-  /// A selected image, long-pressed and dragged into the line above, moves
-  /// there (`ImagesExtension`'s `DRAGSTART`/`DROP_COMMAND` handlers), as
-  /// the web playground drags it. The debug view is off, so the editor is
-  /// tall enough for both lines above the keyboard.
+  /// The sample image, selected, on the line after "Hello world". The
+  /// debug view is off, so the editor is tall enough for both lines above
+  /// the keyboard.
   @MainActor
-  func testDraggingASelectedImageMovesIt() {
+  private func selectedImageAfterALine() -> (editor: XCUIElement, image: XCUIElement) {
     launch()
     app.buttons["Settings"].tap()
     let toggle = app.switches["Debug View"]
@@ -761,6 +760,26 @@ final class LexicalPlaygroundUITests: XCTestCase {
     let image = app.descendants(matching: .any)["editor-image"]
     XCTAssertTrue(image.waitForExistence(timeout: 5), app.debugDescription)
     image.tap()
+    return (editor, image)
+  }
+
+  /// A long press on a selected image is left to its drag: UIKit's menu
+  /// for a text attachment, whose Copy Image and Save to Camera Roll have
+  /// no image to use and whose preview is blank, doesn't open, and so
+  /// can't take the press from the drag.
+  @MainActor
+  func testLongPressingASelectedImageOpensNoAttachmentMenu() {
+    let (_, image) = selectedImageAfterALine()
+    image.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).press(forDuration: 1.5)
+    XCTAssertFalse(app.buttons["Copy Image"].waitForExistence(timeout: 1))
+  }
+
+  /// A selected image, long-pressed and dragged into the line above, moves
+  /// there (`ImagesExtension`'s `DRAGSTART`/`DROP_COMMAND` handlers), as
+  /// the web playground drags it.
+  @MainActor
+  func testDraggingASelectedImageMovesIt() {
+    let (editor, image) = selectedImageAfterALine()
     // Between "Hello" and " world", on the line above the image's.
     let target = image.coordinate(withNormalizedOffset: .zero)
       .withOffset(CGVector(dx: 42, dy: -14))

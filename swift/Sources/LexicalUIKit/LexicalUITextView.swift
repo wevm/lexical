@@ -787,6 +787,22 @@
       return false
     }
 
+    /// No menu for a decorator's attachment: the decorator's view takes its
+    /// own presses, as a web decorator's component does. UIKit's menu for an
+    /// attachment would offer to copy or save an image it doesn't have,
+    /// over a blank preview, and would take the long press that drags a
+    /// selected decorator. Links keep UIKit's menu.
+    public func textView(
+      _ textView: UITextView, menuConfigurationFor textItem: UITextItem, defaultMenu: UIMenu
+    ) -> UITextItem.MenuConfiguration? {
+      if case .textAttachment(let attachment) = textItem.content,
+        attachment is LexicalDecoratorAttachment
+      {
+        return nil
+      }
+      return UITextItem.MenuConfiguration(menu: defaultMenu)
+    }
+
     public override func toggleBoldface(_ sender: Any?) { beforeInput("formatBold") }
     public override func toggleItalics(_ sender: Any?) { beforeInput("formatItalic") }
     public override func toggleUnderline(_ sender: Any?) { beforeInput("formatUnderline") }

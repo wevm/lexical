@@ -408,6 +408,9 @@ final class PlaygroundModel {
     }
     unregister += [picker.unregister, emoji.unregister, mentions.unregister]
     comments.onInputChange = { [weak self] in self?.formatToolbarHost.refresh() }
+    #if os(macOS)
+      comments.formatToolbarFrame = { [weak self] in self?.formatToolbarHost.panelFrame() }
+    #endif
     if let unregisterComments = try? comments.register(editor) {
       unregister.append(unregisterComments)
     }

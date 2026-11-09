@@ -43,13 +43,16 @@ jobs:
         run: |
           # The newest installed runtime of this version (or of this major
           # version), downloading it when the image has none, and an iPhone
-          # on it, created when there is none.
+          # on it, created when there is none. A runtime made for one device
+          # doesn't count: the image's iOS-27-2-iPhone19-4 and iOS-27-1 run
+          # only the iPhone Duo, whose wide screen the tests aren't written for.
           pick_runtime() {
             xcrun simctl list runtimes available -j | python3 -c '
           import json, os, sys
           want = os.environ["IOS_VERSION"].split(".")
           found = [r for r in json.load(sys.stdin)["runtimes"]
-                   if r["platform"] == "iOS" and r["version"].split(".")[:len(want)] == want]
+                   if r["platform"] == "iOS" and r["version"].split(".")[:len(want)] == want
+                   and len(r["supportedDeviceTypes"]) > 1]
           if found:
               print(max(found, key=lambda r: [int(x) for x in r["version"].split(".")])["identifier"])
           '

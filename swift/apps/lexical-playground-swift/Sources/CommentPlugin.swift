@@ -153,11 +153,9 @@ final class CommentsModel {
     rootView: AddCommentBox(comments: self))
   @ObservationIgnored private lazy var inputHost = TextViewOverlayHost(
     rootView: CommentInputBox(comments: self))
-  #if os(macOS)
-    @ObservationIgnored private var scrollObserver: (any NSObjectProtocol)?
-  #else
-    @ObservationIgnored private var offsetObservation: NSKeyValueObservation?
-  #endif
+  @ObservationIgnored private lazy var scrolling = TextScrollObserver { [weak self] in
+    self?.placeAddComment()
+  }
   /// The add comment button shows (the web hides it below 600 pixels).
   var isWide = true {
     didSet { refreshHosts() }
@@ -235,12 +233,6 @@ final class CommentsModel {
         }, COMMAND_PRIORITY_EDITOR))
   }
 
-  #if os(macOS)
-    isolated deinit {
-      if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
-    }
-  #endif
-
   /// Moves the button and the input box into `root`, the editor's text
   /// view, and moves the button as the text scrolls under the Show Comments
   /// button.
@@ -248,33 +240,10 @@ final class CommentsModel {
     controller = textController(root)
     addCommentHost.attach(to: root)
     inputHost.attach(to: root)
-    #if os(macOS)
-      // The text view attaches as it is made, before it is in its scroll
-      // view.
-      DispatchQueue.main.async { [weak self] in self?.observeScrolling() }
-    #else
-      offsetObservation = (root as? UIScrollView)?.observe(\.contentOffset) { [weak self] _, _ in
-        // After the text view has laid out the scroll's text.
-        DispatchQueue.main.async { self?.placeAddComment() }
-      }
-    #endif
+    scrolling.observe(root)
     refreshHighlights()
     refreshHosts()
   }
-
-  #if os(macOS)
-    /// Places the add comment button again as the text view's scroll view
-    /// scrolls.
-    private func observeScrolling() {
-      if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
-      scrollObserver = nil
-      guard let clipView = addCommentHost.textView?.enclosingScrollView?.contentView else { return }
-      clipView.postsBoundsChangedNotifications = true
-      scrollObserver = NotificationCenter.default.addObserver(
-        forName: NSView.boundsDidChangeNotification, object: clipView, queue: .main
-      ) { [weak self] _ in MainActor.assumeIsolated { self?.placeAddComment() } }
-    }
-  #endif
 
   // MARK: Actions
 

@@ -170,6 +170,57 @@ func textController(_ root: AnyObject?) -> TextKitInputController? {
   (root as? TextView)?.controller
 }
 
+/// Calls its action as the text of the editor's text view scrolls, for
+/// what is over the text and follows it: as the bounds of the scroll
+/// view's clip view change on macOS, and after the text view's content
+/// offset changes on iOS, once it has laid out the scrolled text.
+@MainActor
+final class TextScrollObserver {
+  private let action: () -> Void
+  private weak var textView: TextView?
+  #if os(macOS)
+    private var observer: (any NSObjectProtocol)?
+  #else
+    private var observation: NSKeyValueObservation?
+  #endif
+
+  init(_ action: @escaping () -> Void) {
+    self.action = action
+  }
+
+  #if os(macOS)
+    isolated deinit {
+      if let observer { NotificationCenter.default.removeObserver(observer) }
+    }
+  #endif
+
+  /// Follows `root`, the editor's new root element.
+  func observe(_ root: AnyObject?) {
+    textView = root as? TextView
+    #if os(macOS)
+      // The text view attaches as it is made, before SwiftUI puts it in
+      // its scroll view.
+      DispatchQueue.main.async { [weak self] in self?.observeClipView() }
+    #else
+      observation = textView?.observe(\.contentOffset) { [weak self] _, _ in
+        DispatchQueue.main.async { self?.action() }
+      }
+    #endif
+  }
+
+  #if os(macOS)
+    private func observeClipView() {
+      if let observer { NotificationCenter.default.removeObserver(observer) }
+      observer = nil
+      guard let clipView = textView?.enclosingScrollView?.contentView else { return }
+      clipView.postsBoundsChangedNotifications = true
+      observer = NotificationCenter.default.addObserver(
+        forName: NSView.boundsDidChangeNotification, object: clipView, queue: .main
+      ) { [weak self] _ in MainActor.assumeIsolated { self?.action() } }
+    }
+  #endif
+}
+
 /// Keeps a menu over the editor's window, under its query
 /// (`useMenuAnchorRef` and `useDynamicPositioning`), drawing `menu`'s
 /// options with `row`.
@@ -183,7 +234,6 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
     private let panel = MenuPanel()
   #else
     private let hostingController: UIHostingController<TypeaheadMenuView>
-    private var offsetObservation: NSKeyValueObservation?
     /// The keyboard's frame in the screen's space, from its notifications:
     /// the window's `keyboardLayoutGuide`, once made, keeps sheets from
     /// rising above the keyboard.
@@ -193,7 +243,7 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
   private weak var textView: TextView?
   private var hostingView: PlatformView { hostingController.view }
   private var removeScroll: (() -> Void)?
-  private var scrollObserver: (any NSObjectProtocol)?
+  private lazy var scrolling = TextScrollObserver { [weak self] in self?.position(isScroll: true) }
 
   init(menu: MenuState<Option>, row: @escaping (Option) -> TypeaheadMenuRow) {
     self.menu = menu
@@ -231,7 +281,6 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
 
   isolated deinit {
     removeScroll?()
-    if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
     #if !os(macOS)
       if let keyboardObserver { NotificationCenter.default.removeObserver(keyboardObserver) }
     #endif
@@ -259,22 +308,8 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
   /// its text as it scrolls.
   func attach(to root: AnyObject?) {
     hide()
-    if let scrollObserver { NotificationCenter.default.removeObserver(scrollObserver) }
-    scrollObserver = nil
     textView = root as? TextView
-    #if os(macOS)
-      if let clipView = textView?.enclosingScrollView?.contentView {
-        clipView.postsBoundsChangedNotifications = true
-        scrollObserver = NotificationCenter.default.addObserver(
-          forName: NSView.boundsDidChangeNotification, object: clipView, queue: .main
-        ) { [weak self] _ in MainActor.assumeIsolated { self?.position(isScroll: true) } }
-      }
-    #else
-      offsetObservation = textView?.observe(\.contentOffset) { [weak self] _, _ in
-        // After the text view has laid out the scroll's text.
-        DispatchQueue.main.async { self?.position(isScroll: true) }
-      }
-    #endif
+    scrolling.observe(root)
     refresh()
   }
 

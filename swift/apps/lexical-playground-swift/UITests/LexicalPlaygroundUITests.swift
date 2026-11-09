@@ -337,6 +337,31 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertFalse(tree.contains("/quo"), tree)
   }
 
+  /// A typeahead menu opens where it stays: the mentions menu is in the
+  /// same place when it first opens as when it opens again on the same
+  /// query, from where it was placed. Its view's safe area (the status bar
+  /// over the view's first place, the keyboard) once made it measure the
+  /// menu taller and draw it lower, until the text scrolled.
+  @MainActor
+  func testTypeaheadMenuOpensWhereItStays() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("Hi @Luk")
+    let menu = app.descendants(matching: .any)["typeahead-menu"].firstMatch
+    XCTAssertTrue(menu.waitForExistence(timeout: 5))
+    sleep(1)
+    let opened = menu.frame
+    // Deleting the query closes the menu, and typing it again reopens it.
+    editor.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4))
+    XCTAssertTrue(menu.waitForNonExistence(timeout: 5))
+    editor.typeText("@Luk")
+    XCTAssertTrue(menu.waitForExistence(timeout: 5))
+    sleep(1)
+    XCTAssertEqual(
+      opened.minY, menu.frame.minY, accuracy: 0.5,
+      "opened at \(opened), reopened at \(menu.frame)")
+  }
+
   /// `MentionsPlugin`: "@" and a name list the people the dummy lookup
   /// finds, and Return turns the query into a mention.
   @MainActor

@@ -254,6 +254,11 @@ final class TypeaheadMenuHost<Option: MenuOption>: TypeaheadMenuAttaching {
       panel.contentView = hostingController.view
     #else
       hostingController.view.backgroundColor = .clear
+      // The menu's view is placed in the window at the size it measures.
+      // The window's safe area (the status bar, the home indicator, the
+      // keyboard) where the view is would pad that measure, and the menu
+      // would draw centered in the taller frame, below or above its place.
+      hostingController.safeAreaRegions = []
       hostingView.isHidden = true
     #endif
     model.choose = { [weak self] index in

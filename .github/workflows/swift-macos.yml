@@ -1,7 +1,7 @@
 name: Swift (macOS)
 
 # The Swift port on macOS and the iOS Simulator, with the Xcode 27 toolchain,
-# and on macOS with Xcode 26.5, the oldest supported.
+# and on macOS (with an iOS Simulator build) with Xcode 26.5, the oldest supported.
 # The package supports iOS 26 and macOS 26, so the oldest runtimes run too.
 # Path-filtered because macOS runners are slow to start.
 
@@ -61,8 +61,18 @@ jobs:
           persist-credentials: false
       - run: sudo xcode-select -s /Applications/Xcode_26.5.app/Contents/Developer
       - run: swift --version
+      # The oldest swift-syntax the manifest accepts (Swift 6.3 would resolve
+      # 604), so a change that needs a newer one fails here. Pinning one
+      # dependency needs a resolution to pin it in.
+      - name: Resolve swift-syntax 603.0.0
+        run: swift package resolve && swift package resolve swift-syntax --version 603.0.0
       - name: Build and test (macOS)
         run: swift test
+      # The UIKit view compiles only for iOS; build it with the iOS 26.5 SDK.
+      - name: Build (iOS Simulator)
+        run: |
+          xcodebuild build -scheme Lexical-Package -destination 'generic/platform=iOS Simulator' \
+            -skipPackagePluginValidation -skipMacroValidation
 
   ios:
     name: Swift (iOS ${{ matrix.ios }} Simulator)

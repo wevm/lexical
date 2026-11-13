@@ -1,12 +1,15 @@
 //! `LexicalUtils.ts`: keys, node lookup, `getWritable` and the dirty marks
 //! it leaves for the update cycle.
 
-use crate::EditorState;
+use crate::caret_tree::detach_node;
 use crate::editor::DirtyType;
 use crate::node::{LexicalNode, NodeRef};
+use crate::nodes::element::is_root_or_shadow_root;
+use crate::nodes::paragraph::create_paragraph_node;
 use crate::updates::{
     error_on_infinite_transforms, error_on_read_only, get_active_editor, get_active_editor_state,
 };
+use crate::{EditorState, LexicalError};
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -41,9 +44,67 @@ pub fn get_node_by_key(key: &str) -> Option<NodeRef> {
     get_node_by_key_impl(&get_active_editor_state(), key).map(|_| NodeRef::new(key))
 }
 
+/// `$getNodeByKeyOrThrow(key)`.
+pub(crate) fn get_node_by_key_or_throw(key: &str) -> Result<NodeRef, LexicalError> {
+    get_node_by_key(key).ok_or_else(|| {
+        LexicalError::new(format!(
+            "Expected node with key {key} to exist but it's not in the nodeMap."
+        ))
+    })
+}
+
 /// `$getRoot()`.
 pub fn get_root() -> NodeRef {
     NodeRef::new("root")
+}
+
+/// `$isShadowRootNode(node)`.
+pub(crate) fn is_shadow_root_node(node: &NodeRef) -> bool {
+    let node = node.get_latest();
+    node.element().is_some() && node.is_shadow_root()
+}
+
+/// `INTERNAL_$isBlock(node)`: an element that is not a root or shadow
+/// root, not inline, can be empty, and has no children or an inline first
+/// child. (A block `DecoratorNode` too, once it is ported.)
+pub(crate) fn is_block(node: &NodeRef) -> bool {
+    if !node.is_element() || is_root_or_shadow_root(&*node.get_latest()) {
+        return false;
+    }
+    let is_leaf_element = node.get_first_child().is_none_or(|first| first.is_inline());
+    !node.is_inline() && node.can_be_empty() && is_leaf_element
+}
+
+/// `$removeFromParent(node)`: detaches the node without repairing the
+/// selection.
+pub(crate) fn remove_from_parent(node: &NodeRef) {
+    if node.get_parent().is_some() {
+        get_writable(node.get_key());
+    }
+    detach_node(node);
+}
+
+/// `$restoreEmptyContainerParagraph(container, removedChild)`: appends an
+/// empty paragraph to a root or shadow root a removal left empty, and
+/// returns it.
+pub(crate) fn restore_empty_container_paragraph(
+    container: Option<&NodeRef>,
+    removed_child: Option<&NodeRef>,
+) -> Result<Option<NodeRef>, LexicalError> {
+    let Some(container) = container.filter(|c| is_root_or_shadow_root(&*c.get_latest())) else {
+        return Ok(None);
+    };
+    // Root slots (such as footnotes) do not replace the editable body, once
+    // slots are ported.
+    if !container.is_attached()
+        || !container.is_empty()
+        || !(container.is_root() || removed_child.is_some_and(is_block))
+    {
+        return Ok(None);
+    }
+    let paragraph = create_paragraph_node();
+    container.append(std::slice::from_ref(&paragraph))?;
+    Ok(Some(paragraph))
 }
 
 /// `$setNodeKey(node, null)`: gives a new node a key, puts it in the active
@@ -118,6 +179,9 @@ pub(crate) fn internal_mark_siblings_as_dirty(node: &NodeRef) {
 /// it. Changes then go through [`mutate`].
 pub(crate) fn get_writable(key: &str) {
     error_on_read_only();
+    if let Some(selection) = get_active_editor_state().0.selection.borrow().as_ref() {
+        selection.set_cached_nodes(None);
+    }
     unshare(key);
     internal_mark_node_as_dirty(key);
 }

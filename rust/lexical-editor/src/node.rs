@@ -208,6 +208,17 @@ impl NodeRef {
         self.get_latest().base().parent.clone().map(NodeRef::new)
     }
 
+    /// `getParents()`: the ancestors, nearest first.
+    pub fn get_parents(&self) -> Vec<NodeRef> {
+        let mut parents = Vec::new();
+        let mut node = self.get_parent();
+        while let Some(n) = node {
+            node = n.get_parent();
+            parents.push(n);
+        }
+        parents
+    }
+
     pub fn get_previous_sibling(&self) -> Option<NodeRef> {
         self.get_latest().base().prev.clone().map(NodeRef::new)
     }

@@ -5,17 +5,19 @@
 //! log of what listeners, transforms and command handlers saw must match
 //! what JS recorded.
 //!
-//! A script that uses an action the port can't run yet (selection editing,
-//! carets) is counted as waiting on that part of `lexical`, never as
-//! passing.
+//! A script that uses an action the port can't run yet (selection editing)
+//! is counted as waiting on that part of `lexical`, never as passing.
 
 use crate::case::{Case, Outcome, same};
 use lexical::json::Value;
 use lexical::{
-    COMMAND_PRIORITY_EDITOR, CreateEditorArgs, Direction, Editor, LexicalCommand, LexicalError,
-    NodeRef, PointType, UpdateOptions, Which, create_command, create_editor,
-    create_range_selection, get_node_by_key, get_root, get_selection, parse_serialized_node,
-    reset_random_key, set_selection, utf16,
+    COMMAND_PRIORITY_EDITOR, CaretDirection, CreateEditorArgs, Direction, Editor, LexicalCommand,
+    LexicalError, NodeRef, PointCaret, PointType, RangeSelection, SliceMode, TextOffset,
+    TextPointCaretSlice, UpdateOptions, Which, caret_range_from_selection, create_command,
+    create_editor, create_range_selection, get_caret_range, get_child_caret, get_node_by_key,
+    get_root, get_selection, get_sibling_caret, get_text_point_caret, normalize_caret,
+    parse_serialized_node, remove_text_from_caret_range, reset_random_key, set_selection,
+    set_selection_from_caret_range, utf16,
 };
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -46,12 +48,18 @@ impl Ctx {
 /// The part of `lexical` an action needs that isn't ported yet, if any.
 fn unported_action(action: &Value) -> Option<&'static str> {
     match action.get("do").and_then(Value::as_str) {
-        Some("append" | "select" | "clearSelection" | "node" | "dispatch") => None,
+        Some(
+            "append"
+            | "select"
+            | "clearSelection"
+            | "node"
+            | "dispatch"
+            | "logCaretRange"
+            | "removeTextFromCaretRange"
+            | "logNormalizeCaret",
+        ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => {
             Some("lexical (selection editing)")
-        }
-        Some("logCaretRange" | "removeTextFromCaretRange" | "logNormalizeCaret") => {
-            Some("lexical (carets)")
         }
         _ => Some("unknown"),
     }
@@ -142,6 +150,65 @@ fn point_type(v: &Value) -> Result<PointType, LexicalError> {
         Some("text") => Ok(PointType::Text),
         Some("element") => Ok(PointType::Element),
         _ => Err(err(format!("bad point type {v}"))),
+    }
+}
+
+/// `$sel()`: the range selection.
+fn sel() -> Result<RangeSelection, LexicalError> {
+    get_selection()
+        .and_then(|s| s.range())
+        .ok_or_else(|| err("not a range selection"))
+}
+
+fn direction(v: &Value) -> Result<CaretDirection, LexicalError> {
+    match v.as_str() {
+        Some("next") => Ok(CaretDirection::Next),
+        Some("previous") => Ok(CaretDirection::Previous),
+        _ => Err(err(format!("bad direction {v}"))),
+    }
+}
+
+/// `$caret(spec)`.
+fn caret(spec: &Value) -> Result<PointCaret, LexicalError> {
+    let key = string(&arg(Some(spec), 0))?;
+    let dir = direction(&arg(Some(spec), 1))?;
+    let n = node(&key)?;
+    match arg(Some(spec), 2).as_str() {
+        Some("text") => {
+            let n = text(n)?;
+            let offset = match arg(Some(spec), 3) {
+                v @ Value::String(_) => TextOffset::End(direction(&v)?),
+                v => TextOffset::Offset(number(&v)? as usize),
+            };
+            get_text_point_caret(&n, dir, offset)
+        }
+        Some("child") => {
+            let n = element(n)?;
+            Ok(get_child_caret(&n, dir).expect("an element"))
+        }
+        _ => Ok(get_sibling_caret(&n, dir)),
+    }
+}
+
+/// `caretSnapshot(caret)`.
+fn caret_snapshot(caret: &PointCaret) -> Value {
+    let key = caret.origin().get_key().into();
+    let dir = caret.direction().as_str().into();
+    match caret.offset() {
+        Some(offset) => Value::Array(vec!["text".into(), key, dir, (offset as f64).into()]),
+        None => Value::Array(vec![caret.caret_type().into(), key, dir]),
+    }
+}
+
+/// A text slice in the log: `[key, offset, distance]`.
+fn slice_snapshot(slice: &Option<TextPointCaretSlice>) -> Value {
+    match slice {
+        None => Value::Null,
+        Some(s) => Value::Array(vec![
+            s.caret.origin().get_key().into(),
+            (s.caret.offset().unwrap_or(0) as f64).into(),
+            (s.distance as f64).into(),
+        ]),
     }
 }
 
@@ -276,6 +343,45 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             let key = action.get("key").and_then(Value::as_str).unwrap_or("");
             let method = action.get("method").and_then(Value::as_str).unwrap_or("");
             run_node_method(node(key)?, method, action.get("args"), ctx)
+        }
+        Some("logCaretRange") => {
+            let range = match (action.get("anchor"), action.get("focus")) {
+                (Some(anchor), Some(focus)) => get_caret_range(caret(anchor)?, caret(focus)?)?,
+                _ => caret_range_from_selection(&sel()?)?,
+            };
+            let [anchor_slice, focus_slice] = range.get_text_slices();
+            ctx.log(vec![
+                "caretRange".into(),
+                caret_snapshot(&range.anchor),
+                caret_snapshot(&range.focus),
+                Value::Array(range.iter().map(|c| caret_snapshot(&c)).collect()),
+                Value::Array(vec![
+                    slice_snapshot(&anchor_slice),
+                    slice_snapshot(&focus_slice),
+                ]),
+            ]);
+            Ok(())
+        }
+        Some("removeTextFromCaretRange") => {
+            let range = remove_text_from_caret_range(
+                &caret_range_from_selection(&sel()?)?,
+                SliceMode::RemoveEmptySlices,
+            )?;
+            ctx.log(vec![
+                "removeTextFromCaretRange".into(),
+                caret_snapshot(&range.anchor),
+                caret_snapshot(&range.focus),
+            ]);
+            set_selection_from_caret_range(&range)?;
+            Ok(())
+        }
+        Some("logNormalizeCaret") => {
+            let spec = action.get("caret").unwrap_or(&Value::Null);
+            ctx.log(vec![
+                "normalizeCaret".into(),
+                caret_snapshot(&normalize_caret(&caret(spec)?)),
+            ]);
+            Ok(())
         }
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");

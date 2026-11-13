@@ -44,7 +44,9 @@
 //! );
 //! ```
 
+mod caret;
 mod caret_tree;
+mod caret_utils;
 pub mod constants;
 mod editor;
 mod editor_state;
@@ -62,6 +64,22 @@ mod updates;
 pub mod utf16;
 mod utils;
 
+pub use caret::{
+    CaretDirection, CaretKind, CaretRange, ChildCaret, CommonAncestorResult, NodeCaret, PointCaret,
+    RootMode, SiblingCaret, TextOffset, TextPointCaret, TextPointCaretSlice,
+    compare_point_caret_next, extend_caret_to_range, flip_direction, get_adjacent_child_caret,
+    get_caret_in_direction, get_caret_range, get_child_caret, get_child_caret_or_self,
+    get_collapsed_caret_range, get_common_ancestor, get_common_ancestor_result_branch_order,
+    get_sibling_caret, get_text_node_offset, get_text_point_caret, get_text_point_caret_slice,
+    make_stepwise_iterator,
+};
+pub use caret_utils::{
+    SliceMode, caret_from_point, caret_range_from_selection,
+    get_adjacent_sibling_or_parent_sibling_caret, get_caret_range_in_direction,
+    get_child_caret_at_index, get_text_point_caret_slice_for_node, is_extendable_text_point_caret,
+    normalize_caret, remove_text_from_caret_range, rewind_sibling_caret, set_point_from_caret,
+    set_selection_from_caret_range, update_range_selection_from_caret_range,
+};
 pub use editor::{
     COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
     COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, CreateEditorArgs, Editor, HISTORY_MERGE_TAG,

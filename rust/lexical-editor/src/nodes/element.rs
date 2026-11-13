@@ -1,9 +1,19 @@
 //! `nodes/LexicalElementNode.ts`: the fields and base behavior of nodes that
 //! have children.
 
-use crate::constants::{DOUBLE_LINE_BREAK, ELEMENT_TYPE_TO_FORMAT, name_of};
+use crate::caret_tree::{detach_node, detach_sibling_range, insert_node_between};
+use crate::constants::{DOUBLE_LINE_BREAK, ELEMENT_TYPE_TO_FORMAT, lookup, name_of};
+use crate::error::invariant;
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::nodes::root::RootNode;
+use crate::selection::{
+    Point, PointType, SelectionRef, Which, get_selection, internal_make_range_selection,
+    move_selection_point_to_sibling,
+};
+use crate::updates::error_on_read_only;
+use crate::utils::{get_writable, mutate, with_writable};
+use crate::{LexicalError, utf16};
+use std::collections::HashSet;
 
 /// `ElementNode`'s text direction (`'ltr' | 'rtl'`; `null` is `None`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -119,4 +129,303 @@ fn has_text_inside(element: &NodeRef) -> bool {
         .get_children()
         .iter()
         .any(|child| child.is_text() || (child.is_element() && has_text_inside(child)))
+}
+
+/// `isPointRemoved(point, nodesToRemoveKeySet, nodesToInsertKeySet)`.
+fn is_point_removed(
+    point: &Point,
+    removed: &HashSet<&str>,
+    inserted: &HashSet<&str>,
+) -> Result<bool, LexicalError> {
+    let mut node = Some(point.get_node()?);
+    while let Some(n) = node {
+        if removed.contains(n.get_key()) && !inserted.contains(n.get_key()) {
+            return Ok(true);
+        }
+        node = n.get_parent();
+    }
+    Ok(false)
+}
+
+/// `ElementNode`'s methods, for a node that is an element. They panic on
+/// any other node, as calling them on one is a bug.
+impl NodeRef {
+    fn with_element<R>(&self, f: impl FnOnce(&ElementData) -> R) -> R {
+        let node = self.get_latest();
+        f(node.element().expect("an element"))
+    }
+
+    fn set_element(&self, f: impl FnOnce(&mut ElementData)) {
+        with_writable(self.get_key(), |n| f(n.element_mut().expect("an element")));
+    }
+
+    /// The element's fields (`getFormat()`, `getIndent()`, ...).
+    pub fn element_data(&self) -> ElementData {
+        self.with_element(Clone::clone)
+    }
+
+    /// `isEmpty()`.
+    pub fn is_empty(&self) -> bool {
+        self.get_children_size() == 0
+    }
+
+    /// `getChildAtIndex(index)`.
+    pub fn get_child_at_index(&self, index: usize) -> Option<NodeRef> {
+        let mut node = self.get_first_child();
+        for _ in 0..index {
+            node = node?.get_next_sibling();
+        }
+        node
+    }
+
+    /// `getFirstDescendant()`.
+    pub fn get_first_descendant(&self) -> Option<NodeRef> {
+        let mut node = self.get_first_child()?;
+        while node.is_element() {
+            match node.get_first_child() {
+                Some(child) => node = child,
+                None => break,
+            }
+        }
+        Some(node)
+    }
+
+    /// `getLastDescendant()`.
+    pub fn get_last_descendant(&self) -> Option<NodeRef> {
+        let mut node = self.get_last_child()?;
+        while node.is_element() {
+            match node.get_last_child() {
+                Some(child) => node = child,
+                None => break,
+            }
+        }
+        Some(node)
+    }
+
+    /// `ElementNode.getTextContentSize()`.
+    pub(crate) fn get_element_text_content_size(&self) -> usize {
+        let children = self.get_children();
+        let length = children.len();
+        let mut size = 0;
+        for (i, child) in children.iter().enumerate() {
+            size += child.get_text_content_size();
+            if child.is_element() && i != length - 1 && !child.is_inline() {
+                size += utf16::len(DOUBLE_LINE_BREAK);
+            }
+        }
+        size
+    }
+
+    /// `ElementNode.select(anchorOffset, focusOffset)`: an element range at
+    /// those child offsets, the end by default.
+    pub fn select_element(
+        &self,
+        anchor_offset: Option<usize>,
+        focus_offset: Option<usize>,
+    ) -> Result<SelectionRef, LexicalError> {
+        error_on_read_only();
+        let selection = get_selection();
+        let children_count = self.get_children_size();
+        if !self.can_be_empty() {
+            if anchor_offset == Some(0) && focus_offset == Some(0) {
+                if let Some(first) = self
+                    .get_first_child()
+                    .filter(|c| c.is_text() || c.is_element())
+                {
+                    return first.select(Some(0), Some(0));
+                }
+            } else if anchor_offset.is_none_or(|o| o == children_count)
+                && focus_offset.is_none_or(|o| o == children_count)
+                && let Some(last) = self
+                    .get_last_child()
+                    .filter(|c| c.is_text() || c.is_element())
+            {
+                return last.select(None, None);
+            }
+        }
+        let anchor_offset = anchor_offset.unwrap_or(children_count);
+        let focus_offset = focus_offset.unwrap_or(children_count);
+        let key = self.get_key();
+        match selection.filter(SelectionRef::is_range) {
+            None => Ok(internal_make_range_selection(
+                Point::new(key, anchor_offset, PointType::Element),
+                Point::new(key, focus_offset, PointType::Element),
+            )),
+            Some(selection) => {
+                selection.point_set(Which::Anchor, key, anchor_offset, PointType::Element)?;
+                selection.point_set(Which::Focus, key, focus_offset, PointType::Element)?;
+                selection.set_dirty(true);
+                Ok(selection)
+            }
+        }
+    }
+
+    /// `clear()`: removes every child.
+    pub fn clear(&self) -> Result<(), LexicalError> {
+        get_writable(self.get_key());
+        for child in self.get_children() {
+            child.remove(false)?;
+        }
+        Ok(())
+    }
+
+    /// `append(...nodesToAppend)`.
+    pub fn append(&self, nodes: &[NodeRef]) -> Result<(), LexicalError> {
+        self.splice(self.get_children_size(), 0, nodes)
+    }
+
+    /// `setDirection(direction)`.
+    pub fn set_direction(&self, direction: Option<Direction>) {
+        self.set_element(|e| e.dir = direction);
+    }
+
+    /// `setFormat(type)`: an alignment by name (`'center'`, ...); `''` and
+    /// unknown names clear it.
+    pub fn set_element_format(&self, format_type: &str) {
+        let format = lookup(ELEMENT_TYPE_TO_FORMAT, format_type).unwrap_or(0);
+        self.set_element(|e| e.format = format);
+    }
+
+    /// `setStyle(style)`.
+    pub fn set_element_style(&self, style: &str) {
+        self.set_element(|e| e.style = style.to_owned());
+    }
+
+    /// `setTextFormat(type)`.
+    pub fn set_text_format(&self, text_format: f64) {
+        self.set_element(|e| e.text_format = text_format);
+    }
+
+    /// `setTextStyle(style)`.
+    pub fn set_text_style(&self, style: &str) {
+        self.set_element(|e| e.text_style = style.to_owned());
+    }
+
+    /// `setIndent(indentLevel)`.
+    pub fn set_indent(&self, indent: f64) {
+        self.set_element(|e| e.indent = indent);
+    }
+
+    /// `splice(start, deleteCount, nodesToInsert)`: removes `delete_count`
+    /// children from `start` and inserts `nodes` there (moving any that are
+    /// in the tree already), repairing the selection when children are
+    /// removed. The root takes only elements (`RootNode.splice`).
+    pub fn splice(
+        &self,
+        start: usize,
+        delete_count: usize,
+        nodes_to_insert: &[NodeRef],
+    ) -> Result<(), LexicalError> {
+        if self.is_root() {
+            for node in nodes_to_insert {
+                // DecoratorNode is allowed too, once it is ported.
+                invariant!(
+                    node.is_element(),
+                    "rootNode.splice: Only element or decorator nodes can be inserted to the root node"
+                );
+            }
+        }
+        let old_size = self.get_children_size();
+        get_writable(self.get_key());
+        invariant!(
+            start + delete_count <= old_size,
+            "ElementNode.splice: start + deleteCount > oldSize ({start} + {delete_count} > {old_size})"
+        );
+        let self_key = self.get_key();
+        let mut nodes_to_insert_keys: Vec<String> = Vec::new();
+        let mut nodes_to_remove_keys = Vec::new();
+        let mut node_after_range = self.get_child_at_index(start + delete_count);
+        let mut node_before_range = None;
+        let mut new_size = (old_size - delete_count + nodes_to_insert.len()) as isize;
+
+        if start != 0 {
+            if start == old_size {
+                node_before_range = self.get_last_child();
+            } else if let Some(node) = self.get_child_at_index(start) {
+                node_before_range = node.get_previous_sibling();
+            }
+        }
+
+        if delete_count > 0 {
+            let first = match &node_before_range {
+                None => self.get_first_child(),
+                Some(before) => before.get_next_sibling(),
+            };
+            nodes_to_remove_keys =
+                detach_sibling_range(self, first, delete_count, node_before_range.as_ref())?;
+        }
+
+        // The writable insertion tail.
+        let mut writable_prev_node = match &node_before_range {
+            Some(before) if !nodes_to_insert.is_empty() => {
+                get_writable(before.get_key());
+                Some(before.clone())
+            }
+            _ => None,
+        };
+        for node_to_insert in nodes_to_insert {
+            if writable_prev_node.as_ref() == Some(node_to_insert) {
+                node_before_range = node_to_insert.get_previous_sibling();
+                writable_prev_node = node_before_range.clone();
+                if let Some(prev) = &writable_prev_node {
+                    get_writable(prev.get_key());
+                }
+            }
+            if node_after_range.as_ref() == Some(node_to_insert) {
+                node_after_range = node_to_insert.get_next_sibling();
+            }
+            get_writable(node_to_insert.get_key());
+            if node_to_insert.get_parent().as_ref() == Some(self) {
+                new_size -= 1;
+            }
+            detach_node(node_to_insert);
+            if let Some(after) = &node_after_range {
+                get_writable(after.get_key());
+            }
+            insert_node_between(
+                self_key,
+                node_to_insert.get_key(),
+                writable_prev_node.as_ref().map(NodeRef::get_key),
+                node_after_range.as_ref().map(NodeRef::get_key),
+            );
+            invariant!(
+                node_to_insert.get_key() != self_key,
+                "append: attempting to append self"
+            );
+            nodes_to_insert_keys.push(node_to_insert.get_key().to_owned());
+            writable_prev_node = Some(node_to_insert.clone());
+        }
+
+        let new_size = usize::try_from(new_size).expect("size >= 0");
+        mutate(self_key, |n| {
+            n.element_mut().expect("an element").size = new_size
+        });
+
+        // Removing children moves the selection out of them, and removes an
+        // element that can't be empty.
+        if !nodes_to_remove_keys.is_empty()
+            && let Some(selection) = get_selection().filter(SelectionRef::is_range)
+        {
+            let removed: HashSet<&str> = nodes_to_remove_keys.iter().map(String::as_str).collect();
+            let inserted: HashSet<&str> = nodes_to_insert_keys.iter().map(String::as_str).collect();
+            for which in [Which::Anchor, Which::Focus] {
+                let point = selection.point(which).expect("a range selection");
+                if is_point_removed(&point, &removed, &inserted)? {
+                    move_selection_point_to_sibling(
+                        &selection,
+                        which,
+                        &point.get_node()?,
+                        self,
+                        node_before_range.as_ref(),
+                        node_after_range.as_ref(),
+                    )?;
+                }
+            }
+            if new_size == 0 && !self.can_be_empty() && !is_root_or_shadow_root(&*self.get_latest())
+            {
+                self.remove(false)?;
+            }
+        }
+        Ok(())
+    }
 }

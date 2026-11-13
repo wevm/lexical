@@ -9,7 +9,7 @@
 //! is counted as waiting on that part of `lexical`, never as passing.
 
 use crate::case::{Case, Outcome, same};
-use lexical::json::Value;
+use lexical::json::{Object, Value};
 use lexical::{
     COMMAND_PRIORITY_EDITOR, CaretDirection, CreateEditorArgs, Direction, Editor, LexicalCommand,
     LexicalError, NodeRef, PointCaret, PointType, RangeSelection, SliceMode, TextOffset,
@@ -499,172 +499,198 @@ fn transform_name(name: &str) -> Option<&'static str> {
     .find(|n| *n == name)
 }
 
-/// `startSession(script)`.
-fn start_session(script: &Value) -> Result<(Editor, Rc<Ctx>), String> {
-    reset_random_key();
-    let editor = create_editor(CreateEditorArgs::default());
-    let ctx = Rc::new(Ctx::default());
-    for name in script
-        .get("transforms")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
-        let name = name.as_str().unwrap_or("");
-        let name = transform_name(name).ok_or_else(|| format!("unknown transform {name}"))?;
-        register_transform(&editor, name, &ctx)?;
-    }
-    for handler in script
-        .get("handlers")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
-        let id = handler.str("id")?.to_owned();
-        let command = ctx.command(handler.str("command")?);
-        let priority = handler
-            .get("priority")
-            .and_then(Value::as_f64)
-            .map_or(COMMAND_PRIORITY_EDITOR, |p| p as u8);
-        let result = handler
-            .get("result")
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-        let actions = handler
-            .get("actions")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        let ctx = ctx.clone();
-        let _unregister = editor.register_command(
-            &command,
-            move |payload: &Value, editor: &Editor| {
-                ctx.log(vec!["handler".into(), id.as_str().into(), payload.clone()]);
-                for action in &actions {
-                    run_action(action, &ctx, editor)?;
-                }
-                Ok(result)
-            },
-            priority,
-        );
-    }
-    if script.get("listen").and_then(Value::as_bool) == Some(true) {
-        let log = ctx.clone();
-        let _unregister = editor.register_update_listener(move |payload| {
-            let elements = payload
-                .dirty_elements
-                .iter()
-                .map(|(k, v)| Value::Array(vec![k.as_str().into(), (*v).into()]))
-                .collect();
-            let leaves = payload
-                .dirty_leaves
-                .iter()
-                .map(|k| k.as_str().into())
-                .collect();
-            let mut tags = payload.tags.clone();
-            tags.sort();
-            log.log(vec![
-                "update".into(),
-                Value::Array(elements),
-                Value::Array(leaves),
-                Value::Array(tags.into_iter().map(Value::from).collect()),
-            ]);
-        });
-        // Mutation listeners only hear from the DOM reconciler, which a
-        // headless editor doesn't run, so JS logs no `mutation` entries.
-        let log = ctx.clone();
-        let _unregister = editor.register_text_content_listener(move |text| {
-            log.log(vec!["textContent".into(), text.into()]);
-        });
-    }
-    Ok((editor, ctx))
+/// A script's editor, set up with its transforms, command handlers and
+/// listeners, that runs steps one at a time (`ops.ts`'s `Session`). The
+/// conformance suite replays the vectors with it; the playground drives it
+/// step by step alongside JS Lexical.
+pub struct Session {
+    editor: Editor,
+    ctx: Rc<Ctx>,
 }
 
-/// `session.run(step, snapshot)`, compared with what JS recorded.
-fn run_step(
-    editor: &Editor,
-    ctx: &Rc<Ctx>,
-    step: &Value,
-    expected: &Value,
-    i: usize,
-) -> Result<(), String> {
-    ctx.log.borrow_mut().clear();
-    let outcome = if let Some(actions) = step.get("update").and_then(Value::as_array) {
-        let tags = step
-            .get("tag")
-            .and_then(Value::as_array)
-            .map(|t| {
-                t.iter()
-                    .filter_map(|t| t.as_str().map(str::to_owned))
-                    .collect()
-            })
-            .unwrap_or_default();
-        let (actions, update_ctx, update_editor) = (actions.clone(), ctx.clone(), editor.clone());
-        editor.update(
-            move || {
-                for action in &actions {
-                    run_action(action, &update_ctx, &update_editor)?;
-                }
-                Ok(())
-            },
-            UpdateOptions {
-                discrete: true,
-                tags,
-                ..UpdateOptions::default()
-            },
-        )
-    } else {
-        let name = step.str("dispatch")?;
-        let payload = step.get("payload").cloned().unwrap_or(Value::Null);
-        editor
-            .dispatch_command(&ctx.command(name), payload)
-            .map(|handled| ctx.log(vec!["dispatched".into(), name.into(), handled.into()]))
-    };
-    // A dispatch outside an update commits at the next read.
-    let (selection, text) = editor
-        .read(|| (selection_snapshot(), get_root().get_text_content()))
-        .map_err(|e| format!("step {i}: committing: {e}"))?;
-    let log = Value::Array(ctx.log.borrow().clone());
-
-    let at = |what: &str| format!("step {i} {what}");
-    same(
-        at("error"),
-        outcome.as_ref().err().map(|e| e.to_string()).is_some(),
-        expected.get("error").is_some(),
-    )
-    .map_err(|e| match &outcome {
-        Err(error) => format!("{e} ({error})"),
-        Ok(()) => e,
-    })?;
-    same(at("log"), &log, expected.field("log")?)?;
-    same(at("selection"), &selection, expected.field("selection")?)?;
-    same(at("text"), text.as_str(), expected.str("text")?)?;
-    if let Some(state) = expected.get("state").and_then(Value::as_str) {
-        let current = editor.get_editor_state();
-        same(
-            at("state"),
-            current.to_json(false).to_string().as_str(),
-            state,
-        )?;
-        same(
-            at("compact"),
-            current.to_json(true).to_string().as_str(),
-            expected.str("compact")?,
-        )?;
-    }
-    Ok(())
+/// One step's result.
+pub struct StepResult {
+    /// What `ops.ts`'s `session.run(step, snapshot)` returns, in its key
+    /// order, so `json.to_string()` is JS's `JSON.stringify` of it.
+    pub json: Value,
+    /// Why the step failed, when `json` has `error: true`.
+    pub error: Option<LexicalError>,
 }
 
+impl Session {
+    /// `startSession(script)`: a new headless editor, with keys restarted.
+    pub fn start(script: &Value) -> Result<Session, String> {
+        reset_random_key();
+        let editor = create_editor(CreateEditorArgs::default());
+        let ctx = Rc::new(Ctx::default());
+        for name in script
+            .get("transforms")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let name = name.as_str().unwrap_or("");
+            let name = transform_name(name).ok_or_else(|| format!("unknown transform {name}"))?;
+            register_transform(&editor, name, &ctx)?;
+        }
+        for handler in script
+            .get("handlers")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let id = handler.str("id")?.to_owned();
+            let command = ctx.command(handler.str("command")?);
+            let priority = handler
+                .get("priority")
+                .and_then(Value::as_f64)
+                .map_or(COMMAND_PRIORITY_EDITOR, |p| p as u8);
+            let result = handler
+                .get("result")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let actions = handler
+                .get("actions")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            let ctx = ctx.clone();
+            let _unregister = editor.register_command(
+                &command,
+                move |payload: &Value, editor: &Editor| {
+                    ctx.log(vec!["handler".into(), id.as_str().into(), payload.clone()]);
+                    for action in &actions {
+                        run_action(action, &ctx, editor)?;
+                    }
+                    Ok(result)
+                },
+                priority,
+            );
+        }
+        if script.get("listen").and_then(Value::as_bool) == Some(true) {
+            let log = ctx.clone();
+            let _unregister = editor.register_update_listener(move |payload| {
+                let elements = payload
+                    .dirty_elements
+                    .iter()
+                    .map(|(k, v)| Value::Array(vec![k.as_str().into(), (*v).into()]))
+                    .collect();
+                let leaves = payload
+                    .dirty_leaves
+                    .iter()
+                    .map(|k| k.as_str().into())
+                    .collect();
+                let mut tags = payload.tags.clone();
+                tags.sort();
+                log.log(vec![
+                    "update".into(),
+                    Value::Array(elements),
+                    Value::Array(leaves),
+                    Value::Array(tags.into_iter().map(Value::from).collect()),
+                ]);
+            });
+            // Mutation listeners only hear from the DOM reconciler, which a
+            // headless editor doesn't run, so JS logs no `mutation` entries.
+            let log = ctx.clone();
+            let _unregister = editor.register_text_content_listener(move |text| {
+                log.log(vec!["textContent".into(), text.into()]);
+            });
+        }
+        Ok(Session { editor, ctx })
+    }
+
+    /// The session's editor.
+    pub fn editor(&self) -> &Editor {
+        &self.editor
+    }
+
+    /// `session.run(step, snapshot)`: runs one step and records the log,
+    /// the selection and the text, and with `snapshot` the state in both
+    /// forms.
+    pub fn run(&self, step: &Value, snapshot: bool) -> Result<StepResult, String> {
+        let (editor, ctx) = (&self.editor, &self.ctx);
+        ctx.log.borrow_mut().clear();
+        let outcome = if let Some(actions) = step.get("update").and_then(Value::as_array) {
+            let tags = step
+                .get("tag")
+                .and_then(Value::as_array)
+                .map(|t| {
+                    t.iter()
+                        .filter_map(|t| t.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let (actions, update_ctx, update_editor) =
+                (actions.clone(), ctx.clone(), editor.clone());
+            editor.update(
+                move || {
+                    for action in &actions {
+                        run_action(action, &update_ctx, &update_editor)?;
+                    }
+                    Ok(())
+                },
+                UpdateOptions {
+                    discrete: true,
+                    tags,
+                    ..UpdateOptions::default()
+                },
+            )
+        } else {
+            let name = step.str("dispatch")?;
+            let payload = step.get("payload").cloned().unwrap_or(Value::Null);
+            editor
+                .dispatch_command(&ctx.command(name), payload)
+                .map(|handled| ctx.log(vec!["dispatched".into(), name.into(), handled.into()]))
+        };
+        // A dispatch outside an update commits at the next read.
+        let (selection, text) = editor
+            .read(|| (selection_snapshot(), get_root().get_text_content()))
+            .map_err(|e| format!("committing: {e}"))?;
+        let mut json = Object::new();
+        json.insert("log", Value::Array(ctx.log.borrow().clone()));
+        json.insert("selection", selection);
+        json.insert("text", text.into());
+        if snapshot {
+            let state = editor.get_editor_state();
+            json.insert("state", state.to_json(false).to_string().into());
+            json.insert("compact", state.to_json(true).to_string().into());
+        }
+        let error = outcome.err();
+        if error.is_some() {
+            json.insert("error", true.into());
+        }
+        Ok(StepResult {
+            json: Value::Object(json),
+            error,
+        })
+    }
+}
+
+/// `scripts/*.json`: each step's result matches what JS recorded.
 pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
     if let Some(part) = unported(case) {
         return Ok(Outcome::NotPorted(part));
     }
-    let (editor, ctx) = start_session(case)?;
+    let session = Session::start(case)?;
     let steps = case.arr("steps")?;
     let results = case.arr("results")?;
     same("steps recorded", results.len(), steps.len())?;
     for (i, (step, expected)) in steps.iter().zip(results).enumerate() {
-        run_step(&editor, &ctx, step, expected, i)?;
+        let at = |what: &str| format!("step {i} {what}");
+        let snapshot = expected.get("state").is_some();
+        let StepResult { json, error } = session.run(step, snapshot).map_err(|e| at(&e))?;
+        same(
+            at("error"),
+            error.is_some(),
+            expected.get("error").is_some(),
+        )
+        .map_err(|e| match &error {
+            Some(error) => format!("{e} ({error})"),
+            None => e,
+        })?;
+        for field in ["log", "selection", "text", "state", "compact"] {
+            same(at(field), json.get(field), expected.get(field))?;
+        }
     }
     Ok(Outcome::Pass)
 }

@@ -4,6 +4,14 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.9
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- `lexical-swift` builds with Swift 6.3 (Xcode 26.5) and later, not only Swift 6.4 (Xcode 27), so apps that still build with Xcode 26.5 can depend on it. It accepts swift-syntax 603 as well as 604, so it no longer forces an app onto swift-syntax 604.
+
 ## 0.1.8
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

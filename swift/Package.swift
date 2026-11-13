@@ -1,4 +1,4 @@
-// swift-tools-version: 6.4
+// swift-tools-version: 6.3
 import CompilerPluginSupport
 import PackageDescription
 
@@ -52,7 +52,7 @@ let package = Package(
   ],
   dependencies: [
     // The `@LexicalNode` macro (Q30).
-    .package(url: "https://github.com/swiftlang/swift-syntax", from: "604.0.0")
+    .package(url: "https://github.com/swiftlang/swift-syntax", "603.0.0"..<"605.0.0")
   ],
   targets: [
     .target(name: "Lexical", dependencies: ["LexicalMacros"]),

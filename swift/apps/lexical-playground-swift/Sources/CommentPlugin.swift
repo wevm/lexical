@@ -134,6 +134,7 @@ final class CommentsModel {
   var showCommentInput = false {
     didSet {
       guard showCommentInput != oldValue else { return }
+      revealsInput = showCommentInput
       refreshHosts()
       onInputChange?()
     }
@@ -152,7 +153,10 @@ final class CommentsModel {
   @ObservationIgnored private lazy var addCommentHost = TextViewOverlayHost(
     rootView: AddCommentBox(comments: self))
   @ObservationIgnored private lazy var inputHost = TextViewOverlayHost(
-    rootView: CommentInputBox(comments: self))
+    rootView: CommentInputBox(comments: self), extendsText: true)
+  /// The input box opened and has not been placed since: placing it
+  /// scrolls it into view, as the web's box does as it takes the focus.
+  @ObservationIgnored private var revealsInput = false
   @ObservationIgnored private lazy var scrolling = TextScrollObserver { [weak self] in
     self?.placeAddComment()
   }
@@ -385,7 +389,12 @@ final class CommentsModel {
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
       // In a compact width the playground shows the box as a sheet.
-      self.inputHost.place(self.showCommentInput && self.isWide ? self.inputFrame() : nil)
+      let frame = self.showCommentInput && self.isWide ? self.inputFrame() : nil
+      self.inputHost.place(frame)
+      if frame != nil, self.revealsInput {
+        self.revealsInput = false
+        self.inputHost.scrollToVisible()
+      }
       self.placeAddComment()
     }
   }
@@ -486,8 +495,16 @@ private final class TextViewOverlayHost<Content: View> {
     private let hostingController: UIHostingController<Content>
   #endif
   private(set) weak var textView: PlatformTextView?
+  /// Whether the text scrolls past its end to show the view, as an
+  /// absolutely positioned box adds to the page's scrollable height.
+  private let extendsText: Bool
+  /// How far past its end the text scrolls for the view.
+  private var overhang: CGFloat = 0
+  /// The room kept around the view where the text scrolls to it.
+  private let margin: CGFloat = 10
 
-  init(rootView: Content) {
+  init(rootView: Content, extendsText: Bool = false) {
+    self.extendsText = extendsText
     hostingController = .init(rootView: rootView)
     hostingController.sizingOptions = []
     #if os(iOS)
@@ -497,6 +514,7 @@ private final class TextViewOverlayHost<Content: View> {
   }
 
   func attach(to root: AnyObject?) {
+    extendText(to: nil)
     hostingController.view.removeFromSuperview()
     textView = root as? PlatformTextView
     textView?.addSubview(hostingController.view)
@@ -511,10 +529,56 @@ private final class TextViewOverlayHost<Content: View> {
   func place(_ frame: CGRect?) {
     guard let frame else {
       hostingController.view.isHidden = true
+      extendText(to: nil)
       return
     }
     hostingController.view.frame = frame
     hostingController.view.isHidden = false
+    if extendsText { extendText(to: frame.maxY + margin) }
+  }
+
+  /// Scrolls the text view to show the view, as the web's box scrolls
+  /// into view as it takes the focus (`scrollIntoViewIfNeeded`), all of it
+  /// rather than its caret's line (`native/comment-input-scrolls-into-view`
+  /// in parity/deviations.json).
+  func scrollToVisible() {
+    guard let textView, !hostingController.view.isHidden else { return }
+    let rect = hostingController.view.frame.insetBy(dx: 0, dy: -margin)
+    #if os(macOS)
+      textView.scrollToVisible(rect)
+    #else
+      textView.scrollRectToVisible(rect, animated: true)
+    #endif
+  }
+
+  /// Lets the text scroll down to `bottom`, past its end where the view
+  /// hangs below it, or takes that room back for `nil`.
+  private func extendText(to bottom: CGFloat?) {
+    guard let textView else {
+      overhang = 0
+      return
+    }
+    guard bottom != nil || overhang > 0 else { return }
+    #if os(macOS)
+      // `NSTextView` sizes itself to its text, and at least to its clip
+      // view (its `minSize`). Taller, it takes the clicks on the view too,
+      // which a view gets only inside its superview.
+      let height = max(textView.minSize.height, textView.contentHeight)
+      let hadOverhang = overhang > 0
+      overhang = max(0, (bottom ?? 0) - height)
+      if overhang > 0 {
+        textView.setFrameSize(NSSize(width: textView.frame.width, height: height + overhang))
+      } else if hadOverhang {
+        textView.sizeToFit()
+      }
+    #else
+      // Room in the text view's content, which UIKit scrolls the box's
+      // caret into: past an inset it would scroll too far. In whole points,
+      // as the content's size is.
+      let overhang = max(0, ceil((bottom ?? 0) - (textView.contentSize.height - self.overhang)))
+      textView.textContainerInset.bottom += overhang - self.overhang
+      self.overhang = overhang
+    #endif
   }
 }
 

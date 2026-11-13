@@ -484,6 +484,43 @@ final class LexicalPlaygroundUITests: XCTestCase {
       "add comment \(addComment.frame), Show Comments \(showComments.frame)")
   }
 
+  /// `CommentPlugin`'s input box scrolls into view as it opens, as the
+  /// web's does as it takes the focus. Below a selection in the editor's
+  /// last line, which is the document's last, it opened past the editor's
+  /// bottom, behind the keyboard. It is in the editor on an iPad, where a
+  /// compact width shows it as a sheet.
+  @MainActor
+  func testCommentInputBoxScrollsIntoView() throws {
+    try XCTSkipUnless(
+      UIDevice.current.userInterfaceIdiom == .pad, "The comment input box is a sheet on an iPhone.")
+    launch()
+    let editor = clearedEditor()
+    editor.typeText((1...40).map { "Line \($0)\n" }.joined() + "Hello world")
+    // "Hello", in the last line, which the caret keeps at the editor's bottom.
+    editor.coordinate(withNormalizedOffset: .zero)
+      .withOffset(CGVector(dx: 25, dy: editor.frame.height - 16)).doubleTap()
+    XCTAssertTrue(app.menuItems.firstMatch.waitForExistence(timeout: 5), app.debugDescription)
+    editMenuItem("Insert comment").tap()
+    let input = app.descendants(matching: .any)["comment-input"]
+    XCTAssertTrue(input.waitForExistence(timeout: 5), app.debugDescription)
+    let submit = app.buttons["comment-submit"]
+    // Once it has scrolled.
+    sleep(1)
+    attachScreenshot("playground-comment-input-opened")
+    let keyboard = app.keyboards.firstMatch
+    for element in [input, submit] {
+      XCTAssertTrue(
+        editor.frame.contains(element.frame), "\(element.frame) outside the editor \(editor.frame)")
+      if keyboard.exists {
+        XCTAssertLessThanOrEqual(
+          element.frame.maxY, keyboard.frame.minY, "under the keyboard \(keyboard.frame)")
+      }
+    }
+    input.typeText("Nice greeting")
+    submit.tap()
+    waitForTree(") mark")
+  }
+
   /// `FindReplaceExtension`: the panel counts the matches, steps through
   /// them and replaces them all.
   @MainActor

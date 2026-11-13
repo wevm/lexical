@@ -7,12 +7,13 @@
 //!
 //! The internals mirror the upstream sources file by file. JS's `$`
 //! functions drop the `$` and take snake case: `$getRoot()` is
-//! [`get_root()`], and like JS they only work inside [`Editor::read`] or
-//! [`EditorState::read`]. A node is read through a [`NodeRef`], which
-//! resolves the latest version on every call, as JS node methods do.
+//! [`get_root()`], and like JS they only work inside [`Editor::update`],
+//! [`Editor::read`] or [`EditorState::read`]. A node is read and changed
+//! through a [`NodeRef`], which resolves the latest version on every call,
+//! as JS node methods do. Text offsets are UTF-16 code units, as in JS.
 //!
 //! ```
-//! use lexical_editor::{create_editor, get_root, CreateEditorArgs};
+//! use lexical_editor::{create_editor, get_root, CreateEditorArgs, UpdateOptions};
 //!
 //! let editor = create_editor(CreateEditorArgs::default());
 //! let state = editor
@@ -23,6 +24,24 @@
 //!     state.to_json(true).to_string(),
 //!     r#"{"root":{"type":"root","children":[{"type":"paragraph","children":[{"type":"text","text":"Hi"}]}]}}"#,
 //! );
+//!
+//! // An update: split the text and bold the second half.
+//! editor.set_editor_state(&state, None).unwrap();
+//! editor
+//!     .update(
+//!         || {
+//!             let text = get_root().get_first_descendant().unwrap();
+//!             let parts = text.split_text(&[1])?;
+//!             parts[1].toggle_format("bold");
+//!             Ok(())
+//!         },
+//!         UpdateOptions { discrete: true, ..UpdateOptions::default() },
+//!     )
+//!     .unwrap();
+//! assert_eq!(
+//!     editor.get_editor_state().to_json(true).to_string(),
+//!     r#"{"root":{"type":"root","children":[{"type":"paragraph","children":[{"type":"text","text":"H"},{"type":"text","format":1,"text":"i"}]}]}}"#,
+//! );
 //! ```
 
 mod caret_tree;
@@ -30,21 +49,37 @@ pub mod constants;
 mod editor;
 mod editor_state;
 mod error;
+mod gc;
 mod generated_json;
 pub mod json;
 mod node;
 pub mod nodes;
+mod normalization;
+mod ordered;
+mod selection;
 mod serialized_export;
 mod updates;
+pub mod utf16;
 mod utils;
 
-pub use editor::{CreateEditorArgs, Editor, NodeClass, create_editor};
+pub use editor::{
+    COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
+    COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, CreateEditorArgs, Editor, HISTORY_MERGE_TAG,
+    LexicalCommand, NodeClass, Transform, Unregister, UpdateListenerPayload, UpdateOptions,
+    create_command, create_editor,
+};
 pub use editor_state::EditorState;
 pub use error::LexicalError;
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};
 pub use nodes::element::{Direction, ElementData};
-pub use nodes::text::TextData;
+pub use nodes::paragraph::create_paragraph_node;
+pub use nodes::text::{TextData, create_text_node, toggle_text_format_type};
+pub use selection::{
+    NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
+    create_node_selection, create_range_selection, get_selection, set_selection,
+};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
+pub use updates::parse_serialized_node;
 pub use utils::{get_node_by_key, get_root, reset_random_key};
 
 /// The upstream Lexical release this port conforms to. The conformance

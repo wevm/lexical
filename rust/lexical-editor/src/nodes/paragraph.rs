@@ -7,6 +7,11 @@ use crate::json::{Object, Value};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
 
+/// `$createParagraphNode()`.
+pub fn create_paragraph_node() -> NodeRef {
+    crate::utils::set_node_key(Box::new(ParagraphNode::default()))
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct ParagraphNode {
     base: NodeBase,

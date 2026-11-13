@@ -86,8 +86,12 @@ Names may change as packages land; this table is updated with them.
 - **Nodes.** JS's class hierarchy is the `LexicalNode` trait plus the data
   each base class adds (`ElementData`, `TextData`). A node is a value behind
   an `Rc` in its editor state's node map; `getWritable` clones it unless
-  nothing else shares it (`utils::with_writable`), so an earlier editor state
-  never sees a change. Code outside a node reads it through `NodeRef`, a key
+  nothing else shares it (`utils::get_writable`), so an earlier editor state
+  never sees a change. The `Rc`'s uniqueness stands in for JS's
+  `_cloneNotNeeded`. `getWritable` also marks the node dirty, as in JS, and
+  helpers that take "writable" nodes expect their callers to have called it
+  in JS's order, because update listeners see nodes in the order they were
+  marked. Code outside a node reads it through `NodeRef`, a key
   that resolves the latest version on every call, as JS node methods call
   `getLatest()`. Base class behavior a subclass overrides with a `super`
   call is a free function in the base class's module.
@@ -111,7 +115,20 @@ Names may change as packages land; this table is updated with them.
   from Swift (PARITY.md).
 - **Errors.** A JS `invariant` a document or a caller can break returns a
   `LexicalError` with the same message; one only a bug in a node
-  implementation can break panics, as `RefCell` does.
+  implementation can break panics, as `RefCell` does. A failed update
+  returns its error from `Editor::update` (JS reports it to `onError`) after
+  discarding the update and notifying listeners, as JS does.
+- **The update cycle** (`updates.rs`) follows `$beginUpdate` and
+  `$commitPendingUpdates` line by line: nested and queued updates,
+  normalization, transforms (leaves first, the root last), GC, the
+  selection check, discarding a failed update, and the text content and
+  update listeners. The dirty sets are insertion-ordered like JS's `Map` and
+  `Set` (`ordered.rs`), including iteration that sees entries added
+  meanwhile. Without a DOM nothing reconciles, so mutation listeners and
+  selection-change notifications never fire, as in JS's headless editor.
+  JS commits a non-discrete update in a microtask; with no event loop, Rust
+  commits it at the next `read` or discrete update, which JS also does when
+  one comes first. Update closures that may be queued are `'static`.
 
 ## Conformance
 
@@ -153,7 +170,7 @@ Each milestone ends with green CI and a report to the Space.
 | Milestone | Scope | Vectors that pass when done | Status |
 | --- | --- | --- | --- |
 | M0 | The `rust/` workspace, JSON as JS writes it, the core nodes (root, paragraph, text, tab, line break), `parseEditorState` and `toJSON` in both forms, the conformance runner, CI | `meta`, `serialization/core`, the core-only cases of `property/documents` (JSON and text) | done |
-| M1 | The core model: `editor.update` and the commit (dirty nodes, normalization, transforms, listeners, commands, tags), node creation and methods (`splitText`, `mergeWithSibling`, `spliceText`, `insertAfter`, `remove`, `replace`...) with UTF-16 offsets, `RangeSelection` and `NodeSelection` editing, carets, NodeState, slots, the schema facility, `DecoratorNode`, the extension API (`buildEditorFromExtensions`), the parity ledger | `scripts/*`, `fuzz/core`, `file/*` | |
+| M1 | The core model: `editor.update` and the commit (dirty nodes, normalization, transforms, listeners, commands, tags), node creation and methods (`splitText`, `mergeWithSibling`, `spliceText`, `insertAfter`, `remove`, `replace`...) with UTF-16 offsets, `RangeSelection` and `NodeSelection` editing, carets, NodeState, slots, the schema facility, `DecoratorNode`, the extension API (`buildEditorFromExtensions`), the parity ledger | `scripts/*`, `fuzz/core`, `file/*` | in progress: the update cycle, `setEditorState`, commands, transforms, listeners and the node methods are done (`scripts/updates`, `commands` pass; `listeners`, `transforms` pass but for the cases that type); next, `RangeSelection` editing and carets |
 | M2 | Node packages: `rich-text`, `list`, `link`, `code`, `overflow`, `hashtag`, with `selection` and `utils` | `serialization/*`, `property/documents` (JSON and text), `entities/hashtag-*` | |
 | M3 | `history`, and the commands `property/sequences` dispatches | `property/sequences` | |
 | M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | |

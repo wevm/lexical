@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+members = ["lexical-editor", "conformance"]
+
+[workspace.package]
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+repository = "https://github.com/wevm/lexical"
+
+# The crate's name is provisional (rust/DESIGN.md). Every crate in the
+# workspace depends on it as `lexical`, so a rename changes the package name in
+# lexical-editor/Cargo.toml and this line, not the code.
+[workspace.dependencies]
+lexical = { package = "lexical-editor", path = "lexical-editor", version = "0.0.0" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

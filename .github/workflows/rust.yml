@@ -1,0 +1,66 @@
+name: Rust
+
+# CI for the Rust port in rust/ (the lexical-editor crate) and the
+# conformance runner that replays packages/lexical-conformance's vectors.
+# Runs on every change because the vectors can change with any JS change;
+# swift.yml checks that the checked-in vectors match the JS behavior.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Rust (Linux)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      # rustup is preinstalled; rust-toolchain.toml picks the version.
+      - name: Install the toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - name: Format
+        run: cargo fmt --all --check
+      - name: Lint
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+      - name: Test
+        run: cargo test --workspace --all-features --locked
+      # The report: every vector file, how many cases match JS, match under a
+      # documented exception, wait on a package not ported yet, or fail, and
+      # which files aren't replayed yet.
+      - name: Conformance
+        run: cargo run --locked --release -p lexical-conformance -- --summary "$GITHUB_STEP_SUMMARY"
+      # Broken intra-doc links and other rustdoc warnings fail.
+      - name: Docs
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --all-features --no-deps --locked
+      # The crate has no third-party dependencies in its default build
+      # (rust/DESIGN.md): any normal or build dependency fails.
+      - name: No dependencies
+        run: |
+          deps="$(cargo tree -p lexical-editor -e normal,build --prefix none --locked | grep -v '^lexical-editor v' || true)"
+          if [ -n "$deps" ]; then
+            echo "lexical-editor's default build has third-party dependencies:" >&2
+            echo "$deps" >&2
+            echo "Put them behind an opt-in feature, or drop them." >&2
+            exit 1
+          fi
+      # The library builds on the oldest Rust its manifest names.
+      - name: Minimum Rust version
+        run: |
+          msrv="$(sed -nE 's/^rust-version = "(.*)"/\1/p' Cargo.toml)"
+          rustup toolchain install "$msrv" --profile minimal
+          cargo "+$msrv" check -p lexical-editor --all-features --locked

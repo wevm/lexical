@@ -91,8 +91,8 @@ private func childIds(_ editor: Editor) throws -> [String?] {
     defer { editor.dispose() }
     try editor.setEditorState(editor.parseEditorState(stored))
     #expect(try editor.read { try canonicalDocument() } == canonical)
-    let documentKey = try editor.read { try documentKey() }
-    #expect(hex(documentKey) == key)
+    let storedKey = try editor.read { try documentKey() }
+    #expect(hex(storedKey) == key)
     var actual: [String] = []
     func visit(_ node: JSONValue) {
       guard let object = node.objectValue else { return }
@@ -106,7 +106,7 @@ private func childIds(_ editor: Editor) throws -> [String?] {
     #expect(actual == expected.map { "\($0.1):\($0.2)" })
     for (place, _, id) in expected {
       if let place {
-        #expect(derivePositionalId(documentKey, place) == id, "\(place)")
+        #expect(derivePositionalId(storedKey, place) == id, "\(place)")
       }
     }
   }

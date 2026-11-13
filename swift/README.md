@@ -18,7 +18,7 @@ see `UPSTREAM_VERSION` and [DESIGN.md](DESIGN.md)). Each release's notes in
 .package(url: "https://github.com/wevm/lexical-swift", from: "0.1.0")
 ```
 
-Requires iOS 26 or macOS 26 and Swift 6.4 (Xcode 27). The non-UI modules also build on
+Requires iOS 26 or macOS 26 and Swift 6.3 (Xcode 26.5) or later. The non-UI modules also build on
 Linux.
 
 Add the products you use to your target, for example:

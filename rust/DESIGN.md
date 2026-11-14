@@ -10,6 +10,11 @@ pull request.
 - A pure-Rust port of Lexical's model and headless packages: **Tier 1
   only**. The same inputs give the same editor state and the same JSON bytes,
   in both the legacy and compact forms, the same HTML and the same Markdown.
+- **Swift's feature set first.** tmm's target is parity with what the
+  Swift port supports; Swift and Rust move toward the rest of JS later, as
+  apps need it. So `@lexical/yjs`, `@lexical/y`, `@lexical/table`,
+  `@lexical/code-shiki`, `@lexical/mdast` and `@lexical/offset` are not
+  planned: Swift has none of them either.
 - The editing UI (Swift's Tier 2: views, input, the reconciler's rendering
   half, the WebKit scenarios) is out of scope.
 - **JS is the reference.** A difference from upstream is a Rust bug, except
@@ -67,7 +72,9 @@ depends on as the upstream package depends on them:
 | `html`      | `@lexical/html`        | `selection`                |
 | `markdown`  | `@lexical/markdown`    | `rich-text`, `list`, `link`, `code` |
 | `file`      | `@lexical/file`        |                            |
-| `yjs`       | `@lexical/yjs`         | `selection`, `yrs`         |
+| `clipboard` | `@lexical/clipboard`   | `selection`, `utils` (`html` for HTML copy and paste) |
+| `mark`      | `@lexical/mark`        | `utils`                    |
+| `devtools`  | `@lexical/devtools-core`'s tree view |              |
 
 Each module is `lexical_editor::<package>` (`lexical_editor::rich_text`).
 Names may change as packages land; this table is updated with them.
@@ -80,7 +87,7 @@ Names may change as packages land; this table is updated with them.
   dependency comes only behind an opt-in feature: `autolink` needs `regex`
   (with `regex-automata` and `regex-syntax`, which CI checks are all it
   brings), for `registerAutoLink`'s matchers, whose `\p{L}` and `\p{N}`
-  need Unicode tables; `yjs` will need `yrs`. `@lexical/link`'s nodes and
+  need Unicode tables. `@lexical/link`'s nodes and
   `registerLink` stay in `link`, without it. The crate has its own JSON (`json`), because the output must
   be byte-identical to `JSON.stringify` (JS property order, `1e+21`, `-0`
   as `0`), which `serde_json` doesn't promise.
@@ -155,7 +162,7 @@ exception, how many wait on a package not ported yet, and how many fail.
   fail.
 - Vectors are never edited or skipped to get to green, and never generated
   by Rust: `packages/lexical-conformance` runs the real upstream code.
-  New vectors the port needs (for `@lexical/yjs`, say) are added there, in
+  New vectors the port needs (for `@lexical/mark`, say) are added there, in
   JS, as the Swift port adds its own.
 - The mirror has `rust/` without the vectors, so there the conformance tests
   skip; `LEXICAL_CONFORMANCE_VECTORS` points the runner elsewhere.
@@ -174,7 +181,15 @@ Swift.
 
 ## Milestones
 
-Each milestone ends with green CI and a report to the Space.
+Each milestone ends with green CI and a report to the Space. Three Amp
+threads share the work and rebase onto `main` as pull requests land: the
+[Rust port thread](https://ampcode.com/threads/T-16d45229-bfa8-417a-a091-d3e3888d830d)
+owns M1, M3, M6 and the merges, the
+[HTML thread](https://ampcode.com/threads/T-506c8fa1-4309-40f1-9810-732b311eaeab)
+owns M4, and the
+[Markdown thread](https://ampcode.com/threads/T-01a1daf1-150e-709b-aaed-996443a64459)
+owns M5. A change one of them needs in the core goes through the Rust port
+thread.
 
 | Milestone | Scope | Vectors that pass when done | Status |
 | --- | --- | --- | --- |
@@ -183,9 +198,9 @@ Each milestone ends with green CI and a report to the Space.
 | P | Desktop playgrounds (`apps/`): `lexical-playground-rune` on Rune, then `lexical-playground-gpui` on GPUI, sharing `lexical-playground-core`; they grow with each milestone below | the vectors, replayed in the app; a session exported from the app replays in JS (`replay.test.ts`); in CI, a GPUI session typed in a real window replays in JS | both apps run on macOS with typing, Return, deletion, formatting, input methods and the Parity panel; they grow with each milestone |
 | M2 | `rich-text` (headings, quotes, and the command handlers a text surface dispatches: typing, Enter, Backspace, formatting) and `history` (undo), which the playgrounds need first; then the node packages `list`, `link`, `code`, `overflow`, `hashtag`, with `selection` and `utils` | `serialization/*`, `property/documents` (JSON and text), `entities/hashtag-*`, `scripts/history` | done (every vector it names passes): `history` is done (`scripts/history` passes); `rich-text`'s nodes and `registerRichText`'s model command handlers are done (`scripts/rich-text` and `scripts/rich-text-commands` pass, with the heading and quote cases of `property/documents`); `plain-text`'s model command handlers are done (`scripts/plain-text` passes); `list`'s nodes, `registerList` and the model part of `registerCheckList` are done (`scripts/list` and `serialization/list` pass, with the list cases of `property/documents`); `link`'s nodes, `$toggleLink` and `registerLink`'s model handlers are done (`scripts/link` and `serialization/link` pass, with the link cases of `property/documents` that need no other package), `registerAutoLink` and its matchers are done behind `autolink` (`scripts/autolink` and `entities/autolink-match` pass); `selection`'s `$setBlocksType` is done (`scripts/set-blocks-type` passes); `code`'s nodes, `FlatStructureUtils.ts`, `CodeExtension`'s transform and `registerCodeIndentation`'s model handlers are done (`scripts/code` and `serialization/code` pass, with the code cases of `property/documents` that need no other package); `overflow`'s `OverflowNode` is done (`scripts/overflow` and `serialization/overflow` pass, with the overflow cases of `property/documents` that need no other package); `hashtag`'s `HashtagNode`, its matcher (generated character tables, no `regex`) and `registerLexicalHashtag`, with `text`'s `registerLexicalTextEntity`, are done (`entities/hashtag-match`, `entities/hashtag-documents` and `entities/hashtag-typing` pass, with the last waiting cases of `property/documents`), so M2's node packages are done |
 | M3 | The commands `property/sequences` dispatches | `property/sequences` | done (all 81 cases match JS): the suite builds `sequenceEditor`'s editor without `buildEditorFromExtensions`, from what each of its extensions registers, in the builder's order, with `InitialStateExtension`'s paragraph; the commands M2 ported needed two fixes, `NormalizeInlineElementsExtension`'s transform (`register_normalize_inline_elements`, removing empty links) and `$extendSelectionForDeletion` and `modify` stopping where the window gives no DOM selection (`SelectionMovement::has_dom_selection`) |
-| M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | |
-| M5 | `markdown` | `markdown/import-export`, `property/documents` (Markdown) | |
-| M6 | `yjs`: a port of `@lexical/yjs` on `yrs` (behind the feature), with new JS vectors for the binding (sevki/lexical-rs's `lexical-yjs` and jpcamara/yrby's `lexical-yjs-html` only as cross-checks) | the new collab vectors | |
+| M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | in progress ([HTML thread](https://ampcode.com/threads/T-506c8fa1-4309-40f1-9810-732b311eaeab)) |
+| M5 | `markdown`, and Markdown shortcuts in both playgrounds | `markdown/import-export`, `property/documents` (Markdown) | in progress ([Markdown thread](https://ampcode.com/threads/T-01a1daf1-150e-709b-aaed-996443a64459)) |
+| M6 | The rest of Swift's feature set: the extension API's bundled extensions (`ClearEditor`, `InitialState`, `EditorState`, `TabIndentation`, `NodeStructure`, `SelectBlock` and the others Swift has), clipboard (JSON copy and paste first, HTML once M4 lands), the rest of `selection` and `utils` (style helpers, `$wrapNodes`, `$splitNode`, `$dfs`...), `mark`, `file`, the devtools tree view, `text`'s root helpers, `a11y`'s announcements, code highlighting (Swift uses tree-sitter where JS uses Prism), the character limit, the menu, auto-embed, decorator block and table of contents logic, the remaining built-in commands, slots, node schemas and editable mode | `file/*`, `devtools/tree`, and new JS vectors for the rest | in progress (this thread's owner: the [Rust port thread](https://ampcode.com/threads/T-16d45229-bfa8-417a-a091-d3e3888d830d), which also owns M1's extension API and the merges) |
 | M7 | Releases: the mirror, changesets, a name tmm settles | | |
 
 The `devtools/tree` vectors come with whichever milestone a tool needs

@@ -7,7 +7,7 @@
 //! state, as Lexical's reconciler draws the DOM. Moving the caret and
 //! laying out text are the element's, as they are the browser's.
 
-use gpui_kit::component::ActiveTheme;
+use gpui_kit::component::{ActiveTheme, Theme};
 use gpui_kit::*;
 use lexical_playground_core::{Outcome, Playground, Surface, Unit, format_flag};
 use std::ops::Range;
@@ -615,8 +615,15 @@ impl Render for LexicalEditor {
 }
 
 /// The text runs to shape: each run's format as a font, colors and lines.
-fn text_runs(surface: &Surface, base: &TextStyle, accent: Hsla) -> Vec<TextRun> {
+fn text_runs(surface: &Surface, base: &TextStyle, theme: &Theme) -> Vec<TextRun> {
     let base_font = base.font();
+    let accent = theme.primary;
+    // A marker yellow behind dark text, a deep amber behind light text.
+    let highlight = if theme.is_dark() {
+        hsla(40. / 360., 0.75, 0.3, 1.)
+    } else {
+        hsla(48. / 360., 0.96, 0.75, 1.)
+    };
     surface
         .runs()
         .into_iter()
@@ -643,7 +650,7 @@ fn text_runs(surface: &Surface, base: &TextStyle, accent: Hsla) -> Vec<TextRun> 
                     base.color
                 },
                 background_color: if has("highlight") {
-                    Some(hsla(48. / 360., 0.96, 0.75, 1.))
+                    Some(highlight)
                 } else if has("code") {
                     Some(base.color.opacity(0.08))
                 } else {
@@ -734,7 +741,7 @@ impl Element for EditorElement {
         let editor = self.editor.read(cx);
         let text = editor.surface.display_text();
         let style = window.text_style();
-        let runs = text_runs(&editor.surface, &style, cx.theme().primary);
+        let runs = text_runs(&editor.surface, &style, cx.theme());
         let font_size = style.font_size.to_pixels(window.rem_size());
         let line_height = window.line_height();
         let mut layout_style = Style::default();
@@ -766,8 +773,7 @@ impl Element for EditorElement {
         let editor = self.editor.read(cx);
         let text = editor.surface.display_text();
         let style = window.text_style();
-        let accent = cx.theme().primary;
-        let runs = text_runs(&editor.surface, &style, accent);
+        let runs = text_runs(&editor.surface, &style, cx.theme());
         let font_size = style.font_size.to_pixels(window.rem_size());
         let line_height = window.line_height();
         let lines = Rc::new(shape(

@@ -31,6 +31,7 @@ pub struct PlaygroundApp {
     report: Option<(String, bool)>,
     status: Option<String>,
     _subscription: Subscription,
+    _appearance: Subscription,
 }
 
 impl PlaygroundApp {
@@ -47,6 +48,12 @@ impl PlaygroundApp {
                 cx,
             )
         });
+        // Light or dark like the Mac, switching live when the system
+        // appearance changes, as the Rune app does.
+        Theme::sync_system_appearance(Some(window), cx);
+        let appearance = cx.observe_window_appearance(window, |_, window, cx| {
+            Theme::sync_system_appearance(Some(window), cx);
+        });
         let subscription = cx.subscribe(&editor, |this, _, _: &EditorEvent, cx| {
             this.status = None;
             cx.notify();
@@ -58,6 +65,7 @@ impl PlaygroundApp {
             report: None,
             status: None,
             _subscription: subscription,
+            _appearance: appearance,
         }
     }
 

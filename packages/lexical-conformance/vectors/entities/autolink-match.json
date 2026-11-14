@@ -1,0 +1,54 @@
+{"description":"What @lexical/link's autoLinkUrlMatcher and autoLinkEmailMatcher return for each text (index and length in UTF-16 code units).","formatVersion":1,"kind":"entities","cases":[
+{"email":null,"text":"","url":null},
+{"email":null,"text":"lexical.dev","url":null},
+{"email":null,"text":"www.lexical.dev","url":{"index":0,"length":15,"text":"www.lexical.dev","url":"https://www.lexical.dev"}},
+{"email":null,"text":"https://lexical.dev","url":{"index":0,"length":19,"text":"https://lexical.dev","url":"https://lexical.dev"}},
+{"email":null,"text":"http://www.lexical.dev/docs?x=1&y=two#top","url":{"index":0,"length":41,"text":"http://www.lexical.dev/docs?x=1&y=two#top","url":"http://www.lexical.dev/docs?x=1&y=two#top"}},
+{"email":null,"text":"see https://lexical.dev/docs, then","url":{"index":4,"length":24,"text":"https://lexical.dev/docs","url":"https://lexical.dev/docs"}},
+{"email":null,"text":"https://en.wikipedia.org/wiki/Fish_(disambiguation)","url":{"index":0,"length":51,"text":"https://en.wikipedia.org/wiki/Fish_(disambiguation)","url":"https://en.wikipedia.org/wiki/Fish_(disambiguation)"}},
+{"email":null,"text":"(see https://en.wikipedia.org/wiki/Fish_(disambiguation))","url":{"index":5,"length":51,"text":"https://en.wikipedia.org/wiki/Fish_(disambiguation)","url":"https://en.wikipedia.org/wiki/Fish_(disambiguation)"}},
+{"email":null,"text":"(https://lexical.dev)","url":{"index":1,"length":19,"text":"https://lexical.dev","url":"https://lexical.dev"}},
+{"email":null,"text":"((https://lexical.dev/a_(b)))","url":{"index":2,"length":25,"text":"https://lexical.dev/a_(b)","url":"https://lexical.dev/a_(b)"}},
+{"email":null,"text":"https://lexical.dev/(a","url":{"index":0,"length":22,"text":"https://lexical.dev/(a","url":"https://lexical.dev/(a"}},
+{"email":null,"text":"https://lexical.dev).","url":{"index":0,"length":19,"text":"https://lexical.dev","url":"https://lexical.dev"}},
+{"email":null,"text":"https://lexical.dev/a_(b)_(c)","url":{"index":0,"length":29,"text":"https://lexical.dev/a_(b)_(c)","url":"https://lexical.dev/a_(b)_(c)"}},
+{"email":null,"text":"https://例え.jp/パス","url":{"index":0,"length":16,"text":"https://例え.jp/パス","url":"https://例え.jp/パス"}},
+{"email":null,"text":"https://ru.wikipedia.org/wiki/Москва","url":{"index":0,"length":36,"text":"https://ru.wikipedia.org/wiki/Москва","url":"https://ru.wikipedia.org/wiki/Москва"}},
+{"email":null,"text":"https://x.com/٣٤","url":{"index":0,"length":16,"text":"https://x.com/٣٤","url":"https://x.com/٣٤"}},
+{"email":null,"text":"https://٣٤.com","url":{"index":0,"length":14,"text":"https://٣٤.com","url":"https://٣٤.com"}},
+{"email":null,"text":"https://x.com/１２３","url":{"index":0,"length":17,"text":"https://x.com/１２３","url":"https://x.com/１２３"}},
+{"email":null,"text":"www.ŝ.com/ß","url":{"index":0,"length":11,"text":"www.ŝ.com/ß","url":"https://www.ŝ.com/ß"}},
+{"email":null,"text":"https://𝐀.com/𝐀","url":{"index":0,"length":17,"text":"https://𝐀.com/𝐀","url":"https://𝐀.com/𝐀"}},
+{"email":null,"text":"https://𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀.com","url":{"index":0,"length":412,"text":"https://𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀.com","url":"https://𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀𝐀.com"}},
+{"email":null,"text":"https://lexical.dev😀","url":{"index":0,"length":19,"text":"https://lexical.dev","url":"https://lexical.dev"}},
+{"email":null,"text":"😀https://lexical.dev 😀","url":{"index":2,"length":19,"text":"https://lexical.dev","url":"https://lexical.dev"}},
+{"email":null,"text":"https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com","url":{"index":0,"length":268,"text":"https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com","url":"https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"}},
+{"email":null,"text":"https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com","url":null},
+{"email":null,"text":"https://example.abcdef","url":{"index":0,"length":22,"text":"https://example.abcdef","url":"https://example.abcdef"}},
+{"email":null,"text":"https://example.abcdefg","url":{"index":0,"length":23,"text":"https://example.abcdefg","url":"https://example.abcdefg"}},
+{"email":null,"text":"https://a.b","url":{"index":0,"length":11,"text":"https://a.b","url":"https://a.b"}},
+{"email":null,"text":"https://lexical.devx","url":{"index":0,"length":19,"text":"https://lexical.dev","url":"https://lexical.dev"}},
+{"email":null,"text":"x﻿www.lexical.dev","url":{"index":2,"length":15,"text":"www.lexical.dev","url":"https://www.lexical.dev"}},
+{"email":{"index":0,"length":16,"text":"user@example.com","url":"mailto:user@example.com"},"text":"user@example.com","url":null},
+{"email":{"index":7,"length":16,"text":"user@example.com","url":"mailto:user@example.com"},"text":"mailto:user@example.com","url":null},
+{"email":{"index":0,"length":22,"text":"user@sub.example.co.uk","url":"mailto:user@sub.example.co.uk"},"text":"user@sub.example.co.uk","url":null},
+{"email":{"index":0,"length":8,"text":"a.b@c.de","url":"mailto:a.b@c.de"},"text":"a.b@c.de","url":null},
+{"email":{"index":3,"length":6,"text":"b@c.de","url":"mailto:b@c.de"},"text":"a..b@c.de","url":null},
+{"email":null,"text":"user@exämple.de","url":null},
+{"email":{"index":0,"length":15,"text":"üser@example.de","url":"mailto:üser@example.de"},"text":"üser@example.de","url":null},
+{"email":{"index":0,"length":25,"text":"\"quoted name\"@example.com","url":"mailto:\"quoted name\"@example.com"},"text":"\"quoted name\"@example.com","url":null},
+{"email":null,"text":"\"a b\"@example.com","url":null},
+{"email":{"index":0,"length":17,"text":"\"ab\"@example.com","url":"mailto:\"ab\"@example.com"},"text":"\"ab\"@example.com","url":null},
+{"email":{"index":0,"length":18,"text":"user@[192.168.0.1]","url":"mailto:user@[192.168.0.1]"},"text":"user@[192.168.0.1]","url":null},
+{"email":null,"text":"x@y","url":null},
+{"email":{"index":0,"length":67,"text":"a@b.ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","url":"mailto:a@b.ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"text":"a@b.cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","url":null},
+{"email":{"index":0,"length":70,"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@x.com","url":"mailto:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@x.com"},"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@x.com","url":null},
+{"email":{"index":1,"length":70,"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@x.com","url":"mailto:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@x.com"},"text":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@x.com","url":null},
+{"email":{"index":0,"length":70,"text":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com","url":"mailto:😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com"},"text":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com","url":null},
+{"email":{"index":2,"length":70,"text":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com","url":"mailto:😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com"},"text":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com","url":null},
+{"email":{"index":1,"length":70,"text":"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com","url":"mailto:😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com"},"text":"a😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀@x.com","url":null},
+{"email":{"index":2,"length":7,"text":"b@x.com","url":"mailto:b@x.com"},"text":"a﻿b@x.com","url":null},
+{"email":{"index":0,"length":9,"text":"ab@x.com","url":"mailto:ab@x.com"},"text":"ab@x.com","url":null},
+{"email":{"index":2,"length":7,"text":"b@x.com","url":"mailto:b@x.com"},"text":"a b@x.com","url":null},
+{"email":{"index":23,"length":16,"text":"user@example.com","url":"mailto:user@example.com"},"text":"see www.lexical.dev or user@example.com","url":{"index":4,"length":15,"text":"www.lexical.dev","url":"https://www.lexical.dev"}}
+]}

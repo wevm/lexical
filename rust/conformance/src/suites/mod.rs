@@ -1,6 +1,7 @@
 //! One suite per vector file the port replays. A file with no suite is
 //! reported as not implemented.
 
+mod entities;
 mod meta;
 mod property;
 mod serialization;
@@ -13,6 +14,11 @@ pub fn all() -> Vec<Suite> {
             file: "meta",
             variant: None,
             check: meta::check,
+        },
+        Suite {
+            file: "entities/autolink-match",
+            variant: None,
+            check: entities::check_autolink_match,
         },
         Suite {
             file: "serialization/core",
@@ -86,6 +92,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "scripts/link",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/autolink",
             variant: None,
             check: crate::scripts::check,
         },

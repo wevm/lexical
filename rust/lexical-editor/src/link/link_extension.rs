@@ -32,7 +32,7 @@ impl fmt::Debug for LinkConfig {
     }
 }
 
-fn merge(unregisters: Vec<Unregister>) -> Unregister {
+pub(super) fn merge(unregisters: Vec<Unregister>) -> Unregister {
     Box::new(move || {
         for unregister in unregisters {
             unregister();

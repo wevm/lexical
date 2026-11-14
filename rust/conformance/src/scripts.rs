@@ -20,7 +20,9 @@
 //! (`PACKAGE_COMMANDS`). One with `link: true` registers `@lexical/link`'s
 //! nodes (`LinkNode`, `AutoLinkNode`) and `registerLink` with its
 //! defaults, and `TOGGLE_LINK_COMMAND` takes `null`, a URL or
-//! `{url, target, rel, title}`.
+//! `{url, target, rel, title}`. With `autoLink: true` as well, it registers
+//! `registerAutoLink` with `autoLinkUrlMatcher` and `autoLinkEmailMatcher`,
+//! and a change handler that logs `['autoLink', url, prevUrl]`.
 //!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
@@ -860,6 +862,24 @@ impl Session {
         }
         if with_link {
             let _unregister = link::register_link(&editor, link::LinkConfig::default());
+            if script.get("autoLink").and_then(Value::as_bool) == Some(true) {
+                let log = ctx.clone();
+                let on_change: link::ChangeHandler = Rc::new(move |url, prev_url| {
+                    let or_null = |url: Option<&str>| url.map_or(Value::Null, Value::from);
+                    log.log(vec!["autoLink".into(), or_null(url), or_null(prev_url)]);
+                });
+                let _unregister = link::register_auto_link(
+                    &editor,
+                    link::AutoLinkConfig {
+                        change_handlers: vec![on_change],
+                        matchers: vec![
+                            Rc::new(link::auto_link_url_matcher),
+                            Rc::new(link::auto_link_email_matcher),
+                        ],
+                        ..link::AutoLinkConfig::default()
+                    },
+                );
+            }
         }
         for name in script
             .get("transforms")

@@ -47,15 +47,26 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --workspace --all-features --no-deps --locked
-      # The crate has no third-party dependencies in its default build
-      # (rust/DESIGN.md): any normal or build dependency fails.
+      # The crate has no third-party dependencies in its default build, nor
+      # with every feature but `autolink` (rust/DESIGN.md): any normal or
+      # build dependency fails. `autolink` brings in `regex` and its own
+      # crates, and nothing else.
       - name: No dependencies
         run: |
-          deps="$(cargo tree -p lexical-editor -e normal,build --prefix none --locked | grep -v '^lexical-editor v' || true)"
-          if [ -n "$deps" ]; then
-            echo "lexical-editor's default build has third-party dependencies:" >&2
+          features="$(cargo metadata --no-deps --format-version 1 --locked | jq -r '.packages[] | select(.name == "lexical-editor") | .features | keys - ["autolink"] | join(",")')"
+          for args in "" "--features $features"; do
+            deps="$(cargo tree -p lexical-editor -e normal,build --prefix none --locked $args | grep -v '^lexical-editor v' || true)"
+            if [ -n "$deps" ]; then
+              echo "lexical-editor ${args:-(default features)} has third-party dependencies:" >&2
+              echo "$deps" >&2
+              echo "Put them behind an opt-in feature, or drop them." >&2
+              exit 1
+            fi
+          done
+          deps="$(cargo tree -p lexical-editor -e normal,build --prefix none --locked --features autolink | grep -v '^lexical-editor v' | sed -E 's/ v.*//' | sort -u)"
+          if [ "$deps" != "$(printf 'regex\nregex-automata\nregex-syntax')" ]; then
+            echo "lexical-editor --features autolink should depend on regex alone:" >&2
             echo "$deps" >&2
-            echo "Put them behind an opt-in feature, or drop them." >&2
             exit 1
           fi
       # The library builds on the oldest Rust its manifest names.

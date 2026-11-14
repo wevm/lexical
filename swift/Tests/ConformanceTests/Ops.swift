@@ -556,6 +556,21 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   }
   if script["link"]?.boolValue == true {
     _ = try registerLink(editor, namedSignals(LinkConfig()))
+    // `autoLink: true`: `registerAutoLink` with the URL and email matchers
+    // and a change handler that logs `['autoLink', url, prevUrl]`.
+    if script["autoLink"]?.boolValue == true {
+      let changeHandler: ChangeHandler = { url, prevUrl in
+        ctx.log.append(
+          .array([
+            .string("autoLink"), url.map { .string($0) } ?? .null,
+            prevUrl.map { .string($0) } ?? .null,
+          ]))
+      }
+      _ = try registerAutoLink(
+        editor,
+        AutoLinkConfig(
+          changeHandlers: [changeHandler], matchers: [autoLinkUrlMatcher, autoLinkEmailMatcher]))
+    }
   }
   for name in script["transforms"]?.arrayValue ?? [] {
     try registerTransform(name.stringValue.orThrow(), ctx)

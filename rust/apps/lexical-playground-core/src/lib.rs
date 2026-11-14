@@ -916,18 +916,23 @@ impl Playground {
         self.run(Value::Object(step))
     }
 
+    /// The `select` action that gives the editor the app's selection, or
+    /// `None` when the editor's selection is already at those positions.
+    /// Positions, not points, decide: the edge between two text nodes is
+    /// one position but two points (the end of one node, the start of the
+    /// next), and a browser leaves Lexical's point alone there. Sending the
+    /// other point moves the selection, as an extra step: after ⌘B bolds a
+    /// word, its start would move to the end of the plain node before it,
+    /// the selection would take that node's format, and the next ⌘B, which
+    /// toggles the selection's format (in JS as here), would set bold again
+    /// instead of clearing it.
     fn select_action(&self) -> Option<Value> {
         let sel = self.selection?;
-        let anchor = self.document.point_at(sel.anchor).to_json();
-        let focus = self.document.point_at(sel.focus).to_json();
-        let current = self.model_selection.as_array();
-        if let Some(c) = current
-            && c.first().and_then(Value::as_str) == Some("range")
-            && c.get(1) == Some(&anchor)
-            && c.get(2) == Some(&focus)
-        {
+        if self.selection_from_model() == Some(sel) {
             return None;
         }
+        let anchor = self.document.point_at(sel.anchor).to_json();
+        let focus = self.document.point_at(sel.focus).to_json();
         let mut action = Object::new();
         action.insert("do", "select".into());
         action.insert("anchor", anchor);

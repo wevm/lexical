@@ -2,10 +2,9 @@
 //! `insertRawText` from `LexicalSelection.ts`, for both selection kinds,
 //! with `$insertNodes`, `$generateNodesFromRawText` and `$selectAll`.
 //!
-//! Slots, `DecoratorNode`, `CodeNode` and declared node structure
-//! (`NodeStructureExtension`) are not ported, so the branches for a slot
-//! value, a code block, a decorator and a declared block container do
-//! nothing here.
+//! Slots, `CodeNode` and declared node structure (`NodeStructureExtension`)
+//! are not ported, so the branches for a slot value, a code block and a
+//! declared block container do nothing here.
 
 use crate::LexicalError;
 use crate::caret::CaretDirection;
@@ -200,8 +199,8 @@ fn range_selection_insert_nodes(
     // ported.
 
     // CASE 2: All elements of the array are inline
-    // (A DecoratorNode that is not inline counts too, once it is ported.)
-    let not_inline = |node: &NodeRef| node.is_element() && !node.is_inline();
+    let not_inline =
+        |node: &NodeRef| (node.is_element() || node.is_decorator()) && !node.is_inline();
 
     if !nodes.iter().any(not_inline) {
         let Some(first_block) = first_block.filter(NodeRef::is_element) else {
@@ -462,16 +461,18 @@ fn is_point_after_empty_line(point: &Point) -> Result<bool, LexicalError> {
 }
 
 /// `$extractInlineFromBlocks(nodes)`: the inline content of `nodes`, with
-/// blocks replaced by their inline content and line breaks dropped. (A
-/// block `DecoratorNode` is dropped too, once it is ported.)
+/// blocks replaced by their inline content and line breaks and block
+/// decorators dropped.
 fn extract_inline_from_blocks(nodes: &[NodeRef]) -> Vec<NodeRef> {
     let mut inline_nodes = Vec::new();
     for node in nodes {
         if node.get_latest().is::<LineBreakNode>() {
             continue;
         }
-        if node.is_element() && !node.is_inline() {
-            inline_nodes.extend(extract_inline_from_blocks(&node.get_children()));
+        if (node.is_element() || node.is_decorator()) && !node.is_inline() {
+            if node.is_element() {
+                inline_nodes.extend(extract_inline_from_blocks(&node.get_children()));
+            }
             continue;
         }
         inline_nodes.push(node.clone());
@@ -572,9 +573,8 @@ fn split_node_at_point(
 fn is_inline_run_node(node: &NodeRef) -> bool {
     let latest = node.get_latest();
     latest.is::<LineBreakNode>()
-        // `$isInlineElementOrDecoratorNode`; inline decorators come with
-        // DecoratorNode.
-        || (latest.element().is_some() && latest.is_inline())
+        // `$isInlineElementOrDecoratorNode`
+        || ((latest.element().is_some() || latest.is_decorator()) && latest.is_inline())
         || latest.text().is_some()
         || latest.is_parent_required()
 }

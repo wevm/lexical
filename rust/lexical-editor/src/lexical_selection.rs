@@ -346,8 +346,7 @@ impl SelectionRef {
                         Some(slice) => text_content.push_str(&slice.get_text_content()),
                         None => text_content.push_str(&node.get_text_content()),
                     }
-                } else if node.get_latest().is::<LineBreakNode>() {
-                    // A DecoratorNode's text too, once it is ported.
+                } else if node.is_decorator() || node.get_latest().is::<LineBreakNode>() {
                     text_content.push_str(&node.get_text_content());
                 }
             }

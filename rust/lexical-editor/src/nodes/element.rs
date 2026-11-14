@@ -327,9 +327,8 @@ pub fn splice(
 ) -> Result<(), LexicalError> {
     if this.is_root() {
         for node in nodes_to_insert {
-            // DecoratorNode is allowed too, once it is ported.
             invariant!(
-                node.is_element(),
+                node.is_element() || node.is_decorator(),
                 "rootNode.splice: Only element or decorator nodes can be inserted to the root node"
             );
         }

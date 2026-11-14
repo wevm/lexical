@@ -65,10 +65,13 @@ pub(crate) fn is_shadow_root_node(node: &NodeRef) -> bool {
     node.element().is_some() && node.is_shadow_root()
 }
 
-/// `INTERNAL_$isBlock(node)`: an element that is not a root or shadow
-/// root, not inline, can be empty, and has no children or an inline first
-/// child. (A block `DecoratorNode` too, once it is ported.)
+/// `INTERNAL_$isBlock(node)`: a `DecoratorNode` that is not inline, or an
+/// element that is not a root or shadow root, not inline, can be empty, and
+/// has no children or an inline first child.
 pub(crate) fn is_block(node: &NodeRef) -> bool {
+    if node.is_decorator() && !node.is_inline() {
+        return true;
+    }
     if !node.is_element() || is_root_or_shadow_root(&*node.get_latest()) {
         return false;
     }

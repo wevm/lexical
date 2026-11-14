@@ -12,7 +12,11 @@ import {
   CodeNode,
   registerCodeIndentation,
 } from '@lexical/code-core';
-import {namedSignals} from '@lexical/extension';
+import {
+  DecoratorTextNode,
+  HorizontalRuleNode,
+  namedSignals,
+} from '@lexical/extension';
 import {HashtagNode, registerLexicalHashtag} from '@lexical/hashtag';
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
 import {
@@ -39,10 +43,19 @@ import {
 } from '@lexical/list';
 import {OverflowNode} from '@lexical/overflow';
 import {registerPlainText} from '@lexical/plain-text';
-import {HeadingNode, QuoteNode, registerRichText} from '@lexical/rich-text';
+import {
+  $createHeadingNode,
+  $createQuoteNode,
+  HeadingNode,
+  type HeadingTagType,
+  QuoteNode,
+  registerRichText,
+} from '@lexical/rich-text';
+import {$setBlocksType} from '@lexical/selection';
 import {
   $caretRangeFromSelection,
   $createNodeSelection,
+  $createParagraphNode,
   $createRangeSelection,
   $getCaretRange,
   $getChildCaret,
@@ -153,6 +166,8 @@ export type Action =
   | {do: 'removeTextFromCaretRange'}
   /** Logs `$normalizeCaret(caret)`. */
   | {do: 'logNormalizeCaret'; caret: CaretSpec}
+  /** Logs `['selectionText', $getSelection().getTextContent()]`. */
+  | {do: 'logSelectionText'}
   /** `$setState(node, STATES[state], value)`. */
   | {do: 'setState'; key: string; state: string; value: Json}
   /** `$setState(node, STATES[state], UPDATERS[updater])`. */
@@ -165,6 +180,12 @@ export type Action =
    * or `'new'` when that state has no node with the key.
    */
   | {do: 'logStateChange'; key: string; state: string}
+  /**
+   * `$setBlocksType($getSelection(), $create)` (@lexical/selection), with its
+   * default `$afterCreateElement` (`$copyBlockFormatIndent`), where `$create`
+   * is `$createParagraphNode`, `$createQuoteNode` or `$createHeadingNode(tag)`.
+   */
+  | {do: 'setBlocksType'; block: 'paragraph' | 'quote' | HeadingTagType}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /**
@@ -256,6 +277,13 @@ export type Script = {
    * does (with its default config).
    */
   hashtag?: boolean;
+  /**
+   * Register `@lexical/extension`'s decorators, `HorizontalRuleNode` (a
+   * block decorator) and `DecoratorTextNode` (an inline one), as
+   * `HorizontalRuleExtension` and `DecoratorTextExtension` do. Their other
+   * registrations (inserting a rule by command, clicks) are left out.
+   */
+  extension?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -370,6 +398,15 @@ const SELECTION_METHODS: Record<string, (args: Json[] | undefined) => void> = {
   },
   insertRawText: args => $anySel().insertRawText(arg(args, 0) as string),
   insertText: args => $anySel().insertText(arg(args, 0) as string),
+  // `modify(alter, isBackward, granularity)`: a headless editor has no
+  // `Selection.modify`, so only the moves the model resolves (around
+  // decorators and blocks) succeed; the rest throw.
+  modify: args =>
+    $sel().modify(
+      arg(args, 0) as never,
+      arg(args, 1) as boolean,
+      arg(args, 2) as never,
+    ),
   removeText: () => $sel().removeText(),
   setFormat: args => $sel().setFormat(arg(args, 0) as number),
   setStyle: args => $sel().setStyle(arg(args, 0) as string),
@@ -686,6 +723,29 @@ function $runAction(action: Action, ctx: Context): void {
       ]);
       return;
     }
+    case 'setBlocksType': {
+      const {block} = action;
+      $setBlocksType($getSelection(), (): ElementNode => {
+        switch (block) {
+          case 'paragraph':
+            return $createParagraphNode();
+          case 'quote':
+            return $createQuoteNode();
+          case 'h1':
+          case 'h2':
+          case 'h3':
+          case 'h4':
+          case 'h5':
+          case 'h6':
+            return $createHeadingNode(block);
+        }
+        throw new Error(`unknown block ${block}`);
+      });
+      return;
+    }
+    case 'logSelectionText':
+      ctx.log.push(['selectionText', $anySel().getTextContent()]);
+      return;
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -834,6 +894,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       ...(script.code ? [CodeNode, CodeHighlightNode] : []),
       ...(script.overflow ? [OverflowNode] : []),
       ...(script.hashtag ? [HashtagNode] : []),
+      ...(script.extension ? [HorizontalRuleNode, DecoratorTextNode] : []),
     ],
     onError: e => {
       throw e;

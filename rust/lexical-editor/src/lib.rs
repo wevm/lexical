@@ -54,6 +54,8 @@ pub mod constants;
 mod editor;
 mod editor_state;
 mod error;
+#[cfg(feature = "extension")]
+pub mod extension;
 mod gc;
 mod generated_json;
 #[cfg(feature = "hashtag")]

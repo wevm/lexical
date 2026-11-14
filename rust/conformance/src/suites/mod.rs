@@ -121,6 +121,11 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/decorator",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "scripts/plain-text",
             variant: None,
             check: crate::scripts::check,
@@ -137,6 +142,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "scripts/autolink",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/set-blocks-type",
             variant: None,
             check: crate::scripts::check,
         },

@@ -27,6 +27,7 @@ updated with each milestone.
 | Editor state | `LexicalEditorState.ts` (`toJSON`, `read`, `isEmpty`, `_parsed`) | `editor_state` | `serialization/core` |
 | Parsing | `parseEditorState`, `$parseSerializedNode` (`LexicalUpdates.ts`) | `updates` | `serialization/core`, `property/documents` |
 | NodeState | `LexicalNodeState.ts`: `createState` (`StateConfig` with `parse`, `unparse`, `isEqual`, `defaultValue` and `resetOnCopyNode`), `$getState` (latest and direct), `$setState` with a value or an updater, `$getStateChange`, `$getWritableNodeState`, `NodeState` (`getValue`, `toJSON`, `getWritable` with `parseAndPruneNextUnknownState`, `updateFromKnown`, `updateFromUnknown`, `updateFromJSON`, `resetOnCopyNode`, the size count), `$getSharedNodeState` and `createSharedNodeState` (a class's `stateConfigs`, flat keys, key collisions), `$updateStateFromJSON` (`Object.entries` of a `"$"` that is not an object, too), `$applyFlatStates`, `$cloneNodeState`, `$copyNodeState`, `$carryNodeState`, `nodeStatesAreEquivalent`; their call sites: the `"$"` key and flat states in `exportJSON` and `$parseSerializedNode`, `$copyNode`, `splitText`, the merge of `$normalizeTextNode`, history's JSON, a segmented node made plain text (`$insertText`, `$removeTextFromCaretRange`); `QuoteNode`'s `quoteShadowRootState` as a flat state | `node_state`, `node`, `nodes::text`, `normalization`, `updates`, `rich_text`, `caret_utils`, `selection_insert_text` | `scripts/node-state`, the node state case of `serialization/core` |
+| DecoratorNode | `nodes/LexicalDecoratorNode.ts` (`isInline`, `isIsolated`, `isKeyboardSelectable`, `decorate` as a hook returning an app's value, `$isDecoratorNode`) as `LexicalNode` hooks (`is_decorator`, `decorate`, `is_isolated`, `is_keyboard_selectable`); where the model treats decorators: `INTERNAL_$isBlock`, `$isLeafNode` (`formatList.ts`), `$isInlineElementOrDecoratorNode`, `$needsBlockCursorBeside`, `RootNode.splice` and `errorOnInsertTextNodeOnRoot`, `RangeSelection.getTextContent`, `insertNodes` (CASE 2's `notInline`, `$extractInlineFromBlocks`, `$isInlineRunNode`), `deleteCharacter`'s decorator branch (an isolated decorator stays; one beside an empty block is selected as a node, else removed), `$modifySelectionAroundDecoratorsAndBlocks` (stepping over, stopping at an isolated one, a node selection of a keyboard-selectable one); `$isInlineFormattable` and `InlineFormattableNode` (`is_inline_formattable`, `get_inline_format`, `set_inline_format`) in `$updateTextFormat` | `node`, `lexical_utils`, `caret_tree`, `nodes::element`, `lexical_selection`, `selection_insert_nodes`, `selection_deletion`, `selection_format`, `list` | `scripts/decorator` |
 | Editor | `createEditor` (node registration), `update`, `read`, `getEditorState`, `setEditorState`, `registerNodeTransform`, `registerUpdateListener`, `registerTextContentListener`, `registerCommand`, `dispatchCommand`, `createCommand` | `editor` | `scripts/*` |
 | History (the `history` feature) | `packages/lexical-history/src/index.ts`: `registerHistory` (with `dateNow`, `onHistoryStateChange` and `maxDepth`), `createEmptyHistoryState`, `createMergeActionGetter`, `getChangeType`, `getDirtyNodes`, `isTextNodeUnchanged`, `areNodesUnchanged`, `getInverseEntry`, `getUndoEntry`, `undo`, `redo`, `clearHistory`; the commands it handles and dispatches from `LexicalCommands.ts` (`UNDO_COMMAND`, `REDO_COMMAND`, `CAN_UNDO_COMMAND`, `CAN_REDO_COMMAND`, `CLEAR_HISTORY_COMMAND`, `CLEAR_EDITOR_COMMAND`) and its tags from `LexicalUpdateTags.ts` | `history`, `commands`, `editor` | `scripts/history`; unit tests for a history shared by two editors (upstream's #8623 test) and `maxDepth` |
 | Rich text nodes (the `rich-text` feature) | `packages/lexical-rich-text/src/index.ts`: `HeadingNode` (`getTag`, `setTag`, `insertNewAfter`, `collapseAtStart`, `extractWithChild`), `QuoteNode` (`insertNewAfter`, `collapseAtStart`, `canMergeWhenEmpty`, the opt-in shadow root), `$createHeadingNode`, `$isHeadingNode`, `$createQuoteNode`, `$isQuoteNode`; their generated JSON (`LexicalRichTextGeneratedJSON.ts`); `ElementNode.collapseAtStart` as a node hook, and `ElementNode`'s own `$transform` (`$normalizeShadowRootChildren`); from `@lexical/selection` and `@lexical/utils` only `$isAtEdgeOfElement`, `$isAtStartOfNode`, `$isAtEndOfNode`, `$findMatchingParent` and `$handleIndentAndOutdent` | `rich_text`, `selection`, `utils`, `updates` | `scripts/rich-text`, the heading and quote cases of `property/documents` |
@@ -42,7 +43,9 @@ updated with each milestone.
 | `CodeExtension`'s register and `registerCodeIndentation` (the `code` feature) | `CodeExtension.ts` `register` (the `TabNode` transform), as `register_code`; `CodeIndentation.ts` `registerCodeIndentation`'s handlers of `INSERT_TAB_COMMAND`, `INDENT_CONTENT_COMMAND` and `OUTDENT_CONTENT_COMMAND` (`$isSelectionInCode`, `$getCodeLines`, `$outdentLineAtCaret`, `$handleMultilineIndent`), with `tabSize` | `code::register_code`, `code::register_code_indentation` | `scripts/code` |
 | Overflow node (the `overflow` feature) | `packages/lexical-overflow/src/index.ts` (`OverflowNode`: `insertNewAfter` (its parent's), `excludeFromCopy`, the `$transform` of its `$config` that removes it once empty; `$createOverflowNode`, `$isOverflowNode`), with `ElementNode`'s generated JSON; `ElementNode.excludeFromCopy` as a node hook | `overflow`, `node` | `serialization/overflow`, the overflow cases of `property/documents`, `scripts/overflow` |
 | Hashtag node and matcher (the `hashtag` feature) | `packages/lexical-hashtag/src/LexicalHashtagNode.ts` (`HashtagNode`: `canInsertTextBefore`, `isTextEntity`; `$createHashtagNode`, `$isHashtagNode`), with `TextNode`'s generated JSON; `LexicalHashtagExtension.ts` (`getHashtagRegexStringChars`, `getHashtagRegexString` and `getHashtagMatch` as the default matcher, `HashtagConfig`, `registerLexicalHashtag`), the character classes as range tables generated from the JS source by `rust/scripts/generate-hashtag-tables.mjs`; `TextNode.isTextEntity` as a node hook | `hashtag`, `node` | `entities/hashtag-match`, `entities/hashtag-documents`, `entities/hashtag-typing`, the hashtag cases of `property/documents` |
+| `@lexical/extension`'s decorators (the `extension` feature) | `packages/lexical-extension/src/HorizontalRuleExtension.ts` (`HorizontalRuleNode`: a block decorator whose text is `\n`; `$createHorizontalRuleNode`, `$isHorizontalRuleNode`), `DecoratorTextExtension.ts` (`DecoratorTextNode`: inline, `__isInlineFormattable`, `getFormat`, `hasFormat`, `setFormat`, `toggleFormat`, its `format` as a flat NodeState; `$isDecoratorTextNode`), with `LexicalNode`'s generated JSON | `extension` | `scripts/decorator` |
 | `registerLexicalTextEntity` (the `text` feature) | `packages/lexical-text/src/registerLexicalTextEntity.ts`: `EntityMatch`, `registerLexicalTextEntity` (the `TextNode` transform and `$reverseNodeTransform`, `$replaceWithSimpleText`, `$wasTurnedIntoText`, `getFirstMatchAfter`, `isNextTextEntity`, `isTextAfterOutsideSource`, `isEntityAfter`, `$checkNextSibling`, `$moveSelectionIntoEntity`, `$wouldMerge`, `MAX_MATCHES_PASSED`, `MAX_TURNED_INTO_TEXT`, the per-update `markedInUpdate` and `turnedIntoTextInUpdate`); from the core `INTERNAL_getActiveEditorState` | `text`, `updates` | `entities/hashtag-documents`, `entities/hashtag-typing` |
+| `$setBlocksType` (the `selection` feature) | `packages/lexical-selection/src/range-selection.ts` (`$setBlocksType`, with its default `$afterCreateElement`, `$copyBlockFormatIndent`, and `$isPointAtBlockEdge`), through `LexicalNode.replace` and `ListItemNode.replace` | `selection` | `scripts/set-blocks-type`, the block-decorator case of `scripts/decorator` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -53,6 +56,21 @@ touches:
 
 - **Slots** (`"$slots"`): a document that carries them fails to parse with
   an error naming them, rather than losing them.
+- Of `DecoratorNode`: `editor._decorators`, `getDecorators()` and
+  `registerDecoratorListener`, which only JS's DOM reconciler fills (it
+  calls `decorate` for each decorator it renders; a headless JS editor
+  skips the reconciler, so its map stays empty and the listener never
+  fires); with them `$garbageCollectDetachedDecorators`. They come with the
+  DOM; an app's renderer can call `decorate` itself. The parts of
+  `$extendSelectionForDeletion` and `applyDOMRange` that read a decorator's
+  DOM (a line boundary landing in its private text, a DOM range inside
+  one) have no model counterpart. `isSelected()`'s rule for an inline
+  decorator at the end of its parent and `getTopLevelElement` are not
+  ported (no range-selection `isSelected` or `getTopLevelElement` is), nor
+  are slots on decorators (`__slotHost`, `__slots`). `@lexical/extension`'s
+  `HorizontalRuleExtension` (`INSERT_HORIZONTAL_RULE_COMMAND`, clicks, the
+  selected class) and `DecoratorTextExtension` need the extension API, and
+  `applyFormatFromStyle` reads CSS.
 - Of NodeState: the `SerializationSchema` builders as `parse` functions
   (with them `canonicalValue`'s `arraySetValue` form and a config's
   `derived` and `schema`), which come with the schema facility;
@@ -180,6 +198,11 @@ touches:
   the last state asked about, as one state is pending at a time. JS's
   `targetNode` class is a node type here, as `registerNodeTransform`
   takes one.
+- In `$setBlocksType`, the skipping of a block that is a named slot's value
+  (`$getSlotHost(prevNode) !== null`), as slots aren't ported. Its branch for a
+  declared block container (`$isBlockContainer`) is ported but unreachable
+  until `NodeStructureExtension`'s declared containers are: without them,
+  only the root and shadow roots are containers, and neither is a block.
 - The slot-aware caret comparisons (`$comparePointCaretNextAcrossSlots`,
   `$getCommonAncestorAcrossSlots`). Without slots or the text edit log,
   `$removeTextFromCaretRange` never meets a slot host and records no

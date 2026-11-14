@@ -9,6 +9,7 @@ import LexicalList
 import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
+import LexicalSelection
 
 // The Swift interpreter of the script vectors that
 // packages/lexical-conformance/src/ops.ts writes. It must do exactly what
@@ -409,6 +410,13 @@ private func runSelectionMethod(_ method: String, _ args: JSONValue) throws {
   case "insertParagraph": _ = try rangeSelection().insertParagraph()
   case "insertRawText": try anySelection().insertRawText(a0.stringValue.orThrow())
   case "insertText": try anySelection().insertText(a0.stringValue.orThrow())
+  case "modify":
+    // A headless editor has no `Selection.modify`: only the moves the model
+    // resolves (around decorators and blocks) succeed.
+    guard let alter = SelectionAlter(rawValue: try a0.stringValue.orThrow()),
+      let granularity = SelectionGranularity(rawValue: try args.at(2).stringValue.orThrow())
+    else { throw ScriptError("bad modify arguments \(args.stringify())") }
+    try rangeSelection().modify(alter, args.at(1).boolValue ?? false, granularity)
   case "removeText": try rangeSelection().removeText()
   case "setFormat": try rangeSelection().setFormat(a0.int.orThrow())
   case "setStyle": try rangeSelection().setStyle(a0.stringValue.orThrow())
@@ -549,6 +557,9 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
         .string("normalizeCaret"),
         caretSnapshot(try normalizeCaret(caret(action["caret"] ?? .null))),
       ]))
+  case "logSelectionText":
+    guard let selection = try getSelection() else { throw ScriptError("no selection") }
+    ctx.log.append(.array([.string("selectionText"), .string(try selection.getTextContent())]))
   case "setState":
     try ctx.state(action["state"]?.stringValue.orThrow() ?? "").set(
       node(action["key"]?.stringValue.orThrow() ?? ""), action["value"] ?? .null)
@@ -574,6 +585,14 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
       change = .string("new")
     }
     ctx.log.append(.array([.string("stateChange"), .string(key), .string(name), change]))
+  case "setBlocksType":
+    switch try action["block"]?.stringValue.orThrow() {
+    case "paragraph": try setBlocksType(getSelection()) { try createParagraphNode() }
+    case "quote": try setBlocksType(getSelection()) { try createQuoteNode() }
+    case let tag? where ["h1", "h2", "h3", "h4", "h5", "h6"].contains(tag):
+      try setBlocksType(getSelection()) { try createHeadingNode(tag) }
+    case let block: throw ScriptError("unknown block \(String(describing: block))")
+    }
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)
@@ -641,8 +660,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   // nodes and `registerLink` with its default config, and `code: true`
   // @lexical/code-core's nodes, `CodeExtension`'s TabNode transform and
   // `registerCodeIndentation`, `overflow: true` @lexical/overflow's
-  // `OverflowNode`, and `hashtag: true` @lexical/hashtag's `HashtagNode`
-  // and `registerLexicalHashtag`, as ops.ts does.
+  // `OverflowNode`, `hashtag: true` @lexical/hashtag's `HashtagNode` and
+  // `registerLexicalHashtag`, and `extension: true` @lexical/extension's
+  // `HorizontalRuleNode` and `DecoratorTextNode`, as ops.ts does.
   var nodes: [LexicalNodeConfig] =
     script["richText"]?.boolValue == true
     ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
@@ -660,6 +680,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   }
   if script["hashtag"]?.boolValue == true {
     nodes += [.klass(HashtagNode.self)]
+  }
+  if script["extension"]?.boolValue == true {
+    nodes += [.klass(HorizontalRuleNode.self), .klass(DecoratorTextNode.self)]
   }
   let editor = try createEditor(
     CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))

@@ -69,7 +69,7 @@ pub struct LinkNode {
 }
 
 /// `AutoLinkNode`: a [`LinkNode`] made while typing (by `registerAutoLink`,
-/// which isn't ported) that records whether it was ever unlinked. A
+/// the `autolink` feature) that records whether it was ever unlinked. A
 /// `LinkNode` in every other respect: [`is_link_node`] holds for it.
 #[derive(Clone, Debug, Default)]
 pub struct AutoLinkNode {

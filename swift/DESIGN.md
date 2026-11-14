@@ -851,7 +851,12 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   deciding whether a URL without a base parses (scheme, port, forbidden host
   code points). It does not percent-decode or IDNA-map hosts. The JS regexes
   are Swift `Regex`es matched by Unicode scalar (JS `u`), with UTF-16
-  offsets. `ClickableLinkExtension` handles `CLICK_COMMAND`, which the
+  offsets. `EMAIL_REGEX` has no `u` flag, so JS matches it by UTF-16 code
+  unit; it runs on a string with one scalar per code unit (a surrogate
+  standing as U+E000), so that its bounds count as JS's do. Where the
+  autolink patterns use JS's `\s` (ECMAScript's white space and line
+  terminators, with U+FEFF and without U+0085) and `.` (anything but `\n`,
+  `\r`, U+2028 and U+2029), they spell out JS's set, since Swift's differ. `ClickableLinkExtension` handles `CLICK_COMMAND`, which the
   native views send with the node under the pointer, in place of JS's root
   `click`/`auxclick` listeners. It opens links through
   `ClickableLinkConfig.getWindow`, which returns a `LinkWindow` (JS

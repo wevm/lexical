@@ -58,6 +58,7 @@ depends on as the upstream package depends on them:
 | `plain-text`| `@lexical/plain-text`  | (upstream lists `clipboard`, `dragon`, `extension`, `selection` and `utils`; the model handlers use none of them) |
 | `list`      | `@lexical/list`        | `utils` (upstream also lists `extension` and `html`, for `ListExtension` and the DOM import, which aren't ported) |
 | `link`      | `@lexical/link`        | `utils` (upstream also lists `extension` and `html`, for `LinkExtension` and the DOM import, which aren't ported) |
+| `autolink`  | `@lexical/link`'s `registerAutoLink` | `link`, `regex` |
 | `code`      | `@lexical/code-core`   | `utils`                    |
 | `overflow`  | `@lexical/overflow`    |                            |
 | `hashtag`   | `@lexical/hashtag`     | `utils`                    |
@@ -73,9 +74,13 @@ Names may change as packages land; this table is updated with them.
 ## Architecture
 
 - **No third-party dependencies** in the default build: `cargo tree -e
-  normal,build` of `lexical-editor` shows the crate alone, and CI fails
-  otherwise. A dependency comes only behind an opt-in feature (`yjs` will
-  need `yrs`). The crate has its own JSON (`json`), because the output must
+  normal,build` of `lexical-editor` shows the crate alone, with the default
+  features and with every feature but `autolink`, and CI fails otherwise. A
+  dependency comes only behind an opt-in feature: `autolink` needs `regex`
+  (with `regex-automata` and `regex-syntax`, which CI checks are all it
+  brings), for `registerAutoLink`'s matchers, whose `\p{L}` and `\p{N}`
+  need Unicode tables; `yjs` will need `yrs`. `@lexical/link`'s nodes and
+  `registerLink` stay in `link`, without it. The crate has its own JSON (`json`), because the output must
   be byte-identical to `JSON.stringify` (JS property order, `1e+21`, `-0`
   as `0`), which `serde_json` doesn't promise.
 - **Port, don't invent.** Modules mirror the upstream files
@@ -175,7 +180,7 @@ Each milestone ends with green CI and a report to the Space.
 | M0 | The `rust/` workspace, JSON as JS writes it, the core nodes (root, paragraph, text, tab, line break), `parseEditorState` and `toJSON` in both forms, the conformance runner, CI | `meta`, `serialization/core`, the core-only cases of `property/documents` (JSON and text) | done |
 | M1 | The core model: `editor.update` and the commit (dirty nodes, normalization, transforms, listeners, commands, tags), node creation and methods (`splitText`, `mergeWithSibling`, `spliceText`, `insertAfter`, `remove`, `replace`...) with UTF-16 offsets, `RangeSelection` and `NodeSelection` editing, carets, NodeState, slots, the schema facility, `DecoratorNode`, the extension API (`buildEditorFromExtensions`), the parity ledger | `scripts/*`, `fuzz/core`, `file/*` | in progress: the update cycle, `setEditorState`, commands, transforms, listeners, the node methods, carets, selection reading and `RangeSelection`/`NodeSelection` editing are done (`scripts/*` and `fuzz/core` pass), and the platform's `Selection.modify` is an editor hook (`SelectionMovement`); next, NodeState, `DecoratorNode`, the extension API |
 | P | Desktop playgrounds (`apps/`): `lexical-playground-rune` on Rune, then `lexical-playground-gpui` on GPUI, sharing `lexical-playground-core`; they grow with each milestone below | the vectors, replayed in the app; a session exported from the app replays in JS (`replay.test.ts`); in CI, a GPUI session typed in a real window replays in JS | both apps run on macOS with typing, Return, deletion, formatting, input methods and the Parity panel; they grow with each milestone |
-| M2 | `rich-text` (headings, quotes, and the command handlers a text surface dispatches: typing, Enter, Backspace, formatting) and `history` (undo), which the playgrounds need first; then the node packages `list`, `link`, `code`, `overflow`, `hashtag`, with `selection` and `utils` | `serialization/*`, `property/documents` (JSON and text), `entities/hashtag-*`, `scripts/history` | in progress: `history` is done (`scripts/history` passes); `rich-text`'s nodes and `registerRichText`'s model command handlers are done (`scripts/rich-text` and `scripts/rich-text-commands` pass, with the heading and quote cases of `property/documents`); `plain-text`'s model command handlers are done (`scripts/plain-text` passes); `list`'s nodes, `registerList` and the model part of `registerCheckList` are done (`scripts/list` and `serialization/list` pass, with the list cases of `property/documents`); `link`'s nodes, `$toggleLink` and `registerLink`'s model handlers are done (`scripts/link` and `serialization/link` pass, with the link cases of `property/documents` that need no other package), `registerAutoLink` waits for Unicode tables; `code`, `overflow` and `hashtag` next |
+| M2 | `rich-text` (headings, quotes, and the command handlers a text surface dispatches: typing, Enter, Backspace, formatting) and `history` (undo), which the playgrounds need first; then the node packages `list`, `link`, `code`, `overflow`, `hashtag`, with `selection` and `utils` | `serialization/*`, `property/documents` (JSON and text), `entities/hashtag-*`, `scripts/history` | in progress: `history` is done (`scripts/history` passes); `rich-text`'s nodes and `registerRichText`'s model command handlers are done (`scripts/rich-text` and `scripts/rich-text-commands` pass, with the heading and quote cases of `property/documents`); `plain-text`'s model command handlers are done (`scripts/plain-text` passes); `list`'s nodes, `registerList` and the model part of `registerCheckList` are done (`scripts/list` and `serialization/list` pass, with the list cases of `property/documents`); `link`'s nodes, `$toggleLink` and `registerLink`'s model handlers are done (`scripts/link` and `serialization/link` pass, with the link cases of `property/documents` that need no other package), `registerAutoLink` and its matchers are done behind `autolink` (`scripts/autolink` and `entities/autolink-match` pass); `code`, `overflow` and `hashtag` next |
 | M3 | The commands `property/sequences` dispatches | `property/sequences` | |
 | M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | |
 | M5 | `markdown` | `markdown/import-export`, `property/documents` (Markdown) | |

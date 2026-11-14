@@ -9,9 +9,12 @@
 import {namedSignals} from '@lexical/extension';
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
 import {
+  autoLinkEmailMatcher,
   AutoLinkNode,
+  autoLinkUrlMatcher,
   LinkExtension,
   LinkNode,
+  registerAutoLink,
   registerLink,
   TOGGLE_LINK_COMMAND,
 } from '@lexical/link';
@@ -198,6 +201,15 @@ export type Script = {
    * `{url, target, rel, title}`.
    */
   link?: boolean;
+  /**
+   * With `link`, `registerAutoLink(editor, config)` after `registerLink`, as
+   * `AutoLinkExtension` does with its `LinkExtension` dependency. The config
+   * is `AutoLinkExtension`'s default (no matchers, `/[.,;\s]/` separators)
+   * with the matchers `@lexical/link` exports, `autoLinkUrlMatcher` then
+   * `autoLinkEmailMatcher`, and a change handler that logs
+   * `['autoLink', url, prevUrl]`.
+   */
+  autoLink?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -695,6 +707,17 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
   }
   if (script.link) {
     registerLink(editor, namedSignals(LinkExtension.config!));
+    if (script.autoLink) {
+      registerAutoLink(editor, {
+        changeHandlers: [
+          (url, prevUrl) => {
+            ctx.log.push(['autoLink', url, prevUrl]);
+          },
+        ],
+        excludeParents: [],
+        matchers: [autoLinkUrlMatcher, autoLinkEmailMatcher],
+      });
+    }
   }
   for (const name of script.transforms ?? []) {
     const transform = TRANSFORMS[name];

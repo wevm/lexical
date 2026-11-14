@@ -38,6 +38,42 @@ private func exec(_ regex: Regex<AnyRegexOutput>, _ text: String) -> (index: Int
   return (text.utf16.distance(from: text.startIndex, to: m.range.lowerBound), String(m.0))
 }
 
+/// `regExp.exec(text)` for a regex without JS's `u` flag, which matches
+/// UTF-16 code units: `regex` runs over a string with one scalar per code
+/// unit, a surrogate standing as U+E000 (a private use character, which
+/// every class of `EMAIL_REGEX` treats as it treats a surrogate), so that
+/// its bounds count code units as JS's do. A match that starts or ends
+/// inside a surrogate pair keeps U+FFFD for the half it has.
+private func execCodeUnits(
+  _ regex: Regex<AnyRegexOutput>, _ text: String
+) -> (
+  index: Int, text: String
+)? {
+  let units = Array(text.utf16)
+  var scalars = String.UnicodeScalarView()
+  for unit in units {
+    scalars.append(Unicode.Scalar(unit) ?? "\u{E000}")
+  }
+  let codeUnits = String(scalars)
+  guard let m = codeUnits.firstMatch(of: regex.matchingSemantics(.unicodeScalar)) else {
+    return nil
+  }
+  let index = codeUnits.unicodeScalars.distance(
+    from: codeUnits.startIndex, to: m.range.lowerBound)
+  let length = codeUnits.unicodeScalars.distance(
+    from: m.range.lowerBound, to: m.range.upperBound)
+  return (index, String(decoding: units[index..<index + length], as: UTF16.self))
+}
+
+/// What JS's `\s` matches, for use inside a class: ECMAScript's WhiteSpace
+/// (tab, vertical tab, form feed, space, U+00A0, U+FEFF and the other space
+/// separators) and LineTerminator (`\n`, `\r`, U+2028, U+2029). Swift's
+/// `\s` is Unicode's White_Space, which lacks U+FEFF and has U+0085. The
+/// spaces U+2000 to U+200A are listed one by one: Swift `Regex` rejects a
+/// range between them ("invalid bound for character class range").
+private let JS_WHITESPACE =
+  #"\t\n\x{0B}\x{0C}\r\x{20}\x{A0}\x{1680}\x{2000}\x{2001}\x{2002}\x{2003}\x{2004}\x{2005}\x{2006}\x{2007}\x{2008}\x{2009}\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}"#
+
 /// `regExp.test(value)`.
 private func test(_ regex: Regex<AnyRegexOutput>, _ value: String) -> Bool {
   value.firstMatch(of: regex.matchingSemantics(.unicodeScalar)) != nil
@@ -61,10 +97,15 @@ nonisolated(unsafe) private let URL_REGEX = try! Regex(
   #"((https?:\/\/(www\.)?)|(www\.))[-\p{L}\p{N}@:%._+~#=]{1,256}\.[\p{L}\p{N}]{1,6}(?:[-\p{L}\p{N}()@:%_+.~#?&\/\/=]*[\p{L}\p{N}()@_~#?&\/\/=])?"#
 )
 
-// JS reads `[` inside a class as a literal; Swift starts a nested class, so
-// it is escaped here.
+// JS has no `u` flag here, so it matches code units (`execCodeUnits`). JS
+// reads `[` inside a class as a literal; Swift starts a nested class, so it
+// is escaped here. `\s` is JS's (`JS_WHITESPACE`), and `.` is JS's, which
+// excludes only `\n`, `\r`, U+2028 and U+2029 (Swift's also excludes
+// U+000B, U+000C and U+0085).
+private let EMAIL_LOCAL = #"[^<>()\[\]\\.,;:"# + JS_WHITESPACE + #"@"]"#
 nonisolated(unsafe) private let EMAIL_REGEX = try! Regex(
-  #"(([^<>()\[\]\\.,;:\s@"]{1,64}(\.[^<>()\[\]\\.,;:\s@"]{1,64}){0,63})|(".{1,255}"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]{1,63}\.){1,127}[a-zA-Z]{2,63}))"#
+  #"(("# + EMAIL_LOCAL + #"{1,64}(\."# + EMAIL_LOCAL
+    + #"{1,64}){0,63})|("[^\n\r\x{2028}\x{2029}]{1,255}"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]{1,63}\.){1,127}[a-zA-Z]{2,63}))"#
 )
 
 /// `autoLinkUrlMatcher`: URLs with full Unicode support, balancing
@@ -90,11 +131,15 @@ nonisolated(unsafe) public let autoLinkUrlMatcher: LinkMatcher = { text in
     url: matched.hasPrefix("http") ? matched : "https://\(matched)")
 }
 
-/// `autoLinkEmailMatcher`: email addresses.
-nonisolated(unsafe) public let autoLinkEmailMatcher: LinkMatcher = createLinkMatcherWithRegExp(
-  EMAIL_REGEX
-) {
-  "mailto:\($0)"
+/// `autoLinkEmailMatcher`: email addresses. JS makes it with
+/// `createLinkMatcherWithRegExp(EMAIL_REGEX, ...)`; here it matches
+/// `EMAIL_REGEX` by UTF-16 code unit, as JS does for a regex without the
+/// `u` flag, so a character outside the BMP counts twice towards its bounds.
+nonisolated(unsafe) public let autoLinkEmailMatcher: LinkMatcher = { text in
+  guard let match = execCodeUnits(EMAIL_REGEX, text) else { return nil }
+  return LinkMatcherResult(
+    index: match.index, length: match.text.utf16.count, text: match.text,
+    url: "mailto:\(match.text)")
 }
 
 private func findFirstMatch(_ text: String, _ matchers: [LinkMatcher]) -> LinkMatcherResult? {
@@ -106,7 +151,8 @@ private func findFirstMatch(_ text: String, _ matchers: [LinkMatcher]) -> LinkMa
   return nil
 }
 
-nonisolated(unsafe) private let PUNCTUATION_OR_SPACE = try! Regex(#"[.,;\s]"#)
+/// `/[.,;\s]/`, with JS's `\s`.
+nonisolated(unsafe) private let PUNCTUATION_OR_SPACE = try! Regex("[.,;" + JS_WHITESPACE + "]")
 
 /// `text[i]`: the UTF-16 code unit at `i` as a string, or JS `undefined`,
 /// which `RegExp.test` reads as the string "undefined".
@@ -463,7 +509,8 @@ private func replaceWithChildren(_ node: ElementNode) throws -> [LexicalNode] {
   return try children.map { try $0.getLatest() }
 }
 
-nonisolated(unsafe) private let WHITESPACE = try! Regex(#"[\s]"#)
+/// `/[\s]/`, with JS's `\s`.
+nonisolated(unsafe) private let WHITESPACE = try! Regex("[" + JS_WHITESPACE + "]")
 
 private func getTextNodesToMatch(_ textNode: TextNode) throws -> [TextNode] {
   // The next siblings that are simple text, up to one containing a space.

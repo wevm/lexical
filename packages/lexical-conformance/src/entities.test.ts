@@ -7,6 +7,7 @@
  */
 import {buildEditorFromExtensions} from '@lexical/extension';
 import {HashtagExtension} from '@lexical/hashtag';
+import {autoLinkEmailMatcher, autoLinkUrlMatcher} from '@lexical/link';
 import {
   $createParagraphNode,
   $createTextNode,
@@ -193,5 +194,77 @@ test('entities/hashtag-typing', () => {
     'entities',
     'Text typed a character at a time at the end of an empty paragraph, in an editor with HashtagExtension: the JSON left and the selection (as the index of its text node among all text nodes, and offset, for anchor then focus).',
     cases,
+  );
+});
+
+// @lexical/link's autoLinkUrlMatcher (a `u` regex over code points, with
+// \p{L} and \p{N}, and parenthesis balancing) and autoLinkEmailMatcher (a
+// regex without `u`, over UTF-16 code units), on text in many scripts and at
+// the bounds of their repetitions.
+const LINK_TEXTS = [
+  '',
+  'lexical.dev',
+  'www.lexical.dev',
+  'https://lexical.dev',
+  'http://www.lexical.dev/docs?x=1&y=two#top',
+  'see https://lexical.dev/docs, then',
+  'https://en.wikipedia.org/wiki/Fish_(disambiguation)',
+  '(see https://en.wikipedia.org/wiki/Fish_(disambiguation))',
+  '(https://lexical.dev)',
+  '((https://lexical.dev/a_(b)))',
+  'https://lexical.dev/(a',
+  'https://lexical.dev).',
+  'https://lexical.dev/a_(b)_(c)',
+  'https://例え.jp/パス',
+  'https://ru.wikipedia.org/wiki/Москва',
+  'https://x.com/٣٤',
+  'https://٣٤.com',
+  'https://x.com/１２３',
+  'www.ŝ.com/ß',
+  'https://𝐀.com/𝐀',
+  'https://' + '𝐀'.repeat(200) + '.com',
+  'https://lexical.dev😀',
+  '😀https://lexical.dev 😀',
+  'https://' + 'a'.repeat(256) + '.com',
+  'https://' + 'a'.repeat(257) + '.com',
+  'https://example.abcdef',
+  'https://example.abcdefg',
+  'https://a.b',
+  'https://lexical.dev\u0085x',
+  'x\ufeffwww.lexical.dev',
+  'user@example.com',
+  'mailto:user@example.com',
+  'user@sub.example.co.uk',
+  'a.b@c.de',
+  'a..b@c.de',
+  'user@exämple.de',
+  'üser@example.de',
+  '"quoted name"@example.com',
+  '"a\u2028b"@example.com',
+  '"a\u0085b"@example.com',
+  'user@[192.168.0.1]',
+  'x@y',
+  'a@b.' + 'c'.repeat(64),
+  'a'.repeat(64) + '@x.com',
+  'a'.repeat(65) + '@x.com',
+  '😀'.repeat(32) + '@x.com',
+  '😀'.repeat(33) + '@x.com',
+  'a' + '😀'.repeat(32) + '@x.com',
+  'a\ufeffb@x.com',
+  'a\u0085b@x.com',
+  'a\u00a0b@x.com',
+  'see www.lexical.dev or user@example.com',
+];
+
+test('entities/autolink-match', () => {
+  emitVectors(
+    'entities/autolink-match',
+    'entities',
+    "What @lexical/link's autoLinkUrlMatcher and autoLinkEmailMatcher return for each text (index and length in UTF-16 code units).",
+    LINK_TEXTS.map(text => ({
+      email: autoLinkEmailMatcher(text),
+      text,
+      url: autoLinkUrlMatcher(text),
+    })),
   );
 });

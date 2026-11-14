@@ -1918,3 +1918,266 @@ test('scripts/link', () => {
     ],
   );
 });
+
+test('scripts/autolink', () => {
+  // `registerAutoLink` (@lexical/link) with `autoLinkUrlMatcher` and
+  // `autoLinkEmailMatcher`, over `registerLink` and rich text: text becomes
+  // an autolink as it is typed or set, an autolink follows edits to its text
+  // and its neighbors, and TOGGLE_LINK_COMMAND with null flips `isUnlinked`.
+  // The change handler logs `['autoLink', url, prevUrl]`.
+  const autoLink = true;
+  const link = true;
+  const richText = true;
+  const url = 'https://lexical.dev';
+  const insert = (text: string): Step => update(call('insertText', text));
+  const typed = (text: string): Step[] => [...text].map(insert);
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const lines = (...texts: string[]): Step =>
+    doc(...texts.map(text => p(t(text))));
+  emit(
+    'autolink',
+    "@lexical/link's registerAutoLink with autoLinkUrlMatcher and autoLinkEmailMatcher: autolinks made from typed and set text (URLs, www. URLs, emails, in many scripts, at separators and at the bounds of the matchers' repetitions), edited until they stop matching, split, unlinked with TOGGLE_LINK_COMMAND, and across formatted text.",
+    [
+      {
+        autoLink,
+        link,
+        name: 'typing a URL a character at a time',
+        richText,
+        steps: [
+          doc(p()),
+          update(select(['1', 0, 'element'])),
+          ...typed('go https://lex.dev/x y'),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'www URLs and URLs with a path, query and fragment',
+        richText,
+        steps: [
+          lines(
+            'visit www.lexical.dev, or lexical.dev.',
+            'see https://lexical.dev/docs/intro?a=1&b=two#part now',
+            'http://www.lexical.dev:8080/a/b.html',
+          ),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'parentheses, and two URLs in one text node',
+        richText,
+        steps: [
+          lines(
+            'https://en.wikipedia.org/wiki/Fish_(disambiguation) and (https://en.wikipedia.org/wiki/Fish_(disambiguation))',
+            '(see https://lexical.dev) or (https://lexical.dev/a_(b))',
+            'www.one.com www.two.com',
+            'https://lexical.dev/(open',
+          ),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'emails',
+        richText,
+        steps: [
+          lines(
+            'mail user@example.com or "Jo Doe"@example.org, or a@b',
+            'user@exämple.de and üser@example.de',
+            'user@[192.168.0.1]',
+            'a..b@c.de',
+          ),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'letters and numbers of other scripts',
+        richText,
+        steps: [
+          lines(
+            'https://例え.jp/パス',
+            'see https://ru.wikipedia.org/wiki/Москва.',
+            'https://x.com/٣٤ and https://x.com/１２３',
+            'https://٣٤.com',
+            'https://𝐀.com/𝐀 𝐀',
+            '😀 https://lexical.dev 😀',
+            '😀https://lexical.dev',
+            'https://lexical.dev😀',
+            'www.ŝ.com/ß',
+            '😀😀 user@example.com',
+          ),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'punctuation and separators around a URL',
+        richText,
+        steps: [
+          lines(
+            `${url}.`,
+            `${url}, next`,
+            `${url};`,
+            `x${url}`,
+            `${url}!`,
+            `a\ufeff${url}`,
+            `${url}\u0085`,
+            `${url}\u00a0x`,
+            `tab\t${url}`,
+            `.${url}`,
+          ),
+          update(
+            {do: 'clearSelection'},
+            {
+              do: 'append',
+              key: 'root',
+              nodes: [p(t('one'), br(), t(url), br(), t('two'))],
+            },
+          ),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'the bounds of the repetitions',
+        richText,
+        steps: [
+          lines(
+            `https://${'a'.repeat(256)}.com`,
+            `https://${'a'.repeat(257)}.com`,
+            'https://example.abcdef x',
+            'https://example.abcdefg x',
+            `https://${'𝐀'.repeat(200)}.com`,
+            `${'a'.repeat(64)}@x.com`,
+            `${'a'.repeat(65)}@x.com`,
+            `a@b.${'c'.repeat(63)}`,
+            `a@b.${'c'.repeat(64)}`,
+            `${'😀'.repeat(33)}@x.com`,
+          ),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'editing an autolink until it stops matching',
+        richText,
+        steps: [
+          lines('go https://lexical.dev now'),
+          update(node('6', 'setTextContent', 'https://lexical.org')),
+          update(node('6', 'setTextContent', 'www.lexical.org/x')),
+          update(node('6', 'setTextContent', 'https://lexical')),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'splitting an autolink with a space',
+        richText,
+        steps: [
+          lines('https://lexical.dev/docs', 'https://lexical.dev/docs'),
+          update(select(['6', 19, 'text'])),
+          insert(' '),
+          update(select(['8', 10, 'text'])),
+          insert(' '),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'an unlinked autolink stays unlinked',
+        richText,
+        steps: [
+          lines('go https://lexical.dev now'),
+          update(select(['6', 0, 'text'], ['6', 19, 'text'])),
+          run('TOGGLE_LINK_COMMAND', null),
+          // Edits still update its URL, and text after it doesn't unwrap it.
+          update(select(['6', 8, 'text'])),
+          insert('x'),
+          update(select(['5', 0, 'text'])),
+          insert('z'),
+          update(select(['6', 0, 'text'], ['6', 20, 'text'])),
+          run('TOGGLE_LINK_COMMAND', null),
+          update(
+            {do: 'clearSelection'},
+            {
+              do: 'append',
+              key: 'root',
+              nodes: [
+                p({...autolink(url, t(url)), isUnlinked: true} as Node, t(' ')),
+                p({...autolink(url, t(url)), isUnlinked: true} as Node, t('x')),
+              ],
+            },
+          ),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'typing before and after an autolink',
+        richText,
+        steps: [
+          lines('go https://lexical.dev now', 'to https://lexical.dev now'),
+          update(select(['2', 3, 'text'])),
+          insert('x'),
+          update(select(['11', 0, 'text'])),
+          insert('y'),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: "continuing an autolink's top-level domain",
+        richText,
+        steps: [
+          lines('see https://lexical.dev', 'mail a@b.co'),
+          update(select(['7', 19, 'text'])),
+          ...typed('.uk'),
+          update(select(['10', 6, 'text'])),
+          ...typed('.uk'),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'a URL across formatted text nodes',
+        richText,
+        steps: [
+          doc(
+            p(
+              t('see https://lex'),
+              t('ical.dev', {format: 1}),
+              t('/docs', {format: 2}),
+              t(' end'),
+            ),
+            p(t('https://lexical'), t('dev', {format: 1})),
+            p(t('https://lexical'), t('dev', {format: 1})),
+          ),
+          update(
+            select(['7', 5, 'text']),
+            node('7', 'setTextContent', 'https://lexical.'),
+          ),
+          update(
+            {do: 'selectNodes', keys: ['10']},
+            node('10', 'setTextContent', 'https://lexical.'),
+          ),
+        ],
+      },
+      {
+        autoLink,
+        link,
+        name: 'TOGGLE_LINK_COMMAND and Enter in an autolink',
+        richText,
+        steps: [
+          lines('https://lexical.dev', 'https://lexical.dev/docs'),
+          update(select(['6', 0, 'text'], ['6', 19, 'text'])),
+          run('TOGGLE_LINK_COMMAND', 'https://example.com'),
+          update(select(['8', 19, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+        ],
+      },
+    ],
+  );
+});

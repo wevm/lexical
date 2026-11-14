@@ -29,7 +29,11 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
         return Ok(Outcome::NotPorted(package));
     }
     let editor = create_editor(CreateEditorArgs {
-        nodes: lexical::rich_text::rich_text_nodes(),
+        nodes: [
+            lexical::rich_text::rich_text_nodes(),
+            lexical::list::list_nodes(),
+        ]
+        .concat(),
     });
     let parsed = editor.parse_editor_state(input);
     if case.get("error").is_some() {

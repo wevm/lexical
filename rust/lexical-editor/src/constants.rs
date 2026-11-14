@@ -97,3 +97,24 @@ pub fn lookup<T: Copy>(table: &[(&str, T)], name: &str) -> Option<T> {
 pub fn name_of<T: Copy + PartialEq>(table: &[(&'static str, T)], value: T) -> Option<&'static str> {
     table.iter().find(|(_, v)| *v == value).map(|(n, _)| *n)
 }
+
+/// `RTL`: the UTF-16 code unit ranges `RTL_REGEX` and `LTR_REGEX` take as
+/// strongly right-to-left.
+pub const RTL: &[(u16, u16)] = &[(0x0591, 0x07FF), (0xFB1D, 0xFDFD), (0xFE70, 0xFEFC)];
+
+/// `LTR`: the UTF-16 code unit ranges they take as strongly left-to-right.
+/// Surrogates (U+D800–U+DFFF) fall in U+2C00–U+FB1C: the regular
+/// expressions have no `u` flag, so they read code units.
+pub const LTR: &[(u16, u16)] = &[
+    (0x41, 0x5A),
+    (0x61, 0x7A),
+    (0x00C0, 0x00D6),
+    (0x00D8, 0x00F6),
+    (0x00F8, 0x02B8),
+    (0x0300, 0x0590),
+    (0x0800, 0x1FFF),
+    (0x200E, 0x200E),
+    (0x2C00, 0xFB1C),
+    (0xFE00, 0xFE6F),
+    (0xFEFD, 0xFFFF),
+];

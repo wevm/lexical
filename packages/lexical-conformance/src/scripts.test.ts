@@ -2181,3 +2181,194 @@ test('scripts/autolink', () => {
     ],
   );
 });
+
+function codeBlock(language: string | null, ...children: Node[]): Node {
+  return {
+    children,
+    direction: null,
+    format: '',
+    indent: 0,
+    type: 'code',
+    version: 1,
+    ...(language === null ? {} : {language}),
+  } as Node;
+}
+
+function ch(text: string, extra: Record<string, unknown> = {}): Node {
+  return {...t(text), type: 'code-highlight', ...extra};
+}
+
+test('scripts/code', () => {
+  // `@lexical/code-core`'s nodes, `CodeExtension`'s TabNode transform and
+  // `registerCodeIndentation`'s command handlers, over rich text's, with
+  // commands dispatched outside an update as an input layer does.
+  const code = true;
+  const richText = true;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const enter = run('INSERT_PARAGRAPH_COMMAND');
+  emit(
+    'code',
+    "@lexical/code-core's CodeNode and CodeHighlightNode: Enter in a code block (keeping a line's leading tabs and spaces, and leaving the block after two line breaks), Backspace at its start, INSERT_TAB_COMMAND, INDENT_CONTENT_COMMAND and OUTDENT_CONTENT_COMMAND through registerCodeIndentation, formats a code block ignores, and parsing what setFormat and the setters drop.",
+    [
+      {
+        code,
+        name: "Enter keeps the line's leading tabs and spaces",
+        richText,
+        steps: [
+          doc(codeBlock('javascript', tab(), ch('  if (x) {'), br(), ch('y'))),
+          // At the end of the indented line.
+          update(select(['3', 10, 'text'])),
+          enter,
+          // In the middle of it: the text splits.
+          update(select(['3', 5, 'text'])),
+          enter,
+          // At the start of an unindented line.
+          update(select(['5', 0, 'text'])),
+          enter,
+          // A range: rich text removes it first.
+          update(select(['3', 1, 'text'], ['5', 0, 'text'])),
+          enter,
+        ],
+      },
+      {
+        code,
+        name: 'Enter three times at the end leaves the block',
+        richText,
+        steps: [
+          doc(codeBlock(null, ch('a')), p(t('after'))),
+          update(select(['2', 1, 'text'])),
+          enter,
+          enter,
+          enter,
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'b'),
+        ],
+      },
+      {
+        code,
+        name: 'Enter in an empty code block',
+        richText,
+        steps: [
+          doc(codeBlock(null)),
+          update(select(['1', 0, 'element'])),
+          enter,
+          enter,
+          run('INSERT_LINE_BREAK_COMMAND', false),
+        ],
+      },
+      {
+        code,
+        name: 'INSERT_TAB_COMMAND in and out of a code block',
+        richText,
+        steps: [
+          doc(codeBlock(null, ch('ab')), p(t('cd'))),
+          update(select(['2', 1, 'text'])),
+          run('INSERT_TAB_COMMAND'),
+          // Rich text's handler, outside the block.
+          update(select(['4', 1, 'text'])),
+          run('INSERT_TAB_COMMAND'),
+          // From the block into the paragraph: neither block handles it.
+          update(select(['2', 0, 'text'], ['4', 0, 'text'])),
+          run('INSERT_TAB_COMMAND'),
+        ],
+      },
+      {
+        code,
+        name: 'indenting and outdenting lines',
+        richText,
+        steps: [
+          doc(codeBlock(null, ch('a'), br(), ch('b'), br(), ch('c'))),
+          // All three lines, forward.
+          update(select(['2', 0, 'text'], ['6', 1, 'text'])),
+          run('INDENT_CONTENT_COMMAND'),
+          run('INDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          // Backward, ending at the start of the last line, which is left.
+          update(select(['6', 0, 'text'], ['2', 1, 'text'])),
+          run('INDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+        ],
+      },
+      {
+        code,
+        name: 'indenting at a caret and over a line break',
+        richText,
+        steps: [
+          doc(codeBlock(null, ch('a'), br(), br(), ch('  b'))),
+          // A caret at a line's start inserts a tab there.
+          update(select(['2', 0, 'text'])),
+          run('INDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          // A caret on the blank line has no line to outdent.
+          update(select(['1', 2, 'element'])),
+          run('OUTDENT_CONTENT_COMMAND'),
+          // Only the line break between the two lines.
+          update(select(['1', 2, 'element'], ['1', 3, 'element'])),
+          run('INDENT_CONTENT_COMMAND'),
+          // Backward over a line break.
+          update(select(['1', 3, 'element'], ['1', 2, 'element'])),
+          run('INDENT_CONTENT_COMMAND'),
+          // Leading spaces aren't outdented without a tab size.
+          update(select(['5', 3, 'text'])),
+          run('OUTDENT_CONTENT_COMMAND'),
+          // Outside a code block, rich text indents the paragraph.
+          update(
+            {do: 'append', key: 'root', nodes: [p(t('x'))]},
+            select(['root', 1, 'element']),
+          ),
+          run('INDENT_CONTENT_COMMAND'),
+        ],
+      },
+      {
+        code,
+        name: 'formats a code block ignores',
+        richText,
+        steps: [
+          doc(codeBlock(null, tab(), ch('a'), br(), ch('b'))),
+          update(select(['1', 0, 'element'], ['1', 4, 'element'])),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('FORMAT_TEXT_COMMAND', 'italic'),
+          // A tab set bold outside a command: the transform clears it.
+          update(node('2', 'setFormat', 1)),
+          // Typing takes the selection's format.
+          update(select(['3', 1, 'text'])),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'c'),
+        ],
+      },
+      {
+        code,
+        name: 'Backspace at the start of a code block',
+        richText,
+        steps: [
+          doc(p(t('x')), codeBlock(null, ch('a'), br(), ch('b'))),
+          update(select(['4', 0, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+        ],
+      },
+      {
+        code,
+        name: 'parsing what setFormat and the setters drop',
+        richText,
+        steps: [
+          doc(
+            codeBlock(
+              '',
+              ch('a', {format: 1, highlightType: ''}),
+              ch('b', {format: 'bold', highlightType: 'keyword'}),
+              ch('c', {highlightType: null}),
+            ),
+            {...codeBlock(null, ch('d')), language: null, theme: ''} as Node,
+            {...codeBlock('rust', tab()), theme: 'dark'} as Node,
+          ),
+          update(select(['root', 3, 'element']), {
+            do: 'insertNodes',
+            nodes: [ch('e')],
+          }),
+        ],
+      },
+    ],
+  );
+});

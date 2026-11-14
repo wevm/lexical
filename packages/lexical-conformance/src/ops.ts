@@ -12,7 +12,11 @@ import {
   CodeNode,
   registerCodeIndentation,
 } from '@lexical/code-core';
-import {namedSignals} from '@lexical/extension';
+import {
+  DecoratorTextNode,
+  HorizontalRuleNode,
+  namedSignals,
+} from '@lexical/extension';
 import {HashtagNode, registerLexicalHashtag} from '@lexical/hashtag';
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
 import {
@@ -162,6 +166,8 @@ export type Action =
   | {do: 'removeTextFromCaretRange'}
   /** Logs `$normalizeCaret(caret)`. */
   | {do: 'logNormalizeCaret'; caret: CaretSpec}
+  /** Logs `['selectionText', $getSelection().getTextContent()]`. */
+  | {do: 'logSelectionText'}
   /** `$setState(node, STATES[state], value)`. */
   | {do: 'setState'; key: string; state: string; value: Json}
   /** `$setState(node, STATES[state], UPDATERS[updater])`. */
@@ -271,6 +277,13 @@ export type Script = {
    * does (with its default config).
    */
   hashtag?: boolean;
+  /**
+   * Register `@lexical/extension`'s decorators, `HorizontalRuleNode` (a
+   * block decorator) and `DecoratorTextNode` (an inline one), as
+   * `HorizontalRuleExtension` and `DecoratorTextExtension` do. Their other
+   * registrations (inserting a rule by command, clicks) are left out.
+   */
+  extension?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -385,6 +398,15 @@ const SELECTION_METHODS: Record<string, (args: Json[] | undefined) => void> = {
   },
   insertRawText: args => $anySel().insertRawText(arg(args, 0) as string),
   insertText: args => $anySel().insertText(arg(args, 0) as string),
+  // `modify(alter, isBackward, granularity)`: a headless editor has no
+  // `Selection.modify`, so only the moves the model resolves (around
+  // decorators and blocks) succeed; the rest throw.
+  modify: args =>
+    $sel().modify(
+      arg(args, 0) as never,
+      arg(args, 1) as boolean,
+      arg(args, 2) as never,
+    ),
   removeText: () => $sel().removeText(),
   setFormat: args => $sel().setFormat(arg(args, 0) as number),
   setStyle: args => $sel().setStyle(arg(args, 0) as string),
@@ -721,6 +743,9 @@ function $runAction(action: Action, ctx: Context): void {
       });
       return;
     }
+    case 'logSelectionText':
+      ctx.log.push(['selectionText', $anySel().getTextContent()]);
+      return;
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -869,6 +894,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       ...(script.code ? [CodeNode, CodeHighlightNode] : []),
       ...(script.overflow ? [OverflowNode] : []),
       ...(script.hashtag ? [HashtagNode] : []),
+      ...(script.extension ? [HorizontalRuleNode, DecoratorTextNode] : []),
     ],
     onError: e => {
       throw e;

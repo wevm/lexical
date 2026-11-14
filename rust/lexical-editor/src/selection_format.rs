@@ -131,11 +131,11 @@ fn update_text_format(
     apply_format: impl Fn(f64) -> f64,
 ) -> Result<(), LexicalError> {
     let Some(range) = selection.range() else {
-        // A node selection. `$isInlineFormattable` holds for text nodes
-        // (DecoratorTextNode is not ported).
+        // A node selection.
         for node in selection.get_nodes()? {
-            if node.is_text() {
-                node.set_format(apply_format(node.text_data().get_format()));
+            let latest = node.get_latest();
+            if latest.is_inline_formattable() {
+                latest.set_inline_format(&node, apply_format(latest.get_inline_format()))?;
             }
         }
         return Ok(());
@@ -215,9 +215,12 @@ fn update_text_format(
             }
         } else if node.is_element() {
             node.set_text_format(apply_format(node.element_data().get_text_format()));
+        } else {
+            let latest = node.get_latest();
+            if latest.is_inline_formattable() {
+                latest.set_inline_format(node, apply_format(latest.get_inline_format()))?;
+            }
         }
-        // `$isInlineFormattable` holds for no other node here
-        // (DecoratorTextNode is not ported).
     }
     if !has_text {
         let format = apply_format(range.format);

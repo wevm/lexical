@@ -27,7 +27,9 @@
 //! `CodeHighlightNode`), `CodeExtension`'s transform and
 //! `registerCodeIndentation`, one with `overflow: true`
 //! `@lexical/overflow`'s `OverflowNode`, and one with `hashtag: true`
-//! `@lexical/hashtag`'s `HashtagNode` and `registerLexicalHashtag`.
+//! `@lexical/hashtag`'s `HashtagNode` and `registerLexicalHashtag`, and one
+//! with `extension: true` `@lexical/extension`'s decorators
+//! (`HorizontalRuleNode`, `DecoratorTextNode`).
 //!
 //! `setState`, `updateState`, `logState` and `logStateChange` name the
 //! NodeState configs of `ops.ts`'s `STATES` and its `UPDATERS`, made here
@@ -50,14 +52,15 @@ use lexical::{
     FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND,
     INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, LexicalCommand, LexicalError, NodeRef,
     OUTDENT_CONTENT_COMMAND, PointCaret, PointType, REDO_COMMAND, REMOVE_TEXT_COMMAND,
-    RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND, SelectionRef, SliceMode,
-    StateConfig, StateValueConfig, TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister,
-    UpdateOptions, Which, caret_range_from_selection, create_command, create_editor,
-    create_node_selection, create_paragraph_node, create_range_selection, create_state,
-    create_state_with, get_caret_range, get_child_caret, get_node_by_key, get_root, get_selection,
-    get_sibling_caret, get_state, get_state_change, get_text_point_caret, insert_nodes,
-    normalize_caret, parse_serialized_node, remove_text_from_caret_range, reset_random_key,
-    select_all, set_selection, set_selection_from_caret_range, set_state, set_state_with, utf16,
+    RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND, SelectionAlter,
+    SelectionGranularity, SelectionRef, SliceMode, StateConfig, StateValueConfig, TextOffset,
+    TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
+    caret_range_from_selection, create_command, create_editor, create_node_selection,
+    create_paragraph_node, create_range_selection, create_state, create_state_with,
+    get_caret_range, get_child_caret, get_node_by_key, get_root, get_selection, get_sibling_caret,
+    get_state, get_state_change, get_text_point_caret, insert_nodes, normalize_caret,
+    parse_serialized_node, remove_text_from_caret_range, reset_random_key, select_all,
+    set_selection, set_selection_from_caret_range, set_state, set_state_with, utf16,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -403,7 +406,8 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "updateState"
             | "logState"
             | "logStateChange"
-            | "setBlocksType",
+            | "setBlocksType"
+            | "logSelectionText",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -534,6 +538,21 @@ fn run_selection_method(method: &str, args: Option<&Value>) -> Result<(), Lexica
         }
         "insertRawText" => any()?.insert_raw_text(&string(&a(0))?)?,
         "insertText" => any()?.insert_text(&string(&a(0))?)?,
+        "modify" => range()?.modify(
+            match a(0).as_str() {
+                Some("move") => SelectionAlter::Move,
+                Some("extend") => SelectionAlter::Extend,
+                _ => return Err(err(format!("bad alter {}", a(0)))),
+            },
+            flag(&a(1), false),
+            match a(2).as_str() {
+                Some("character") => SelectionGranularity::Character,
+                Some("word") => SelectionGranularity::Word,
+                Some("line") => SelectionGranularity::Line,
+                Some("lineboundary") => SelectionGranularity::LineBoundary,
+                _ => return Err(err(format!("bad granularity {}", a(2)))),
+            },
+        )?,
         "removeText" => range()?.remove_text()?,
         "setFormat" => range()?.set_format(number(&a(0))?),
         "setStyle" => range()?.set_style(&string(&a(0))?),
@@ -739,6 +758,14 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             Ok(())
         }
         Some("selectAll") => select_all().map(|_| ()),
+        Some("logSelectionText") => {
+            let selection = get_selection().ok_or_else(|| err("no selection"))?;
+            ctx.log(vec![
+                "selectionText".into(),
+                selection.get_text_content()?.into(),
+            ]);
+            Ok(())
+        }
         Some("insertNodes") => insert_nodes(parse(action.get("nodes").unwrap_or(&Value::Null))?),
         Some("selection") => run_selection_method(
             action.get("method").and_then(Value::as_str).unwrap_or(""),
@@ -1032,6 +1059,7 @@ impl Session {
         let with_code = script.get("code").and_then(Value::as_bool) == Some(true);
         let with_overflow = script.get("overflow").and_then(Value::as_bool) == Some(true);
         let with_hashtag = script.get("hashtag").and_then(Value::as_bool) == Some(true);
+        let with_extension = script.get("extension").and_then(Value::as_bool) == Some(true);
         let mut nodes = Vec::new();
         if rich_text {
             nodes.extend(lexical::rich_text::rich_text_nodes());
@@ -1050,6 +1078,9 @@ impl Session {
         }
         if with_hashtag {
             nodes.extend(lexical::hashtag::hashtag_nodes());
+        }
+        if with_extension {
+            nodes.extend(lexical::extension::extension_nodes());
         }
         let editor = create_editor(CreateEditorArgs { nodes });
         let ctx = Rc::new(Ctx::default());

@@ -7,6 +7,7 @@
  */
 
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
+import {registerPlainText} from '@lexical/plain-text';
 import {HeadingNode, QuoteNode, registerRichText} from '@lexical/rich-text';
 import {
   $caretRangeFromSelection,
@@ -160,6 +161,8 @@ export type Script = {
    * `RichTextExtension` does.
    */
   richText?: boolean;
+  /** `registerPlainText(editor)`, where it registers `registerRichText`. */
+  plainText?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -622,6 +625,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
   const ctx: Context = {commands: new Map(), editor, log: []};
   if (script.richText) {
     registerRichText(editor);
+  }
+  if (script.plainText) {
+    registerPlainText(editor);
   }
   for (const name of script.transforms ?? []) {
     const transform = TRANSFORMS[name];

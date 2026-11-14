@@ -1150,3 +1150,100 @@ test('scripts/rich-text-commands', () => {
     ],
   );
 });
+
+test('scripts/plain-text', () => {
+  // `registerPlainText`'s handlers for the commands that act on the model,
+  // dispatched outside an update as an input layer does. Where they differ
+  // from rich text: Enter inserts a line break, and nothing handles
+  // formatting, a node selection or a missing selection.
+  const plainText = true;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  emit(
+    'plain-text',
+    "@lexical/plain-text's registerPlainText: the handlers of the commands that edit text and insert line breaks.",
+    [
+      {
+        name: 'typing, Enter and line breaks',
+        plainText,
+        steps: [
+          doc(p(t('one two'))),
+          update(select(['2', 3, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'x'),
+          run('INSERT_LINE_BREAK_COMMAND', true),
+          run('INSERT_LINE_BREAK_COMMAND', false),
+          update(select(['2', 1, 'text'], ['4', 1, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          run('SELECT_ALL_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'all'),
+        ],
+      },
+      {
+        name: 'deleting',
+        plainText,
+        steps: [
+          doc(p(t('hello world')), p(t('second'))),
+          // Collapsed, these need the DOM's Selection.modify, so headless
+          // JS throws.
+          update(select(['2', 5, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          run('DELETE_WORD_COMMAND', false),
+          run('DELETE_LINE_COMMAND', true),
+          update(select(['2', 9, 'text'], ['4', 2, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', false),
+          update(select(['2', 0, 'text'], ['2', 3, 'text'])),
+          run('DELETE_WORD_COMMAND', true),
+          update(select(['2', 1, 'text'], ['2', 4, 'text'])),
+          run('DELETE_LINE_COMMAND', false),
+          update(select(['2', 0, 'text'], ['2', 1, 'text'])),
+          run('REMOVE_TEXT_COMMAND'),
+        ],
+      },
+      {
+        name: 'what plain text leaves unhandled',
+        plainText,
+        steps: [
+          doc(p(t('one')), p(t('two'))),
+          update(select(['2', 0, 'text'], ['2', 3, 'text'])),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('FORMAT_ELEMENT_COMMAND', 'center'),
+          run('INDENT_CONTENT_COMMAND'),
+          run('INSERT_TAB_COMMAND'),
+          update({do: 'selectNodes', keys: ['4']}),
+          run('DELETE_CHARACTER_COMMAND', true),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'x'),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          update({do: 'clearSelection'}),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'x'),
+          run('REMOVE_TEXT_COMMAND'),
+          run('SELECT_ALL_COMMAND'),
+        ],
+      },
+      {
+        handlers: [
+          {
+            command: 'CAN_UNDO_COMMAND',
+            id: 'canUndo',
+            priority: 0,
+            result: false,
+          },
+        ],
+        history: {delay: 300},
+        name: 'typing and Enter with history',
+        plainText,
+        steps: [
+          doc(p(t('ab'))),
+          {...update(select(['2', 2, 'text'])), now: 1000},
+          {...run('CONTROLLED_TEXT_INSERTION_COMMAND', 'c'), now: 2000},
+          {...run('CONTROLLED_TEXT_INSERTION_COMMAND', 'd'), now: 2100},
+          {...run('INSERT_PARAGRAPH_COMMAND'), now: 2200},
+          {...run('CONTROLLED_TEXT_INSERTION_COMMAND', 'e'), now: 3000},
+          {...run('UNDO_COMMAND'), now: 4000},
+          {...run('UNDO_COMMAND'), now: 4100},
+          {...run('REDO_COMMAND'), now: 4200},
+        ],
+      },
+    ],
+  );
+});

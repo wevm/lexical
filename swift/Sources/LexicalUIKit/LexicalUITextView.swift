@@ -42,6 +42,10 @@
     private var canRedo = false
     /// Set while a drag that started here is dropped back here.
     private var isDropFromSelf = false
+    /// Set when the focus is asked for before the view is in a window: the
+    /// view is the root from `init`, while a contenteditable is the root
+    /// once it is in the document. It takes the focus when it lands in one.
+    private var focusesInWindow = false
     let decorators = DecoratorAttachments()
     /// The editor's live region, while this view hosts it
     /// (`AriaLiveRegionExtension`); its announcements are spoken.
@@ -948,6 +952,14 @@
       }
     }
 
+    public override func didMoveToWindow() {
+      super.didMoveToWindow()
+      if window != nil, focusesInWindow {
+        focusesInWindow = false
+        focus()
+      }
+    }
+
     public override func becomeFirstResponder() -> Bool {
       guard super.becomeFirstResponder() else { return false }
       showSelectionDisplay()
@@ -1006,10 +1018,15 @@
     public var hasFocus: Bool { isFirstResponder }
 
     public func focus() {
+      guard window != nil else {
+        focusesInWindow = true
+        return
+      }
       _ = becomeFirstResponder()
     }
 
     public func blur() {
+      focusesInWindow = false
       if isFirstResponder { _ = resignFirstResponder() }
     }
 

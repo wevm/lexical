@@ -99,6 +99,43 @@
       _ = window
     }
 
+    /// The view is the root from `init`, before it is in a window, so a
+    /// focus asked for then (`AutoFocusExtension`, an early `editor.focus()`)
+    /// is taken once it lands in one, as a contenteditable is focused when it
+    /// mounts. A `blur()` before then cancels it.
+    @Test func takesAFocusAskedForBeforeItIsInAWindow() throws {
+      let frame = NSRect(x: 0, y: 0, width: 400, height: 300)
+      /// Attaches `view` once the editor has committed what is pending, as
+      /// when the view lands in a window on a later turn of the run loop.
+      func attach(_ view: LexicalNSTextView) -> NSWindow {
+        drainMicrotasks()
+        #expect(!view.hasFocus)
+        let window = NSWindow(
+          contentRect: frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView?.addSubview(view)
+        return window
+      }
+      let autoFocused = LexicalNSTextView(
+        editor: try buildEditorFromExtensions(
+          defineExtension(name: "test", dependencies: [RichTextExtension, AutoFocusExtension])),
+        frame: frame)
+      let autoFocusedWindow = attach(autoFocused)
+      #expect(autoFocused.hasFocus)
+
+      let focused = LexicalNSTextView(editor: try makeRichTextEditor(), frame: frame)
+      try focused.editor.focus()
+      let focusedWindow = attach(focused)
+      #expect(focused.hasFocus)
+      #expect(try focused.editor.read { try getSelection() } != nil)
+
+      let blurred = LexicalNSTextView(editor: try makeRichTextEditor(), frame: frame)
+      blurred.focus()
+      blurred.blur()
+      let blurredWindow = attach(blurred)
+      #expect(!blurred.hasFocus)
+      _ = (autoFocusedWindow, focusedWindow, blurredWindow)
+    }
+
     @Test func tabMovesFocusThroughTheKeyViewLoop() throws {
       // Full keyboard access: the editor is in the window's key view loop,
       // and Tab, which no KEY_TAB_COMMAND handler takes here, moves the

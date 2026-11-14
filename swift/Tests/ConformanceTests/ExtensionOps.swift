@@ -1,5 +1,6 @@
 import Foundation
 import Lexical
+import LexicalA11y
 import LexicalCodeCore
 import LexicalExtension
 import LexicalHashtag
@@ -59,6 +60,11 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "RichTextExtension": RichTextExtension
   case "SelectBlockExtension": SelectBlockExtension
   case "TabIndentationExtension": TabIndentationExtension
+  case "AriaLiveRegionExtension": AriaLiveRegionExtension
+  case "AutoLinkAnnounceExtension": AutoLinkAnnounceExtension
+  case "EditorModeAnnounceExtension": EditorModeAnnounceExtension
+  case "HeadingAnnounceExtension": HeadingAnnounceExtension
+  case "HistoryAnnounceExtension": HistoryAnnounceExtension
   default: nil
   }
 }
@@ -99,6 +105,18 @@ private func partials<C>(
 private func bool(_ value: JSONValue) throws -> Bool {
   guard let b = value.boolValue else { throw ScriptError("not a boolean: \(value.stringify())") }
   return b
+}
+
+private func string(_ value: JSONValue) throws -> String {
+  guard let s = value.stringValue else { throw ScriptError("not a string: \(value.stringify())") }
+  return s
+}
+
+private func politeness(_ value: JSONValue) throws -> AriaPoliteness {
+  guard let p = value.stringValue.flatMap(AriaPoliteness.init(rawValue:)) else {
+    throw ScriptError("not a politeness: \(value.stringify())")
+  }
+  return p
 }
 
 private func number(_ value: JSONValue) throws -> Double {
@@ -353,6 +371,70 @@ final class TestExtensions {
           }
           return true
         })
+    case "AriaLiveRegionExtension":
+      return try configured(
+        AriaLiveRegionExtension,
+        partials(key, configs) { (p: inout Partial<AriaLiveRegionExtensionConfig>, field, value) in
+          switch field {
+          case "politeness": p.set(\.politeness, try politeness(value))
+          default: return false
+          }
+          return true
+        })
+    case "HistoryAnnounceExtension":
+      return try configured(
+        HistoryAnnounceExtension,
+        partials(key, configs) {
+          (p: inout Partial<HistoryAnnounceExtensionConfig>, field, value) in
+          switch field {
+          case "undone": p.set(\.undone, try string(value))
+          case "redone": p.set(\.redone, try string(value))
+          case "disabled": p.set(\.disabled, try bool(value))
+          default: return false
+          }
+          return true
+        })
+    case "EditorModeAnnounceExtension":
+      return try configured(
+        EditorModeAnnounceExtension,
+        partials(key, configs) {
+          (p: inout Partial<EditorModeAnnounceExtensionConfig>, field, value) in
+          switch field {
+          case "editable": p.set(\.editable, try string(value))
+          case "readOnly": p.set(\.readOnly, try string(value))
+          case "disabled": p.set(\.disabled, try bool(value))
+          default: return false
+          }
+          return true
+        })
+    case "HeadingAnnounceExtension":
+      return try configured(
+        HeadingAnnounceExtension,
+        partials(key, configs) {
+          (p: inout Partial<HeadingAnnounceExtensionConfig>, field, value) in
+          switch field {
+          case "created": p.set(\.created, try string(value))
+          case "destroyed": p.set(\.destroyed, try string(value))
+          case "disabled": p.set(\.disabled, try bool(value))
+          default: return false
+          }
+          return true
+        })
+    case "AutoLinkAnnounceExtension":
+      return try configured(
+        AutoLinkAnnounceExtension,
+        partials(key, configs) {
+          (p: inout Partial<AutoLinkAnnounceExtensionConfig>, field, value) in
+          switch field {
+          case "created": p.set(\.created, try string(value))
+          case "createdMany": p.set(\.createdMany, try string(value))
+          case "destroyed": p.set(\.destroyed, try string(value))
+          case "destroyedMany": p.set(\.destroyedMany, try string(value))
+          case "disabled": p.set(\.disabled, try bool(value))
+          default: return false
+          }
+          return true
+        })
     default:
       throw ScriptError("\(key) takes no config overrides")
     }
@@ -400,6 +482,43 @@ final class TestExtensions {
     case ("SelectBlockExtension", "disabled"):
       try getExtensionDependencyFromEditor(editor, SelectBlockExtension).output.disabled.set(
         try bool(value))
+    case ("AriaLiveRegionExtension", "politeness"):
+      try getExtensionDependencyFromEditor(editor, AriaLiveRegionExtension).output.politeness.set(
+        try politeness(value))
+    case ("HistoryAnnounceExtension", let field):
+      let o = try getExtensionDependencyFromEditor(editor, HistoryAnnounceExtension).output
+      switch field {
+      case "undone": try o.undone.set(try string(value))
+      case "redone": try o.redone.set(try string(value))
+      case "disabled": try o.disabled.set(try bool(value))
+      default: throw ScriptError("no signal \(name) of \(key)")
+      }
+    case ("EditorModeAnnounceExtension", let field):
+      let o = try getExtensionDependencyFromEditor(editor, EditorModeAnnounceExtension).output
+      switch field {
+      case "editable": try o.editable.set(try string(value))
+      case "readOnly": try o.readOnly.set(try string(value))
+      case "disabled": try o.disabled.set(try bool(value))
+      default: throw ScriptError("no signal \(name) of \(key)")
+      }
+    case ("HeadingAnnounceExtension", let field):
+      let o = try getExtensionDependencyFromEditor(editor, HeadingAnnounceExtension).output
+      switch field {
+      case "created": try o.created.set(try string(value))
+      case "destroyed": try o.destroyed.set(try string(value))
+      case "disabled": try o.disabled.set(try bool(value))
+      default: throw ScriptError("no signal \(name) of \(key)")
+      }
+    case ("AutoLinkAnnounceExtension", let field):
+      let o = try getExtensionDependencyFromEditor(editor, AutoLinkAnnounceExtension).output
+      switch field {
+      case "created": try o.created.set(try string(value))
+      case "createdMany": try o.createdMany.set(try string(value))
+      case "destroyed": try o.destroyed.set(try string(value))
+      case "destroyedMany": try o.destroyedMany.set(try string(value))
+      case "disabled": try o.disabled.set(try bool(value))
+      default: throw ScriptError("no signal \(name) of \(key)")
+      }
     default:
       if key == "HistoryExtension" || realExtension(key) != nil {
         throw ScriptError("no signal \(name) of \(key)")

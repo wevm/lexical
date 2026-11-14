@@ -385,6 +385,13 @@ impl LexicalNode for AutoLinkNode {
         true
     }
 
+    /// `AutoLinkNode.updateDOM(prevNode)`: `LinkNode`'s (which keeps its
+    /// DOM), or made again when `isUnlinked` changes.
+    fn update_dom(&self, prev_node: &dyn LexicalNode) -> bool {
+        prev_node
+            .downcast_ref::<AutoLinkNode>()
+            .is_some_and(|prev| prev.is_unlinked != self.is_unlinked)
+    }
     fn get_type(&self) -> &'static str {
         "autolink"
     }

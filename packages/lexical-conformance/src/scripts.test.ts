@@ -19,6 +19,7 @@ import {
   runScript,
   type Script,
   type Step,
+  type TypeaheadSpec,
 } from './ops';
 import {emitVectors} from './vectors';
 
@@ -6158,6 +6159,594 @@ test('scripts/block-id', () => {
           update(byId('id1')),
           {...run('REDO_COMMAND'), now: 3000},
           update(byId('id1')),
+        ],
+      },
+    ],
+  );
+});
+
+test('scripts/a11y', () => {
+  // @lexical/a11y's live region (AriaLiveRegionExtension) and the
+  // extensions that announce through it: HistoryAnnounceExtension,
+  // EditorModeAnnounceExtension, and the packages' HeadingAnnounceExtension
+  // (@lexical/rich-text) and AutoLinkAnnounceExtension (@lexical/link). The
+  // region is mounted in the body of the root element's document, so the
+  // scripts set a root element (`setRootElement`); the reconciler then
+  // runs, and the mutation listeners the heading and link announcers use
+  // hear from it. In Node an update of an editor with a root starts with no
+  // selection, so each update selects first. HistoryExtension is enabled
+  // explicitly: its `disabled` defaults to `typeof window === 'undefined'`.
+  // Every built editor starts with InitialStateExtension's paragraph, key 1.
+  const script = (
+    name: string,
+    extensions: ExtensionArg[],
+    steps: Step[],
+    extra: Partial<Script> = {},
+  ): Script => ({extensions, liveRegion: true, name, steps, ...extra});
+  const root = (on: boolean): Step => ({setRootElement: on});
+  const announce = (text: string): Step => ({announce: text});
+  const signals = (key: string, ...entries: [string, Json][]): Step => ({
+    setSignals: entries.map(([name, value]) => [key, name, value]),
+  });
+  const run = (dispatch: string): Step => ({dispatch});
+  const history: ExtensionArg = ['HistoryExtension', {disabled: false}];
+  const heading = (block: string, at: [string, number, 'text' | 'element']) =>
+    update(select(at), {block: block as never, do: 'setBlocksType'});
+  emit(
+    'a11y',
+    "@lexical/a11y's AriaLiveRegionExtension (the region's politeness and textContent, U+200B on a repeated announcement, mounting with the root element), HistoryAnnounceExtension, EditorModeAnnounceExtension, and the packages' HeadingAnnounceExtension and AutoLinkAnnounceExtension, through buildEditorFromExtensions with a root element.",
+    [
+      script(
+        'the live region follows the root element',
+        ['AriaLiveRegionExtension'],
+        [
+          // No root: nothing is mounted, the message is only buffered.
+          announce('Hello'),
+          root(true),
+          // A repeat of the buffered message toggles a trailing U+200B.
+          announce('Hello'),
+          announce('Hello'),
+          announce('Hello'),
+          announce('Bye'),
+          announce(''),
+          signals('AriaLiveRegionExtension', ['politeness', 'assertive']),
+          root(false),
+          announce('Gone'),
+          // A new region does not replay the last message.
+          root(true),
+          announce('Back'),
+          {dispose: true},
+          announce('After'),
+        ],
+      ),
+      script(
+        'politeness from the config',
+        [['AriaLiveRegionExtension', {politeness: 'assertive'}]],
+        [
+          announce('Early'),
+          root(true),
+          announce('Early'),
+          signals('AriaLiveRegionExtension', ['politeness', 'polite']),
+          announce('Late'),
+        ],
+      ),
+      script(
+        'undo and redo are announced',
+        ['RichTextExtension', history, 'HistoryAnnounceExtension'],
+        [
+          root(true),
+          update(select(['1', 0, 'element']), call('insertText', 'a')),
+          run('UNDO_COMMAND'),
+          run('REDO_COMMAND'),
+          run('UNDO_COMMAND'),
+          // Undo with nothing left to undo is still announced, twice over.
+          run('UNDO_COMMAND'),
+          run('UNDO_COMMAND'),
+          signals('HistoryAnnounceExtension', ['disabled', true]),
+          run('UNDO_COMMAND'),
+          signals(
+            'HistoryAnnounceExtension',
+            ['disabled', false],
+            ['redone', 'Again'],
+          ),
+          run('REDO_COMMAND'),
+        ],
+      ),
+      script(
+        'history messages from the config',
+        [
+          'RichTextExtension',
+          history,
+          ['HistoryAnnounceExtension', {redone: 'R', undone: 'U'}],
+        ],
+        [root(true), run('UNDO_COMMAND'), run('REDO_COMMAND')],
+      ),
+      script(
+        'editable transitions are announced',
+        ['EditorModeAnnounceExtension'],
+        [
+          root(true),
+          {setEditable: false},
+          // No transition, no announcement.
+          {setEditable: false},
+          {setEditable: true},
+          signals('EditorModeAnnounceExtension', ['disabled', true]),
+          {setEditable: false},
+          signals('EditorModeAnnounceExtension', ['disabled', false]),
+          {setEditable: true},
+          {setEditable: false},
+        ],
+      ),
+      script(
+        'editor mode messages from the config, without a root',
+        [
+          [
+            'EditorModeAnnounceExtension',
+            {editable: 'Writable', readOnly: 'Locked'},
+          ],
+        ],
+        [{setEditable: false}, root(true), {setEditable: true}],
+      ),
+      script(
+        'headings created, changed and removed',
+        ['RichTextExtension', 'HeadingAnnounceExtension'],
+        [
+          root(true),
+          heading('h1', ['1', 0, 'element']),
+          // Typing in a heading is silent.
+          update(select(['2', 0, 'element']), call('insertText', 'Title')),
+          // A new level replaces the node: a creation and a removal, of which
+          // the creation is announced.
+          heading('h2', ['3', 2, 'text']),
+          // The same node with another tag is updated, not created.
+          update(select(['3', 2, 'text']), node('4', 'setTag', 'h3')),
+          heading('paragraph', ['3', 1, 'text']),
+          heading('h6', ['3', 0, 'text']),
+          // Headings made without a root are announced when it mounts.
+          root(false),
+          update(select(['3', 0, 'text']), {
+            do: 'insertNodes',
+            nodes: [
+              {
+                children: [],
+                direction: null,
+                format: '',
+                indent: 0,
+                tag: 'h4',
+                type: 'heading',
+                version: 1,
+              } as Node,
+              {
+                children: [],
+                direction: null,
+                format: '',
+                indent: 0,
+                tag: 'h5',
+                type: 'heading',
+                version: 1,
+              } as Node,
+            ],
+          }),
+          root(true),
+          signals('HeadingAnnounceExtension', ['disabled', true]),
+          heading('h1', ['3', 0, 'text']),
+          signals(
+            'HeadingAnnounceExtension',
+            ['disabled', false],
+            ['destroyed', 'No more h%s (%s)'],
+          ),
+          heading('paragraph', ['3', 0, 'text']),
+        ],
+        {mutations: ['heading']},
+      ),
+      script(
+        'heading messages from the config',
+        [
+          'RichTextExtension',
+          ['HeadingAnnounceExtension', {created: 'Level %s, %s'}],
+        ],
+        [root(true), heading('h3', ['1', 0, 'element'])],
+      ),
+      script(
+        'automatic links created and removed',
+        [
+          'RichTextExtension',
+          ['AutoLinkExtension', {matchers: ['url']}],
+          'AutoLinkAnnounceExtension',
+        ],
+        [
+          root(true),
+          update(select(['1', 0, 'element']), call('insertText', 'see ')),
+          update(select(['2', 4, 'text']), call('insertText', 'https://a.com')),
+          // Extending the address rebuilds or updates the link: silent.
+          update(select(['5', 13, 'text']), call('insertText', '/x')),
+          update(
+            select(['9', 15, 'text']),
+            call('insertText', ' https://b.com and https://c.com '),
+          ),
+          update(
+            select(['2', 0, 'text'], ['17', 1, 'text']),
+            call('removeText'),
+          ),
+          update(
+            select(['1', 0, 'element']),
+            call('insertText', 'https://d.com '),
+          ),
+          update(
+            select(['1', 0, 'element'], ['21', 0, 'text']),
+            call('removeText'),
+          ),
+        ],
+        {mutations: ['autolink']},
+      ),
+      script(
+        'link messages from the config, disabled',
+        [
+          'RichTextExtension',
+          ['AutoLinkExtension', {matchers: ['url']}],
+          [
+            'AutoLinkAnnounceExtension',
+            {createdMany: '%s new links (%s)', disabled: true},
+          ],
+        ],
+        [
+          root(true),
+          update(
+            select(['1', 0, 'element']),
+            call('insertText', 'https://a.com https://b.com '),
+          ),
+          signals('AutoLinkAnnounceExtension', ['disabled', false]),
+          update(
+            select(['1', 0, 'element']),
+            call('insertText', 'https://c.com https://d.com '),
+          ),
+        ],
+      ),
+    ],
+  );
+});
+
+test('scripts/decorator-block', () => {
+  // @lexical/react's DecoratorBlockNode, through TestDecoratorBlockNode
+  // (`test-decorator-block`), which extends it with nothing: a block
+  // decorator with an element `format`, which is not indentable.
+  const block = (format?: string): Node =>
+    ({
+      ...(format === undefined ? {} : {format}),
+      type: 'test-decorator-block',
+      version: 1,
+    }) as Node;
+  const info = (key: string): Action => ({do: 'logDecoratorBlock', key});
+  const script = (name: string, steps: Step[]): Script => ({
+    decoratorBlock: true,
+    name,
+    richText: true,
+    steps,
+  });
+  emit(
+    'decorator-block',
+    "@lexical/react's DecoratorBlockNode, extended by TestDecoratorBlockNode: isInline, canIndent, getFormat and setFormat, its JSON with and without a format, $isDecoratorBlockNode, and blocks inserted and formatted.",
+    [
+      script('a block between paragraphs', [
+        doc(p(t('ab'))),
+        update(select(['2', 1, 'text']), {do: 'insertNodes', nodes: [block()]}),
+        update(info('3'), info('1'), info('2')),
+        update(node('3', 'setFormat', 'center'), info('3')),
+        update(node('3', 'setFormat', 'justify'), node('2', 'setFormat', 1)),
+        // A later clone keeps the format.
+        update(node('3', 'markDirty'), info('3')),
+        update(node('3', 'setFormat', '')),
+      ]),
+      script('formats from JSON', [
+        doc(block('right'), block(), block('bogus'), block('start'), p(t('x'))),
+        update(info('1'), info('2'), info('3'), info('4')),
+        update(
+          {anchor: ['6', 1, 'text'], do: 'select'},
+          call('insertNodes', [block('end')]),
+        ),
+      ]),
+      script('FORMAT_ELEMENT_COMMAND with the block selected', [
+        doc(p(t('a')), block('left'), p(t('b'))),
+        update({do: 'selectNodes', keys: ['3']}),
+        {dispatch: 'FORMAT_ELEMENT_COMMAND', payload: 'center'},
+        update(select(['2', 0, 'text'], ['5', 1, 'text'])),
+        {dispatch: 'FORMAT_ELEMENT_COMMAND', payload: 'right'},
+        update(info('3')),
+        {dispatch: 'INDENT_CONTENT_COMMAND'},
+      ]),
+      script('deleting around a block', [
+        doc(p(t('a')), block('center'), p(t('b'))),
+        update(select(['4', 0, 'element'])),
+        {dispatch: 'DELETE_CHARACTER_COMMAND', payload: true},
+        {dispatch: 'DELETE_CHARACTER_COMMAND', payload: true},
+        {dispatch: 'DELETE_CHARACTER_COMMAND', payload: true},
+      ]),
+    ],
+  );
+});
+
+test('scripts/menu', () => {
+  // @lexical/react's typeahead menu, without its view: the text before the
+  // caret (`getTextUpToAnchor`), useBasicTypeaheadTriggerMatch's match of
+  // it, `isSelectionOnEntityBoundary`, `getFullMatchOffset`, and what
+  // selecting an option runs (`$splitNodeContainingQuery`, then an
+  // `onSelectOption` that replaces the query).
+  const at = (text: string, offset: number, ...more: Step[]): Step[] => [
+    doc(p(t(text))),
+    update(select(['2', offset, 'text'])),
+    ...more,
+  ];
+  const match = (spec: TypeaheadSpec): Step => ({typeahead: spec});
+  const at$ = {trigger: '@'};
+  const fullMatch = (
+    documentText: string,
+    entryText: string,
+    offset: number,
+  ): Action => ({do: 'logFullMatchOffset', documentText, entryText, offset});
+  const script = (name: string, steps: Step[], extra: Partial<Script> = {}) =>
+    ({name, steps, ...extra}) as Script;
+  emit(
+    'menu',
+    "@lexical/react's typeahead menu without its view: getTextUpToAnchor, useBasicTypeaheadTriggerMatch (the trigger, punctuation, minLength and maxLength, allowWhitespace, UTF-16 offsets), isSelectionOnEntityBoundary, getFullMatchOffset, and selecting an option ($splitNodeContainingQuery and a replacement).",
+    [
+      script('a trigger after a space', at('hi @bob', 7, match(at$))),
+      script('a trigger at offset 0', at('@x', 2, match(at$))),
+      script('a trigger mid-word', at('a@b', 3, match(at$))),
+      script('a trigger after an open parenthesis', at('(@bo', 4, match(at$))),
+      script(
+        'a trigger alone',
+        at('hi @', 4, match(at$), match({minLength: 0, trigger: '@'})),
+      ),
+      script('the caret inside the query', at('hi @bob there', 6, match(at$))),
+      script('punctuation ends the query', [
+        ...at('@bo.b', 5, match(at$)),
+        update(select(['2', 3, 'text'])),
+        match(at$),
+        update(select(['2', 4, 'text'])),
+        match(at$),
+      ]),
+      script('a custom punctuation', [
+        ...at('#a,b', 4, match({trigger: '#'})),
+        match({punctuation: '\\.', trigger: '#'}),
+        match({punctuation: '', trigger: '#'}),
+      ]),
+      script('minLength', [
+        ...at('@bo', 3, match({minLength: 2, trigger: '@'})),
+        match({minLength: 3, trigger: '@'}),
+      ]),
+      script('maxLength', [
+        ...at('x @abc', 6, match({maxLength: 3, trigger: '@'})),
+        match({maxLength: 2, trigger: '@'}),
+        match({maxLength: 0, trigger: '@'}),
+      ]),
+      script('allowWhitespace', [
+        ...at('@bob smith', 10, match(at$)),
+        match({allowWhitespace: true, trigger: '@'}),
+        match({allowWhitespace: true, maxLength: 8, trigger: '@'}),
+      ]),
+      script('outside the BMP before the trigger', [
+        ...at('😀 @bob', 7, match(at$)),
+        update(select(['2', 2, 'text'])),
+        match(at$),
+      ]),
+      script('outside the BMP in the query', [
+        ...at('@😀', 3, match(at$)),
+        match({maxLength: 2, trigger: '@'}),
+        match({maxLength: 1, trigger: '@'}),
+        match({minLength: 2, trigger: '@'}),
+        match({minLength: 3, trigger: '@'}),
+      ]),
+      script('a slash command', at('/he', 3, match({trigger: '/'}))),
+      script('the text before the caret', [
+        doc(p(t('@ab'), t('@cd', {format: 1}))),
+        // An element point has no text before it.
+        update(select(['1', 0, 'element'])),
+        match(at$),
+        // Only the anchor's own text node counts.
+        update(select(['3', 2, 'text'])),
+        match(at$),
+        // A range: the text up to its anchor.
+        update(select(['2', 2, 'text'], ['3', 1, 'text'])),
+        match(at$),
+        // A token is not simple text.
+        update(node('3', 'setMode', 'token'), select(['3', 3, 'text'])),
+        match(at$),
+        update(node('1', 'select', 0, 0)),
+        match(at$),
+      ]),
+      script(
+        'a query after a text entity',
+        [
+          doc(p(t('#tag', {type: 'hashtag'}), t('@bo'))),
+          update(select(['3', 3, 'text'])),
+          match(at$),
+          update(select(['2', 4, 'text'])),
+          match({trigger: '#'}),
+        ],
+        {hashtag: true},
+      ),
+      script('selecting an option', [
+        ...at('hi @bo', 6),
+        update({
+          do: 'selectTypeaheadOption',
+          replacement: '[Bob]',
+          typeahead: at$,
+        }),
+      ]),
+      script('selecting an option for a query at offset 0', [
+        ...at('@bo and more', 3),
+        update({
+          do: 'selectTypeaheadOption',
+          replacement: '[Bob]',
+          typeahead: at$,
+        }),
+      ]),
+      script('selecting an option mid-text', [
+        ...at('x @b y', 4),
+        update({
+          do: 'selectTypeaheadOption',
+          replacement: '[B]',
+          typeahead: at$,
+        }),
+      ]),
+      script('selecting an option without a match', [
+        ...at('no trigger', 4),
+        update({
+          do: 'selectTypeaheadOption',
+          replacement: '[none]',
+          typeahead: at$,
+        }),
+      ]),
+      script('selecting an option outside the BMP', [
+        ...at('😀@x 😀 @😀b', 11),
+        update({
+          do: 'selectTypeaheadOption',
+          replacement: '[😀]',
+          typeahead: at$,
+        }),
+      ]),
+      script('getFullMatchOffset', [
+        update(
+          fullMatch('hi @bo', 'bob', 3),
+          fullMatch('hi @bob', 'bob', 4),
+          fullMatch('hi bo', 'bob', 0),
+          fullMatch('bob', 'bob', 0),
+          fullMatch('xbo', 'bob', 1),
+          fullMatch('', 'bob', 0),
+          fullMatch('ab', '', 0),
+          fullMatch('a😀', '😀b', 0),
+          fullMatch('a😀', '😀b', 1),
+        ),
+      ]),
+    ],
+  );
+});
+
+test('scripts/auto-embed', () => {
+  // The platform-neutral parts of @lexical/react's auto-embed that JS can
+  // run without React: URL_MATCHER, the plugin's single-token test of a
+  // pasted text, INSERT_EMBED_COMMAND without a handler, and the mutations
+  // a pasted link makes, which the plugin's mutation listeners act on (a
+  // created link in an update tagged `paste`).
+  const url = (text: string): Action => ({do: 'logUrlMatcher', text});
+  const token = (text: string): Action => ({do: 'logSingleTokenPaste', text});
+  emit(
+    'auto-embed',
+    "@lexical/react's auto-embed without React: URL_MATCHER on URLs it matches and does not, the plugin's single-token test of pasted text, INSERT_EMBED_COMMAND, and the link mutations a paste makes with a root element.",
+    [
+      {
+        name: 'URL_MATCHER',
+        steps: [
+          update(
+            url('https://www.youtube.com/watch?v=jNQXAC9IVRw'),
+            url('see www.example.com/a?b=c#d.'),
+            url('http://example.com'),
+            url('example.com'),
+            url('ftp://example.com'),
+            url('https://a.b'),
+            url('https://localhost'),
+            url('https://example.abcdefg'),
+            url('https://example.abcdef'),
+            url('https://ex-ample.co.uk/(x)/y_z~'),
+            url('😀 https://a.com/😀'),
+            url('HTTPS://A.COM'),
+            url('https://www.'),
+            url('https://' + 'a'.repeat(257) + '.com'),
+            url('https://' + 'a'.repeat(256) + '.com'),
+            url('https://exa mple.com'),
+            url('https://example.com.'),
+            url('xhttps://example.com'),
+            url('https://example.c0m!x'),
+            url(''),
+          ),
+        ],
+      },
+      {
+        name: 'single-token pastes',
+        steps: [
+          update(
+            token('https://a.com'),
+            token(''),
+            token('a b'),
+            token(' a'),
+            token('a\n'),
+            token('a\tb'),
+            token('a\u00a0b'),
+            token('a\u0085b'),
+            token('a\u180eb'),
+            token('a\u2028b'),
+            token('a\u3000b'),
+            token('a\ufeffb'),
+            token('a\u200bb'),
+            token('😀'),
+          ),
+        ],
+      },
+      {
+        link: true,
+        name: 'INSERT_EMBED_COMMAND without a handler',
+        steps: [{dispatch: 'INSERT_EMBED_COMMAND', payload: 'youtube-video'}],
+      },
+      {
+        autoLink: true,
+        link: true,
+        mutations: ['link', 'autolink'],
+        name: 'links made by a paste',
+        richText: true,
+        steps: [
+          doc(p(t('see '))),
+          {setRootElement: true},
+          {
+            tag: ['paste'],
+            update: [
+              select(['2', 4, 'text']),
+              {data: {'text/plain': 'https://video.test/abc'}, do: 'pasteData'},
+            ],
+          },
+          {
+            tag: ['paste'],
+            update: [
+              select(['1', 0, 'element']),
+              {
+                data: {'text/plain': 'https://a.test https://b.test '},
+                do: 'pasteData',
+              },
+            ],
+          },
+          // Typed, not pasted.
+          update(
+            select(['1', 0, 'element']),
+            call('insertText', 'https://c.test '),
+          ),
+          {
+            tag: ['paste'],
+            update: [
+              select(['1', 0, 'element']),
+              {
+                data: {
+                  'application/x-lexical-editor': JSON.stringify({
+                    namespace: NAMESPACE,
+                    nodes: [
+                      {
+                        children: [t('https://d.test')],
+                        direction: null,
+                        format: '',
+                        indent: 0,
+                        rel: null,
+                        target: null,
+                        title: null,
+                        type: 'link',
+                        url: 'https://d.test',
+                        version: 1,
+                      },
+                    ],
+                  }),
+                  'text/plain': 'https://d.test',
+                },
+                do: 'pasteData',
+              },
+            ],
+          },
         ],
       },
     ],

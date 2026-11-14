@@ -16,6 +16,7 @@
     "html-entities": "node scripts/html-entities.mjs"
   },
   "devDependencies": {
+    "@lexical/a11y": "workspace:*",
     "@lexical/clipboard": "workspace:*",
     "@lexical/code-core": "workspace:*",
     "@lexical/devtools-core": "workspace:*",
@@ -32,6 +33,7 @@
     "@lexical/markdown": "workspace:*",
     "@lexical/overflow": "workspace:*",
     "@lexical/plain-text": "workspace:*",
+    "@lexical/react": "workspace:*",
     "@lexical/rich-text": "workspace:*",
     "@lexical/selection": "workspace:*",
     "@lexical/text": "workspace:*",

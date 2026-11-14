@@ -9,7 +9,8 @@
 //! update, which JS also does when one comes first.
 
 use crate::editor::{
-    DirtyType, LexicalCommand, NodeClass, Transform, UpdateListenerPayload, UpdateOptions,
+    DirtyType, LexicalCommand, MutationListenerPayload, NodeClass, Transform,
+    UpdateListenerPayload, UpdateOptions,
 };
 use crate::editor_state::{clone_editor_state, create_empty_editor_state};
 use crate::error::invariant;
@@ -102,6 +103,27 @@ pub(crate) fn is_currently_read_only_mode() -> bool {
 pub(crate) fn error_on_read_only() {
     if is_currently_read_only_mode() {
         panic!("Cannot use method in read-only mode.");
+    }
+}
+
+/// `$onUpdate(updateFn)` (`LexicalUtils.ts`): runs `update_fn` once the
+/// update that is running commits, after its listeners.
+pub fn on_update(update_fn: impl FnOnce() + 'static) {
+    error_on_read_only();
+    let editor = get_active_editor().unwrap_or_else(|| {
+        panic!("Unable to find an active editor. This method can only be used synchronously during the callback of editor.update() or editor.read().")
+    });
+    editor.0.deferred.borrow_mut().push(Box::new(update_fn));
+}
+
+/// `triggerDeferredUpdateCallbacks(editor, deferred)`.
+fn trigger_deferred_update_callbacks(editor: &Editor, deferred: Vec<Box<dyn FnOnce()>>) {
+    if !deferred.is_empty() {
+        with_updating(editor, || {
+            for callback in deferred {
+                callback();
+            }
+        });
     }
 }
 
@@ -450,12 +472,48 @@ fn with_updating<R>(editor: &Editor, f: impl FnOnce() -> R) -> R {
 /// state, notifies the text content and update listeners, and runs the
 /// first update queued meanwhile.
 pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError> {
-    let Some(pending) = editor.0.pending.borrow_mut().take() else {
+    let pending = editor.0.pending.borrow_mut().take();
+    let Some(pending) = pending else {
+        // Even without a pending state, flush the deferred callbacks a
+        // prior update added.
+        if !editor.0.updating.get() && !editor.0.deferred.borrow().is_empty() {
+            let deferred = std::mem::take(&mut *editor.0.deferred.borrow_mut());
+            trigger_deferred_update_callbacks(editor, deferred);
+        }
         return Ok(());
     };
     let current = editor.get_editor_state();
     let needs_update = editor.dirty_type() != DirtyType::None;
+    let previously_updating = editor.0.updating.get();
     *editor.0.editor_state.borrow_mut() = pending.clone();
+    // The reconciler's model half, with a root element: which nodes it
+    // creates, updates and destroys, for the mutation listeners.
+    let mutated_nodes = if editor.get_root_element().is_some() && needs_update {
+        let dirty = editor.0.dirty.borrow();
+        let mutated = with_active(
+            Active {
+                editor: Some(editor.clone()),
+                editor_state: Some(pending.clone()),
+                read_only: false,
+                registry: None,
+            },
+            || {
+                with_updating(editor, || {
+                    crate::reconciler::reconcile_root(
+                        &current,
+                        &pending,
+                        editor,
+                        dirty.dirty_type,
+                        &dirty.elements,
+                        &dirty.leaves,
+                    )
+                })
+            },
+        );
+        Some(mutated)
+    } else {
+        None
+    };
     pending.0.read_only.set(true);
 
     let (dirty_elements, dirty_leaves, normalized_nodes) = {
@@ -479,8 +537,19 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
         .map(str::to_owned)
         .collect();
 
+    // Listeners may start another update, which must not inherit them; an
+    // outer update still owns its callbacks when it forces an early commit.
+    let deferred = if previously_updating {
+        Vec::new()
+    } else {
+        std::mem::take(&mut *editor.0.deferred.borrow_mut())
+    };
     let previously_dispatching = editor.0.dispatching_commit_listeners.replace(true);
     with_updating(editor, || {
+        if let Some(mutated_nodes) = &mutated_nodes {
+            let leaves: &Vec<String> = &dirty_leaves;
+            trigger_mutation_listeners(editor, mutated_nodes, &tags, leaves, &current);
+        }
         let listeners = editor.text_content_listeners();
         if !listeners.is_empty() {
             let current_text = editor_state_text_content(&current);
@@ -507,7 +576,32 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
         .0
         .dispatching_commit_listeners
         .set(previously_dispatching);
+    if !previously_updating {
+        trigger_deferred_update_callbacks(editor, deferred);
+    }
     trigger_enqueued_updates(editor)
+}
+
+/// `triggerMutationListeners(editor, mutatedNodes, updateTags, dirtyLeaves,
+/// prevEditorState)`: each listener, for each class it listens to that the
+/// commit mutated.
+fn trigger_mutation_listeners(
+    editor: &Editor,
+    mutated_nodes: &crate::reconciler::MutatedNodes,
+    update_tags: &[String],
+    dirty_leaves: &[String],
+    prev_editor_state: &EditorState,
+) {
+    let payload = MutationListenerPayload {
+        dirty_leaves: dirty_leaves.to_vec(),
+        prev_editor_state: prev_editor_state.clone(),
+        update_tags: update_tags.to_vec(),
+    };
+    for (listener, node_type) in editor.mutation_listeners() {
+        if let Some((_, mutations)) = mutated_nodes.iter().find(|(t, _)| *t == node_type) {
+            listener(mutations, &payload);
+        }
+    }
 }
 
 /// `$triggerEnqueuedUpdates(editor)`: begins the next queued update, if
@@ -621,7 +715,10 @@ pub(crate) fn begin_update(
     let result = with_active(active, || {
         let run = || -> Result<(), LexicalError> {
             if was_cloned && let Some(selection) = current.selection() {
-                // A headless editor carries the selection over.
+                // A headless editor carries the selection over. So does one
+                // with a root element, where JS reads the DOM selection
+                // (`$internalCreateSelection`): the app's view keeps it, as in
+                // Swift.
                 *pending.0.selection.borrow_mut() = Some(selection.clone_selection());
             }
             update_fn()?;
@@ -677,6 +774,7 @@ pub(crate) fn begin_update(
     result?;
 
     let should_update = editor.dirty_type() != DirtyType::None
+        || !editor.0.deferred.borrow().is_empty()
         || has_dirty_selection(
             pending.selection().as_ref(),
             editor.get_editor_state().selection().as_ref(),
@@ -691,6 +789,7 @@ pub(crate) fn begin_update(
         pending.0.flush_sync.set(false);
         if was_cloned {
             *editor.0.tags.borrow_mut() = OrderedSet::new();
+            editor.0.deferred.borrow_mut().clear();
             *editor.0.pending.borrow_mut() = None;
         }
     }

@@ -64,6 +64,11 @@ updated with each milestone.
 | `@lexical/utils`'s model (the `utils` feature) | `packages/lexical-utils/src/index.ts`: `DFSNode`, `$dfs`, `$reverseDfs`, `$dfsIterator`, `$reverseDfsIterator` (Rust iterators), `$getAdjacentCaret`, `$getNextSiblingOrParentSibling`, `$getDepth`, `$getNextRightPreorderNode`, `$getNearestNodeOfType`, `$getNearestBlockElementAncestorOrThrow`, `registerNestedElementResolver` (by node type), `$restoreEditorState`, `$insertNodeToNearestRoot`, `$insertNodeIntoLeaf`, `$wrapNodeInElement`, `$filter`, `$handleIndentAndOutdent`, `$insertFirst`, `$unwrapAndFilterDescendants`, `$descendantsMatching`, `$firstToLastIterator`, `$lastToFirstIterator`, `$unwrapNode`, `StateConfigWrapper`, `makeStateWrapper`, `$onEscapeUp`, `$onEscapeDown`, `$isAtStartOfNode`, `$isAtEndOfNode`; its re-exports of `$findMatchingParent`, `$getAdjacentSiblingOrParentSiblingCaret`, `$insertNodeToNearestRootAtCaret`, `$isBlockFullySelected`, `$isRootOrShadowRoot`, `$splitNode` and `mergeRegister` (no longer behind the `extension` feature) | `utils`, `lexical_utils`, `caret_utils`, `selection_deletion`, `merge_register` | `scripts/selection-utils` |
 | Slots | `LexicalSlot.ts` (`$isSlotHost`, `$isSlotChild`, `$getSlotHost`, `$getSlotNameWithinHost`, `$getSlotFrame`, `$getSelectionSlotFrame`, `$getSlotNames` in canonical order, `$getSlot`, `getDeclaredSlots` as `LexicalNode::declared_slots`, `$setSlot` with its refusals and moves, `$removeSlot`, the cycle check, `_slotsUsed`); their call sites in `LexicalNode.ts` (`__slotHost` and `__slots` on elements and decorators, `remove`, `replace`, `isAttached`, `getTextContent` and its size, `selectNext`/`selectPrevious` through the host), `LexicalElementNode.ts` (`isEmpty`, `getAllTextNodes`, text content with slots first), `LexicalEditorState.ts` and `LexicalUpdates.ts` (`"$slots"` in both JSON forms, written after `children`, and parsed through `$setSlot`), `LexicalGC.ts` (a removed host's slot subtrees), `LexicalSelection.ts` (`$clampRangeSelectionToSlotFrame` in `$setSelection` and at commit, `$getPointSlotFrame`, insertion and deletion stopping at a slot boundary, `$selectAll` scoped to the slot frame), `caret/LexicalCaret.ts` (`$filterByMode` stopping at slotted nodes, `$getCommonAncestorAcrossSlots`, `$comparePointCaretNextAcrossSlots`), `caret/LexicalCaretTree.ts`, `caret/LexicalCaretUtils.ts`; in the packages, `SELECT_ALL_COMMAND`'s scoping (`rich-text`, `plain-text`), `$setBlocksType` and `$wrapNodes` skipping slot values, `SelectBlockExtension`'s slot frames, `@lexical/clipboard`'s copy of a host's `$slots` from the selection's slot frame, `@lexical/mark`'s `$forEachSlot` walks, and `@lexical/utils`' `$dfsWithSlots`, `$reverseDfsWithSlots`, their iterators and `$getDepth` across hosts | `slot`, `node`, `nodes::element`, `editor_state`, `updates`, `gc`, `lexical_selection`, `selection_deletion`, `selection_insert_nodes`, `caret`, `caret_tree`, `caret_utils`, `rich_text`, `plain_text`, `selection`, `extension`, `clipboard`, `mark`, `utils` | `scripts/slots`, the named slots case of `serialization/core` |
 | `BlockIdExtension` (the `extension` feature) | `packages/lexical-extension/src/BlockIdExtension.ts`: `blockIdState`, `$getBlockId`, `$getBlockById`, `$getBlockHandle`, `$getBlockHandles`, `$resolveBlockHandle` with `BlockHandleOptions.read`, `BlockHandleResult`, `$isRootChildBlock`, `$defaultIsIdentifiedBlock` (with `LexicalNode::declares_inline_children` for a class whose `$config` declares `children: 'inline'`), `generateBlockId`, `BlockIdConfig` (`disabled`, `$isIdentifiedBlock`, `generateId`, `repairTransforms`), `BlockIdOutput`, and the extension: the index, the transforms of every registered class and the root transform (`$assignBlockIds`: lineage by children and by position, slots included, uniqueness, provisional ids across transform passes), the update listener (`$syncIndex`, `$nameUnnamed`), the repair update, document order (`$compareDocumentOrder`), the handle views; `internal/positionalBlockId.ts` (SHA-256, `canonicalJSON`, `$canonicalDocument`, `$documentKey`, `derivePositionalId`, `deriveDuplicateId`); `internal/blockHandles.ts` (`MIN_BLOCK_HANDLE_LENGTH`, `handleKey`, `buildHandleTable`, `handleInTable`, `idsWithPrefix`); from the core `$hasUpdateTag` and `COLLABORATION_TAG` | `extension::block_id_extension`, `extension::positional_block_id`, `extension::block_handles`, `editor` | `scripts/block-id`; a unit test of SHA-256 against FIPS 180-4's digests |
+| Root element and mutation listeners | `LexicalEditor.ts`'s `setRootElement` (its model half: `resetEditor` keeping the pending state and the queue, a full reconcile tagged `history-merge`, then the root listeners), `getRootElement`, `registerRootListener`, `registerMutationListener` (by node type, with `skipInitialization` and `initializeMutationListener`), `registerEditableListener` and `setEditable`'s notification; `LexicalReconciler.ts`'s walk as far as it reports mutations (`$reconcileRoot`, `$reconcileNode`, `$createNode` with a cross-parent move reconciled, `$destroyNode`, `$reconcileChildren`, `$reconcileNodeChildren`), with `setMutatedNode` (a destroy then a create is an update) and each node's `updateDOM` as a model hook (`LexicalNode::update_dom`: text by its tags, `HeadingNode` by tag, `ListNode` by type, `AutoLinkNode` by `isUnlinked`); `triggerMutationListeners` before the text content and update listeners; `$onUpdate` and the deferred callbacks; the root element is the app's (`RootElement`, compared by identity); `RootElementExtension.ts` | `editor`, `reconciler`, `updates`, `node`, `extension::root_element_extension` | `scripts/a11y` and `scripts/auto-embed` (the `mutations` logs) |
+| `@lexical/a11y`'s announcements (the `a11y` feature) | `packages/lexical-a11y/src/index.ts`: `AriaPoliteness`, the live region `createLiveRegion` makes (role, `aria-atomic`, `aria-live`, `textContent`) as `LiveRegion`, mounted on the app's `LiveRegionHost` (the configured `owner`, or what the root element names, where JS uses its document's body), `AriaLiveRegionExtension` (`announce` with U+200B on a repeat, its three effects: mounting per root or `owner`, the politeness, the message without replaying it into a new region), `HistoryAnnounceExtension`, `EditorModeAnnounceExtension`; `packages/lexical-rich-text/src/HeadingAnnounceExtension.ts` (with `rich-text`) and `packages/lexical-link/src/AutoLinkAnnounceExtension.ts` (with `link`), `%s` replaced once as JS's `replace` does | `a11y`, `rich_text::heading_announce_extension`, `link::auto_link_announce_extension` | `scripts/a11y` |
+| `DecoratorBlockNode` (the `decorator-block` feature) | `packages/lexical-react/src/LexicalDecoratorBlockNode.ts`: `DecoratorBlockNode` as data a node returns from `LexicalNode::decorator_block` (a block decorator, `isInline` and `canIndent` false), `getFormat`, `setFormat`, `decoratorBlockNodeSchema`'s `format` (`enumValue`, left out of the compact form when `''`), `$isDecoratorBlockNode` | `decorator_block`, `node` | `scripts/decorator-block`, `serialization/decorator-block` |
+| The typeahead menu's text matching (the `menu` feature) | `packages/lexical-react/src/LexicalTypeaheadMenuPluginUtils.ts` (`PUNCTUATION`, `useBasicTypeaheadTriggerMatch` as `basic_typeahead_trigger_match`, its `RegExp` matched by hand over UTF-16 code units, with the trigger and punctuation read as character class bodies); `LexicalMenuOption.ts` (`MenuOption`); `shared/LexicalMenu.tsx` (`MenuTextMatch`, `MenuResolution` anchored at a model range, `getFullMatchOffset`, `$splitNodeContainingQuery`, `selectOptionAndCleanUp`, the highlighted index with `preselectFirstItem`); `LexicalTypeaheadMenuPlugin.tsx` (`getTextUpToAnchor`, `isSelectionOnEntityBoundary`, the update listener with `tryToPositionRange`'s model half, `closeTypeahead`/`openTypeahead`, the editable listener); `LexicalNodeMenuPlugin.tsx`'s `positionOrCloseMenu` | `menu` | `scripts/menu` |
+| Auto-embed (the `auto-embed` feature) | `packages/lexical-react/src/LexicalAutoEmbedPluginUtils.ts` (`EmbedMatchResult`, `EmbedConfig`, `URL_MATCHER` matched by hand as `url_matcher`, `INSERT_EMBED_COMMAND`, `AutoEmbedOption`); `LexicalAutoEmbedPlugin.tsx`'s logic as `register_auto_embed`: the `PASTE_COMMAND` handler at `COMMAND_PRIORITY_BEFORE_EDITOR` with `/^\S+$/` (`is_single_token`) and `$onUpdate`, the `LinkNode` and `AutoLinkNode` mutation listeners, `checkIfLinkNodeIsEmbeddable` (the last config wins, `latestCheck`, `$getCurrentLink`, `$disableMenuFor`), `embedLinkViaActiveEmbedConfig`, `getMenuOptions` and the `INSERT_EMBED_COMMAND` handler, driving a `NodeMenu` | `auto_embed` | `scripts/auto-embed` (`URL_MATCHER`, the single-token test, the command and the mutations a paste makes) |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -110,7 +115,7 @@ touches:
   The other extensions of `@lexical/extension` (`AutoFocus`,
   `ClickAfterLastBlock`, `IME`, `KeyboardShortcuts`, `NodeSelection`,
   `NodeSelectionDataSelected`, `NormalizeTripleClickSelection`,
-  `RootElement`, `SelectionAlwaysOnDisplay`, `WatchEditable`) read the
+  `SelectionAlwaysOnDisplay`, `WatchEditable`) read the
   DOM, a selection's DOM, focus or keyboard events. Of the model-level
   ones: `HorizontalRuleExtension` needs `NodeSelectionExtension` and clicks
   (its node is ported); `NestedEditorExtension` sets a nested editor's
@@ -131,9 +136,9 @@ touches:
   only its config and signal are ported; `TabIndentationExtension`'s
   `KEY_TAB_COMMAND` handler reads a `KeyboardEvent`, which the core
   doesn't have yet (the code marks where it goes); `SelectBlockExtension`'s
-  `cascadeSelection` is kept but has no parent editor to select. Of the packages' extensions, the DOM, click,
-  focus and announce ones (`ClickableLinkExtension`,
-  `AutoLinkAnnounceExtension`, `DragonExtension`,
+  `cascadeSelection` is kept but has no parent editor to select. Of the
+  packages' extensions, the DOM, click and focus ones
+  (`ClickableLinkExtension`, `DragonExtension`,
   `NormalizeTripleClickSelectionExtension`, `CheckListExtension`'s
   pointer, focus and key handlers, `registerCodeGutter`) and the HTML
   import ones (`RichTextImportExtension`, `ListImportExtension`,
@@ -327,9 +332,8 @@ touches:
   `devtools/tree` vector holds a slot to check; the `compositionKey` line, as a headless editor never
   composes; and the React parts, `TreeView.tsx` and
   `useLexicalCommandsLog.ts` (a log of commands is the caller's, as
-  `LexicalCommandLogEntry`s with the payload already printed). The editable
-  listeners `setEditable` triggers in JS (`registerEditableListener`)
-  aren't ported. `obfuscateText`'s `*` and the `^` widths count UTF-16
+  `LexicalCommandLogEntry`s with the payload already printed).
+  `obfuscateText`'s `*` and the `^` widths count UTF-16
   code units, as JS does; no vector obfuscates.
 - In `$setBlocksType`, the branch for a
   declared block container (`$isBlockContainer`) is ported but unreachable
@@ -395,9 +399,27 @@ touches:
     text without `getWritable`; every ported caller passes `'clone'`.
   - `DataTransfer`'s files, `clearData`, `dropEffect` and `effectAllowed`,
     which nothing ported reads.
-- Composition, the DOM reconciler, mutation listeners, selection-change
-  notifications and `$onUpdate` callbacks (none of which a headless editor
-  runs, except `$onUpdate`), and `RootNode.__cachedText`. So `history` passes
+- Composition, the DOM half of the reconciler (the elements, the text,
+  format and direction caches, `editor._keyToDOMMap`), its slot walks
+  (`$mountSlotChildren`, `$reconcileSlotChildren` and `$destroyNode`'s of a
+  host's slot subtrees, so a node in a slot reports no mutation), selection-change
+  notifications and `RootNode.__cachedText`. With a root element an update
+  starts with the last selection, as in a headless editor and in Swift:
+  JS reads the DOM selection (`$internalCreateSelection`), which an app's
+  view keeps in step (in Node JS has none, so the vectors select in each
+  update).
+- Of `@lexical/a11y`: the focus trap, the roving tabindex and the focus
+  manager, which move DOM focus between HTML elements, and the region's
+  visually hidden style. Of the menus: their keyboard commands
+  (`KEY_ARROW_DOWN_COMMAND`, `KEY_ARROW_UP_COMMAND`, `KEY_ESCAPE_COMMAND`,
+  `KEY_TAB_COMMAND`, `KEY_ENTER_COMMAND`) and
+  `SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND`, which wait for an input
+  layer; an `onClose` that returns a promise; `closeUnlessComposing`'s
+  composition check; the React rendering, the anchor element, its scroll
+  and resize handling. Auto-embed's `parseUrl` is synchronous, so the menu
+  opens in the paste's mutation listener where JS awaits it.
+  `BlockWithAlignableContents` (`@lexical/react`) is a React component,
+  and isn't ported; Swift has its commands as an extension. So `history` passes
   `false` where JS passes `editor.isComposing()`, as a headless JS editor
   does; the `composition-start` and `composition-end` tags work as in JS.
 

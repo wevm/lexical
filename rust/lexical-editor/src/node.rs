@@ -95,16 +95,30 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         None
     }
 
-    /// `isInline()`: false for an element, true for text and a decorator.
+    /// The `DecoratorBlockNode` fields (`@lexical/react`), for a node that
+    /// extends it: such a node is a decorator that is not inline and can't
+    /// be indented, unless it overrides those hooks.
+    #[cfg(feature = "decorator-block")]
+    fn decorator_block(&self) -> Option<&crate::decorator_block::DecoratorBlockData> {
+        None
+    }
+    #[cfg(feature = "decorator-block")]
+    fn decorator_block_mut(&mut self) -> Option<&mut crate::decorator_block::DecoratorBlockData> {
+        None
+    }
+
+    /// `isInline()`: false for an element, true for text and a decorator
+    /// (false for a `DecoratorBlockNode`).
     fn is_inline(&self) -> bool {
-        self.text().is_some() || self.is_decorator()
+        self.text().is_some() || (self.is_decorator() && !is_decorator_block(self))
     }
 
     /// Whether the node extends `DecoratorNode` (`$isDecoratorNode`): a leaf
     /// whose content an app renders ([`decorate`](Self::decorate)), which
-    /// the editor moves, selects and deletes as one unit.
+    /// the editor moves, selects and deletes as one unit. False by default,
+    /// but for a `DecoratorBlockNode`.
     fn is_decorator(&self) -> bool {
-        false
+        is_decorator_block(self)
     }
 
     /// `DecoratorNode.decorate(editor, config)`: the value an app's renderer
@@ -160,9 +174,9 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
     }
 
     /// `ElementNode.canIndent()`: whether indenting the selection changes
-    /// this block's indent.
+    /// this block's indent (`DecoratorBlockNode.canIndent()` is false).
     fn can_indent(&self) -> bool {
-        true
+        !is_decorator_block(self)
     }
 
     /// `ElementNode.canMergeWhenEmpty()`: whether the element, when empty,
@@ -390,6 +404,27 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
     /// `updateFromJSON(json)` on a writable node: applies every property the
     /// node's schema declares, a missing one as its default.
     fn update_from_json(&mut self, json: &Object);
+
+    /// The model half of `updateDOM(prevNode, dom, config)`: whether the
+    /// reconciler makes the node's DOM again (what JS's returns), which
+    /// reports the node's children as created. By default a text node
+    /// compares its tags (`TextNode.updateDOM`) and any other node keeps
+    /// its DOM.
+    fn update_dom(&self, prev_node: &dyn LexicalNode) -> bool {
+        match (self.text(), prev_node.text()) {
+            (Some(next), Some(prev)) => crate::nodes::text::update_dom(prev, next),
+            _ => false,
+        }
+    }
+}
+
+/// Whether `node` extends `DecoratorBlockNode`.
+#[allow(unused_variables)]
+fn is_decorator_block<N: LexicalNode + ?Sized>(node: &N) -> bool {
+    #[cfg(feature = "decorator-block")]
+    return node.decorator_block().is_some();
+    #[cfg(not(feature = "decorator-block"))]
+    false
 }
 
 /// The parts of [`LexicalNode`] every implementation writes the same way,

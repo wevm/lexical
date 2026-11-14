@@ -6,6 +6,16 @@
  *
  */
 
+import type {
+  MenuTextMatch,
+  TriggerFn,
+} from '@lexical/react/LexicalTypeaheadMenuPlugin';
+
+import {
+  AriaLiveRegionExtension,
+  EditorModeAnnounceExtension,
+  HistoryAnnounceExtension,
+} from '@lexical/a11y';
 import {
   $generateJSONFromSelectedNodes,
   $generateNodesFromSerializedNodes,
@@ -66,6 +76,7 @@ import {
   registerHistory,
 } from '@lexical/history';
 import {
+  AutoLinkAnnounceExtension,
   autoLinkEmailMatcher,
   AutoLinkExtension,
   AutoLinkNode,
@@ -106,8 +117,23 @@ import {
 import {OverflowExtension, OverflowNode} from '@lexical/overflow';
 import {PlainTextExtension, registerPlainText} from '@lexical/plain-text';
 import {
+  INSERT_EMBED_COMMAND,
+  URL_MATCHER,
+} from '@lexical/react/LexicalAutoEmbedPluginUtils';
+import {
+  $isDecoratorBlockNode,
+  DecoratorBlockNode,
+} from '@lexical/react/LexicalDecoratorBlockNode';
+import * as TypeaheadMenuPlugin from '@lexical/react/LexicalTypeaheadMenuPlugin';
+import {
+  PUNCTUATION,
+  useBasicTypeaheadTriggerMatch,
+} from '@lexical/react/LexicalTypeaheadMenuPluginUtils';
+import {
   $createHeadingNode,
   $createQuoteNode,
+  $isHeadingNode,
+  HeadingAnnounceExtension,
   HeadingNode,
   type HeadingTagType,
   QuoteNode,
@@ -238,6 +264,7 @@ import {
   OUTDENT_CONTENT_COMMAND,
   ParagraphNode,
   type PointCaret,
+  type RangeSelection,
   REDO_COMMAND,
   REMOVE_TEXT_COMMAND,
   resetRandomKey,
@@ -250,6 +277,10 @@ import {
   TextNode,
   UNDO_COMMAND,
 } from 'lexical';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+
+import {browserWindow} from './browserWindow';
 
 // A small, JSON-only script language for editor sessions, interpreted here by
 // the real JS code and by the Swift runner in
@@ -615,6 +646,45 @@ export type Action =
    * ambiguous candidates, the invalid reason, or `null` when not found.
    */
   | {do: 'resolveBlockHandle'; handle: string; read?: string}
+  /**
+   * What `LexicalMenu`'s `selectOptionAndCleanUp` runs in its update for the
+   * typeahead menu (@lexical/react), whose resolution is the match of the
+   * text before the caret: `$splitNodeContainingQuery(match)`, logged as
+   * `['splitNodeContainingQuery', key, text]` (both `null` without a node),
+   * then an `onSelectOption` that replaces that node with a text node of
+   * `replacement` and selects its end. Without a match it logs `null`s and
+   * does nothing else.
+   */
+  | {do: 'selectTypeaheadOption'; typeahead: TypeaheadSpec; replacement: string}
+  /**
+   * Logs `['fullMatchOffset', documentText, entryText, offset, result]`:
+   * `getFullMatchOffset(documentText, entryText, offset)` (LexicalMenu.tsx).
+   */
+  | {
+      do: 'logFullMatchOffset';
+      documentText: string;
+      entryText: string;
+      offset: number;
+    }
+  /**
+   * Logs `['decoratorBlock', key, is, isInline, format, canIndent]` of the
+   * node `key`: `$isDecoratorBlockNode(node)`, `node.isInline()`, and for a
+   * `DecoratorBlockNode` its `getFormat()` and `canIndent()` (`null`s
+   * otherwise).
+   */
+  | {do: 'logDecoratorBlock'; key: string}
+  /**
+   * Logs `['urlMatcher', text, match]`: `URL_MATCHER.exec(text)`
+   * (LexicalAutoEmbedPluginUtils.ts) as `[index, match[0]]`, or `null`.
+   */
+  | {do: 'logUrlMatcher'; text: string}
+  /**
+   * Logs `['singleTokenPaste', text, matches]`: whether
+   * `LexicalAutoEmbedPlugin`'s `/^\S+$/` matches the pasted `text/plain`
+   * (`isSingleTokenPaste`), the literal of the plugin's `PASTE_COMMAND`
+   * handler, which it does not export.
+   */
+  | {do: 'logSingleTokenPaste'; text: string}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /** The blocks the `$create` of an action makes. */
@@ -622,6 +692,19 @@ export type BlockType = 'paragraph' | 'quote' | HeadingTagType;
 
 /** A value of a `patchStyleText` patch. */
 export type PatchValue = string | null | {fn: 'describe'};
+
+/**
+ * `useBasicTypeaheadTriggerMatch(trigger, options)`'s arguments
+ * (@lexical/react's LexicalTypeaheadMenuPluginUtils.ts): the options left
+ * out take its defaults (`PUNCTUATION` for `punctuation`).
+ */
+export type TypeaheadSpec = {
+  trigger: string;
+  minLength?: number;
+  maxLength?: number;
+  punctuation?: string;
+  allowWhitespace?: boolean;
+};
 
 /**
  * A command handler: logs, runs its actions, then returns `result`. Like
@@ -677,6 +760,30 @@ export type Step = (
    * history state's undo and redo stacks.
    */
   | {logHistory: true}
+  /**
+   * `editor.setRootElement(root)` with the session's root element (a `div`
+   * of a jsdom document of the session's own, made on first use, not in
+   * the document), or `setRootElement(null)`. With a root, the reconciler
+   * runs and mutation listeners hear from it. In Node, Lexical has no DOM
+   * selection (`CAN_USE_DOM` is false), so an update of an editor with a
+   * root starts with no selection: the scripts select in each update.
+   */
+  | {setRootElement: boolean}
+  /** `editor.setEditable(editable)`. */
+  | {setEditable: boolean}
+  /**
+   * `getExtensionDependencyFromEditor(editor, AriaLiveRegionExtension)
+   * .output.announce(text)` (@lexical/a11y).
+   */
+  | {announce: string}
+  /**
+   * What `LexicalTypeaheadMenuPlugin`'s update listener reads in
+   * `editor.getEditorState().read()`: `getTextUpToAnchor` of a range
+   * selection (`null` otherwise), the trigger function's match of it, and
+   * `isSelectionOnEntityBoundary(editor, match.leadOffset)`, logged as
+   * `['typeahead', text, match, onEntityBoundary]` (`null`s past a `null`).
+   */
+  | {typeahead: TypeaheadSpec}
 ) & {now?: number};
 
 /** A config of an extension of `extensionDefs`, or overrides of one. */
@@ -866,6 +973,28 @@ export type Script = {
    * with its default `markableNodes`.
    */
   mark?: boolean;
+  /**
+   * Register `TestDecoratorBlockNode` (`test-decorator-block`), a
+   * `DecoratorBlockNode` (@lexical/react) that adds nothing, as an app's
+   * block embed would extend it.
+   */
+  decoratorBlock?: boolean;
+  /**
+   * Mutation listeners (`skipInitialization: true`) for the registered
+   * classes of these node types, registered after the handlers, each
+   * logging `['mutation', type, [[key, mutation]...], tags]` (the update
+   * tags sorted). They only hear from the reconciler, so from an editor
+   * with a root element (`setRootElement`).
+   */
+  mutations?: string[];
+  /**
+   * After the build and every step, log `['liveRegion', regions]`: the
+   * `[aria-live, textContent]` of each `role="status"` element in the body
+   * of the session's document, in document order, which
+   * `AriaLiveRegionExtension` (@lexical/a11y) mounts there for the root
+   * element.
+   */
+  liveRegion?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -915,7 +1044,134 @@ type Context = {
   saved: Map<string, EditorState>;
   /** The block handles `logBlockHandles` kept, by name. */
   handles: Map<string, Map<string, string>>;
+  /** The session's jsdom window and root element (`setRootElement`). */
+  dom: {window: ReturnType<typeof browserWindow>; root: HTMLElement} | null;
 };
+
+/**
+ * `DecoratorBlockNode` (@lexical/react) as an app's block embed extends it,
+ * with nothing of its own: a block decorator with a `format`.
+ */
+export class TestDecoratorBlockNode extends DecoratorBlockNode {
+  $config() {
+    return this.config('test-decorator-block', {extends: DecoratorBlockNode});
+  }
+
+  decorate(): never {
+    return null as never;
+  }
+}
+
+/**
+ * The functions of @lexical/react's menu modules that they don't export,
+ * which `vitest.config.mts` re-exports as they are from
+ * `LexicalTypeaheadMenuPlugin.tsx`.
+ */
+type ReactInternals = {
+  INTERNAL_getTextUpToAnchor: (selection: RangeSelection) => string | null;
+  INTERNAL_isSelectionOnEntityBoundary: (
+    editor: LexicalEditor,
+    offset: number,
+  ) => boolean;
+  INTERNAL_getFullMatchOffset: (
+    documentText: string,
+    entryText: string,
+    offset: number,
+  ) => number;
+  INTERNAL_$splitNodeContainingQuery: (match: MenuTextMatch) => TextNode | null;
+};
+
+const REACT_INTERNALS = TypeaheadMenuPlugin as unknown as ReactInternals;
+
+/**
+ * The trigger function `useBasicTypeaheadTriggerMatch` returns for `spec`,
+ * from a render of a component that calls the hook.
+ */
+function typeaheadTrigger(spec: TypeaheadSpec): TriggerFn {
+  const {trigger, ...options} = spec;
+  let triggerFn: TriggerFn | null = null;
+  renderToStaticMarkup(
+    createElement(() => {
+      triggerFn = useBasicTypeaheadTriggerMatch(trigger, {
+        punctuation: PUNCTUATION,
+        ...options,
+      });
+      return null;
+    }),
+  );
+  if (triggerFn === null) {
+    throw new Error('useBasicTypeaheadTriggerMatch did not run');
+  }
+  return triggerFn;
+}
+
+/** The text before the caret and its match (`null`s past a `null`). */
+function $typeaheadMatch(
+  spec: TypeaheadSpec,
+  editor: LexicalEditor,
+): [string | null, MenuTextMatch | null] {
+  const selection = $getSelection();
+  const textBefore = $isRangeSelection(selection)
+    ? REACT_INTERNALS.INTERNAL_getTextUpToAnchor(selection)
+    : null;
+  return [
+    textBefore,
+    textBefore === null ? null : typeaheadTrigger(spec)(textBefore, editor),
+  ];
+}
+
+/** The jsdom window and root element of the session, made on first use. */
+function sessionDOM(ctx: Context): NonNullable<Context['dom']> {
+  if (ctx.dom === null) {
+    const win = browserWindow();
+    ctx.dom = {root: win.document.createElement('div'), window: win};
+  }
+  return ctx.dom;
+}
+
+/**
+ * The jsdom globals the reconciler reads (`Node`, `MutationObserver`...),
+ * which Node lacks, installed while `f` runs once the session has a DOM.
+ */
+const DOM_GLOBALS = [
+  'Node',
+  'Element',
+  'HTMLElement',
+  'Text',
+  'DocumentFragment',
+  'MutationObserver',
+] as const;
+
+function withDOMGlobals<T>(ctx: Context, f: () => T): T {
+  if (ctx.dom === null) {
+    return f();
+  }
+  const globals = globalThis as Record<string, unknown>;
+  const win = ctx.dom.window as unknown as Record<string, unknown>;
+  const saved = DOM_GLOBALS.map(name => globals[name]);
+  for (const name of DOM_GLOBALS) {
+    globals[name] = win[name];
+  }
+  try {
+    return f();
+  } finally {
+    DOM_GLOBALS.forEach((name, i) => {
+      globals[name] = saved[i];
+    });
+  }
+}
+
+/** `['liveRegion', regions]` of `Script['liveRegion']`. */
+function liveRegionEntry(ctx: Context): Json {
+  const regions =
+    ctx.dom === null
+      ? []
+      : [...ctx.dom.window.document.body.querySelectorAll('[role="status"]')];
+  return [
+    'liveRegion',
+    regions.map(el => [el.getAttribute('aria-live'), el.textContent]),
+  ];
+}
 
 /**
  * A headless `DataTransfer` (Node has none): the data by format, in the
@@ -1245,6 +1501,8 @@ const NODE_METHODS: Record<
   setFormat: (n, args) => {
     if ($isTextNode(n)) {
       n.setFormat(arg(args, 0) as never);
+    } else if ($isDecoratorBlockNode(n)) {
+      n.setFormat(arg(args, 0) as never);
     } else {
       element(n).setFormat(arg(args, 0) as never);
     }
@@ -1258,6 +1516,12 @@ const NODE_METHODS: Record<
     } else {
       element(n).setStyle(arg(args, 0) as string);
     }
+  },
+  setTag: (n, args) => {
+    if (!$isHeadingNode(n)) {
+      throw new Error(`${n.getKey()} is not a heading`);
+    }
+    n.setTag(arg(args, 0) as HeadingTagType);
   },
   setTextContent: (n, args) => text(n).setTextContent(arg(args, 0) as string),
   setTextFormat: (n, args) => element(n).setTextFormat(arg(args, 0) as number),
@@ -2017,6 +2281,66 @@ function $runAction(action: Action, ctx: Context): void {
       ]);
       return;
     }
+    case 'selectTypeaheadOption': {
+      const [, match] = $typeaheadMatch(action.typeahead, ctx.editor);
+      const node =
+        match === null
+          ? null
+          : REACT_INTERNALS.INTERNAL_$splitNodeContainingQuery(match);
+      ctx.log.push([
+        'splitNodeContainingQuery',
+        node === null ? null : node.getKey(),
+        node === null ? null : node.getTextContent(),
+      ]);
+      if (node !== null) {
+        const replacement = $createTextNode(action.replacement);
+        node.replace(replacement);
+        replacement.select();
+      }
+      return;
+    }
+    case 'logFullMatchOffset':
+      ctx.log.push([
+        'fullMatchOffset',
+        action.documentText,
+        action.entryText,
+        action.offset,
+        REACT_INTERNALS.INTERNAL_getFullMatchOffset(
+          action.documentText,
+          action.entryText,
+          action.offset,
+        ),
+      ]);
+      return;
+    case 'logDecoratorBlock': {
+      const n = $node(action.key);
+      const block = $isDecoratorBlockNode(n) ? n : null;
+      ctx.log.push([
+        'decoratorBlock',
+        action.key,
+        block !== null,
+        n.isInline(),
+        block === null ? null : block.getFormat(),
+        block === null ? null : block.canIndent(),
+      ]);
+      return;
+    }
+    case 'logUrlMatcher': {
+      const match = URL_MATCHER.exec(action.text);
+      ctx.log.push([
+        'urlMatcher',
+        action.text,
+        match === null ? null : [match.index, match[0]],
+      ]);
+      return;
+    }
+    case 'logSingleTokenPaste':
+      ctx.log.push([
+        'singleTokenPaste',
+        action.text,
+        /^\S+$/.test(action.text),
+      ]);
+      return;
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -2083,6 +2407,7 @@ const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['REMOVE_LIST_COMMAND', REMOVE_LIST_COMMAND],
   ['UPDATE_LIST_START_COMMAND', UPDATE_LIST_START_COMMAND],
   ['TOGGLE_LINK_COMMAND', TOGGLE_LINK_COMMAND],
+  ['INSERT_EMBED_COMMAND', INSERT_EMBED_COMMAND],
 ]);
 
 function command(ctx: Context, name: string): LexicalCommand<Json> {
@@ -2202,6 +2527,11 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['RichTextExtension', RichTextExtension],
   ['SelectBlockExtension', SelectBlockExtension],
   ['TabIndentationExtension', TabIndentationExtension],
+  ['AriaLiveRegionExtension', AriaLiveRegionExtension],
+  ['AutoLinkAnnounceExtension', AutoLinkAnnounceExtension],
+  ['EditorModeAnnounceExtension', EditorModeAnnounceExtension],
+  ['HeadingAnnounceExtension', HeadingAnnounceExtension],
+  ['HistoryAnnounceExtension', HistoryAnnounceExtension],
 ]);
 
 /**
@@ -2266,11 +2596,20 @@ function configPreset(ctx: Context, field: string, name: string): unknown {
   }
 }
 
+/** The config fields whose string value names a preset (`configPreset`). */
+const PRESET_FIELDS = new Set([
+  'validateUrl',
+  '$canIndent',
+  'createInitialHistoryState',
+  'generateId',
+  '$isIdentifiedBlock',
+]);
+
 /** A real extension's config overrides, with their presets resolved. */
 function realConfig(ctx: Context, config: ExtensionConfig): ExtensionConfig {
   const out: {[key: string]: unknown} = {};
   for (const [field, value] of Object.entries(config)) {
-    if (typeof value === 'string') {
+    if (typeof value === 'string' && PRESET_FIELDS.has(field)) {
       out[field] = configPreset(ctx, field, value);
     } else if (
       Array.isArray(value) &&
@@ -2562,6 +2901,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     clipboard: null,
     commands: new Map(),
     defs: script.extensionDefs ?? {},
+    dom: null,
     editor: undefined as never,
     extensions: new Map(),
     handles: new Map(),
@@ -2580,6 +2920,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       'hashtag',
       'extension',
       'mark',
+      'decoratorBlock',
     ] as const) {
       if (script[flag]) {
         throw new Error(`extensions and ${flag} don't mix`);
@@ -2601,6 +2942,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       };
     }
     ctx.editor = built;
+    if (script.liveRegion) {
+      ctx.log.push(liveRegionEntry(ctx));
+    }
     build = snapshotOf(built, ctx.log, true) as BuildResult;
   } else {
     ctx.editor = createEditor({
@@ -2614,6 +2958,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
         ...(script.hashtag ? [HashtagNode] : []),
         ...(script.extension ? [HorizontalRuleNode, DecoratorTextNode] : []),
         ...(script.mark ? [MarkNode] : []),
+        ...(script.decoratorBlock ? [TestDecoratorBlockNode] : []),
       ],
       onError: e => {
         throw e;
@@ -2673,6 +3018,24 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       handler.priority ?? COMMAND_PRIORITY_EDITOR,
     );
   }
+  for (const type of script.mutations ?? []) {
+    const registered = editor._nodes.get(type);
+    if (registered === undefined) {
+      throw new Error(`unknown node type ${type}`);
+    }
+    editor.registerMutationListener(
+      registered.klass,
+      (mutations, {updateTags}) => {
+        ctx.log.push([
+          'mutation',
+          type,
+          [...mutations],
+          [...updateTags].sort(),
+        ]);
+      },
+      {skipInitialization: true},
+    );
+  }
   if (script.listen) {
     editor.registerUpdateListener(({dirtyElements, dirtyLeaves, tags}) => {
       ctx.log.push([
@@ -2722,7 +3085,10 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     if (step.now !== undefined) {
       clock = step.now;
     }
-    return atClock(() => runAtClock(step, snapshot));
+    if ('setRootElement' in step) {
+      sessionDOM(ctx);
+    }
+    return atClock(() => withDOMGlobals(ctx, () => runAtClock(step, snapshot)));
   };
   const runAtClock = (step: Step, snapshot: boolean): StepResult => {
     ctx.log = [];
@@ -2746,11 +3112,40 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
             step.payload ?? null,
           ),
         ]);
+      } else if ('setRootElement' in step) {
+        const root = step.setRootElement ? sessionDOM(ctx).root : null;
+        editor.setRootElement(root);
+      } else if ('setEditable' in step) {
+        editor.setEditable(step.setEditable);
+      } else if ('announce' in step) {
+        getExtensionDependencyFromEditor(
+          editor,
+          AriaLiveRegionExtension,
+        ).output.announce(step.announce);
+      } else if ('typeahead' in step) {
+        const spec = step.typeahead;
+        editor.getEditorState().read(() => {
+          const [textBefore, match] = $typeaheadMatch(spec, editor);
+          ctx.log.push([
+            'typeahead',
+            textBefore,
+            match,
+            match === null
+              ? null
+              : REACT_INTERNALS.INTERNAL_isSelectionOnEntityBoundary(
+                  editor,
+                  match.leadOffset,
+                ),
+          ]);
+        });
       } else {
         runExtensionStep(step, ctx);
       }
     } catch {
       error = true;
+    }
+    if (script.liveRegion) {
+      ctx.log.push(liveRegionEntry(ctx));
     }
     const result = snapshotOf(editor, ctx.log, snapshot);
     if (error) {
@@ -2777,7 +3172,15 @@ export function runScript(script: Script): ScriptResult {
 
 /** A step of an editor built from extensions. */
 function runExtensionStep(
-  step: Exclude<Step, {update: Action[]} | {dispatch: string}>,
+  step: Exclude<
+    Step,
+    | {update: Action[]}
+    | {dispatch: string}
+    | {setRootElement: boolean}
+    | {setEditable: boolean}
+    | {announce: string}
+    | {typeahead: TypeaheadSpec}
+  >,
   ctx: Context,
 ): void {
   const editor = ctx.editor;

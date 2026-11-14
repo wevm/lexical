@@ -601,6 +601,30 @@ Reversible choices made porting `@lexical/extension` under Q18.
   handler takes (no `TabIndentationExtension`) moves the focus to the next
   or previous key view, so the editor is one stop of full keyboard access.
 
+- **The views follow `editor.setEditable(_:)`.** A view is editable while
+  its editor is, as `ContentEditable` renders `contentEditable={isEditable}`,
+  and `TextKitInputController` dispatches nothing for a read-only editor's
+  input but clicks and copies, as `LexicalEvents`' root element listeners
+  skip the other events then. A check list box doesn't toggle, as
+  `checkList.ts` checks `isEditable()`. The selection still moves, and it
+  still drags out (`DRAGSTART_COMMAND` writes the drag's data), as a
+  browser drags the selected text of a page; a drop or a cut doesn't
+  reach it.
+- **`LexicalEditor.configure(_:)` sets up the text view on every update**
+  (#109), after `LexicalEditor`'s own settings, as `ContentEditable` passes
+  its props to the root element on each render: a closure run once would go
+  stale when the SwiftUI state it reads changes. It gets the text view
+  (`LexicalEditor.TextView`), not the macOS scroll view, and is no place for
+  registrations, which belong to the editor (an extension's `register`), as
+  upstream plugins register on the editor and not on the DOM node. There is
+  no `makeView` hook, which would let an app skip the root element setup.
+  SwiftUI's `.accessibilityLabel` doesn't reach the text view and `.tint`
+  doesn't reach the macOS caret, so those go in `configure` too.
+- **`sizeThatFits` measures without resizing the view** (#109). With
+  `sizedToContent`, `LexicalEditor` measures the content at the proposed
+  width from the view's own layout when its text is laid out at that width,
+  and otherwise lays a copy of the text out at it, so SwiftUI measuring the
+  view never changes it.
 - **Modules.** `LexicalAppKit` (`LexicalNSTextView`) and `LexicalUIKit`
   (`LexicalUITextView`) hold the views; `LexicalSwiftUI`'s `LexicalEditor`
   wraps whichever the platform has. Their sources are wrapped in

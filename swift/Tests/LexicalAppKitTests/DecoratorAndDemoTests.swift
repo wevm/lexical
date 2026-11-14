@@ -545,5 +545,68 @@
       #expect(textView.frame.height > 300)
       #expect(scrollView.contentView.bounds.maxY >= textView.frame.height - 30)
     }
+
+    /// `configure` runs after the editor's own settings on every update,
+    /// so it can follow SwiftUI state, and the editor sizes to the content
+    /// with the inset it set: one 27.2pt line between the insets.
+    @Test func configuresTheTextViewOnEveryUpdate() throws {
+      let editor = try makeDemoEditor()
+      var runs = 0
+      func composer(inset: CGFloat) -> some View {
+        VStack(spacing: 0) {
+          LexicalEditor(editor).sizedToContent(maxHeight: 300).configure { textView in
+            runs += 1
+            textView.textContainerInset = NSSize(width: 8, height: inset)
+          }
+          Spacer(minLength: 0)
+        }
+      }
+      let host = NSHostingView(rootView: composer(inset: 8))
+      host.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
+      let window = NSWindow(
+        contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+      window.contentView = host
+      settle(host)
+      let textView = try #require(editor.getRootElement() as? LexicalNSTextView)
+      let scrollView = try #require(textView.enclosingScrollView)
+      #expect(runs >= 1)
+      #expect(abs(scrollView.frame.height - 43.2) <= 1.5)
+      let before = runs
+      host.rootView = composer(inset: 20)
+      settle(host)
+      #expect(runs > before)
+      #expect(textView.textContainerInset.height == 20)
+      #expect(abs(scrollView.frame.height - 67.2) <= 1.5)
+      _ = window
+    }
+
+    /// SwiftUI measures the editor at another width without resizing the
+    /// text view, and gets the height the view has once it is that wide.
+    @Test func measuresWithoutResizingTheTextView() throws {
+      let editor = try makeDemoEditor()
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createParagraphNode().append(
+            createTextNode(String(repeating: "Measure the text at a width. ", count: 8))))
+      }
+      let host = NSHostingController(
+        rootView: LexicalEditor(editor).sizedToContent(maxHeight: 2000))
+      let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 400, height: 1000), styleMask: [.titled],
+        backing: .buffered, defer: false)
+      window.contentViewController = host
+      window.setContentSize(NSSize(width: 400, height: 1000))
+      settle(host.view)
+      let textView = try #require(editor.getRootElement() as? LexicalNSTextView)
+      let frame = textView.frame
+      let wide = try #require(textView.enclosingScrollView).frame.height
+      let narrow = host.sizeThatFits(in: CGSize(width: 200, height: 1000)).height
+      #expect(textView.frame == frame)
+      #expect(narrow > wide + 20)
+      window.setContentSize(NSSize(width: 200, height: 1000))
+      settle(host.view)
+      #expect(abs(try #require(textView.enclosingScrollView).frame.height - narrow) <= 1)
+      _ = window
+    }
   }
 #endif

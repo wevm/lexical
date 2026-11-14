@@ -35,6 +35,8 @@
     /// Whether the text view paints its own background (`editorBackground(_:)`);
     /// `false` shows what is behind it, such as a message bubble.
     public var drawsBackground = true
+    /// What `configure(_:)` was given, in order.
+    var configurations: [@MainActor (TextView) -> Void] = []
 
     public init(_ editor: Editor) {
       self.editor = editor
@@ -72,6 +74,43 @@
       return editor
     }
 
+    /// Sets up the text view with `body` each time SwiftUI updates the
+    /// editor, after the editor's own settings, as upstream `ContentEditable`
+    /// passes its props to the root element on each render. Use it for what
+    /// `LexicalEditor` has no modifier for, such as the text container's
+    /// inset and padding:
+    ///
+    /// ```swift
+    /// LexicalEditor(editor, placeholder: "Message")
+    ///   .sizedToContent(minHeight: 36, maxHeight: 160)
+    ///   .configure { textView in
+    ///     textView.textContainerInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+    ///     textView.textContainer.lineFragmentPadding = 0
+    ///   }
+    /// ```
+    ///
+    /// `body` may read SwiftUI state, so it runs again when that changes and
+    /// must set the same values each time. It is no place for registrations:
+    /// commands and listeners belong to the editor, in an extension's
+    /// `register` or in whatever owns the editor, as upstream plugins
+    /// register on the editor. Editability is the editor's too
+    /// (`editor.setEditable(_:)`), which the text view follows. Each call adds
+    /// to the ones before, which run first.
+    public func configure(_ body: @escaping @MainActor (TextView) -> Void) -> Self {
+      var editor = self
+      editor.configurations.append(body)
+      return editor
+    }
+
+    /// The height of the text view's content at `width`, within
+    /// `heightRange`, measured without resizing the view SwiftUI is
+    /// measuring.
+    fileprivate func fittingHeight(_ textView: TextView, width: CGFloat) -> CGFloat? {
+      guard let heightRange else { return nil }
+      let height = textView.contentHeight(atWidth: width)
+      return min(max(height, heightRange.lowerBound), heightRange.upperBound)
+    }
+
     /// Applies `textKitTheme` to the text view's controller, drawing the
     /// text again when it changes.
     fileprivate func applyTheme(_ controller: TextKitInputController, length: Int) {
@@ -80,6 +119,16 @@
       controller.theme = theme
       controller.report { try controller.renderAll(replacing: length) }
     }
+  }
+
+  extension LexicalEditor {
+    #if os(macOS)
+      /// The text view `configure(_:)` sets up.
+      public typealias TextView = LexicalNSTextView
+    #elseif canImport(UIKit)
+      /// The text view `configure(_:)` sets up.
+      public typealias TextView = LexicalUITextView
+    #endif
   }
 
   #if os(macOS)
@@ -107,22 +156,18 @@
         textView.heightRange = heightRange
         textView.drawsBackground = drawsBackground
         applyTheme(textView.controller, length: textView.textStorage?.length ?? 0)
+        for configure in configurations { configure(textView) }
       }
 
       public func sizeThatFits(
         _ proposal: ProposedViewSize, nsView scrollView: NSScrollView, context: Context
       ) -> CGSize? {
-        guard let heightRange, let textView = scrollView.documentView as? LexicalNSTextView else {
-          return nil
-        }
-        textView.heightRange = heightRange
+        guard heightRange != nil, let textView = scrollView.documentView as? LexicalNSTextView
+        else { return nil }
         // The text wraps at the width the scroll view gives its content.
         let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? scrollView.frame.width
         let textWidth = width - (scrollView.frame.width - scrollView.contentSize.width)
-        if textWidth > 0, textView.frame.width != textWidth {
-          textView.setFrameSize(NSSize(width: textWidth, height: textView.frame.height))
-        }
-        return CGSize(width: width, height: textView.intrinsicContentSize.height)
+        return fittingHeight(textView, width: textWidth).map { CGSize(width: width, height: $0) }
       }
     }
   #elseif canImport(UIKit)
@@ -140,20 +185,15 @@
           textView.backgroundColor = .clear
         }
         applyTheme(textView.controller, length: textView.textStorage.length)
+        for configure in configurations { configure(textView) }
       }
 
       public func sizeThatFits(
         _ proposal: ProposedViewSize, uiView textView: LexicalUITextView, context: Context
       ) -> CGSize? {
-        guard let heightRange else { return nil }
-        textView.heightRange = heightRange
         // The text wraps at the width offered.
         let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? textView.bounds.width
-        if width > 0, textView.bounds.width != width {
-          textView.bounds.size.width = width
-          textView.layoutIfNeeded()
-        }
-        return CGSize(width: width, height: textView.intrinsicContentSize.height)
+        return fittingHeight(textView, width: width).map { CGSize(width: width, height: $0) }
       }
     }
   #endif

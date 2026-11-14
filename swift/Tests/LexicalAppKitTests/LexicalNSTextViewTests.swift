@@ -136,6 +136,30 @@
       _ = (autoFocusedWindow, focusedWindow, blurredWindow)
     }
 
+    /// The view is editable while the editor is, as `ContentEditable`
+    /// renders `contentEditable={isEditable}`, and keys don't edit a
+    /// read-only editor, as `LexicalEvents` skips its keydown.
+    @Test func followsTheEditorsEditability() throws {
+      let (view, window) = try makeView()
+      insert(view, "Hello")
+      #expect(view.isEditable)
+      try view.editor.setEditable(false)
+      #expect(!view.isEditable)
+      view.keyDown(with: key("a", 0))
+      #expect(view.string == "Hello")
+      view.keyDown(with: key("\u{7F}", 0x33))
+      #expect(view.string == "Hello")
+      try view.editor.setEditable(true)
+      #expect(view.isEditable)
+      view.keyDown(with: key("a", 0))
+      #expect(view.string == "Helloa")
+      // A view starts read-only for an editor that is.
+      let readOnly = try makeRichTextEditor()
+      try readOnly.setEditable(false)
+      #expect(!LexicalNSTextView(editor: readOnly).isEditable)
+      _ = window
+    }
+
     @Test func tabMovesFocusThroughTheKeyViewLoop() throws {
       // Full keyboard access: the editor is in the window's key view loop,
       // and Tab, which no KEY_TAB_COMMAND handler takes here, moves the

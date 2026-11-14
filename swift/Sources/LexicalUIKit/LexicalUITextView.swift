@@ -88,6 +88,18 @@
       return ceil(layoutManager.usageBoundsForTextContainer.height + insets)
     }
 
+    /// `contentHeight` were the view `width` wide, measured without
+    /// changing the view, as SwiftUI's `sizeThatFits` must: the view's own
+    /// layout when its text is laid out at that width, or else a copy of
+    /// its text laid out at it.
+    package func contentHeight(atWidth width: CGFloat) -> CGFloat {
+      let insets = textContainerInset
+      let textWidth = width - insets.left - insets.right
+      guard textWidth > 0, textWidth != textContainer.size.width else { return contentHeight }
+      return ceil(
+        textContainer.usageHeight(of: textStorage, atWidth: textWidth) + insets.top + insets.bottom)
+    }
+
     public override var intrinsicContentSize: CGSize {
       guard let heightRange else { return super.intrinsicContentSize }
       return CGSize(
@@ -143,7 +155,13 @@
       ) { [weak self] _ in
         MainActor.assumeIsolated { self?.recordForeignEdit() }
       }
+      // Editable while the editor is, as `ContentEditable` renders
+      // `contentEditable={isEditable}`.
+      isEditable = editor.isEditable()
       removeListeners = [
+        editor.registerEditableListener { [weak self] editable in
+          MainActor.assumeIsolated { self?.isEditable = editable }
+        },
         { NotificationCenter.default.removeObserver(storageObserver) },
         editor.registerCommand(
           CAN_UNDO_COMMAND,
@@ -1240,6 +1258,27 @@
           border.stroke()
         }
       }
+    }
+  }
+
+  extension NSTextContainer {
+    /// The height of `text` laid out in a container like this one but
+    /// `width` wide, in a text system of its own, leaving this one as it
+    /// is.
+    fileprivate func usageHeight(of text: NSAttributedString, atWidth width: CGFloat) -> CGFloat {
+      let container = NSTextContainer(
+        size: CGSize(width: width, height: CGFloat.greatestFiniteMagnitude))
+      container.lineFragmentPadding = lineFragmentPadding
+      container.exclusionPaths = exclusionPaths
+      container.lineBreakMode = lineBreakMode
+      container.maximumNumberOfLines = maximumNumberOfLines
+      let layoutManager = NSTextLayoutManager()
+      layoutManager.textContainer = container
+      let contentStorage = NSTextContentStorage()
+      contentStorage.addTextLayoutManager(layoutManager)
+      contentStorage.attributedString = text
+      layoutManager.ensureLayout(for: layoutManager.documentRange)
+      return layoutManager.usageBoundsForTextContainer.height
     }
   }
 #endif

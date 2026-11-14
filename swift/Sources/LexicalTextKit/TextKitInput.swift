@@ -324,11 +324,18 @@ public final class TextKitInputController {
 
   // MARK: Keys and input
 
+  // A read-only editor (`editor.setEditable(false)`) dispatches nothing for
+  // the input below but clicks and copies, as `LexicalEvents`' root element
+  // listeners skip every other event while `editor.isEditable()` is false,
+  // and the start of a drag, which a browser still makes of the selected
+  // text of a page.
+
   /// `onKeyDown`: dispatches `KEY_DOWN_COMMAND`, unless an IME is
   /// composing. Returns whether a handler prevented the default, in which
   /// case the view must not act on the key itself.
   @discardableResult
   public func keyDown(_ event: KeyboardEvent) throws -> Bool {
+    guard editor.isEditable() else { return false }
     editor._inputState.lastKeyCode = event.key
     if editor.isComposing() || markedRange != nil { return false }
     try run { [self] in try dispatchCommand(editor, KEY_DOWN_COMMAND, event) }
@@ -342,6 +349,7 @@ public final class TextKitInputController {
     _ inputType: String, data: String? = nil, dataTransfer: DataTransfer? = nil,
     targetRange: TextKitRange? = nil
   ) throws -> Bool {
+    guard editor.isEditable() else { return false }
     let event = InputEvent(inputType: inputType, data: data, dataTransfer: dataTransfer)
     let target = targetRange.map { (document.point(at: $0.location), document.point(at: $0.end)) }
     try run { [self] in
@@ -356,6 +364,7 @@ public final class TextKitInputController {
   /// Typed text, which replaces the selection (or `replacementRange`). A
   /// marked text in progress is committed with it.
   public func insertText(_ text: String, replacementRange: TextKitRange? = nil) throws {
+    guard editor.isEditable() else { return }
     if markedRange != nil {
       try commitMarkedText(text)
       return
@@ -395,6 +404,7 @@ public final class TextKitInputController {
   public func setMarkedText(
     _ text: String, selectedRange: TextKitRange, replacementRange: TextKitRange? = nil
   ) throws {
+    guard editor.isEditable() else { return }
     let currentSelection = try self.selectedRange()
     let target = markedRange ?? replacementRange ?? currentSelection
     let start = target?.location ?? 0
@@ -429,6 +439,7 @@ public final class TextKitInputController {
 
   /// `unmarkText()`: commits the marked text as it is.
   public func unmarkText() throws {
+    guard editor.isEditable() else { return }
     guard let markedRange else {
       if editor.isComposing() { try endComposition("") }
       return
@@ -491,7 +502,8 @@ public final class TextKitInputController {
 
   /// `cut`: as `copy`, and the handler removes the selection.
   public func cut() throws -> DataTransfer? {
-    try clipboard("cut", CUT_COMMAND)
+    guard editor.isEditable() else { return nil }
+    return try clipboard("cut", CUT_COMMAND)
   }
 
   private func clipboard(
@@ -505,6 +517,7 @@ public final class TextKitInputController {
   /// `paste`: dispatches `PASTE_COMMAND` with the pasteboard's contents.
   @discardableResult
   public func paste(_ dataTransfer: DataTransfer) throws -> Bool {
+    guard editor.isEditable() else { return false }
     let event = ClipboardEvent("paste", clipboardData: dataTransfer)
     var handled = false
     try run { [self] in handled = try dispatchCommand(editor, PASTE_COMMAND, .clipboard(event)) }
@@ -525,6 +538,7 @@ public final class TextKitInputController {
   /// `dragover`: whether a handler accepted the drop here.
   @discardableResult
   public func dragOver(_ dataTransfer: DataTransfer, x: Double, y: Double) throws -> Bool {
+    guard editor.isEditable() else { return false }
     let event = DragEvent("dragover", dataTransfer: dataTransfer, clientX: x, clientY: y)
     try run { [self] in _ = try dispatchCommand(editor, DRAGOVER_COMMAND, event) }
     return event.defaultPrevented
@@ -533,6 +547,7 @@ public final class TextKitInputController {
   /// `drop`: dispatches `DROP_COMMAND`. Returns whether it was handled.
   @discardableResult
   public func drop(_ dataTransfer: DataTransfer, x: Double, y: Double) throws -> Bool {
+    guard editor.isEditable() else { return false }
     let event = DragEvent("drop", dataTransfer: dataTransfer, clientX: x, clientY: y)
     var handled = false
     try run { [self] in handled = try dispatchCommand(editor, DROP_COMMAND, event) }
@@ -543,6 +558,7 @@ public final class TextKitInputController {
   /// dragged range here, where JS lets the drop side dispatch
   /// `deleteByDrag` at this editor's root.
   public func dragEnd(isMoveToOtherEditor: Bool) throws {
+    guard editor.isEditable() else { return }
     try run { [self] in
       _ = try dispatchCommand(editor, DRAGEND_COMMAND, DragEvent("dragend"))
     }
@@ -555,6 +571,7 @@ public final class TextKitInputController {
 
   /// The view became (`true`) or stopped being the first responder.
   public func focusChanged(_ hasFocus: Bool) throws {
+    guard editor.isEditable() else { return }
     try run { [self] in
       _ = try dispatchCommand(
         editor, hasFocus ? FOCUS_COMMAND : BLUR_COMMAND, FocusEvent(hasFocus ? "focus" : "blur"))
@@ -570,8 +587,10 @@ public final class TextKitInputController {
   /// Toggles check list item `key`, as `checkList.ts`'s click on its
   /// `::before` box does. TextKit reads list items through their JSON
   /// (it does not depend on `LexicalList`), so the toggle writes the
-  /// flipped `checked` back the same way.
+  /// flipped `checked` back the same way. A read-only editor's boxes
+  /// don't toggle, as `checkList.ts` checks `editor.isEditable()`.
   public func toggleChecked(_ key: NodeKey) throws {
+    guard editor.isEditable() else { return }
     try run {
       guard let node = try getNodeByKey(key) else { return }
       var json = try node.exportJSON()

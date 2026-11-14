@@ -98,16 +98,17 @@ impl PlaygroundApp {
             );
         for (name, label) in FORMATS {
             let on = playground.has_format(name);
-            bar = bar.child(
-                Button::new(SharedString::from(format!("format-{name}")))
-                    .small()
-                    .label(label)
-                    .selected(on)
-                    .tooltip(format!("Format {name}"))
-                    .on_click(cx.listener(move |this, _, window, cx| {
-                        this.toolbar_edit(window, cx, |p| p.format_text(name))
-                    })),
-            );
+            let button = Button::new(SharedString::from(format!("format-{name}")))
+                .small()
+                .label(label)
+                .selected(on)
+                .tooltip(format!("Format {name}"))
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.toolbar_edit(window, cx, |p| p.format_text(name))
+                }));
+            // A format that's on is filled, as in the Rune app: the theme's
+            // selected look barely shows in dark mode.
+            bar = bar.child(if on { button.primary() } else { button });
         }
         bar.child(
             Button::new("select-all")

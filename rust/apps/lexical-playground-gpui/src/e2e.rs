@@ -166,6 +166,57 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
     step!("Typing after the break", typed("next"), expect(2, "next"));
     step!("⌘Z", key(Box::new(Undo)), expect(2, ""));
     step!("⌘⇧Z", key(Box::new(Redo)), expect(2, "next"));
+    // ⌘B over the end of a word: on, then off. "xt" becomes a bold node
+    // after "ne", so the selection's start is both the end of "ne" and the
+    // start of "xt"; the second ⌘B keeps Lexical's point (the start of
+    // "xt") and unbolds in one step. (The first also gives Lexical the new
+    // selection.)
+    let next_bold = |want: bool| {
+        let editor = editor.clone();
+        move |cx: &mut AsyncApp| -> Result<usize, String> {
+            let (format, bold, steps) = editor.read_with(cx, |e, _| {
+                let p = &e.surface.playground;
+                let run = p.document().blocks[1]
+                    .runs
+                    .iter()
+                    .find(|r| r.text.ends_with("xt"))
+                    .filter(|r| r.text == if want { "xt" } else { "next" });
+                (
+                    run.map(|r| r.has_format("bold")),
+                    p.has_format("bold"),
+                    p.step_count(),
+                )
+            });
+            if format != Some(want) || bold != want {
+                return Err(format!(
+                    "\"xt\" bold is {format:?}, the toolbar's {bold}, not {want}"
+                ));
+            }
+            Ok(steps)
+        }
+    };
+    step!("⇧←", key(Box::new(SelectLeft)), expect(2, "next"));
+    step!(
+        "⇧← again",
+        key(Box::new(SelectLeft)),
+        |cx: &mut AsyncApp| -> Step { next_bold(false)(cx).map(drop) }
+    );
+    step!(
+        "⌘B over it",
+        key(Box::new(Bold)),
+        |cx: &mut AsyncApp| -> Step { next_bold(true)(cx).map(drop) }
+    );
+    let bolded = next_bold(true)(cx)?;
+    step!(
+        "⌘B again",
+        key(Box::new(Bold)),
+        |cx: &mut AsyncApp| -> Step {
+            match next_bold(false)(cx)? - bolded {
+                1 => Ok(()),
+                n => Err(format!("{n} steps, not 1")),
+            }
+        }
+    );
     step!(
         "The third paragraph is untouched",
         |_: &mut Window, _: &mut App| {},

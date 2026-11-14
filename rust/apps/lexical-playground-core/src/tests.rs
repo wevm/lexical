@@ -264,3 +264,38 @@ fn the_surface_draws_formats_and_edits_through_lexical() {
     assert_eq!(s.edit(|p| p.format_text("italic")).error, None);
     assert!(s.playground.has_format("italic"));
 }
+
+#[test]
+fn format_toggles_on_and_off_with_one_press_each() {
+    // ⌘B over "dogs" splits it into its own bold node and selects that
+    // node. The selection's start is also the end of "lazy ", and the next
+    // ⌘B must keep Lexical's point, not send that one, or it bolds again.
+    let mut p = Playground::new(vec![
+        json::parse(r#"{"type":"paragraph","children":[{"type":"text","text":"lazy dogs."}]}"#)
+            .unwrap(),
+    ])
+    .unwrap();
+    let dogs = Sel {
+        anchor: Pos { block: 0, byte: 5 },
+        focus: Pos { block: 0, byte: 9 },
+    };
+    p.set_selection(Some(dogs));
+    let bold_runs = |p: &Playground| -> Vec<String> {
+        p.document().blocks[0]
+            .runs
+            .iter()
+            .filter(|r| r.has_format("bold"))
+            .map(|r| r.text.clone())
+            .collect()
+    };
+    for (press, bold) in [true, false, true, false].into_iter().enumerate() {
+        let steps = p.step_count();
+        assert_eq!(p.format_text("bold").error, None);
+        let want: Vec<String> = if bold { vec!["dogs".into()] } else { vec![] };
+        assert_eq!(bold_runs(&p), want, "press {press}");
+        assert_eq!(p.has_format("bold"), bold, "press {press}");
+        assert_eq!(p.selection(), Some(dogs), "press {press}");
+        // The first press also gives the editor the selection.
+        assert_eq!(p.step_count() - steps, if press == 0 { 2 } else { 1 });
+    }
+}

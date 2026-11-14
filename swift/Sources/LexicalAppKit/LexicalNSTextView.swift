@@ -1181,7 +1181,14 @@
       // drop by default; `DROP_COMMAND`'s handlers place it.
       if isLexicalDragFromSelf(sender) { return .move }
       if !operation.isEmpty { return operation }
-      return accepted ? .copy : []
+      return accepted || takesFiles(data) ? .copy : []
+    }
+
+    /// Whether a drag of `data` brings files into an editable editor,
+    /// which a contenteditable takes by default (`DROP_COMMAND`'s handlers
+    /// read them) and `NSTextView` refuses.
+    private func takesFiles(_ data: DataTransfer) -> Bool {
+      editor.isEditable() && data.types.contains("Files")
     }
 
     /// Whether `sender` drags a decorator's or a block's payload from this
@@ -1195,7 +1202,10 @@
     }
 
     public override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-      isLexicalDragFromSelf(sender) || super.prepareForDragOperation(sender)
+      isLexicalDragFromSelf(sender)
+        || takesFiles(
+          sender.draggingPasteboard.lexicalDataTransfer(plainTextOnly: false, readingFiles: false))
+        || super.prepareForDragOperation(sender)
     }
 
     public override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {

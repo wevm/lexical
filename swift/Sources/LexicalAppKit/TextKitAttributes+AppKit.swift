@@ -41,6 +41,48 @@
     }
   }
 
+  /// The face of `family` that CSS font matching picks (CSS Fonts 4,
+  /// §5.2): of the faces nearest the normal width (narrower first), those
+  /// of the slant if there are any, and of those the weight. A weight
+  /// between 400 and 500 tries heavier faces up to 500, then lighter ones,
+  /// then heavier; below 400 lighter first; above 500 heavier first.
+  private func namedFont(family: String, weight: Int, italic: Bool, size: CGFloat) -> NSFont? {
+    let faces = (NSFontManager.shared.availableMembers(ofFontFamily: family) ?? []).compactMap {
+      ($0.first as? String).flatMap { NSFont(name: $0, size: size) }
+    }
+    func trait(_ font: NSFont, _ key: NSFontDescriptor.TraitKey) -> CGFloat {
+      let traits = font.fontDescriptor.object(forKey: .traits) as? [NSFontDescriptor.TraitKey: Any]
+      return traits?[key] as? CGFloat ?? 0
+    }
+    func widthRank(_ font: NSFont) -> (Int, CGFloat) {
+      let width = trait(font, .width)
+      return (width > 0 ? 1 : 0, abs(width))
+    }
+    guard let width = faces.map(widthRank).min(by: <) else { return nil }
+    let ofWidth = faces.filter { widthRank($0) == width }
+    let ofSlant = ofWidth.filter { $0.fontDescriptor.symbolicTraits.contains(.italic) == italic }
+    func weightRank(_ font: NSFont) -> (Int, Int) {
+      let face = cssFontWeight(trait(font, .weight))
+      let group =
+        switch weight {
+        case 400...500: face < weight ? 1 : face <= 500 ? 0 : 2
+        case ..<400: face <= weight ? 0 : 1
+        default: face >= weight ? 0 : 1
+        }
+      return (group, abs(face - weight))
+    }
+    return (ofSlant.isEmpty ? ofWidth : ofSlant).min { weightRank($0) < weightRank($1) }
+  }
+
+  /// An `NSFont.Weight` as the nearest CSS weight.
+  private func cssFontWeight(_ weight: CGFloat) -> Int {
+    let weights: [(NSFont.Weight, Int)] = [
+      (.ultraLight, 100), (.thin, 200), (.light, 300), (.regular, 400), (.medium, 500),
+      (.semibold, 600), (.bold, 700), (.heavy, 800), (.black, 900),
+    ]
+    return weights.min { abs($0.0.rawValue - weight) < abs($1.0.rawValue - weight) }?.1 ?? 400
+  }
+
   @MainActor
   private var fontCache: [TextKitFontKey: NSFont] = [:]
 
@@ -72,11 +114,7 @@
             NSFont(descriptor: $0, size: size)
           }
         default:
-          if let named = NSFontManager.shared.font(
-            withFamily: family, traits: [], weight: self.fontWeight >= 600 ? 9 : 5, size: size)
-          {
-            font = named
-          }
+          font = namedFont(family: family, weight: fontWeight, italic: italic, size: size)
         }
         if font != nil { break }
       }

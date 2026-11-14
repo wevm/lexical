@@ -143,6 +143,17 @@ impl LexicalNode for HeadingNode {
     fn get_type(&self) -> &'static str {
         "heading"
     }
+    /// `HeadingNode.extractWithChild()`: a heading always goes with a
+    /// child that is copied.
+    fn extract_with_child(
+        &self,
+        _: &NodeRef,
+        _: &NodeRef,
+        _: Option<&SelectionRef>,
+        _: &str,
+    ) -> Result<bool, LexicalError> {
+        Ok(true)
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }

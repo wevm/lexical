@@ -16,7 +16,9 @@ struct ScriptTests {
 
   static let files = [
     "scripts/updates", "scripts/selection", "scripts/transforms", "scripts/commands",
-    "scripts/listeners", "scripts/caret", "fuzz/core",
+    "scripts/listeners", "scripts/caret", "scripts/rich-text", "scripts/rich-text-commands",
+    "scripts/history",
+    "fuzz/core",
   ]
 
   static let cases: [Case] = files.flatMap { file in
@@ -25,8 +27,30 @@ struct ScriptTests {
     }
   }
 
+  /// Cases where Swift knowingly differs from JS, by `testDescription`.
+  /// Each is a known issue, which fails the test once Swift matches again.
+  static let knownIssues: [String: Comment] = [
+    "scripts/rich-text: a shadow root quote": headlessDeletion,
+    "scripts/rich-text-commands: inserting and deleting text": headlessDeletion,
+  ]
+
+  static let headlessDeletion: Comment = """
+    Headless JS `deleteCharacter`, `deleteWord` and `deleteLine` on a collapsed selection \
+    throw ("window object not found") where they need `Selection.modify`; Swift without a \
+    `selectionMovement` returns quietly (and at a quote's start goes on to its \
+    `collapseAtStart`).
+    """
+
   @Test(arguments: cases)
   func replay(_ vector: Case) throws {
+    if let comment = Self.knownIssues[vector.testDescription] {
+      try withKnownIssue(comment) { try compare(vector) }
+    } else {
+      try compare(vector)
+    }
+  }
+
+  private func compare(_ vector: Case) throws {
     let expected = vector.script.objectValue?["results"]?.arrayValue ?? []
     let actual = try runScript(vector.script)
     #expect(actual.count == expected.count)

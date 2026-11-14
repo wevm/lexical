@@ -85,6 +85,12 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         true
     }
 
+    /// `ElementNode.canIndent()`: whether indenting the selection changes
+    /// this block's indent.
+    fn can_indent(&self) -> bool {
+        true
+    }
+
     /// `ElementNode.canMergeWhenEmpty()`: whether the element, when empty,
     /// takes the children of the first block `insertNodes` inserts.
     fn can_merge_when_empty(&self) -> bool {
@@ -372,6 +378,11 @@ impl NodeRef {
     /// `ElementNode.canBeEmpty()`.
     pub fn can_be_empty(&self) -> bool {
         self.get_latest().can_be_empty()
+    }
+
+    /// `ElementNode.canIndent()`.
+    pub fn can_indent(&self) -> bool {
+        self.get_latest().can_indent()
     }
 
     /// `ElementNode.canMergeWhenEmpty()`.

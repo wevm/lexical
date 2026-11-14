@@ -78,7 +78,12 @@ impl PlaygroundApp {
             .py_2()
             .border_b_1()
             .border_color(cx.theme().border)
-            .child(div().font_weight(FontWeight::SEMIBOLD).mr_2().child("Lexical"));
+            .child(
+                div()
+                    .font_weight(FontWeight::SEMIBOLD)
+                    .mr_2()
+                    .child("Lexical"),
+            );
         for (name, label) in FORMATS {
             let on = playground.has_format(name);
             bar = bar.child(
@@ -179,11 +184,14 @@ impl PlaygroundApp {
         let mut out = v_flex()
             .gap_2()
             .child(
-                div().text_sm().text_color(cx.theme().muted_foreground).child(
-                    "The editor here is lexical-editor. Replay runs the conformance vectors \
+                div()
+                    .text_sm()
+                    .text_color(cx.theme().muted_foreground)
+                    .child(
+                        "The editor here is lexical-editor. Replay runs the conformance vectors \
                      that JS Lexical recorded; Export writes this session as a vector that JS \
                      replays step by step, in packages/lexical-conformance:",
-                ),
+                    ),
             )
             .child(
                 div()
@@ -194,25 +202,36 @@ impl PlaygroundApp {
             .child(
                 h_flex()
                     .gap_2()
-                    .child(Button::new("replay").small().label("Replay vectors").on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.report = Some(replay_vectors().unwrap_or_else(|e| (e, false)));
-                            cx.notify();
-                        }),
-                    ))
-                    .child(Button::new("export").small().label("Export session").on_click(
-                        cx.listener(|this, _, _, cx| {
-                            this.status = Some(export(&this.editor.read(cx).surface.playground));
-                            cx.notify();
-                        }),
-                    )),
+                    .child(
+                        Button::new("replay")
+                            .small()
+                            .label("Replay vectors")
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.report = Some(replay_vectors().unwrap_or_else(|e| (e, false)));
+                                cx.notify();
+                            })),
+                    )
+                    .child(
+                        Button::new("export")
+                            .small()
+                            .label("Export session")
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.status =
+                                    Some(export(&this.editor.read(cx).surface.playground));
+                                cx.notify();
+                            })),
+                    ),
             );
         if let Some((report, ok)) = &self.report {
             out = out
                 .child(
                     div()
                         .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(if *ok { cx.theme().success } else { cx.theme().danger })
+                        .text_color(if *ok {
+                            cx.theme().success
+                        } else {
+                            cx.theme().danger
+                        })
                         .child(if *ok {
                             "Every replayed case matches JS."
                         } else {
@@ -239,7 +258,12 @@ impl PlaygroundApp {
                 cx.theme().muted_foreground,
             ),
         };
-        div().px_4().py_2().text_xs().text_color(color).child(message)
+        div()
+            .px_4()
+            .py_2()
+            .text_xs()
+            .text_color(color)
+            .child(message)
     }
 }
 

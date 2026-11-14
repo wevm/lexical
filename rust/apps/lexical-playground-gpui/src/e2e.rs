@@ -51,17 +51,16 @@ pub fn run(window: AnyWindowHandle, app: Entity<PlaygroundApp>, cx: &mut App) {
 }
 
 async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut AsyncApp) -> Step {
-    let editor = app
-        .read_with(cx, |app, _| app.editor().clone());
+    let editor = app.read_with(cx, |app, _| app.editor().clone());
     // Keys move the caret through the last paint's layout.
     let deadline = Instant::now() + Duration::from_secs(30);
-    while !editor
-        .read_with(cx, |e, _| e.is_laid_out())
-    {
+    while !editor.read_with(cx, |e, _| e.is_laid_out()) {
         if Instant::now() > deadline {
             return Err("timed out waiting for the first paint".into());
         }
-        cx.background_executor().timer(Duration::from_millis(50)).await;
+        cx.background_executor()
+            .timer(Duration::from_millis(50))
+            .await;
     }
 
     let line = |cx: &mut AsyncApp, n: usize| -> Result<String, String> {
@@ -74,10 +73,10 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
             cx.update_window(window, |_, window, cx| $input(window, cx))
                 .map_err(|e| e.to_string())?;
             // Actions run when the window next handles events.
-            cx.background_executor().timer(Duration::from_millis(30)).await;
-            if let Some(error) = editor
-                .read_with(cx, |e, _| e.error.clone())
-            {
+            cx.background_executor()
+                .timer(Duration::from_millis(30))
+                .await;
+            if let Some(error) = editor.read_with(cx, |e, _| e.error.clone()) {
                 return Err(format!("{}: the edit failed: {error}", $what));
             }
             let check: Step = $check(&mut *cx);
@@ -106,8 +105,7 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
     let bold = |want: bool| {
         let editor = editor.clone();
         move |cx: &mut AsyncApp| -> Step {
-            let got = editor
-                .read_with(cx, |e, _| e.surface.playground.has_format("bold"));
+            let got = editor.read_with(cx, |e, _| e.surface.playground.has_format("bold"));
             if got == want {
                 Ok(())
             } else {
@@ -120,7 +118,11 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
     step!("End of the line", key(Box::new(LineEnd)), expect(0, FIRST));
     step!("Return", key(Box::new(InsertParagraph)), expect(1, ""));
     step!("⌘B", key(Box::new(Bold)), bold(true));
-    step!("Typing bold", typed("Typed in GPUI"), expect(1, "Typed in GPUI"));
+    step!(
+        "Typing bold",
+        typed("Typed in GPUI"),
+        expect(1, "Typed in GPUI")
+    );
     step!("⌘B again", key(Box::new(Bold)), bold(false));
     step!(
         "Typing plain",
@@ -149,7 +151,11 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
         typed("日本"),
         expect(1, "Typed in GPUI, then plain 日本")
     );
-    step!("Typing an emoji", typed("👍🏽"), expect(1, "Typed in GPUI, then plain 日本👍🏽"));
+    step!(
+        "Typing an emoji",
+        typed("👍🏽"),
+        expect(1, "Typed in GPUI, then plain 日本👍🏽")
+    );
     step!(
         "⌫ over the emoji",
         key(Box::new(Backspace)),
@@ -160,7 +166,10 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
     step!(
         "The third paragraph is untouched",
         |_: &mut Window, _: &mut App| {},
-        expect(3, "Type, delete, press Enter, or select text and make it bold.")
+        expect(
+            3,
+            "Type, delete, press Enter, or select text and make it bold."
+        )
     );
     Ok(())
 }

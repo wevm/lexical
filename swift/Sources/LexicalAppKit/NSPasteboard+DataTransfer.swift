@@ -13,6 +13,14 @@
     /// rich-text importer reads, styles included.
     @MainActor
     public func lexicalDataTransfer(plainTextOnly: Bool = false) -> DataTransfer {
+      lexicalDataTransfer(plainTextOnly: plainTextOnly, readingFiles: true)
+    }
+
+    /// `lexicalDataTransfer()`, with the files read only when
+    /// `readingFiles`; otherwise the transfer lists the `Files` type with
+    /// no files, as a browser's `dragover` does.
+    @MainActor
+    func lexicalDataTransfer(plainTextOnly: Bool, readingFiles: Bool) -> DataTransfer {
       let dataTransfer = DataTransfer()
       for (mime, type) in TextKitPasteboard.types {
         if plainTextOnly && mime != "text/plain" { continue }
@@ -27,6 +35,13 @@
       let urls =
         readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])
         as? [URL] ?? []
+      if !readingFiles {
+        // The files the drop would read, below.
+        dataTransfer.hasUnreadFiles =
+          !urls.isEmpty
+          || (dataTransfer.types.isEmpty && availableType(from: [.png, .tiff]) != nil)
+        return dataTransfer
+      }
       for url in urls {
         guard let data = try? Data(contentsOf: url) else { continue }
         let type =

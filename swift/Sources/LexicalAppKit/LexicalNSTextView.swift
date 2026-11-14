@@ -1171,7 +1171,9 @@
     public override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
       let operation = super.draggingUpdated(sender)
       let point = convert(sender.draggingLocation, from: nil)
-      let data = sender.draggingPasteboard.lexicalDataTransfer()
+      // Dragged files are read only on the drop, not on every move.
+      let data = sender.draggingPasteboard.lexicalDataTransfer(
+        plainTextOnly: false, readingFiles: false)
       var accepted = false
       perform { accepted = try controller.dragOver(data, x: point.x, y: point.y) }
       // A Lexical drag payload from this view (a selected image's, or a

@@ -114,3 +114,16 @@ impl LexicalNode for DecoratorTextNode {
     }
     fn update_from_json(&mut self, _json: &Object) {}
 }
+
+thread_local! {
+    static DECORATOR_TEXT_EXTENSION: std::rc::Rc<crate::extension_core::LexicalExtension> =
+        crate::extension_core::define_extension(crate::extension_core::LexicalExtension {
+            nodes: vec![crate::NodeClass::of::<DecoratorTextNode>()],
+            ..crate::extension_core::LexicalExtension::new("@lexical/extension/DecoratorText", ())
+        });
+}
+
+/// `DecoratorTextExtension`: registers `DecoratorTextNode`.
+pub fn decorator_text_extension() -> std::rc::Rc<crate::extension_core::LexicalExtension> {
+    DECORATOR_TEXT_EXTENSION.with(std::rc::Rc::clone)
+}

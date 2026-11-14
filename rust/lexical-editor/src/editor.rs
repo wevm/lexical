@@ -287,6 +287,10 @@ pub(crate) struct EditorInner {
     namespace: String,
     /// `_editable`.
     editable: Cell<bool>,
+    /// The `LexicalBuilder` that built the editor (JS's
+    /// `editor[builderSymbol]`).
+    #[cfg(feature = "extension")]
+    pub(crate) builder: RefCell<Option<Rc<dyn Any>>>,
 }
 
 /// `createEditor(config)`: registers the core nodes (root, text, line
@@ -336,6 +340,8 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         selection_movement: RefCell::new(None),
         namespace,
         editable: Cell::new(true),
+        #[cfg(feature = "extension")]
+        builder: RefCell::new(None),
     }))
 }
 

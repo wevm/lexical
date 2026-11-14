@@ -1,14 +1,16 @@
 //! `RangeSelection`'s editing methods from `LexicalSelection.ts`: the
-//! pending format and style, and `removeText`, which the other editing
-//! methods build on.
+//! pending format and style, `removeText`, which the other editing methods
+//! build on, and `extract`.
 
 use crate::LexicalError;
 use crate::caret_utils::{
-    SliceMode, caret_range_from_selection, remove_text_from_caret_range,
-    update_range_selection_from_caret_range,
+    SliceMode, caret_range_from_selection, get_text_point_caret_slice_for_node,
+    remove_text_from_caret_range, update_range_selection_from_caret_range,
 };
-use crate::lexical_selection::{SelectionRef, get_selection, set_selection};
+use crate::lexical_selection::{PointType, SelectionRef, Which, get_selection, set_selection};
+use crate::node::NodeRef;
 use crate::nodes::text::{to_int32, toggle_text_format_type};
+use crate::selection_format::split_text_point_caret_slice;
 
 impl SelectionRef {
     /// `toggleFormat(format)`: toggles a format on the selection's pending
@@ -68,6 +70,50 @@ impl SelectionRef {
             set_selection(Some(self.clone()));
         }
         Ok(())
+    }
+
+    /// `extract()`: the selected nodes, with the text nodes at the ends of
+    /// a range selection split so that only the selected text is returned.
+    /// A range over part of one text node then covers that whole node. For a
+    /// node selection, its nodes (`NodeSelection.extract()`).
+    pub fn extract(&self) -> Result<Vec<NodeRef>, LexicalError> {
+        let nodes = self.get_nodes()?;
+        let Some(range) = self.range() else {
+            return Ok(nodes);
+        };
+        if range.is_collapsed() {
+            return Ok(nodes);
+        }
+        let backward = self.is_backward()?;
+        let slices = caret_range_from_selection(&range)?.get_text_slices();
+        let mut extracted = Vec::with_capacity(nodes.len());
+        for node in &nodes {
+            let replacement = match get_text_point_caret_slice_for_node(&slices, node) {
+                Some(slice) => split_text_point_caret_slice(slice, Some(self))?,
+                None => Some(node.clone()),
+            };
+            if let Some(replacement) = replacement {
+                extracted.push(replacement);
+            }
+        }
+        // Preserve extract's single-text-node selection convention, including
+        // ranges originally expressed with element points.
+        if nodes.len() == 1 && extracted.len() == 1 && extracted[0].is_text() {
+            let node = &extracted[0];
+            let (start, end) = if backward {
+                (Which::Focus, Which::Anchor)
+            } else {
+                (Which::Anchor, Which::Focus)
+            };
+            self.point_set(start, node.get_key(), 0, PointType::Text)?;
+            self.point_set(
+                end,
+                node.get_key(),
+                node.get_text_content_size(),
+                PointType::Text,
+            )?;
+        }
+        Ok(extracted)
     }
 }
 

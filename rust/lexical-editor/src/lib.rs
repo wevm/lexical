@@ -59,6 +59,8 @@ pub mod history;
 pub mod json;
 mod lexical_selection;
 mod lexical_utils;
+#[cfg(feature = "link")]
+pub mod link;
 #[cfg(feature = "list")]
 pub mod list;
 mod node;

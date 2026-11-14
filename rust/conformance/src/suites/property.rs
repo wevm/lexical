@@ -32,6 +32,7 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
         nodes: [
             lexical::rich_text::rich_text_nodes(),
             lexical::list::list_nodes(),
+            lexical::link::link_nodes(),
         ]
         .concat(),
     });

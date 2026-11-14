@@ -17,7 +17,10 @@
 //! `list: true` registers `@lexical/list`'s nodes (`ListNode`,
 //! `ListItemNode`), `registerList` and `registerCheckList`. `dispatch` and
 //! handlers name the list commands as `@lexical/list` exports them
-//! (`PACKAGE_COMMANDS`).
+//! (`PACKAGE_COMMANDS`). One with `link: true` registers `@lexical/link`'s
+//! nodes (`LinkNode`, `AutoLinkNode`) and `registerLink` with its
+//! defaults, and `TOGGLE_LINK_COMMAND` takes `null`, a URL or
+//! `{url, target, rel, title}`.
 //!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
@@ -25,6 +28,7 @@
 use crate::case::{Case, Outcome, same};
 use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
+use lexical::link;
 use lexical::list;
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
@@ -58,7 +62,7 @@ impl Ctx {
     }
 
     /// `command(ctx, name)`: one of Lexical's own commands
-    /// (`CORE_COMMANDS`), a list command (`PACKAGE_COMMANDS`), or one
+    /// (`CORE_COMMANDS`), a list or link command (`PACKAGE_COMMANDS`), or one
     /// command per other name.
     fn command(&self, name: &str) -> ScriptCommand {
         match name {
@@ -93,6 +97,7 @@ impl Ctx {
             "UPDATE_LIST_START_COMMAND" => {
                 ScriptCommand::ListStart(list::UPDATE_LIST_START_COMMAND)
             }
+            "TOGGLE_LINK_COMMAND" => ScriptCommand::Link(link::TOGGLE_LINK_COMMAND),
             _ => ScriptCommand::Json(
                 self.commands
                     .borrow_mut()
@@ -114,7 +119,59 @@ enum ScriptCommand {
     Formats(LexicalCommand<Vec<(String, bool)>>),
     /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
     ListStart(LexicalCommand<list::UpdateListStartPayload>),
+    /// `TOGGLE_LINK_COMMAND`: `null`, a URL, or `{url, target, rel, title}`.
+    Link(LexicalCommand<Option<link::ToggleLinkPayload>>),
     Json(LexicalCommand<Value>),
+}
+
+/// `TOGGLE_LINK_COMMAND`'s payload: `null`, a URL, or an object with a URL
+/// and the attributes it has (`null` or a string each).
+fn toggle_link_of(payload: &Value) -> Option<Option<link::ToggleLinkPayload>> {
+    if payload.is_null() {
+        return Some(None);
+    }
+    if let Some(url) = payload.as_str() {
+        return Some(Some(link::ToggleLinkPayload::Url(url.to_owned())));
+    }
+    let object = payload.as_object()?;
+    let attribute = |key: &str| -> Option<Option<Option<String>>> {
+        Some(match object.get(key) {
+            None => None,
+            Some(Value::Null) => Some(None),
+            Some(value) => Some(Some(value.as_str()?.to_owned())),
+        })
+    };
+    Some(Some(link::ToggleLinkPayload::Attributes {
+        url: object.get("url")?.as_str()?.to_owned(),
+        attributes: link::LinkAttributes {
+            rel: attribute("rel")?,
+            target: attribute("target")?,
+            title: attribute("title")?,
+        },
+    }))
+}
+
+/// `TOGGLE_LINK_COMMAND`'s payload as JSON: `url`, then the attributes it
+/// has.
+fn toggle_link_json(payload: &Option<link::ToggleLinkPayload>) -> Value {
+    match payload {
+        None => Value::Null,
+        Some(link::ToggleLinkPayload::Url(url)) => url.as_str().into(),
+        Some(link::ToggleLinkPayload::Attributes { url, attributes }) => {
+            let mut json = Object::new();
+            json.insert("url", url.as_str().into());
+            for (key, value) in [
+                ("target", &attributes.target),
+                ("rel", &attributes.rel),
+                ("title", &attributes.title),
+            ] {
+                if let Some(value) = value {
+                    json.insert(key, value.as_deref().map_or(Value::Null, Value::from));
+                }
+            }
+            json.into()
+        }
+    }
 }
 
 /// `UPDATE_LIST_START_COMMAND`'s payload, `{listNodeKey, newStart}`.
@@ -152,6 +209,12 @@ impl ScriptCommand {
                 editor.dispatch_command(command, formats_of(&payload).unwrap_or_default())
             }
             ScriptCommand::ListStart(command) => match list_start_of(&payload) {
+                Some(payload) => editor.dispatch_command(command, payload),
+                None => Err(err(format!(
+                    "{payload} is not a payload this command takes"
+                ))),
+            },
+            ScriptCommand::Link(command) => match toggle_link_of(&payload) {
                 Some(payload) => editor.dispatch_command(command, payload),
                 None => Err(err(format!(
                     "{payload} is not a payload this command takes"
@@ -207,6 +270,11 @@ impl ScriptCommand {
                     json.insert("newStart", payload.new_start.into());
                     listener(&json.into(), editor)
                 },
+                priority,
+            ),
+            ScriptCommand::Link(command) => editor.register_command(
+                command,
+                move |payload, editor| listener(&toggle_link_json(payload), editor),
                 priority,
             ),
             ScriptCommand::Json(command) => editor.register_command(command, listener, priority),
@@ -767,12 +835,16 @@ impl Session {
         reset_random_key();
         let rich_text = script.get("richText").and_then(Value::as_bool) == Some(true);
         let with_list = script.get("list").and_then(Value::as_bool) == Some(true);
+        let with_link = script.get("link").and_then(Value::as_bool) == Some(true);
         let mut nodes = Vec::new();
         if rich_text {
             nodes.extend(lexical::rich_text::rich_text_nodes());
         }
         if with_list {
             nodes.extend(list::list_nodes());
+        }
+        if with_link {
+            nodes.extend(link::link_nodes());
         }
         let editor = create_editor(CreateEditorArgs { nodes });
         let ctx = Rc::new(Ctx::default());
@@ -785,6 +857,9 @@ impl Session {
         if with_list {
             let _unregister = list::register_list(&editor, list::RegisterListOptions::default());
             let _unregister = list::register_check_list(&editor);
+        }
+        if with_link {
+            let _unregister = link::register_link(&editor, link::LinkConfig::default());
         }
         for name in script
             .get("transforms")

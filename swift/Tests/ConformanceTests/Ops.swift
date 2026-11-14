@@ -1,6 +1,8 @@
 import Foundation
 import Lexical
+import LexicalExtension
 import LexicalHistory
+import LexicalLink
 import LexicalList
 import LexicalPlainText
 import LexicalRichText
@@ -52,6 +54,8 @@ private enum CoreCommand {
   case keyboard(LexicalCommand<KeyboardEvent>)
   /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
   case listStart(LexicalCommand<UpdateListStartPayload>)
+  /// `TOGGLE_LINK_COMMAND`: `null`, a URL, or `{url, target, rel, title}`.
+  case toggleLink(LexicalCommand<ToggleLinkPayload?>)
 }
 
 private let coreCommands: [String: CoreCommand] = [
@@ -75,13 +79,49 @@ private let coreCommands: [String: CoreCommand] = [
   "SELECT_ALL_COMMAND": .keyboard(SELECT_ALL_COMMAND),
   "SET_TEXT_FORMAT_COMMAND": .formats(SET_TEXT_FORMAT_COMMAND),
   "UNDO_COMMAND": .void(UNDO_COMMAND),
-  // `PACKAGE_COMMANDS` in ops.ts: the list commands.
+  // `PACKAGE_COMMANDS` in ops.ts: the list and link commands.
   "INSERT_CHECK_LIST_COMMAND": .void(INSERT_CHECK_LIST_COMMAND),
   "INSERT_ORDERED_LIST_COMMAND": .void(INSERT_ORDERED_LIST_COMMAND),
   "INSERT_UNORDERED_LIST_COMMAND": .void(INSERT_UNORDERED_LIST_COMMAND),
   "REMOVE_LIST_COMMAND": .void(REMOVE_LIST_COMMAND),
   "UPDATE_LIST_START_COMMAND": .listStart(UPDATE_LIST_START_COMMAND),
+  "TOGGLE_LINK_COMMAND": .toggleLink(TOGGLE_LINK_COMMAND),
 ]
+
+/// `TOGGLE_LINK_COMMAND`'s payload as the script writes it: `null`, a URL, or
+/// an object with a URL and the attributes it has (`null` or a string each).
+private func toggleLinkPayload(_ payload: JSONValue) throws -> ToggleLinkPayload? {
+  if payload == .null { return nil }
+  if let url = payload.stringValue { return .url(url) }
+  let object = try payload.objectValue.orThrow()
+  func attribute(_ key: String) throws -> String?? {
+    switch object[key] {
+    case nil: return .none
+    case .null?: return .some(nil)
+    case let value?: return .some(try value.stringValue.orThrow())
+    }
+  }
+  return .attributes(
+    url: try object["url"]?.stringValue.orThrow() ?? "",
+    LinkAttributes(
+      rel: try attribute("rel"), target: try attribute("target"), title: try attribute("title")))
+}
+
+/// `TOGGLE_LINK_COMMAND`'s payload as JSON: `url`, then the attributes it has.
+private func toggleLinkJSON(_ payload: ToggleLinkPayload?) -> JSONValue {
+  switch payload {
+  case nil: return .null
+  case .url(let url)?: return .string(url)
+  case .attributes(let url, let attributes)?:
+    var entries: [(String, JSONValue)] = [("url", .string(url))]
+    for (key, value) in [
+      ("target", attributes.target), ("rel", attributes.rel), ("title", attributes.title),
+    ] {
+      if let value { entries.append((key, value.map { .string($0) } ?? .null)) }
+    }
+    return .object(JSONObject(entries))
+  }
+}
 
 /// `UPDATE_LIST_START_COMMAND`'s payload as the script writes it.
 private func listStart(_ payload: JSONValue) throws -> UpdateListStartPayload {
@@ -129,6 +169,8 @@ private final class ScriptContext {
       return try editor.dispatchCommand(command, KeyboardEvent())
     case .listStart(let command):
       return try editor.dispatchCommand(command, try listStart(payload))
+    case .toggleLink(let command):
+      return try editor.dispatchCommand(command, try toggleLinkPayload(payload))
     case nil:
       return try editor.dispatchCommand(self.command(name), payload)
     }
@@ -163,6 +205,9 @@ private final class ScriptContext {
                 ("listNodeKey", .string(payload.listNodeKey)), ("newStart", .int(payload.newStart)),
               ])))
         }, priority)
+    case .toggleLink(let command):
+      _ = editor.registerCommand(
+        command, { payload, _ in try listener(toggleLinkJSON(payload)) }, priority)
     case nil:
       _ = editor.registerCommand(
         self.command(name), { payload, _ in try listener(payload) }, priority)
@@ -484,13 +529,17 @@ private func registerTransform(_ name: String, _ ctx: ScriptContext) throws {
 func runScript(_ script: JSONValue) throws -> [StepRecord] {
   resetRandomKey()
   // `richText: true` registers @lexical/rich-text's nodes and
-  // `registerRichText`, and `list: true` @lexical/list's nodes,
-  // `registerList` and `registerCheckList`, as ops.ts does.
+  // `registerRichText`, `list: true` @lexical/list's nodes,
+  // `registerList` and `registerCheckList`, and `link: true` @lexical/link's
+  // nodes and `registerLink` with its default config, as ops.ts does.
   var nodes: [LexicalNodeConfig] =
     script["richText"]?.boolValue == true
     ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
   if script["list"]?.boolValue == true {
     nodes += [.klass(ListNode.self), .klass(ListItemNode.self)]
+  }
+  if script["link"]?.boolValue == true {
+    nodes += [.klass(LinkNode.self), .klass(AutoLinkNode.self)]
   }
   let editor = try createEditor(
     CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))
@@ -504,6 +553,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   if script["list"]?.boolValue == true {
     _ = try registerList(editor)
     _ = try registerCheckList(editor)
+  }
+  if script["link"]?.boolValue == true {
+    _ = try registerLink(editor, namedSignals(LinkConfig()))
   }
   for name in script["transforms"]?.arrayValue ?? [] {
     try registerTransform(name.stringValue.orThrow(), ctx)

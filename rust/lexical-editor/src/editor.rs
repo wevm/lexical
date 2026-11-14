@@ -304,7 +304,7 @@ impl Editor {
         self.0.next_id.replace(self.0.next_id.get() + 1)
     }
 
-    fn weak(&self) -> Weak<EditorInner> {
+    pub(crate) fn weak(&self) -> Weak<EditorInner> {
         Rc::downgrade(&self.0)
     }
 

@@ -56,6 +56,8 @@ mod editor_state;
 mod error;
 mod gc;
 mod generated_json;
+#[cfg(feature = "hashtag")]
+pub mod hashtag;
 #[cfg(feature = "history")]
 pub mod history;
 pub mod json;
@@ -83,6 +85,8 @@ mod selection_format;
 mod selection_insert_nodes;
 mod selection_insert_text;
 mod serialized_export;
+#[cfg(feature = "text")]
+pub mod text;
 mod updates;
 pub mod utf16;
 #[cfg(feature = "utils")]

@@ -47,12 +47,15 @@
 mod caret;
 mod caret_tree;
 mod caret_utils;
+mod commands;
 pub mod constants;
 mod editor;
 mod editor_state;
 mod error;
 mod gc;
 mod generated_json;
+#[cfg(feature = "history")]
+pub mod history;
 pub mod json;
 mod node;
 pub mod nodes;
@@ -85,11 +88,16 @@ pub use caret_utils::{
     normalize_caret, remove_text_from_caret_range, rewind_sibling_caret, set_point_from_caret,
     set_selection_from_caret_range, update_range_selection_from_caret_range,
 };
+pub use commands::{
+    CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND, REDO_COMMAND,
+    UNDO_COMMAND,
+};
 pub use editor::{
     COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
-    COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, CreateEditorArgs, Editor, HISTORY_MERGE_TAG,
-    LexicalCommand, NodeClass, Transform, Unregister, UpdateListenerPayload, UpdateOptions,
-    create_command, create_editor,
+    COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, COMPOSITION_END_TAG, COMPOSITION_START_TAG,
+    CUT_TAG, CreateEditorArgs, Editor, HISTORIC_TAG, HISTORY_MERGE_TAG, HISTORY_PUSH_TAG,
+    LexicalCommand, NodeClass, PASTE_TAG, Transform, Unregister, UpdateListenerPayload,
+    UpdateOptions, create_command, create_editor,
 };
 pub use editor_state::EditorState;
 pub use error::LexicalError;
@@ -101,6 +109,7 @@ pub use selection::{
     NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
     create_node_selection, create_range_selection, get_selection, set_selection,
 };
+pub use selection_deletion::{SelectionAlter, SelectionGranularity, SelectionMovement};
 pub use selection_insert_nodes::{insert_nodes, select_all};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
 pub use updates::parse_serialized_node;

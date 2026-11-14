@@ -5,22 +5,30 @@
 //! log of what listeners, transforms and command handlers saw must match
 //! what JS recorded.
 //!
+//! A script with `history: {delay}` registers `@lexical/history` on the
+//! session's clock, which starts at 0 and which a step's `now` sets; JS
+//! makes `Date.now()` return it while a step runs. `dispatch` and handlers
+//! name Lexical's own commands (`UNDO_COMMAND`, `CAN_UNDO_COMMAND`...) as JS
+//! exports them, and any other name is a command the script makes.
+//!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
 
 use crate::case::{Case, Outcome, same};
+use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
 use lexical::{
+    CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
     COMMAND_PRIORITY_EDITOR, CaretDirection, CreateEditorArgs, Direction, Editor, LexicalCommand,
-    LexicalError, NodeRef, PointCaret, PointType, RangeSelection, SelectionRef, SliceMode,
-    TextOffset, TextPointCaretSlice, UpdateOptions, Which, caret_range_from_selection,
-    create_command, create_editor, create_node_selection, create_range_selection, get_caret_range,
-    get_child_caret, get_node_by_key, get_root, get_selection, get_sibling_caret,
-    get_text_point_caret, insert_nodes, normalize_caret, parse_serialized_node,
-    remove_text_from_caret_range, reset_random_key, select_all, set_selection,
-    set_selection_from_caret_range, utf16,
+    LexicalError, NodeRef, PointCaret, PointType, REDO_COMMAND, RangeSelection, SelectionRef,
+    SliceMode, TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
+    caret_range_from_selection, create_command, create_editor, create_node_selection,
+    create_range_selection, get_caret_range, get_child_caret, get_node_by_key, get_root,
+    get_selection, get_sibling_caret, get_text_point_caret, insert_nodes, normalize_caret,
+    parse_serialized_node, remove_text_from_caret_range, reset_random_key, select_all,
+    set_selection, set_selection_from_caret_range, utf16,
 };
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -36,13 +44,74 @@ impl Ctx {
         self.log.borrow_mut().push(Value::Array(entry));
     }
 
-    /// `command(ctx, name)`: one command per name.
-    fn command(&self, name: &str) -> LexicalCommand<Value> {
-        self.commands
-            .borrow_mut()
-            .entry(name.to_owned())
-            .or_insert_with(|| create_command(name))
-            .clone()
+    /// `command(ctx, name)`: one of Lexical's own commands
+    /// (`CORE_COMMANDS`), or one command per other name.
+    fn command(&self, name: &str) -> ScriptCommand {
+        match name {
+            "CAN_REDO_COMMAND" => ScriptCommand::Bool(CAN_REDO_COMMAND),
+            "CAN_UNDO_COMMAND" => ScriptCommand::Bool(CAN_UNDO_COMMAND),
+            "CLEAR_EDITOR_COMMAND" => ScriptCommand::Void(CLEAR_EDITOR_COMMAND),
+            "CLEAR_HISTORY_COMMAND" => ScriptCommand::Void(CLEAR_HISTORY_COMMAND),
+            "REDO_COMMAND" => ScriptCommand::Void(REDO_COMMAND),
+            "UNDO_COMMAND" => ScriptCommand::Void(UNDO_COMMAND),
+            _ => ScriptCommand::Json(
+                self.commands
+                    .borrow_mut()
+                    .entry(name.to_owned())
+                    .or_insert_with(|| create_command(name))
+                    .clone(),
+            ),
+        }
+    }
+}
+
+/// A command a script names, by its payload type: Lexical's own take
+/// nothing (`void`) or a boolean, and those the script makes take any JSON.
+enum ScriptCommand {
+    Void(LexicalCommand<()>),
+    Bool(LexicalCommand<bool>),
+    Json(LexicalCommand<Value>),
+}
+
+impl ScriptCommand {
+    /// `editor.dispatchCommand(command, payload)`. A payload the command
+    /// doesn't take is an error, which JS would pass on as it is.
+    fn dispatch(&self, editor: &Editor, payload: Value) -> Result<bool, LexicalError> {
+        match self {
+            ScriptCommand::Void(command) if payload.is_null() => {
+                editor.dispatch_command(command, ())
+            }
+            ScriptCommand::Bool(command) if payload.as_bool().is_some() => {
+                editor.dispatch_command(command, payload.as_bool() == Some(true))
+            }
+            ScriptCommand::Json(command) => editor.dispatch_command(command, payload),
+            _ => Err(err(format!(
+                "{payload} is not a payload this command takes"
+            ))),
+        }
+    }
+
+    /// `editor.registerCommand(command, listener, priority)`, the listener
+    /// getting the payload as JSON (`null` for `void`).
+    fn register(
+        &self,
+        editor: &Editor,
+        listener: impl Fn(&Value, &Editor) -> Result<bool, LexicalError> + 'static,
+        priority: u8,
+    ) -> Unregister {
+        match self {
+            ScriptCommand::Void(command) => editor.register_command(
+                command,
+                move |_, editor| listener(&Value::Null, editor),
+                priority,
+            ),
+            ScriptCommand::Bool(command) => editor.register_command(
+                command,
+                move |payload, editor| listener(&(*payload).into(), editor),
+                priority,
+            ),
+            ScriptCommand::Json(command) => editor.register_command(command, listener, priority),
+        }
     }
 }
 
@@ -440,7 +509,7 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");
             let payload = action.get("payload").cloned().unwrap_or(Value::Null);
-            let handled = editor.dispatch_command(&ctx.command(name), payload)?;
+            let handled = ctx.command(name).dispatch(editor, payload)?;
             ctx.log(vec!["dispatched".into(), name.into(), handled.into()]);
             Ok(())
         }
@@ -560,6 +629,19 @@ fn transform_name(name: &str) -> Option<&'static str> {
 pub struct Session {
     editor: Editor,
     ctx: Rc<Ctx>,
+    /// The session's clock, in milliseconds: what the history merges by.
+    /// It starts at 0, and a step's `now` sets it.
+    clock: Rc<Cell<f64>>,
+    /// Unregisters the history, whose entries hold the editor.
+    unregister_history: Option<Unregister>,
+}
+
+impl Drop for Session {
+    fn drop(&mut self) {
+        if let Some(unregister) = self.unregister_history.take() {
+            unregister();
+        }
+    }
 }
 
 /// One step's result.
@@ -609,8 +691,8 @@ impl Session {
                 .cloned()
                 .unwrap_or_default();
             let ctx = ctx.clone();
-            let _unregister = editor.register_command(
-                &command,
+            let _unregister = command.register(
+                &editor,
                 move |payload: &Value, editor: &Editor| {
                     ctx.log(vec!["handler".into(), id.as_str().into(), payload.clone()]);
                     for action in &actions {
@@ -650,7 +732,33 @@ impl Session {
                 log.log(vec!["textContent".into(), text.into()]);
             });
         }
-        Ok(Session { editor, ctx })
+        // `registerHistory(editor, createEmptyHistoryState(), delay)` on the
+        // session's clock.
+        let clock = Rc::new(Cell::new(0.0));
+        let unregister_history = match script.get("history") {
+            None => None,
+            Some(history) => {
+                let delay = history
+                    .get("delay")
+                    .and_then(Value::as_f64)
+                    .ok_or("history needs a delay")?;
+                let clock = clock.clone();
+                Some(register_history(
+                    &editor,
+                    &create_empty_history_state(),
+                    delay,
+                    Some(Rc::new(move || clock.get())),
+                    None,
+                    None,
+                ))
+            }
+        };
+        Ok(Session {
+            editor,
+            ctx,
+            clock,
+            unregister_history,
+        })
     }
 
     /// The session's editor.
@@ -663,6 +771,9 @@ impl Session {
     /// forms.
     pub fn run(&self, step: &Value, snapshot: bool) -> Result<StepResult, String> {
         let (editor, ctx) = (&self.editor, &self.ctx);
+        if let Some(now) = step.get("now").and_then(Value::as_f64) {
+            self.clock.set(now);
+        }
         ctx.log.borrow_mut().clear();
         let outcome = if let Some(actions) = step.get("update").and_then(Value::as_array) {
             let tags = step
@@ -692,8 +803,8 @@ impl Session {
         } else {
             let name = step.str("dispatch")?;
             let payload = step.get("payload").cloned().unwrap_or(Value::Null);
-            editor
-                .dispatch_command(&ctx.command(name), payload)
+            ctx.command(name)
+                .dispatch(editor, payload)
                 .map(|handled| ctx.log(vec!["dispatched".into(), name.into(), handled.into()]))
         };
         // A dispatch outside an update commits at the next read.

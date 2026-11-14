@@ -64,7 +64,11 @@ mod generated_json;
 pub mod hashtag;
 #[cfg(feature = "history")]
 pub mod history;
+#[cfg(feature = "html")]
+pub mod html;
 pub mod json;
+#[cfg(feature = "html")]
+pub mod lexical_dom;
 mod lexical_selection;
 mod lexical_utils;
 #[cfg(feature = "link")]
@@ -127,9 +131,9 @@ pub use commands::{
 pub use editor::{
     COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
     COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, COMPOSITION_END_TAG, COMPOSITION_START_TAG,
-    CUT_TAG, CreateEditorArgs, Editor, HISTORIC_TAG, HISTORY_MERGE_TAG, HISTORY_PUSH_TAG,
-    LexicalCommand, NodeClass, PASTE_TAG, Transform, Unregister, UpdateListenerPayload,
-    UpdateOptions, create_command, create_editor,
+    CUT_TAG, CreateEditorArgs, Editor, EditorConfig, HISTORIC_TAG, HISTORY_MERGE_TAG,
+    HISTORY_PUSH_TAG, LexicalCommand, NodeClass, PASTE_TAG, Transform, Unregister,
+    UpdateListenerPayload, UpdateOptions, create_command, create_editor,
 };
 pub use editor_state::EditorState;
 pub use error::LexicalError;

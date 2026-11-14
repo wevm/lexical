@@ -61,6 +61,7 @@ pub fn check_hashtag_match(case: &Value, _file: &Value) -> Result<Outcome, Strin
 fn build() -> Editor {
     let editor = create_editor(CreateEditorArgs {
         nodes: hashtag_nodes(),
+        ..Default::default()
     });
     let _unregister = register_lexical_hashtag(&editor, HashtagConfig::default());
     editor

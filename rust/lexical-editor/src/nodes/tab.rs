@@ -63,4 +63,23 @@ impl LexicalNode for TabNode {
     fn update_from_json(&mut self, json: &Object) {
         update_tab_node(&mut self.text, json);
     }
+
+    /// `TabNode.createDOM(config)`: `TextNode`'s, with the theme's `tab`
+    /// class names.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, crate::LexicalError> {
+        let dom = crate::nodes::text::create_dom(self, config)?;
+        if let Some(class_names) =
+            crate::lexical_dom::get_cached_class_name_array(&config.theme, "tab")
+            && !class_names.is_empty()
+        {
+            dom.class_list().add(&class_names);
+        }
+        Ok(dom)
+    }
 }

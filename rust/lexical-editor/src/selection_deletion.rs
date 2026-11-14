@@ -1123,7 +1123,7 @@ fn internal_expand_selection_to_whole_document(
 /// `$isBlockFullySelected(blockNode, selection)`: whether the selection
 /// covers everything in the block. (Slot frames are not ported, so every
 /// node is in the same frame.)
-fn is_block_fully_selected(
+pub(crate) fn is_block_fully_selected(
     block: &NodeRef,
     selection: &RangeSelection,
 ) -> Result<bool, LexicalError> {

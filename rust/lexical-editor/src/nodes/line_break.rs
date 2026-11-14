@@ -39,4 +39,43 @@ impl LexicalNode for LineBreakNode {
         }
     }
     fn update_from_json(&mut self, _json: &Object) {}
+
+    /// `LineBreakNode.createDOM()`: a `<br>`.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        _config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, crate::LexicalError> {
+        Ok(crate::lexical_dom::get_document().create_element("br"))
+    }
+
+    /// `LineBreakNode`'s `importDOM`: a `<br>`, but for the one that only
+    /// ends (or is all of) a block, which a browser doesn't render as a
+    /// line.
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        use crate::lexical_dom::{
+            DomConversion, DomConversionOutput, is_last_child_in_block_node,
+            is_only_child_in_block_node,
+        };
+        let conversion: crate::lexical_dom::DomConversionFn = std::rc::Rc::new(|_| {
+            Ok(Some(DomConversionOutput::node(Some(
+                create_line_break_node(),
+            ))))
+        });
+        Some(vec![(
+            "br".to_owned(),
+            std::rc::Rc::new(move |node: &crate::dom::DomNode| {
+                if is_only_child_in_block_node(node) || is_last_child_in_block_node(node) {
+                    return None;
+                }
+                Some(DomConversion {
+                    conversion: conversion.clone(),
+                    priority: 0,
+                })
+            }),
+        )])
+    }
 }

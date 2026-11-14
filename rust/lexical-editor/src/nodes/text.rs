@@ -102,6 +102,10 @@ impl LexicalNode for TextNode {
     fn update_from_json(&mut self, json: &Object) {
         update_text_node(&mut self.text, json);
     }
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        Some(import_dom())
+    }
 }
 
 impl TextNode {
@@ -557,5 +561,508 @@ impl NodeRef {
         get_writable(key);
         target.remove(false)?;
         Ok(self.clone())
+    }
+}
+
+// The DOM side of `TextNode` (the `html` feature).
+
+#[cfg(feature = "html")]
+pub(crate) use text_dom::{create_dom, export_dom, import_dom};
+
+#[cfg(feature = "html")]
+mod text_dom {
+    use super::{TEXT_TYPE_TO_FORMAT, create_text_node, to_int32, toggle_text_format_type};
+    use crate::constants::{
+        IS_BOLD, IS_CODE, IS_HIGHLIGHT, IS_ITALIC, IS_STRIKETHROUGH, IS_SUBSCRIPT, IS_SUPERSCRIPT,
+        IS_UNDERLINE,
+    };
+    use crate::dom::{CssStyle, DomNode};
+    use crate::json::Object;
+    use crate::lexical_dom::{
+        DomChildConversion, DomConversionMap, DomConversionOutput, DomExportOutput,
+        export_dom_base, get_cached_class_name_array, get_document, importer, is_inline_dom_node,
+        remove_empty_dom_attribute,
+    };
+    use crate::node::{LexicalNode, NodeRef};
+    use crate::selection_insert_nodes::generate_nodes_from_raw_text;
+    use crate::set_dom_style::set_dom_style_from_css;
+    use crate::{Editor, EditorConfig, LexicalError};
+    use std::rc::Rc;
+
+    /// `getElementOuterTag(node, format)`.
+    fn get_element_outer_tag(format: i32) -> Option<&'static str> {
+        if format & IS_CODE != 0 {
+            Some("code")
+        } else if format & IS_HIGHLIGHT != 0 {
+            Some("mark")
+        } else if format & IS_SUBSCRIPT != 0 {
+            Some("sub")
+        } else if format & IS_SUPERSCRIPT != 0 {
+            Some("sup")
+        } else {
+            None
+        }
+    }
+
+    /// `getElementInnerTag(node, format)`.
+    fn get_element_inner_tag(format: i32) -> &'static str {
+        if format & IS_BOLD != 0 {
+            "strong"
+        } else if format & IS_ITALIC != 0 {
+            "em"
+        } else {
+            "span"
+        }
+    }
+
+    fn add_classes(dom: &DomNode, class_names: &[String]) {
+        if !class_names.is_empty() {
+            dom.class_list().add(class_names);
+        }
+    }
+
+    fn remove_classes(dom: &DomNode, class_names: &[String]) {
+        if !class_names.is_empty() {
+            dom.class_list().remove(class_names);
+        }
+    }
+
+    /// `setTextThemeClassNames(tag, prevFormat, nextFormat, dom,
+    /// textClassNames)`.
+    fn set_text_theme_class_names(
+        prev_format: i32,
+        next_format: i32,
+        dom: &DomNode,
+        text_class_names: &Object,
+    ) {
+        if let Some(class_names) = get_cached_class_name_array(text_class_names, "base") {
+            add_classes(dom, &class_names);
+        }
+        let mut has_underline_strikethrough = false;
+        let both = IS_UNDERLINE | IS_STRIKETHROUGH;
+        let prev_underline_strikethrough = prev_format & both == both;
+        let next_underline_strikethrough = next_format & both == both;
+        if let Some(class_names) =
+            get_cached_class_name_array(text_class_names, "underlineStrikethrough")
+        {
+            if next_underline_strikethrough {
+                has_underline_strikethrough = true;
+                if !prev_underline_strikethrough {
+                    add_classes(dom, &class_names);
+                }
+            } else if prev_underline_strikethrough {
+                remove_classes(dom, &class_names);
+            }
+        }
+        for &(key, flag) in TEXT_TYPE_TO_FORMAT {
+            let Some(class_names) = get_cached_class_name_array(text_class_names, key) else {
+                continue;
+            };
+            if next_format & flag != 0 {
+                if has_underline_strikethrough && (key == "underline" || key == "strikethrough") {
+                    if prev_format & flag != 0 {
+                        remove_classes(dom, &class_names);
+                    }
+                    continue;
+                }
+                if prev_format & flag == 0
+                    || (prev_underline_strikethrough && key == "underline")
+                    || key == "strikethrough"
+                {
+                    add_classes(dom, &class_names);
+                }
+            } else if prev_format & flag != 0 {
+                remove_classes(dom, &class_names);
+            }
+        }
+        remove_empty_dom_attribute(dom, "class");
+    }
+
+    /// `$createTextInnerDOM(innerDOM, node, innerTag, format, text,
+    /// config)`. A node is never composing here, so `$setTextContent`
+    /// appends the text as it is.
+    fn create_text_inner_dom(inner_dom: &DomNode, format: i32, text: &str, config: &EditorConfig) {
+        inner_dom.append_child(&get_document().create_text_node(text));
+        if let Some(text_class_names) = config.theme.get("text").and_then(|t| t.as_object()) {
+            set_text_theme_class_names(0, format, inner_dom, text_class_names);
+        }
+    }
+
+    /// `TextNode.createDOM(config)`: the outer tag of the code, highlight,
+    /// subscript and superscript formats around the inner tag of bold and
+    /// italic, with the theme's class names and the node's style.
+    pub(crate) fn create_dom(
+        node: &dyn LexicalNode,
+        config: &EditorConfig,
+    ) -> Result<DomNode, LexicalError> {
+        let data = node.text().expect("a text node");
+        let format = to_int32(data.format);
+        let outer_tag = get_element_outer_tag(format);
+        let inner_tag = get_element_inner_tag(format);
+        let document = get_document();
+        let dom = document.create_element(outer_tag.unwrap_or(inner_tag));
+        let mut inner_dom = dom.clone();
+        if format & IS_CODE != 0 {
+            dom.set_attribute("spellcheck", "false");
+        }
+        if outer_tag.is_some() {
+            inner_dom = document.create_element(inner_tag);
+            dom.append_child(&inner_dom);
+        }
+        create_text_inner_dom(&inner_dom, format, &data.text, config);
+        if !data.style.is_empty() {
+            set_dom_style_from_css(&dom.style(), &data.style, "");
+        }
+        Ok(dom)
+    }
+
+    /// `$wrapElementWith(element, tag)`.
+    fn wrap_element_with(element: &DomNode, tag: &str) -> DomNode {
+        let el = get_document().create_element(tag);
+        el.append_child(element);
+        el
+    }
+
+    /// `TextNode.exportDOM(editor)`: the element `createDOM` makes, with
+    /// `white-space: pre-wrap` and the capitalization's `text-transform`,
+    /// inside `<b>`, `<i>`, `<s>` and `<u>` for those formats.
+    pub(crate) fn export_dom(
+        node: &dyn LexicalNode,
+        this: &NodeRef,
+        editor: &Editor,
+    ) -> Result<DomExportOutput, LexicalError> {
+        let output = export_dom_base(node, this, editor)?;
+        let mut element = match output.element {
+            Some(element) if element.is_element() => element,
+            _ => {
+                return Err(LexicalError::new(
+                    "Expected TextNode createDOM to always return a HTMLElement",
+                ));
+            }
+        };
+        let style = element.style();
+        style.set_property("white-space", "pre-wrap", "");
+        let format = to_int32(node.text().expect("a text node").format);
+        let has = |name: &str| {
+            format & crate::constants::lookup(TEXT_TYPE_TO_FORMAT, name).unwrap_or(0) != 0
+        };
+        if has("lowercase") {
+            style.set_property("text-transform", "lowercase", "");
+        } else if has("uppercase") {
+            style.set_property("text-transform", "uppercase", "");
+        } else if has("capitalize") {
+            style.set_property("text-transform", "capitalize", "");
+        }
+        for (name, tag) in [
+            ("bold", "b"),
+            ("italic", "i"),
+            ("strikethrough", "s"),
+            ("underline", "u"),
+        ] {
+            if has(name) {
+                element = wrap_element_with(&element, tag);
+            }
+        }
+        Ok(DomExportOutput::element(element))
+    }
+
+    /// `TextNode`'s `importDOM`: `#text`, and the inline formatting
+    /// elements, whose formats (and those their style implies) the text
+    /// inside them takes.
+    pub(crate) fn import_dom() -> DomConversionMap {
+        let mut map: DomConversionMap = vec![
+            ("#text".to_owned(), importer(0, convert_text_dom_node)),
+            (
+                "b".to_owned(),
+                importer(0, convert_bring_attention_to_element),
+            ),
+        ];
+        for name in ["code", "em", "i", "mark", "s"] {
+            map.push((name.to_owned(), importer(0, convert_text_format_element)));
+        }
+        map.push(("span".to_owned(), importer(0, convert_span_element)));
+        for name in ["strong", "sub", "sup", "u"] {
+            map.push((name.to_owned(), importer(0, convert_text_format_element)));
+        }
+        map
+    }
+
+    /// `convertSpanElement(domNode)`.
+    fn convert_span_element(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        Ok(Some(DomConversionOutput {
+            for_child: Some(apply_text_format_from_style(&dom_node.style(), None)),
+            ..DomConversionOutput::default()
+        }))
+    }
+
+    /// `convertBringAttentionToElement(domNode)`: bold, unless the `<b>`
+    /// has `font-weight: normal` (as Google Docs wraps copied HTML).
+    fn convert_bring_attention_to_element(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        let style = dom_node.style();
+        let has_normal_font_weight = style.get_property_value("font-weight") == "normal";
+        Ok(Some(DomConversionOutput {
+            for_child: Some(apply_text_format_from_style(
+                &style,
+                (!has_normal_font_weight).then_some("bold"),
+            )),
+            ..DomConversionOutput::default()
+        }))
+    }
+
+    /// `isNodePre(node)`.
+    fn is_node_pre(node: &DomNode) -> bool {
+        if !node.is_element() {
+            return false;
+        }
+        node.node_name() == "PRE"
+            || node
+                .style()
+                .get_property_value("white-space")
+                .starts_with("pre")
+    }
+
+    /// `findParentPreDOMNode(node)`: the nearest ancestor that keeps
+    /// whitespace (`<pre>` or `white-space: pre*`). JS caches the walk;
+    /// the import doesn't change the DOM, so the answer is the same.
+    pub(crate) fn find_parent_pre_dom_node(node: &DomNode) -> Option<DomNode> {
+        let mut parent = node.parent_node();
+        while let Some(p) = parent {
+            if is_node_pre(&p) {
+                return Some(p);
+            }
+            parent = p.parent_node();
+        }
+        None
+    }
+
+    /// `/[ \t\n]$/`.
+    fn ends_with_collapsible_space(text: &str) -> bool {
+        text.ends_with([' ', '\t', '\n'])
+    }
+
+    /// `text.replace(/^( |\t|\r?\n)+/, '')`.
+    fn trim_leading_whitespace_run(text: &str) -> &str {
+        let mut rest = text;
+        loop {
+            if let Some(r) = rest.strip_prefix([' ', '\t', '\n']) {
+                rest = r;
+            } else if let Some(r) = rest.strip_prefix("\r\n") {
+                rest = r;
+            } else {
+                return rest;
+            }
+        }
+    }
+
+    /// `$convertTextDOMNode(domNode)`: the text with whitespace collapsed as
+    /// a browser renders it, or raw text inside `pre`.
+    fn convert_text_dom_node(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        crate::error::invariant!(
+            dom_node.parent_element().is_some(),
+            "Expected parentElement of Text not to be null"
+        );
+        let raw = dom_node.text_content();
+        if find_parent_pre_dom_node(dom_node).is_some() {
+            return Ok(Some(DomConversionOutput {
+                node: crate::lexical_dom::DomConversionNode::Many(generate_nodes_from_raw_text(
+                    &raw,
+                )),
+                ..DomConversionOutput::default()
+            }));
+        }
+        // .replace(/\r/g, '').replace(/[ \t\n]+/g, ' ')
+        let mut text_content = String::with_capacity(raw.len());
+        for c in raw.chars().filter(|&c| c != '\r') {
+            if matches!(c, ' ' | '\t' | '\n') {
+                if !text_content.ends_with(' ') || text_content.is_empty() {
+                    text_content.push(' ');
+                }
+            } else {
+                text_content.push(c);
+            }
+        }
+        if text_content.is_empty() {
+            return Ok(Some(DomConversionOutput::node(None)));
+        }
+        if text_content.starts_with(' ') {
+            let mut previous_text = Some(dom_node.clone());
+            let mut is_start_of_line = true;
+            while let Some(found) = previous_text
+                .as_ref()
+                .and_then(|t| find_text_in_line(t, false))
+            {
+                let previous_text_content = found.text_content();
+                if !previous_text_content.is_empty() {
+                    if ends_with_collapsible_space(&previous_text_content) {
+                        text_content.remove(0);
+                    }
+                    is_start_of_line = false;
+                    break;
+                }
+                previous_text = Some(found);
+            }
+            if is_start_of_line && !text_content.is_empty() {
+                text_content.remove(0);
+            }
+        }
+        if text_content.ends_with(' ') {
+            let mut next_text = Some(dom_node.clone());
+            let mut is_end_of_line = true;
+            while let Some(found) = next_text.as_ref().and_then(|t| find_text_in_line(t, true)) {
+                if !trim_leading_whitespace_run(&found.text_content()).is_empty() {
+                    is_end_of_line = false;
+                    break;
+                }
+                next_text = Some(found);
+            }
+            if is_end_of_line {
+                text_content.pop();
+            }
+        }
+        if text_content.is_empty() {
+            return Ok(Some(DomConversionOutput::node(None)));
+        }
+        Ok(Some(DomConversionOutput::node(Some(create_text_node(
+            &text_content,
+        )))))
+    }
+
+    /// `findTextInLine(text, forward)`: the next (or previous) text node on
+    /// the same line, stopping at a block element or a `<br>`.
+    fn find_text_in_line(text: &DomNode, forward: bool) -> Option<DomNode> {
+        let mut node = text.clone();
+        loop {
+            let sibling = loop {
+                let sibling = if forward {
+                    node.next_sibling()
+                } else {
+                    node.previous_sibling()
+                };
+                match sibling {
+                    Some(sibling) => break sibling,
+                    None => node = node.parent_element()?,
+                }
+            };
+            node = sibling;
+            if node.is_element() {
+                let display = node.style().get_property_value("display");
+                if (display.is_empty() && !is_inline_dom_node(&node))
+                    || (!display.is_empty() && !display.starts_with("inline"))
+                {
+                    return None;
+                }
+            }
+            while let Some(descendant) = if forward {
+                node.first_child()
+            } else {
+                node.last_child()
+            } {
+                node = descendant;
+            }
+            if node.is_text() {
+                return Some(node);
+            } else if node.node_name() == "BR" {
+                return None;
+            }
+        }
+    }
+
+    /// `nodeNameToTextFormat`.
+    fn node_name_to_text_format(name: &str) -> Option<&'static str> {
+        Some(match name {
+            "code" => "code",
+            "em" | "i" => "italic",
+            "mark" => "highlight",
+            "s" => "strikethrough",
+            "strong" => "bold",
+            "sub" => "subscript",
+            "sup" => "superscript",
+            "u" => "underline",
+            _ => return None,
+        })
+    }
+
+    /// `convertTextFormatElement(domNode)`.
+    fn convert_text_format_element(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        let Some(format) = node_name_to_text_format(&dom_node.node_name().to_lowercase()) else {
+            return Ok(Some(DomConversionOutput::node(None)));
+        };
+        Ok(Some(DomConversionOutput {
+            for_child: Some(apply_text_format_from_style(
+                &dom_node.style(),
+                Some(format),
+            )),
+            ..DomConversionOutput::default()
+        }))
+    }
+
+    /// `applyTextFormatFromStyle(style, shouldApply)`: a child conversion
+    /// that gives a text node (or another inline formattable node) the
+    /// formats the style implies, and `shouldApply`.
+    pub(crate) fn apply_text_format_from_style(
+        style: &CssStyle,
+        should_apply: Option<&'static str>,
+    ) -> DomChildConversion {
+        let font_weight = style.get_property_value("font-weight");
+        let text_decoration = style.get_property_value("text-decoration");
+        let text_decoration: Vec<&str> = text_decoration.split(' ').collect();
+        let vertical_align = style.get_property_value("vertical-align");
+        let text_transform = style.get_property_value("text-transform");
+        let mut formats: Vec<&'static str> = Vec::new();
+        if font_weight == "700" || font_weight == "bold" {
+            formats.push("bold");
+        }
+        if text_decoration.contains(&"line-through") {
+            formats.push("strikethrough");
+        }
+        if style.get_property_value("font-style") == "italic" {
+            formats.push("italic");
+        }
+        if text_decoration.contains(&"underline") {
+            formats.push("underline");
+        }
+        if vertical_align == "sub" {
+            formats.push("subscript");
+        }
+        if vertical_align == "super" {
+            formats.push("superscript");
+        }
+        match text_transform.as_str() {
+            "lowercase" => formats.push("lowercase"),
+            "uppercase" => formats.push("uppercase"),
+            "capitalize" => formats.push("capitalize"),
+            _ => {}
+        }
+        formats.extend(should_apply);
+        Rc::new(move |lexical_node: &NodeRef, _parent: Option<&NodeRef>| {
+            let latest = lexical_node.get_latest();
+            if lexical_node.is_text() {
+                for format in &formats {
+                    if !lexical_node.has_format(format) {
+                        lexical_node.toggle_format(format);
+                    }
+                }
+            } else if latest.is_inline_formattable() {
+                for format in &formats {
+                    let current = to_int32(lexical_node.get_latest().get_inline_format());
+                    let flag = crate::constants::lookup(TEXT_TYPE_TO_FORMAT, format).unwrap_or(0);
+                    if current & flag == 0 {
+                        let next = toggle_text_format_type(current, format, None);
+                        lexical_node
+                            .get_latest()
+                            .set_inline_format(lexical_node, f64::from(next))?;
+                    }
+                }
+            }
+            Ok(Some(lexical_node.clone()))
+        })
     }
 }

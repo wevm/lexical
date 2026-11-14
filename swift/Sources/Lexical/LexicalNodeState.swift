@@ -300,10 +300,14 @@ public final class NodeState {
     knownState.set(ObjectIdentifier(stateConfig), (stateConfig, value))
   }
 
+  package func updateFromUnknown(_ k: String, _ v: JSONValue?) {
+    updateFromUnknown(k, v, identity: nil)
+  }
+
   /// `identity` is that of `v` in the state it is copied from; an object or
   /// array without one is new.
   package func updateFromUnknown(
-    _ k: String, _ v: JSONValue?, identity: UnknownValueIdentity? = nil
+    _ k: String, _ v: JSONValue?, identity: UnknownValueIdentity?
   ) {
     if UNSAFE_STATE_KEYS.contains(k) {
       return

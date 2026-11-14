@@ -33,6 +33,8 @@ updated with each milestone.
 | `registerPlainText` (the `plain-text` feature) | `packages/lexical-plain-text/src/index.ts` `registerPlainText`: the handlers of `DELETE_CHARACTER_COMMAND`, `DELETE_WORD_COMMAND`, `DELETE_LINE_COMMAND`, `CONTROLLED_TEXT_INSERTION_COMMAND` (string form), `REMOVE_TEXT_COMMAND`, `INSERT_LINE_BREAK_COMMAND`, `INSERT_PARAGRAPH_COMMAND` (a line break) and `SELECT_ALL_COMMAND` | `plain_text` | `scripts/plain-text` |
 | List nodes (the `list` feature) | `packages/lexical-list/src/LexicalListNode.ts` (`ListNode`: `getListType`, `setListType`, `getTag`, `getStart`, `setStart`, `canBeEmpty`, `canIndent`, `splice`, its `$transform`), `LexicalListItemNode.ts` (`ListItemNode`: `append`, `replace`, `insertAfter`, `remove`, `resetOnCopyNodeFrom`, `insertNewAfter`, `collapseAtStart`, `getValue`, `setValue`, `getChecked`, `setChecked`, `toggleChecked`, `getIndent`, `setIndent`, `canMergeWith`, `isParentRequired`, `createParentElementNode`, `canMergeWhenEmpty`, its `$transform`), `$createListNode`, `$isListNode`, `$createListItemNode`, `$isListItemNode`; their generated JSON (`LexicalListGeneratedJSON.ts`); `utils.ts`; the `LexicalNode` hooks they override (`append`, `splice`, `replace`, `insertAfter`, `remove`, `getIndent`, `setIndent`, `resetOnCopyNodeFrom`, a class's own `$transform`); from the core `$copyNode`, `getPreviousSiblings`, `getNextSiblings`, `$splitTextPointCaret`, `$splitAtPointCaretNext`, `$insertNodeToNearestRootAtCaret`; from `@lexical/utils` `$getNearestNodeOfType` | `list`, `lexical_utils`, `caret_utils`, `node`, `nodes::element`, `utils` | `serialization/list`, the list cases of `property/documents`, `scripts/list` |
 | `formatList.ts`, `registerList` and `registerCheckList` (the `list` feature) | `formatList.ts` (`$insertList`, `$createListOrMerge`, `mergeLists`, `$removeList`, `updateChildrenListItemValue`, `mergeNextSiblingListIfSameType`, `$handleIndent`, `$handleOutdent`, `$outdentFromItemWithContent`, `$handleListInsertParagraph`); `registerList.ts` `registerList` (`INSERT_ORDERED_LIST_COMMAND`, `INSERT_UNORDERED_LIST_COMMAND`, `REMOVE_LIST_COMMAND`, `UPDATE_LIST_START_COMMAND`, `INSERT_PARAGRAPH_COMMAND`, and the `ListItemNode` and `TextNode` transforms), with `RegisterListOptions`; `checkList.ts` `INSERT_CHECK_LIST_COMMAND` and its handler | `list::format_list`, `list::register_list` | `scripts/list` |
+| Link nodes (the `link` feature) | `packages/lexical-link/src/LexicalLinkNode.ts` (`LinkNode`: `getURL`, `setURL`, `getTarget`, `setTarget`, `getRel`, `setRel`, `getTitle`, `setTitle`, `insertNewAfter`, `canInsertTextBefore`, `canInsertTextAfter`, `canBeEmpty`, `isInline`, `extractWithChild`, `isEmailURI`, `isWebSiteURI`, `shouldMergeAdjacentLink`; `AutoLinkNode`: `getIsUnlinked`, `setIsUnlinked`, its `shouldMergeAdjacentLink`), `$createLinkNode`, `$isLinkNode`, `$createAutoLinkNode`, `$isAutoLinkNode`, `$linkNodeTransform`, `formatUrl`; their generated JSON (`LexicalLinkGeneratedJSON.ts`, with `afterCloneLinkNode` and `afterCloneAutoLinkNode` as `Clone`); `ElementNode.extractWithChild` as a node hook and `isParentOf`; from the core `RangeSelection.extract` and `NodeSelection.extract` | `link`, `node`, `selection_editing` | `serialization/link`, the link cases of `property/documents`, `scripts/link` |
+| `$toggleLink` and `registerLink` (the `link` feature) | `LexicalLinkNode.ts` (`TOGGLE_LINK_COMMAND`, `$toggleLink`, `$withSelectedNodes`, `$getPointNode`, `$splitLinkAtSelection`); `LexicalLinkExtension.ts` `registerLink` (the `LinkNode` transform and the `TOGGLE_LINK_COMMAND` handler, with `validateUrl` and `attributes` from `LinkConfig`) | `link::register_link`, `link::toggle_link` | `scripts/link` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -52,8 +54,8 @@ touches:
   where it lands (a unit test checks that against JS with a stubbed
   `Selection.modify`). The vectors record the headless behavior. The DOM
   details around the measurement (block cursor element, shadow DOM ranges,
-  Firefox's line-affinity retry) have no counterpart. `extract`, and
-  `$selectAll(selection)`'s scoping aren't ported, nor
+  Firefox's line-affinity retry) have no counterpart.
+  `$selectAll(selection)`'s scoping isn't ported, nor
   `insertNodes`' CASE 3a (blocks with no block ancestor, which needs
   `$insertNodeToNearestRootAtCaret`).
 - `@lexical/list`'s DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
@@ -75,6 +77,31 @@ touches:
   at the start of a document's first item, with nothing before it, needs
   `Selection.modify` in headless JS, which throws, as `scripts/list`
   records.
+- `@lexical/link`'s DOM parts (`createDOM`, `updateDOM`, `updateLinkDOM`,
+  `exportDOM`, `importDOM`, `$convertAnchorElement`, `LinkImportRules` and
+  `LinkImportExtension`), which come with `html`, and `sanitizeUrl`, which
+  only `updateLinkDOM` calls and which needs the WHATWG URL parser
+  (`new URL`); `LinkExtension`, which needs the extension API
+  (`register_link` with `LinkConfig::default()` is what its defaults do,
+  and the config is a value where JS reads signals); `registerLink`'s
+  `PASTE_COMMAND` handler (registered only with `validateUrl`), which reads
+  a `ClipboardEvent`'s data; `registerAutoLink` (`AutoLinkExtension`,
+  `createLinkMatcherWithRegExp`, `autoLinkUrlMatcher`,
+  `autoLinkEmailMatcher`), whose URL and email matchers use `\p{L}` and
+  `\p{N}`, which need Unicode property tables (a follow-up; documents with
+  an `AutoLinkNode` parse, serialize and edit already);
+  `ClickableLinkExtension` and `AutoLinkAnnounceExtension`, which need a
+  DOM. What `NodeStructureExtension` does for links where it enforces node
+  structure (lifting blocks, merging equal adjacent links, which
+  `$linkNodeTransform` then leaves to it) isn't ported, so the transform
+  always does both. `extractWithChild` is a node hook that nothing calls
+  yet: its caller is `@lexical/html`'s copy. `HeadingNode`'s override is
+  ported; `ParagraphNode`'s, which reads the selection, comes with `html`. In a headless editor,
+  `LinkNode.canInsertTextBefore` and `canInsertTextAfter` change nothing a
+  vector can see: `insertText` at the edge of an inline parent's text puts
+  the text outside the parent either way, and
+  `$resolveSelectionPointOnBoundary`, which also reads them, runs only
+  after `Selection.modify`.
 - The slot-aware caret comparisons (`$comparePointCaretNextAcrossSlots`,
   `$getCommonAncestorAcrossSlots`). Without slots, NodeState or the text
   edit log, `$removeTextFromCaretRange` never meets a slot host and carries

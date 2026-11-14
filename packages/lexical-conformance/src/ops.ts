@@ -6,7 +6,15 @@
  *
  */
 
+import {namedSignals} from '@lexical/extension';
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
+import {
+  AutoLinkNode,
+  LinkExtension,
+  LinkNode,
+  registerLink,
+  TOGGLE_LINK_COMMAND,
+} from '@lexical/link';
 import {
   $isListItemNode,
   INSERT_CHECK_LIST_COMMAND,
@@ -183,6 +191,13 @@ export type Script = {
    * dependency (with their default options).
    */
   list?: boolean;
+  /**
+   * Register `@lexical/link`'s nodes (`LinkNode`, `AutoLinkNode`) and
+   * `registerLink(editor)` with `LinkExtension`'s default config, after the
+   * list. `TOGGLE_LINK_COMMAND` takes `null`, a URL or
+   * `{url, target, rel, title}`.
+   */
+  link?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -558,8 +573,8 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
 ]);
 
 /**
- * The commands of the packages a script registers (`list`), named as their
- * package exports them.
+ * The commands of the packages a script registers (`list`, `link`), named as
+ * their package exports them.
  */
 const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['INSERT_CHECK_LIST_COMMAND', INSERT_CHECK_LIST_COMMAND],
@@ -567,6 +582,7 @@ const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['INSERT_UNORDERED_LIST_COMMAND', INSERT_UNORDERED_LIST_COMMAND],
   ['REMOVE_LIST_COMMAND', REMOVE_LIST_COMMAND],
   ['UPDATE_LIST_START_COMMAND', UPDATE_LIST_START_COMMAND],
+  ['TOGGLE_LINK_COMMAND', TOGGLE_LINK_COMMAND],
 ]);
 
 function command(ctx: Context, name: string): LexicalCommand<Json> {
@@ -660,6 +676,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     nodes: [
       ...(script.richText ? [HeadingNode, QuoteNode] : []),
       ...(script.list ? [ListNode, ListItemNode] : []),
+      ...(script.link ? [LinkNode, AutoLinkNode] : []),
     ],
     onError: e => {
       throw e;
@@ -675,6 +692,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
   if (script.list) {
     registerList(editor);
     registerCheckList(editor);
+  }
+  if (script.link) {
+    registerLink(editor, namedSignals(LinkExtension.config!));
   }
   for (const name of script.transforms ?? []) {
     const transform = TRANSFORMS[name];

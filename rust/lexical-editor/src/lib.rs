@@ -47,6 +47,8 @@
 mod caret;
 mod caret_tree;
 mod caret_utils;
+#[cfg(feature = "code")]
+pub mod code;
 mod commands;
 pub mod constants;
 mod editor;
@@ -123,7 +125,9 @@ pub use lexical_selection::{
     NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
     create_node_selection, create_range_selection, get_selection, set_selection,
 };
-pub use lexical_utils::{copy_node, get_node_by_key, get_root, reset_random_key};
+pub use lexical_utils::{
+    copy_node, get_node_by_key, get_root, get_text_direction, reset_random_key,
+};
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};
 pub use nodes::element::{Direction, ElementData};
 pub use nodes::paragraph::create_paragraph_node;

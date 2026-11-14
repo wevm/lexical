@@ -1,5 +1,6 @@
 import Foundation
 import Lexical
+import LexicalCodeCore
 import LexicalExtension
 import LexicalHistory
 import LexicalLink
@@ -531,7 +532,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   // `richText: true` registers @lexical/rich-text's nodes and
   // `registerRichText`, `list: true` @lexical/list's nodes,
   // `registerList` and `registerCheckList`, and `link: true` @lexical/link's
-  // nodes and `registerLink` with its default config, as ops.ts does.
+  // nodes and `registerLink` with its default config, and `code: true`
+  // @lexical/code-core's nodes, `CodeExtension`'s TabNode transform and
+  // `registerCodeIndentation`, as ops.ts does.
   var nodes: [LexicalNodeConfig] =
     script["richText"]?.boolValue == true
     ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
@@ -540,6 +543,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   }
   if script["link"]?.boolValue == true {
     nodes += [.klass(LinkNode.self), .klass(AutoLinkNode.self)]
+  }
+  if script["code"]?.boolValue == true {
+    nodes += [.klass(CodeNode.self), .klass(CodeHighlightNode.self)]
   }
   let editor = try createEditor(
     CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))
@@ -571,6 +577,17 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
         AutoLinkConfig(
           changeHandlers: [changeHandler], matchers: [autoLinkUrlMatcher, autoLinkEmailMatcher]))
     }
+  }
+  if script["code"]?.boolValue == true {
+    // `CodeExtension`'s register, which ops.ts calls on its own; Swift's
+    // takes the builder's state, so its transform is registered here. Its
+    // KEY_ENTER_COMMAND handler is left out: no script dispatches a key.
+    _ = try editor.registerNodeTransform(TabNode.self) { node in
+      if try node.getFormat() != 0, try node.getParent() is CodeNode {
+        try node.setFormat(0)
+      }
+    }
+    _ = registerCodeIndentation(editor)
   }
   for name in script["transforms"]?.arrayValue ?? [] {
     try registerTransform(name.stringValue.orThrow(), ctx)

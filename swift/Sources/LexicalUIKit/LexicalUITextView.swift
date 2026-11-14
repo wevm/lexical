@@ -1099,8 +1099,9 @@
     public func dropInteraction(
       _ interaction: UIDropInteraction, canHandle session: any UIDropSession
     ) -> Bool {
+      // Text, or any file (`DataTransfer.load`).
       session.hasItemsConforming(
-        toTypeIdentifiers: TextKitPasteboard.types.map(\.type) + ["public.image"])
+        toTypeIdentifiers: TextKitPasteboard.types.map(\.type) + ["public.data"])
     }
 
     public func dropInteraction(

@@ -14,7 +14,23 @@ import LexicalUtils
 // paste, because a native control inside a decorator handles its own
 // clipboard; and the iOS text-file drop fall-through, a WebKit quirk.
 
-/// `DRAG_DROP_PASTE`: files dropped or pasted into the editor.
+/// `DRAG_DROP_PASTE`: files dropped or pasted into the editor. Nothing has
+/// read them yet; a handler that wants their contents awaits each file's
+/// `bytes()`, as upstream's `mediaFileReader` reads each `File`:
+///
+/// ```swift
+/// editor.registerCommand(DRAG_DROP_PASTE, { files, editor in
+///   let images = files.filter { isMimeType($0, ["image/"]) }
+///   if images.isEmpty { return false }
+///   Task { @MainActor in
+///     for image in images {
+///       let bytes = try await image.bytes()
+///       // insert the image
+///     }
+///   }
+///   return true
+/// }, COMMAND_PRIORITY_LOW)
+/// ```
 public let DRAG_DROP_PASTE = LexicalCommand<[DataTransferFile]>("DRAG_DROP_PASTE_FILE")
 
 /// `EscapeFormatTrigger`: the interactions that can escape a format.

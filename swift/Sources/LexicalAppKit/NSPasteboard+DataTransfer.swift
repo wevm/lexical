@@ -42,24 +42,41 @@
           || (dataTransfer.types.isEmpty && availableType(from: [.png, .tiff]) != nil)
         return dataTransfer
       }
+      // The files are read only when a handler asks for their bytes, off
+      // the main thread, as a web `File` is a lazy blob.
       for url in urls {
-        guard let data = try? Data(contentsOf: url) else { continue }
+        let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+        guard values?.isRegularFile == true else { continue }
         let type =
           UTType(filenameExtension: url.pathExtension)?.preferredMIMEType
           ?? TextKitPasteboard.mimeType(forPathExtension: url.pathExtension)
         dataTransfer.files.append(
-          DataTransferFile(name: url.lastPathComponent, type: type, data: Array(data)))
+          DataTransferFile(name: url.lastPathComponent, type: type, size: values?.fileSize) {
+            try await readFile(url)
+          })
       }
       if dataTransfer.files.isEmpty, dataTransfer.types.isEmpty {
         // An image copied from an app, with no file behind it.
-        for (type, ext) in [(NSPasteboard.PasteboardType.png, "png"), (.tiff, "tiff")] {
-          if let data = data(forType: type) {
-            dataTransfer.files.append(
-              DataTransferFile(
-                name: "image.\(ext)", type: TextKitPasteboard.mimeType(forPathExtension: ext),
-                data: Array(data)))
-            break
-          }
+        for (type, ext) in [(NSPasteboard.PasteboardType.png, "png"), (.tiff, "tiff")]
+        where availableType(from: [type]) != nil {
+          nonisolated(unsafe) let pasteboard = self
+          let changeCount = changeCount
+          dataTransfer.files.append(
+            DataTransferFile(
+              name: "image.\(ext)", type: TextKitPasteboard.mimeType(forPathExtension: ext),
+              size: nil
+            ) {
+              // A pasteboard is read on the main thread, and only while it
+              // still holds what was pasted or dropped.
+              let data = try await MainActor.run {
+                guard pasteboard.changeCount == changeCount,
+                  let data = pasteboard.data(forType: type)
+                else { throw CocoaError(.fileReadNoSuchFile) }
+                return data
+              }
+              return Array(data)
+            })
+          break
         }
       }
       return dataTransfer
@@ -84,6 +101,12 @@
       clearContents()
       _ = writeObjects([dataTransfer.pasteboardItem()])
     }
+  }
+
+  /// The contents of the file at `url`, read off the main thread.
+  @concurrent
+  private func readFile(_ url: URL) async throws -> [UInt8] {
+    Array(try Data(contentsOf: url))
   }
 
   extension DataTransfer {

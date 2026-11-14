@@ -361,16 +361,41 @@ public func compileKeyboardShortcuts<S: KeyboardShortcutMatch>(
 
 // MARK: - Other DOM-shaped events
 
-/// One file of a `DataTransfer`.
-public struct DataTransferFile: Equatable, Sendable {
+/// One file of a `DataTransfer`, as a web `File`: its name, type and size
+/// are known up front, and its contents are read only when `bytes()` asks
+/// for them, as `File.bytes()` reads a lazy `Blob`.
+public struct DataTransferFile: Sendable {
+  /// `File.name`.
   public var name: String
+  /// `File.type`, a MIME type.
   public var type: String
-  public var data: [UInt8]
+  /// `File.size` in bytes, or `nil` when it isn't known without reading
+  /// the file (an item that is still loading, on iOS).
+  public var size: Int?
+  private let load: @Sendable () async throws -> [UInt8]
 
+  /// A file whose contents are `data`, in memory.
   public init(name: String, type: String, data: [UInt8] = []) {
+    self.init(name: name, type: type, size: data.count) { data }
+  }
+
+  /// A file that `load` reads when `bytes()` is called, each time it is
+  /// called.
+  public init(
+    name: String, type: String, size: Int?,
+    load: @escaping @Sendable () async throws -> [UInt8]
+  ) {
     self.name = name
     self.type = type
-    self.data = data
+    self.size = size
+    self.load = load
+  }
+
+  /// `File.bytes()`: the file's contents. Throws when the file can no
+  /// longer be read, such as one deleted since it was dropped, as a web
+  /// `File` rejects with `NotReadableError`.
+  public func bytes() async throws -> [UInt8] {
+    try await load()
   }
 }
 

@@ -84,4 +84,6 @@ Listed with their category in the repository's `swift/parity/deviations.json`:
 - **Clipboard.** RTF without HTML is converted to HTML before
   `PASTE_COMMAND`. Lexical's own clipboard data travels as the pasteboard
   type `dev.lexical.editor`. A drag moved into another editor is removed
-  from the source by the source view.
+  from the source by the source view. A pasted or dropped file is read when
+  a handler awaits `bytes()`; on iOS its load starts at the paste or drop,
+  since UIKit allows it only then, and its `size` is `nil`.

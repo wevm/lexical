@@ -91,8 +91,8 @@ private func richTextEditor(
     let editor = try richTextEditor(filesAlwaysWin)
     defer { editor.dispose() }
     #expect(
-      try paste(editor, dataTransfer([("text/html", #"<img src="blob:fake">"#)], [fakeImage]))
-        == [fakeImage])
+      try paste(editor, dataTransfer([("text/html", #"<img src="blob:fake">"#)], [fakeImage]))?
+        .map(\.name) == [fakeImage.name])
   }
 
   @Test(
@@ -130,7 +130,7 @@ private func richTextEditor(
   func fileOnly() throws {
     let editor = try richTextEditor()
     defer { editor.dispose() }
-    #expect(try paste(editor, dataTransfer([], [fakeImage])) == [fakeImage])
+    #expect(try paste(editor, dataTransfer([], [fakeImage]))?.map(\.name) == [fakeImage.name])
   }
 
   @Test(
@@ -184,7 +184,7 @@ private final class CaretRoot: LexicalRootElement {
     let files = try captureFiles(editor) {
       _ = try editor.dispatchCommand(DROP_COMMAND, dropEvent([fakeImage]))
     }
-    #expect(files == [fakeImage])
+    #expect(files?.map(\.name) == [fakeImage.name])
   }
 
   @Test(
@@ -207,7 +207,7 @@ private final class CaretRoot: LexicalRootElement {
     let files = try captureFiles(editor) {
       _ = try editor.dispatchCommand(DROP_COMMAND, dropEvent([fakeImage]))
     }
-    #expect(files == [fakeImage])
+    #expect(files?.map(\.name) == [fakeImage.name])
     try editor.setRootElement(nil)
   }
 }

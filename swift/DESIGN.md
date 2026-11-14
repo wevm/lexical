@@ -717,7 +717,13 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `application/x-lexical-editor` as `dev.lexical.editor`, the drag marker as
   `dev.lexical.drag`, `text/html` as `public.html`, `text/plain` and
   `text/uri-list` as their public types, and file URLs and images as
-  `files`. `copy:` and `cut:` dispatch `COPY_COMMAND` / `CUT_COMMAND` with a
+  `files`. Files load lazily, as a web `File` is a `Blob` read through a
+  promise: a `DataTransferFile` has its name, type and `size` up front and
+  reads its contents in `async bytes()`, off the main thread, so a paste or
+  drop of large files reads nothing until a handler asks. On iOS, UIKit
+  lets items load only during the paste or drop, so each file starts
+  loading into a temporary file then and `bytes()` waits for it; iOS drops
+  and pastes carry files of any type, not only images. `copy:` and `cut:` dispatch `COPY_COMMAND` / `CUT_COMMAND` with a
   `ClipboardEvent` and write its data when a handler prevented the default;
   `paste:` dispatches `PASTE_COMMAND`, and paste as plain text passes only
   `text/plain`. RTF without HTML (from native apps) is converted to HTML,

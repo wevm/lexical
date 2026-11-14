@@ -364,6 +364,39 @@
       _ = window
     }
 
+    /// A pasted image is a file of the paste, read when its bytes are.
+    @Test func pastesAnImageAsAFile() async throws {
+      let (view, window) = try makeView()
+      let png: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 1, 2, 3]
+      view.pasteboard.setItems([["public.png": Data(png)]])
+      let files = view.pasteboard.lexicalDataTransfer().files
+      #expect(files.map(\.name) == ["image.png"])
+      #expect(files.map(\.type) == ["image/png"])
+      #expect(try await files.first?.bytes() == png)
+      _ = window
+    }
+
+    /// A dropped file that isn't an image is a file of the drop too, as a
+    /// web drop's `files` holds every file; a drop of text has none.
+    @Test func dropsAFileThatIsNotAnImage() async throws {
+      let pdf = Array("%PDF-1.7 report".utf8)
+      let report = NSItemProvider(item: Data(pdf) as NSData, typeIdentifier: "com.adobe.pdf")
+      report.suggestedName = "Report"
+      let text = NSItemProvider(object: "dropped" as NSString)
+      nonisolated(unsafe) var dataTransfer: DataTransfer?
+      await withCheckedContinuation { continuation in
+        DataTransfer.load([report, text]) {
+          dataTransfer = $0
+          continuation.resume()
+        }
+      }
+      let files = try #require(dataTransfer).files
+      #expect(files.map(\.name) == ["Report.pdf"])
+      #expect(files.map(\.type) == ["application/pdf"])
+      #expect(dataTransfer?.getData("text/plain") == "dropped")
+      #expect(try await files.first?.bytes() == pdf)
+    }
+
     @Test func centersTextInCSSLineBoxes() throws {
       let (view, window) = try makeView()
       // Lines of capitals, whose ink runs from the cap height to the

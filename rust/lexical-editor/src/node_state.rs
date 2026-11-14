@@ -1056,13 +1056,13 @@ pub(crate) fn carry_node_state(from: &NodeRef, to: &NodeRef) -> Result<(), Lexic
 
 /// The value of a known config for a JSON read, as `unparse` writes it
 /// (what `registerLexicalTextEntity`'s `$carryNodeState` needs).
-#[cfg(feature = "text")]
+#[cfg(any(feature = "text", feature = "devtools"))]
 pub(crate) fn unparse(config: &AnyStateConfig, value: &Rc<dyn Any>) -> Value {
     config.0.unparse_any(&**value)
 }
 
 /// Whether `value` is the default of `config`.
-#[cfg(feature = "text")]
+#[cfg(any(feature = "text", feature = "devtools"))]
 pub(crate) fn is_default(config: &AnyStateConfig, value: &Rc<dyn Any>) -> bool {
     config.0.is_equal_any(&**value, &*config.0.default_any())
 }

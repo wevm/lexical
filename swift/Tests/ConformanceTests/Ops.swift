@@ -10,6 +10,7 @@ import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
 import LexicalSelection
+import LexicalText
 
 // The Swift interpreter of the script vectors that
 // packages/lexical-conformance/src/ops.ts writes. It must do exactly what
@@ -593,6 +594,34 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
       try setBlocksType(getSelection()) { try createHeadingNode(tag) }
     case let block: throw ScriptError("unknown block \(String(describing: block))")
     }
+  case "logRootTextContent":
+    ctx.log.append(.array([.string("rootTextContent"), .string(try rootTextContent())]))
+  case "logRootTextContentEmpty":
+    // `trim` absent is `undefined` in JS, so the default (`true`) applies.
+    let isComposing = try action["isComposing"]?.boolValue.orThrow() ?? false
+    let trim = action["trim"]?.boolValue
+    ctx.log.append(
+      .array([
+        .string("rootTextContentEmpty"), .bool(isComposing), trim.map(JSONValue.bool) ?? .null,
+        .bool(try isRootTextContentEmpty(isComposing, trim: trim ?? true)),
+        .bool(try isRootTextContentEmptyCurry(isComposing, trim: trim ?? true)()),
+      ]))
+  case "logCanShowPlaceholder":
+    let isComposing = try action["isComposing"]?.boolValue.orThrow() ?? false
+    ctx.log.append(
+      .array([
+        .string("canShowPlaceholder"), .bool(isComposing),
+        .bool(try canShowPlaceholder(isComposing)),
+        .bool(try canShowPlaceholderCurry(isComposing)()),
+      ]))
+  case "logTextIntersection":
+    let characters = try action["characters"]?.int.orThrow() ?? 0
+    let found = try findTextIntersectionFromCharacters(getRoot(), characters)
+    ctx.log.append(
+      .array([
+        .string("textIntersection"), .number(Double(characters)),
+        found.map { .array([.string($0.node.getKey()), .number(Double($0.offset))]) } ?? .null,
+      ]))
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)

@@ -1,6 +1,9 @@
 //! `LexicalNode.ts`: the node trait every node implements, and [`NodeRef`],
 //! the handle through which code outside a node reads and changes one.
 
+use crate::caret::{
+    CommonAncestorResult, get_common_ancestor, get_common_ancestor_result_branch_order,
+};
 use crate::caret_tree::{
     detach_node_with_selection, error_on_insert_text_node_on_root, insert_node_between,
     insert_sibling, select_adjacent_node,
@@ -18,6 +21,7 @@ use crate::nodes::text::TextData;
 use crate::updates::{error_on_read_only, get_active_editor_state};
 use crate::{LexicalError, json::Object, utf16};
 use std::any::Any;
+use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
 
@@ -651,6 +655,76 @@ impl NodeRef {
             node = n.get_parent();
         }
         false
+    }
+
+    /// `isSelected(selection)`: whether the node is among the nodes of
+    /// `selection`, or of the current selection when `None`. An element or
+    /// decorator isn't selected by a collapsed range between children, and
+    /// an inline decorator that is its parent's last child isn't selected by
+    /// an element range starting at the parent's end.
+    pub fn is_selected(&self, selection: Option<&SelectionRef>) -> Result<bool, LexicalError> {
+        let current;
+        let target_selection = match selection {
+            Some(selection) => selection,
+            None => match get_selection() {
+                Some(selection) => {
+                    current = selection;
+                    &current
+                }
+                None => return Ok(false),
+            },
+        };
+        // `$isKeyInSelectionNodes(targetSelection, this.__key)`.
+        let is_selected = target_selection
+            .get_nodes()?
+            .iter()
+            .any(|node| node.get_key() == self.key);
+        if !is_selected || self.is_text() {
+            return Ok(is_selected);
+        }
+        // For inline images inside of element nodes.
+        // Without this change the image will be selected if the cursor is
+        // before or after it.
+        if let Some(range) = target_selection.range()
+            && range.anchor.point_type == PointType::Element
+            && range.focus.point_type == PointType::Element
+        {
+            if range.is_collapsed() {
+                return Ok(false);
+            }
+            let parent_node = self.get_parent();
+            if let Some(parent_node) =
+                parent_node.filter(|_| self.is_decorator() && self.is_inline())
+            {
+                let first_point = if target_selection.is_backward()? {
+                    &range.focus
+                } else {
+                    &range.anchor
+                };
+                if first_point.key == parent_node.get_key()
+                    && first_point.offset == parent_node.get_children_size()
+                    && parent_node.get_last_child().as_ref() == Some(self)
+                {
+                    return Ok(false);
+                }
+            }
+        }
+        Ok(is_selected)
+    }
+
+    /// `isBefore(targetNode)`: whether this node comes before `target` in
+    /// the document.
+    pub fn is_before(&self, target: &NodeRef) -> bool {
+        match get_common_ancestor(self, target) {
+            None => false,
+            Some(CommonAncestorResult::Descendant { .. }) => true,
+            Some(CommonAncestorResult::Branch { a, b, .. }) => {
+                get_common_ancestor_result_branch_order(&a, &b) == Ordering::Less
+            }
+            Some(CommonAncestorResult::Same { .. } | CommonAncestorResult::Ancestor { .. }) => {
+                false
+            }
+        }
     }
 
     /// `isSelected()` for a node selection. Range selections come with

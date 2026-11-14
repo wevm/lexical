@@ -32,6 +32,7 @@
     "@lexical/plain-text": "workspace:*",
     "@lexical/rich-text": "workspace:*",
     "@lexical/selection": "workspace:*",
+    "@lexical/text": "workspace:*",
     "entities": "2.2.0",
     "fast-check": "^4.10.2",
     "lexical": "workspace:*"

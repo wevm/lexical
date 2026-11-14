@@ -173,54 +173,58 @@ impl Ctx {
     /// (`CORE_COMMANDS`), a list or link command (`PACKAGE_COMMANDS`), or one
     /// command per other name.
     fn command(&self, name: &str) -> ScriptCommand {
-        match name {
-            "CAN_REDO_COMMAND" => ScriptCommand::Bool(CAN_REDO_COMMAND),
-            "CAN_UNDO_COMMAND" => ScriptCommand::Bool(CAN_UNDO_COMMAND),
-            "CLEAR_EDITOR_COMMAND" => ScriptCommand::Void(CLEAR_EDITOR_COMMAND),
-            "CLEAR_HISTORY_COMMAND" => ScriptCommand::Void(CLEAR_HISTORY_COMMAND),
-            "CONTROLLED_TEXT_INSERTION_COMMAND" => {
-                ScriptCommand::Str(CONTROLLED_TEXT_INSERTION_COMMAND)
-            }
-            "DELETE_CHARACTER_COMMAND" => ScriptCommand::Bool(DELETE_CHARACTER_COMMAND),
-            "DELETE_LINE_COMMAND" => ScriptCommand::Bool(DELETE_LINE_COMMAND),
-            "DELETE_WORD_COMMAND" => ScriptCommand::Bool(DELETE_WORD_COMMAND),
-            "FORMAT_ELEMENT_COMMAND" => ScriptCommand::Str(FORMAT_ELEMENT_COMMAND),
-            "FORMAT_TEXT_COMMAND" => ScriptCommand::Str(FORMAT_TEXT_COMMAND),
-            "INDENT_CONTENT_COMMAND" => ScriptCommand::Void(INDENT_CONTENT_COMMAND),
-            "INSERT_LINE_BREAK_COMMAND" => ScriptCommand::Bool(INSERT_LINE_BREAK_COMMAND),
-            "INSERT_PARAGRAPH_COMMAND" => ScriptCommand::Void(INSERT_PARAGRAPH_COMMAND),
-            "INSERT_TAB_COMMAND" => ScriptCommand::Void(INSERT_TAB_COMMAND),
-            "OUTDENT_CONTENT_COMMAND" => ScriptCommand::Void(OUTDENT_CONTENT_COMMAND),
-            "REDO_COMMAND" => ScriptCommand::Void(REDO_COMMAND),
-            "REMOVE_TEXT_COMMAND" => ScriptCommand::Void(REMOVE_TEXT_COMMAND),
-            "SELECT_ALL_COMMAND" => ScriptCommand::Void(SELECT_ALL_COMMAND),
-            "SET_TEXT_FORMAT_COMMAND" => ScriptCommand::Formats(SET_TEXT_FORMAT_COMMAND),
-            "UNDO_COMMAND" => ScriptCommand::Void(UNDO_COMMAND),
-            "INSERT_CHECK_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_CHECK_LIST_COMMAND),
-            "INSERT_ORDERED_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_ORDERED_LIST_COMMAND),
-            "INSERT_UNORDERED_LIST_COMMAND" => {
-                ScriptCommand::Void(list::INSERT_UNORDERED_LIST_COMMAND)
-            }
-            "REMOVE_LIST_COMMAND" => ScriptCommand::Void(list::REMOVE_LIST_COMMAND),
-            "UPDATE_LIST_START_COMMAND" => {
-                ScriptCommand::ListStart(list::UPDATE_LIST_START_COMMAND)
-            }
-            "TOGGLE_LINK_COMMAND" => ScriptCommand::Link(link::TOGGLE_LINK_COMMAND),
-            _ => ScriptCommand::Json(
+        known_command(name).unwrap_or_else(|| {
+            ScriptCommand::Json(
                 self.commands
                     .borrow_mut()
                     .entry(name.to_owned())
                     .or_insert_with(|| create_command(name))
                     .clone(),
-            ),
-        }
+            )
+        })
     }
+}
+
+/// One of Lexical's own commands (`CORE_COMMANDS`) or a list or link command
+/// (`PACKAGE_COMMANDS`), by the name JS exports it as.
+pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
+    Some(match name {
+        "CAN_REDO_COMMAND" => ScriptCommand::Bool(CAN_REDO_COMMAND),
+        "CAN_UNDO_COMMAND" => ScriptCommand::Bool(CAN_UNDO_COMMAND),
+        "CLEAR_EDITOR_COMMAND" => ScriptCommand::Void(CLEAR_EDITOR_COMMAND),
+        "CLEAR_HISTORY_COMMAND" => ScriptCommand::Void(CLEAR_HISTORY_COMMAND),
+        "CONTROLLED_TEXT_INSERTION_COMMAND" => {
+            ScriptCommand::Str(CONTROLLED_TEXT_INSERTION_COMMAND)
+        }
+        "DELETE_CHARACTER_COMMAND" => ScriptCommand::Bool(DELETE_CHARACTER_COMMAND),
+        "DELETE_LINE_COMMAND" => ScriptCommand::Bool(DELETE_LINE_COMMAND),
+        "DELETE_WORD_COMMAND" => ScriptCommand::Bool(DELETE_WORD_COMMAND),
+        "FORMAT_ELEMENT_COMMAND" => ScriptCommand::Str(FORMAT_ELEMENT_COMMAND),
+        "FORMAT_TEXT_COMMAND" => ScriptCommand::Str(FORMAT_TEXT_COMMAND),
+        "INDENT_CONTENT_COMMAND" => ScriptCommand::Void(INDENT_CONTENT_COMMAND),
+        "INSERT_LINE_BREAK_COMMAND" => ScriptCommand::Bool(INSERT_LINE_BREAK_COMMAND),
+        "INSERT_PARAGRAPH_COMMAND" => ScriptCommand::Void(INSERT_PARAGRAPH_COMMAND),
+        "INSERT_TAB_COMMAND" => ScriptCommand::Void(INSERT_TAB_COMMAND),
+        "OUTDENT_CONTENT_COMMAND" => ScriptCommand::Void(OUTDENT_CONTENT_COMMAND),
+        "REDO_COMMAND" => ScriptCommand::Void(REDO_COMMAND),
+        "REMOVE_TEXT_COMMAND" => ScriptCommand::Void(REMOVE_TEXT_COMMAND),
+        "SELECT_ALL_COMMAND" => ScriptCommand::Void(SELECT_ALL_COMMAND),
+        "SET_TEXT_FORMAT_COMMAND" => ScriptCommand::Formats(SET_TEXT_FORMAT_COMMAND),
+        "UNDO_COMMAND" => ScriptCommand::Void(UNDO_COMMAND),
+        "INSERT_CHECK_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_CHECK_LIST_COMMAND),
+        "INSERT_ORDERED_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_ORDERED_LIST_COMMAND),
+        "INSERT_UNORDERED_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_UNORDERED_LIST_COMMAND),
+        "REMOVE_LIST_COMMAND" => ScriptCommand::Void(list::REMOVE_LIST_COMMAND),
+        "UPDATE_LIST_START_COMMAND" => ScriptCommand::ListStart(list::UPDATE_LIST_START_COMMAND),
+        "TOGGLE_LINK_COMMAND" => ScriptCommand::Link(link::TOGGLE_LINK_COMMAND),
+        _ => return None,
+    })
 }
 
 /// A command a script names, by its payload type: Lexical's own take
 /// nothing (`void`), a boolean, a string or a map of formats to booleans,
 /// and those the script makes take any JSON.
-enum ScriptCommand {
+pub(crate) enum ScriptCommand {
     Void(LexicalCommand<()>),
     Bool(LexicalCommand<bool>),
     Str(LexicalCommand<String>),
@@ -302,7 +306,7 @@ fn formats_of(payload: &Value) -> Option<Vec<(String, bool)>> {
 impl ScriptCommand {
     /// `editor.dispatchCommand(command, payload)`. A payload the command
     /// doesn't take is an error, which JS would pass on as it is.
-    fn dispatch(&self, editor: &Editor, payload: Value) -> Result<bool, LexicalError> {
+    pub(crate) fn dispatch(&self, editor: &Editor, payload: Value) -> Result<bool, LexicalError> {
         match self {
             ScriptCommand::Void(command) if payload.is_null() => {
                 editor.dispatch_command(command, ())
@@ -914,7 +918,7 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
 }
 
 /// `$selectionSnapshot()`.
-fn selection_snapshot() -> Value {
+pub(crate) fn selection_snapshot() -> Value {
     let Some(selection) = get_selection() else {
         return Value::Null;
     };

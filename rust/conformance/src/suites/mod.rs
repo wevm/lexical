@@ -160,6 +160,11 @@ pub fn all() -> Vec<Suite> {
             variant: Some("JSON and text"),
             check: property::check_document,
         },
+        Suite {
+            file: "property/sequences",
+            variant: None,
+            check: property::check_sequence,
+        },
     ]
 }
 

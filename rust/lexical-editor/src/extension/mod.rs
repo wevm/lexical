@@ -4,7 +4,9 @@
 //! inline one that carries a text format (`DecoratorTextExtension.ts`),
 //! with their `$create`/`$is` functions. Neither has a schema of its own,
 //! so their JSON is `LexicalNode`'s, with `DecoratorTextNode`'s `format` as
-//! a flat NodeState.
+//! a flat NodeState. Also `NormalizeInlineElementsExtension`'s register
+//! ([`register_normalize_inline_elements`]), which `RichTextExtension`
+//! depends on.
 //!
 //! Not ported: their `createDOM`, `updateDOM`, `exportDOM` and `importDOM`,
 //! which come with `html`; `applyFormatFromStyle`, which reads a CSS style
@@ -16,6 +18,7 @@
 
 mod decorator_text_extension;
 mod horizontal_rule_extension;
+mod normalize_inline_elements_extension;
 
 pub use decorator_text_extension::{
     DecoratorTextNode, create_decorator_text_node, decorator_text_format_state,
@@ -24,6 +27,7 @@ pub use decorator_text_extension::{
 pub use horizontal_rule_extension::{
     HorizontalRuleNode, create_horizontal_rule_node, is_horizontal_rule_node,
 };
+pub use normalize_inline_elements_extension::register_normalize_inline_elements;
 
 use crate::NodeClass;
 

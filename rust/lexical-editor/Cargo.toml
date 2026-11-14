@@ -58,6 +58,10 @@ hashtag = ["text"]
 # DecoratorTextNode (an inline one). The rest of the package, the extension
 # API, isn't ported.
 extension = []
+# @lexical/html: a DOM in place of the browser's (`dom`: nodes, an HTML
+# parser and serializer, and an inline style declaration that normalizes as
+# jsdom's does), with the nodes' DOM hooks and HTML export and import.
+html = ["selection"]
 
 [dependencies]
 # Without `perf-literal`, which would add aho-corasick and memchr.

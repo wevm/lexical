@@ -64,7 +64,7 @@ depends on as the upstream package depends on them:
 | `text`      | `@lexical/text`        |                            |
 | `hashtag`   | `@lexical/hashtag`     | `text` (upstream also lists `extension` and `utils`, for `HashtagExtension` and `mergeRegister`, which aren't ported) |
 | `history`   | `@lexical/history`     | (upstream lists `utils`, but uses nothing from it) |
-| `html`      | `@lexical/html`        | `selection`                |
+| `html`      | `@lexical/html`, with `dom` (a DOM in place of the browser's, which the nodes' DOM hooks use) | `selection` |
 | `markdown`  | `@lexical/markdown`    | `rich-text`, `list`, `link`, `code` |
 | `file`      | `@lexical/file`        |                            |
 | `yjs`       | `@lexical/yjs`         | `selection`, `yrs`         |
@@ -139,6 +139,38 @@ Names may change as packages land; this table is updated with them.
   commits it at the next `read` or discrete update, which JS also does when
   one comes first. Update closures that may be queued are `'static`.
 
+### The DOM
+
+`createDOM`, `exportDOM`, `importDOM` and HTML export and import need a
+DOM, which a browser or (in upstream's unit tests) jsdom gives JS. The
+`html` feature brings one, `lexical_editor::dom`, ported from the Swift
+port's (`swift/Sources/Lexical/DOM`, `swift/DESIGN.md`, "The DOM is a small
+model of jsdom's"), since the vectors record what jsdom does:
+
+- **One node type.** `DomNode` is a shared handle (`Rc`) compared by
+  identity, as JS compares node objects, standing for `Node` and every
+  interface Lexical reads through it (`Element`, `Text`, `Comment`,
+  `DocumentFragment`, `Document`); an element's methods answer as empty
+  values on other nodes. A node holds its children; its parent and
+  document are weak links. `get_document()` is one `document` per thread,
+  as JS has one global `document`.
+- **The inline style declaration normalizes as jsdom's does** for what
+  Lexical writes (colors to `rgb()`, trimmed numbers, `0px`, lower-case
+  keywords, `calc()` of a product, CSS-wide keywords), and is read from the
+  `style` attribute lazily and written back as `cssText`, as jsdom's is.
+  The accepted properties and how each normalizes are a table generated
+  from the `css/properties` vectors (`rust/scripts/generate-dom-tables.mjs`,
+  which also writes the entity table from `html/entities`); the runner
+  checks both the tables and the declaration's behavior against them.
+  Unlike jsdom it keeps most values it can't parse, collapsing their
+  whitespace, as Swift's does; it rejects a shadow of nothing but
+  identifiers, as jsdom does.
+- **`DOMParser` is a WHATWG tokenizer and tree builder**, checked against
+  jsdom's by the `html/parse` and `html/entities` vectors. As in Swift it
+  leaves out templates, framesets, the `<select>` and `<ruby>` insertion
+  modes and the case adjustments of SVG and MathML names; their content
+  parses as body content.
+
 ## Conformance
 
 `cargo run -p lexical-conformance` replays every file in
@@ -183,7 +215,7 @@ Each milestone ends with green CI and a report to the Space.
 | P | Desktop playgrounds (`apps/`): `lexical-playground-rune` on Rune, then `lexical-playground-gpui` on GPUI, sharing `lexical-playground-core`; they grow with each milestone below | the vectors, replayed in the app; a session exported from the app replays in JS (`replay.test.ts`); in CI, a GPUI session typed in a real window replays in JS | both apps run on macOS with typing, Return, deletion, formatting, input methods and the Parity panel; they grow with each milestone |
 | M2 | `rich-text` (headings, quotes, and the command handlers a text surface dispatches: typing, Enter, Backspace, formatting) and `history` (undo), which the playgrounds need first; then the node packages `list`, `link`, `code`, `overflow`, `hashtag`, with `selection` and `utils` | `serialization/*`, `property/documents` (JSON and text), `entities/hashtag-*`, `scripts/history` | done (every vector it names passes): `history` is done (`scripts/history` passes); `rich-text`'s nodes and `registerRichText`'s model command handlers are done (`scripts/rich-text` and `scripts/rich-text-commands` pass, with the heading and quote cases of `property/documents`); `plain-text`'s model command handlers are done (`scripts/plain-text` passes); `list`'s nodes, `registerList` and the model part of `registerCheckList` are done (`scripts/list` and `serialization/list` pass, with the list cases of `property/documents`); `link`'s nodes, `$toggleLink` and `registerLink`'s model handlers are done (`scripts/link` and `serialization/link` pass, with the link cases of `property/documents` that need no other package), `registerAutoLink` and its matchers are done behind `autolink` (`scripts/autolink` and `entities/autolink-match` pass); `selection`'s `$setBlocksType` is done (`scripts/set-blocks-type` passes); `code`'s nodes, `FlatStructureUtils.ts`, `CodeExtension`'s transform and `registerCodeIndentation`'s model handlers are done (`scripts/code` and `serialization/code` pass, with the code cases of `property/documents` that need no other package); `overflow`'s `OverflowNode` is done (`scripts/overflow` and `serialization/overflow` pass, with the overflow cases of `property/documents` that need no other package); `hashtag`'s `HashtagNode`, its matcher (generated character tables, no `regex`) and `registerLexicalHashtag`, with `text`'s `registerLexicalTextEntity`, are done (`entities/hashtag-match`, `entities/hashtag-documents` and `entities/hashtag-typing` pass, with the last waiting cases of `property/documents`), so M2's node packages are done |
 | M3 | The commands `property/sequences` dispatches | `property/sequences` | |
-| M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | |
+| M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | in progress: the DOM (`dom`: nodes, `DOMParser`, the serializer, the inline style declaration and its tables) and `getStyleObjectFromCSS` are done (`html/parse`, `html/entities`, `css/properties` and `css/values` pass); next, the core nodes' DOM hooks and `@lexical/html`'s export and import |
 | M5 | `markdown` | `markdown/import-export`, `property/documents` (Markdown) | |
 | M6 | `yjs`: a port of `@lexical/yjs` on `yrs` (behind the feature), with new JS vectors for the binding (sevki/lexical-rs's `lexical-yjs` and jpcamara/yrby's `lexical-yjs-html` only as cross-checks) | the new collab vectors | |
 | M7 | Releases: the mirror, changesets, a name tmm settles | | |

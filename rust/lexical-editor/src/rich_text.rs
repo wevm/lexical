@@ -7,7 +7,8 @@
 //! `DataTransfer` of the platform's clipboard event. The handlers of the
 //! other DOM events (click, arrow keys, Backspace, Delete, Enter, Escape,
 //! Space, Tab and drag and drop) wait for an input layer, and the DOM parts
-//! (`createDOM`, `exportDOM`, `importDOM`) come with `html`.
+//! (`createDOM`, `exportDOM`, `importDOM`) come with `html`. With the
+//! `extension` feature, [`rich_text_extension`] is `RichTextExtension`.
 
 use crate::clipboard::{copy_to_clipboard, insert_data_transfer_for_rich_text};
 use crate::commands::{
@@ -36,6 +37,12 @@ use crate::selection_insert_nodes::{insert_nodes, select_all};
 use crate::utils::{find_matching_parent, handle_indent_and_outdent};
 use crate::utils::{is_at_end_of_node, is_at_start_of_node};
 use crate::{CUT_TAG, Editor, LexicalError, NodeClass, PASTE_TAG, Unregister, UpdateOptions};
+
+#[cfg(feature = "extension")]
+mod lexical_rich_text_extension;
+
+#[cfg(feature = "extension")]
+pub use lexical_rich_text_extension::{RichTextExtensionType, rich_text_extension};
 
 /// The node classes this package registers (`RichTextExtension`'s
 /// `nodes`): `HeadingNode` and `QuoteNode`.

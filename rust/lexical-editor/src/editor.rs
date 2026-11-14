@@ -257,6 +257,15 @@ pub(crate) struct QueuedUpdate {
 #[derive(Clone)]
 pub struct Editor(pub(crate) Rc<EditorInner>);
 
+/// Editors compare by identity, as JS compares them with `===`.
+impl PartialEq for Editor {
+    fn eq(&self, other: &Editor) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for Editor {}
+
 type Listeners<F> = RefCell<Vec<(u64, Rc<F>)>>;
 type UpdateListener = Rc<dyn Fn(&UpdateListenerPayload)>;
 type TextContentListener = Rc<dyn Fn(&str)>;

@@ -4,9 +4,11 @@
 //! `$createOverflowNode` and `$isOverflowNode`. It has no schema of its
 //! own, so its JSON is `ElementNode`'s.
 //!
-//! Not ported: `createDOM` and `updateDOM`, which come with `html`, and
-//! `OverflowExtension`, which needs the extension API (its `nodes` are
-//! [`overflow_nodes`]). `$wrapOverflowedNodes`, which makes overflow nodes,
+//! With the `extension` feature, `overflow_extension` is
+//! `OverflowExtension`.
+//!
+//! Not ported: `createDOM` and `updateDOM`, which come with `html`.
+//! `$wrapOverflowedNodes`, which makes overflow nodes,
 //! is `@lexical/react`'s (rust/PARITY.md).
 
 use crate::generated_json::{
@@ -43,6 +45,26 @@ pub fn is_overflow_node(node: &NodeRef) -> bool {
 /// `OverflowNode`.
 pub fn overflow_nodes() -> Vec<NodeClass> {
     vec![NodeClass::of::<OverflowNode>()]
+}
+
+/// `OverflowExtension`.
+#[cfg(feature = "extension")]
+pub type OverflowExtensionType = crate::LexicalExtension;
+
+#[cfg(feature = "extension")]
+thread_local! {
+    static OVERFLOW_EXTENSION: std::rc::Rc<OverflowExtensionType> =
+        crate::define_extension(crate::LexicalExtension {
+            nodes: overflow_nodes(),
+            ..crate::LexicalExtension::new("@lexical/overflow", ())
+        });
+}
+
+/// `OverflowExtension`: registers `OverflowNode`, whose transform comes
+/// with the class.
+#[cfg(feature = "extension")]
+pub fn overflow_extension() -> std::rc::Rc<OverflowExtensionType> {
+    OVERFLOW_EXTENSION.with(std::rc::Rc::clone)
 }
 
 impl LexicalNode for OverflowNode {

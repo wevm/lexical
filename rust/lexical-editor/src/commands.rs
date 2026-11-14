@@ -27,13 +27,13 @@ pub const CLEAR_HISTORY_COMMAND: LexicalCommand<()> =
 
 /// `CAN_REDO_COMMAND`: dispatched when whether redo is possible changes;
 /// the payload is whether it is. JS deprecates it (v0.49.0) for
-/// `HistoryExtension`'s `canRedo` signal, which isn't ported yet.
+/// `HistoryExtension`'s `canRedo` signal (`HistoryExtensionOutput::can_redo`).
 pub const CAN_REDO_COMMAND: LexicalCommand<bool> =
     LexicalCommand::constant(u64::MAX - 4, "CAN_REDO_COMMAND");
 
 /// `CAN_UNDO_COMMAND`: dispatched when whether undo is possible changes;
 /// the payload is whether it is. JS deprecates it (v0.49.0) for
-/// `HistoryExtension`'s `canUndo` signal, which isn't ported yet.
+/// `HistoryExtension`'s `canUndo` signal (`HistoryExtensionOutput::can_undo`).
 pub const CAN_UNDO_COMMAND: LexicalCommand<bool> =
     LexicalCommand::constant(u64::MAX - 5, "CAN_UNDO_COMMAND");
 

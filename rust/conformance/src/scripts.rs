@@ -84,6 +84,10 @@ struct Ctx {
     extension_defs: RefCell<Object>,
     /// The `DataTransfer` of the last `copy`.
     clipboard: RefCell<Option<Rc<DataTransfer>>>,
+    /// The session's clock, in milliseconds: what `Date.now()` returns
+    /// while JS runs a step, so what the history merges by. It starts at 0,
+    /// and a step's `now` sets it.
+    clock: Rc<Cell<f64>>,
 }
 
 /// `ops.ts`'s `STATES`, one set per session (JS's are shared by every
@@ -258,6 +262,15 @@ fn toggle_link_of(payload: &Value) -> Option<Option<link::ToggleLinkPayload>> {
         return Some(Some(link::ToggleLinkPayload::Url(url.to_owned())));
     }
     let object = payload.as_object()?;
+    Some(Some(link::ToggleLinkPayload::Attributes {
+        url: object.get("url")?.as_str()?.to_owned(),
+        attributes: link_attributes_of(object)?,
+    }))
+}
+
+/// `LinkAttributes` from JSON: `rel`, `target` and `title`, each absent,
+/// `null` or a string.
+pub(crate) fn link_attributes_of(object: &Object) -> Option<link::LinkAttributes> {
     let attribute = |key: &str| -> Option<Option<Option<String>>> {
         Some(match object.get(key) {
             None => None,
@@ -265,14 +278,11 @@ fn toggle_link_of(payload: &Value) -> Option<Option<link::ToggleLinkPayload>> {
             Some(value) => Some(Some(value.as_str()?.to_owned())),
         })
     };
-    Some(Some(link::ToggleLinkPayload::Attributes {
-        url: object.get("url")?.as_str()?.to_owned(),
-        attributes: link::LinkAttributes {
-            rel: attribute("rel")?,
-            target: attribute("target")?,
-            title: attribute("title")?,
-        },
-    }))
+    Some(link::LinkAttributes {
+        rel: attribute("rel")?,
+        target: attribute("target")?,
+        title: attribute("title")?,
+    })
 }
 
 /// `TOGGLE_LINK_COMMAND`'s payload as JSON: `url`, then the attributes it
@@ -1633,7 +1643,7 @@ impl Session {
         }
         // `registerHistory(editor, createEmptyHistoryState(), delay)` on the
         // session's clock.
-        let clock = Rc::new(Cell::new(0.0));
+        let clock = ctx.clock.clone();
         let unregister_history = match script.get("history") {
             None => None,
             Some(history) => {

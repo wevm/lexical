@@ -852,6 +852,7 @@ func runScriptWithBuild(_ script: JSONValue) throws -> (build: JSONValue?, steps
     let defs = TestExtensions(script["extensionDefs"]?.objectValue ?? JSONObject())
     defs.log = { [unowned ctx] in ctx.log.append($0) }
     defs.command = { [unowned ctx] in ctx.command($0) }
+    defs.clock = { [unowned ctx] in ctx.clock }
     built = defs
     do {
       ctx.editor = try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })

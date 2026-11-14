@@ -50,7 +50,9 @@ updated with each milestone.
 | Extension builder (the `extension` feature) | `packages/lexical-extension/src/LexicalBuilder.ts` (`buildEditorFromExtensions`, `LexicalBuilder`: `fromExtensions`, `maybeFromEditor`, `fromEditor`, `constructEditor`, `buildEditor` with `dispose`, `hasExtensionByName`, `getExtensionRep`, `addEdge`, `addExtension` with the duplicate-name and conflict invariants, `sortedExtensionReps`' depth-first sort, cycle invariant and config order, `registerEditor`, `buildCreateEditorArgs` for nodes and `$initialEditorState`), `internal/ExtensionRep.ts` (the state ids, `mergeConfigs`, `init`, `build`, `register` with its rollback, `afterRegistration`, `getSignal`, `getInitResult`, `getInitPeer`, `getExtensionInitDependency`, `getPeer`, `getInitDependency`, `getDependency`, `getDirectDependentNames`, `getPeerNameSet`, `getExtensionDependency`), `config.ts` (`getKnownTypesAndNodes`, `getNodeConfig`), `getExtensionDependencyFromEditor.ts`, `getPeerDependencyFromEditor.ts` (with `OrThrow`), `getExtensionDependency.ts` (`$getExtensionDependency`, `$getExtensionOutput`, `$getPeerDependency`) | `extension::lexical_builder`, `extension::extension_rep`, `extension::config`, `extension::get_*` | `scripts/extensions` |
 | Signals (the `extension` feature) | `signals.ts`, a port of `@preact/signals-core` 1.14.4 (`signal` with `watched`/`unwatched`, `computed`, `effect` with clean-ups, `batch` with its snapshots, `untracked`, `peek`, `subscribe`); `namedSignals.ts`; `watchedSignal.ts` | `extension::signals`, `extension::named_signals`, `extension::watched_signal` | `scripts/extensions` (`namedSignals toggle a registration`, `a signal disabled by config`, `EditorStateExtension as a signal`) |
 | Model-level extensions (the `extension` feature) | `InitialStateExtension.ts` (always first; its config and every form of `$initialEditorState`), `ClearEditorExtension.ts` (`registerClearEditor`, `$defaultOnClear`, `$onClear` as a signal), `EditorStateExtension.ts`, `DecoratorTextExtension.ts`'s extension | `extension::initial_state_extension`, `extension::clear_editor_extension`, `extension::editor_state_extension`, `extension::decorator_text_extension` | `scripts/extensions` |
-| `NormalizeInlineElementsExtension`'s register (the `extension` feature) | `packages/lexical-extension/src/NormalizeInlineElementsExtension.ts` (`deleteEmptyInline`, and the `register` that adds it to the transforms of every registered `ElementNode` class with an `isInline` of its own, without marking their nodes dirty), as `register_normalize_inline_elements`; `RichTextExtension` depends on it | `extension` | `property/sequences` |
+| `NormalizeInlineElementsExtension` (the `extension` feature) | `packages/lexical-extension/src/NormalizeInlineElementsExtension.ts` (`deleteEmptyInline`, and the `register` that adds it to the transforms of every registered `ElementNode` class with an `isInline` of its own, without marking their nodes dirty, as `register_normalize_inline_elements`; the extension with its `disabled` signal); `RichTextExtension` and `PlainTextExtension` depend on it | `extension` | `property/sequences`, `scripts/package-extensions` |
+| `@lexical/extension`'s model-level extensions (the `extension` feature) | `TabIndentationExtension.ts` (`registerTabIndentation`'s `INDENT_CONTENT_COMMAND` handler with `$indentOverTab`, `canIndentPredicate` and `maxIndent`, as `register_tab_indentation`; the extension with its `disabled`, `maxIndent` and `$canIndent` signals); `SelectBlockExtension.ts` (the `SELECT_ALL_COMMAND` handler that selects the block, then the document, with `disabled` and `cascadeSelection`); `PreventSelectAllExtension.ts`'s config and `disabled` signal, which `SelectBlockExtension`'s drives | `extension::tab_indentation_extension`, `extension::select_block_extension`, `extension::prevent_select_all_extension` | `scripts/package-extensions` |
+| The packages' extensions (each behind its package's feature and `extension`) | `LexicalRichTextExtension.ts` (`RichTextExtension`: its nodes, `conflictsWith`, the `NormalizeInlineElementsExtension` dependency, `registerRichText`); `PlainTextExtension` (`@lexical/plain-text`); `@lexical/history`'s `HistoryExtension` (`HistoryConfig` with `delay`, `createInitialHistoryState`, `disabled`, `maxDepth` and `now`, the init's `canUndo`/`canRedo` signals, the output's config signals, `registerHistory` reading `delay` and `maxDepth` as signals) and `SharedHistoryExtension` (its own `HistoryExtension`, disabled, takes the `delay`, `historyState`, `now`, `maxDepth` and `disabled` of the parent editor's peer `HistoryExtension`); `LexicalListExtension.ts` (`ListExtension` with `hasStrictIndent`, which registers `registerListStrictIndentTransform`, and `shouldPreserveNumbering`; `CheckListExtension`'s `registerCheckList`); `LexicalLinkExtension.ts` (`LinkExtension` with its `mergeConfig` of `attributes`, and `registerLink` reading `validateUrl` and `attributes` as signals); `LexicalAutoLinkExtension.ts` (`AutoLinkExtension` with its concatenating `mergeConfig`); `LexicalHashtagExtension.ts` (`HashtagExtension`); `OverflowExtension`; `CodeExtension.ts` (`CodeExtension`, and `CodeNode.insertNewAfter`'s path for an editor built with it) and `CodeIndentExtension` (`tabSize`, `disabled`); `Editor` equality by identity, as JS's `===` | `rich_text::rich_text_extension`, `plain_text::plain_text_extension`, `history::history_extension`, `history::shared_history_extension`, `list::list_extension`, `list::check_list_extension`, `link::link_extension`, `link::auto_link_extension`, `hashtag::hashtag_extension`, `overflow::overflow_extension`, `code::code_extension`, `code::code_indent_extension` | `scripts/package-extensions`; `property/sequences` and the hashtag `entities` suites build their editors with them |
 | `registerLexicalTextEntity` (the `text` feature) | `packages/lexical-text/src/registerLexicalTextEntity.ts`: `EntityMatch`, `registerLexicalTextEntity` (the `TextNode` transform and `$reverseNodeTransform`, `$replaceWithSimpleText`, `$wasTurnedIntoText`, `getFirstMatchAfter`, `isNextTextEntity`, `isTextAfterOutsideSource`, `isEntityAfter`, `$checkNextSibling`, `$moveSelectionIntoEntity`, `$wouldMerge`, `MAX_MATCHES_PASSED`, `MAX_TURNED_INTO_TEXT`, the per-update `markedInUpdate` and `turnedIntoTextInUpdate`); from the core `INTERNAL_getActiveEditorState` | `text`, `updates` | `entities/hashtag-documents`, `entities/hashtag-typing`, `property/sequences` |
 | `@lexical/text`'s root helpers (the `text` feature) | `packages/lexical-text/src/rootTextContent.ts` (`$rootTextContent`), `isRootTextContentEmpty.ts` (`$isRootTextContentEmpty`, with `String#trim`'s whitespace, and `$isRootTextContentEmptyCurry`), `canShowPlaceholder.ts` (`$canShowPlaceholder`, `$canShowPlaceholderCurry`), `findTextIntersectionFromCharacters.ts` (`$findTextIntersectionFromCharacters`, deprecated upstream, with UTF-16 counts), `index.ts`'s `TextNodeWithOffset` | `text` | `scripts/text` |
 | `@lexical/file` (the `file` feature) | `packages/lexical-file/src/fileImportExport.ts`: `SerializedDocument`, `serializedDocumentFromEditorState` (an empty `source` is `"Lexical"`, a `lastSaved` of 0 or NaN is `Date.now()`, the version is the upstream release), `editorStateFromSerializedDocument` (from a string or a document, either JSON form), `importFile` and `exportFile` (with `toISOString` for the default file name), with the app reading and saving the file where JS's `readTextFileFromSystem` and `exportBlob` use the DOM | `file::file_import_export` | `file/export`, `file/import`; unit tests for `toISOString` against Node and an export-then-import round trip |
@@ -98,18 +100,40 @@ touches:
   objects by identity, and effect and computed bodies can't throw, so
   preact's error paths have no counterpart and a cycle panics. `named_signals`
   takes a JSON object; a typed config makes its signals field by field.
-  Every other extension of `@lexical/extension` (`AutoFocus`, `BlockId`,
-  `ClickAfterLastBlock`, `HorizontalRule`, `IME`, `KeyboardShortcuts`,
-  `NestedEditor`, `NodeSelection`, `NodeSelectionDataSelected`,
-  `NodeStructure`, `NormalizeInlineElements`, `NormalizeTripleClickSelection`,
-  `PreventSelectAll`, `RootElement`, `SelectBlock`,
-  `SelectionAlwaysOnDisplay`, `TabIndentation`, `WatchEditable`) reads the
-  DOM, a selection's DOM, keyboard events or slots, or waits on pieces that
-  aren't ported (`HorizontalRuleExtension` on `NodeSelectionExtension`), and
-  the extension forms of the other packages (`RichTextExtension`,
-  `PlainTextExtension`, `HistoryExtension`, `ListExtension`,
-  `LinkExtension`, `HashtagExtension`, `CodeExtension`, `OverflowExtension`)
-  aren't ported yet: their `register_*` functions are what they register.
+  The other extensions of `@lexical/extension` (`AutoFocus`,
+  `ClickAfterLastBlock`, `IME`, `KeyboardShortcuts`, `NodeSelection`,
+  `NodeSelectionDataSelected`, `NormalizeTripleClickSelection`,
+  `RootElement`, `SelectionAlwaysOnDisplay`, `WatchEditable`) read the
+  DOM, a selection's DOM, focus or keyboard events. Of the model-level
+  ones: `HorizontalRuleExtension` needs `NodeSelectionExtension` and clicks
+  (its node is ported); `NestedEditorExtension` sets a nested editor's
+  `_parentEditor`, theme and editable listeners, none of which a Rust
+  editor has; `NodeStructureExtension` needs the core's
+  `INTERNAL_registerNodeStructure` and the structure hooks, which aren't
+  ported; `BlockIdExtension` needs slots and `$getSlot`/`$getSlotNames`
+  for its walk, which aren't ported either. `PreventSelectAllExtension`'s
+  `register` is a capturing `keydown` listener on the root element, so
+  only its config and signal are ported; `TabIndentationExtension`'s
+  `KEY_TAB_COMMAND` handler reads a `KeyboardEvent`, which the core
+  doesn't have yet (the code marks where it goes); `SelectBlockExtension`'s
+  `cascadeSelection` is kept but has no parent editor to select, and its
+  slot frames aren't ported. Of the packages' extensions, the DOM, click,
+  focus and announce ones (`ClickableLinkExtension`,
+  `AutoLinkAnnounceExtension`, `DragonExtension`,
+  `NormalizeTripleClickSelectionExtension`, `CheckListExtension`'s
+  pointer, focus and key handlers, `registerCodeGutter`) and the HTML
+  import ones (`RichTextImportExtension`, `ListImportExtension`,
+  `WordListImportExtension`, `LinkImportExtension`, `CodeImportExtension`,
+  which come with `html`) aren't ported, nor are the `KEY_*` handlers
+  (`KEY_ENTER_COMMAND` in `CodeExtension`, `KEY_TAB_COMMAND` and the arrow
+  keys in `CodeIndentExtension`, whose `escapeWithArrows` is kept, with no
+  handler to read it). `HistoryExtension`'s `disabled` defaults to `false`,
+  as Swift's does, where JS's is `typeof window === 'undefined'` (true in a
+  headless JS editor); `SharedHistoryExtension`'s `parentEditor` must be
+  given, as a Rust editor has no `_parentEditor` to fall back to, and its
+  HMR re-link (`hmrRestoreCount`) isn't ported. A config's functions
+  (`validateUrl`, `createInitialHistoryState`, `$canIndent`, the matchers)
+  are `Rc` closures, which compare by identity as JS's do.
 - Of NodeState: the `SerializationSchema` builders as `parse` functions
   (with them `canonicalValue`'s `arraySetValue` form and a config's
   `derived` and `schema`), which come with the schema facility;
@@ -141,11 +165,8 @@ touches:
   `$insertNodeToNearestRootAtCaret`).
 - `@lexical/list`'s DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
   `importDOM`, the theme class names, `ListImportExtension`/`ListImportRules`
-  and `WordListImportExtension`), which come with `html`; `ListExtension`
-  and `CheckListExtension`, which aren't ported as extensions yet
-  (`ListExtension`'s defaults are what `register_list` with `RegisterListOptions::default()`
-  does); `registerListStrictIndentTransform` (`hasStrictIndent`, off by
-  default); `registerList`'s `KEY_BACKSPACE_COMMAND` handler and
+  and `WordListImportExtension`), which come with `html`;
+  `registerList`'s `KEY_BACKSPACE_COMMAND` handler and
   `registerCheckList`'s pointer, focus, arrow, Space and Escape handlers,
   which need an input layer (`deleteCharacter` reaches the same
   `ListItemNode.collapseAtStart`, and a toggle is `toggle_checked`). What
@@ -162,13 +183,9 @@ touches:
   `exportDOM`, `importDOM`, `$convertAnchorElement`, `LinkImportRules` and
   `LinkImportExtension`), which come with `html`, and `sanitizeUrl`, which
   only `updateLinkDOM` calls and which needs the WHATWG URL parser
-  (`new URL`); `LinkExtension`, which isn't ported yet
-  (`register_link` with `LinkConfig::default()` is what its defaults do,
-  and the config is a value where JS reads signals); `registerLink`'s
+  (`new URL`); `registerLink`'s
   `PASTE_COMMAND` handler (registered only with `validateUrl`), which reads
-  a `ClipboardEvent`'s data; `AutoLinkExtension`, which isn't ported yet
-  (`register_auto_link` with `AutoLinkConfig::default()` and the matchers is what it does with them; its `mergeConfig`, which concatenates
-  configured arrays, is the caller's to do);
+  a `ClipboardEvent`'s data;
   `ClickableLinkExtension` and `AutoLinkAnnounceExtension`, which need a
   DOM. What `NodeStructureExtension` does for links where it enforces node
   structure (lifting blocks, merging equal adjacent links, which
@@ -185,19 +202,17 @@ touches:
   `importDOM`, `$convertPreElement` and the other converters,
   `CodeImportRules`/`CodeImportExtension` and the VS Code paste overlay),
   which come with `html`, and `registerCodeGutter`, which writes to the
-  DOM; `CodeExtension` and `CodeIndentExtension`, which aren't ported as
-  extensions yet (`register_code` and `register_code_indentation(editor,
-  None)` are what their defaults register); `CodeExtension`'s `KEY_ENTER_COMMAND`
+  DOM; `CodeExtension`'s `KEY_ENTER_COMMAND`
   handler and `registerCodeIndentation`'s handlers of `KEY_TAB_COMMAND`,
   the arrow keys (`$handleTab`, `$handleShiftLines`, `escapeWithArrows`),
   `MOVE_TO_START` and `MOVE_TO_END` (`$handleMoveTo`), which read a
-  `KeyboardEvent` and wait for an input layer. Without `CodeExtension`,
-  `CodeNode.insertNewAfter` always takes the path JS takes for an editor
-  without `CodeExtension` (exiting the block after two line breaks itself,
-  as `scripts/code` records with `createEditor`), less the deprecation
-  warning. `property/sequences`' editor has `CodeExtension`, so there JS's
-  `INSERT_PARAGRAPH_COMMAND` adds a line even after two line breaks; no
-  case of it gets there (one would fail). JS's `CodeHighlightNode`
+  `KeyboardEvent` and wait for an input layer. In an editor without
+  `CodeExtension` (one made with `create_editor`, or built without it),
+  `CodeNode.insertNewAfter` takes the path JS takes there (exiting the
+  block after two line breaks itself, as `scripts/code` records with
+  `createEditor`), less the deprecation warning; in one built with it,
+  `INSERT_PARAGRAPH_COMMAND` adds a line even after two line breaks, as
+  in JS, where exiting is the `KEY_ENTER_COMMAND` handler's. JS's `CodeHighlightNode`
   constructor keeps a `null` highlight type it is given; nothing but a
   direct `new` makes one, and Rust has none. Highlighting (`@lexical/code-prism`, `@lexical/code-shiki`) is
   other packages: no vector needs a tokenizer, since every recorded
@@ -235,8 +250,7 @@ touches:
   (the `clipboard` feature) calls, as `@lexical/html`'s will;
   `scripts/mark` calls them directly.
 - `@lexical/overflow`'s `createDOM` and `updateDOM`, which come with
-  `html`, and `OverflowExtension`, which isn't ported yet
-  (`overflow_nodes()` is its `nodes`). `excludeFromCopy` is called by
+  `html`. `excludeFromCopy` is called by
   `@lexical/clipboard`'s copy (the `clipboard` feature); `@lexical/html`'s
   copy calls it too, with `'html'`. `@lexical/react`'s character limit
   (`useCharacterLimit.ts`: `$wrapOverflowedNodes`, `findOffset`,
@@ -249,10 +263,7 @@ touches:
   and reads the text there, as JS does: a parsed state is all dirty, so
   the transforms run, and `OverflowNode`'s removes the empty ones a random
   document holds.
-- `@lexical/hashtag`'s `createDOM`, which comes with `html`, and
-  `HashtagExtension`, which isn't ported yet (`hashtag_nodes()` is
-  its `nodes` and `register_lexical_hashtag(editor,
-  HashtagConfig::default())` its `register`). Within `registerLexicalTextEntity`,
+- `@lexical/hashtag`'s `createDOM`, which comes with `html`. Within `registerLexicalTextEntity`,
   `$carryNodeState`, `splitOffInUpdate`, `demotedInUpdate` and
   `$isInsertedText` are ported (`scripts/node-state`'s hashtag cases), but
   the NodeState half of `$wouldMerge` (`haveEquivalentNodeState` with
@@ -296,27 +307,25 @@ touches:
   `$getCommonAncestorAcrossSlots`). Without slots or the text edit log,
   `$removeTextFromCaretRange` never meets a slot host and records no
   deletions.
-- `HistoryExtension` and `SharedHistoryExtension` (`@lexical/history`), which
-  aren't ported as extensions yet. Sharing one `HistoryState` between
-  editors through `register_history` works. `register_history` takes the delay and
-  `maxDepth` as values, where JS also takes signals, and `maxDepth` as a
-  `usize`.
+- Of `@lexical/history`: `register_history` takes the delay and
+  `maxDepth` as values, where JS also takes signals (`HistoryExtension`
+  passes its signals to the same code), and `maxDepth` as a `usize`.
+  `HistoryExtension`'s deviations are with the extension API above.
 - `registerRichText`'s handlers of DOM events (click, the arrow keys,
   Backspace, Delete, Enter, Escape, Space and Tab keys, `MOVE_TO_START` and
   `MOVE_TO_END`, drop and drag), which wait for an input layer, with its
   `escapeFormatTriggers` and `shouldHandlePasteAsFiles` (`DRAG_DROP_PASTE`,
-  for a paste of files, which the port's `DataTransfer` doesn't carry);
+  for a paste of files, which the port's `DataTransfer` doesn't carry; so
+  `RichTextExtension`'s config, `RichTextConfig`, which only those read,
+  isn't ported);
   `CONTROLLED_TEXT_INSERTION_COMMAND`'s `beforeinput` form; and
   `SELECT_ALL_COMMAND`'s scoping to a slot (slots aren't ported). The DOM
   parts of `@lexical/rich-text` (`createDOM`, `exportDOM`, `importDOM`)
   come with `html`.
 - `registerPlainText`'s handlers of DOM events (the arrow keys, Backspace,
-  Delete, Enter, drop and drag) and `PlainTextExtension`
-  with its dependencies (`DragonExtension`,
-  `NormalizeInlineElementsExtension`, whose transform
-  `register_normalize_inline_elements` registers,
-  `NormalizeTripleClickSelectionExtension`), which need an input layer or
-  aren't ported as extensions yet.
+  Delete, Enter, drop and drag) and two of `PlainTextExtension`'s
+  dependencies (`DragonExtension`,
+  `NormalizeTripleClickSelectionExtension`), which need an input layer.
   `quoteShadowRootState` is a flat NodeState, as in JS
   (`quote_shadow_root_state`; `scripts/node-state` sets and reads it). A
   shadow root quote's `collapseAtStart` (dissolving into

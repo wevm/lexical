@@ -5,10 +5,8 @@
 //! Its copy, cut and paste handlers take the `DataTransfer` of the
 //! platform's clipboard event. The handlers of the other DOM events (the
 //! arrow keys, Backspace, Delete, Enter, drop and drag) wait for an input
-//! layer, and
-//! `PlainTextExtension`'s dependencies (`DragonExtension`,
-//! `NormalizeInlineElementsExtension`,
-//! `NormalizeTripleClickSelectionExtension`) for the extension API.
+//! layer. With the `extension` feature, [`plain_text_extension`] is
+//! `PlainTextExtension`.
 
 use crate::commands::{
     CONTROLLED_TEXT_INSERTION_COMMAND, DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND,
@@ -182,4 +180,39 @@ pub fn register_plain_text(editor: &Editor) -> Unregister {
             unregister();
         }
     })
+}
+
+/// `PlainTextExtension`.
+#[cfg(feature = "extension")]
+pub type PlainTextExtensionType = crate::LexicalExtension;
+
+#[cfg(feature = "extension")]
+fn make_plain_text_extension() -> Rc<PlainTextExtensionType> {
+    use crate::extension_core::{ExtensionRegisterState, LexicalExtension, define_extension};
+    define_extension(LexicalExtension {
+        conflicts_with: vec!["@lexical/rich-text".to_owned()],
+        // Of JS's dependencies, `NormalizeInlineElementsExtension`;
+        // `DragonExtension` and `NormalizeTripleClickSelectionExtension`
+        // listen to the root element.
+        dependencies: vec![crate::extension::normalize_inline_elements_extension().into()],
+        register: Some(Rc::new(
+            |editor: &Editor, _: &(), _: &ExtensionRegisterState<(), ()>| {
+                Ok(register_plain_text(editor))
+            },
+        )),
+        ..LexicalExtension::new("@lexical/plain-text", ())
+    })
+}
+
+#[cfg(feature = "extension")]
+thread_local! {
+    static PLAIN_TEXT_EXTENSION: Rc<PlainTextExtensionType> = make_plain_text_extension();
+}
+
+/// `PlainTextExtension`: the plain text commands ([`register_plain_text`]),
+/// with `NormalizeInlineElementsExtension`. It can't be built with
+/// `RichTextExtension`.
+#[cfg(feature = "extension")]
+pub fn plain_text_extension() -> Rc<PlainTextExtensionType> {
+    PLAIN_TEXT_EXTENSION.with(Rc::clone)
 }

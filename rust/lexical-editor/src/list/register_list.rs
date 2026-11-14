@@ -7,12 +7,14 @@ use super::format_list::{
 };
 use super::list_item_node::is_list_item_node;
 use super::list_node::{ListType, is_list_node};
+use super::utils::get_list_depth;
 use crate::commands::INSERT_PARAGRAPH_COMMAND;
 use crate::editor::{COMMAND_PRIORITY_LOW, LexicalCommand};
 use crate::lexical_selection::{SelectionRef, Which, get_selection};
 use crate::lexical_utils::get_node_by_key;
-use crate::node::NodeKey;
-use crate::{Editor, Unregister};
+use crate::node::{NodeKey, NodeRef};
+use crate::selection_insert_nodes::find_matching_parent;
+use crate::{Editor, LexicalError, Unregister};
 
 // Like the core's commands (`commands.rs`), these are constants, with ids
 // counting down from where the core's stop.
@@ -189,4 +191,90 @@ pub fn register_check_list(editor: &Editor) -> Unregister {
         },
         COMMAND_PRIORITY_LOW,
     )
+}
+
+/// `registerListStrictIndentTransform(editor)`: a `ListNode` transform that
+/// keeps each item at most one level deeper than the item before it
+/// (`ListExtension`'s `hasStrictIndent`). Returns what unregisters it.
+pub fn register_list_strict_indent_transform(editor: &Editor) -> Unregister {
+    /// `$formatListIndentStrict(listItemNode)`.
+    fn format_list_indent_strict(list_item_node: &NodeRef) -> Result<(), LexicalError> {
+        let list_node = list_item_node.get_parent();
+        let Some(list_node) = list_node.filter(is_list_node) else {
+            return Ok(());
+        };
+        if list_item_node
+            .get_first_child()
+            .is_some_and(|c| is_list_node(&c))
+        {
+            return Ok(());
+        }
+        let starting_list_item_node = find_matching_parent(list_item_node, |node| {
+            is_list_item_node(node)
+                && node.get_parent().is_some_and(|p| is_list_node(&p))
+                && node
+                    .get_previous_sibling()
+                    .is_some_and(|s| is_list_item_node(&s))
+        });
+        match starting_list_item_node {
+            None => {
+                if list_item_node.get_indent()? > 0.0 {
+                    list_item_node.set_indent(0.0)?;
+                }
+            }
+            Some(starting) => {
+                if let Some(prev_list_item_node) =
+                    starting.get_previous_sibling().filter(is_list_item_node)
+                {
+                    let end_list_item_node = find_children_end_list_item_node(&prev_list_item_node);
+                    if let Some(end_list_node) =
+                        end_list_item_node.get_parent().filter(is_list_node)
+                    {
+                        let prev_depth = get_list_depth(&end_list_node)?;
+                        let depth = get_list_depth(&list_node)?;
+                        if prev_depth + 1 < depth {
+                            list_item_node.set_indent(prev_depth as f64)?;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    editor.register_node_transform("list", |list_node| {
+        // `$processListWithStrictIndent(listNode)`.
+        let mut queue = std::collections::VecDeque::from([list_node.clone()]);
+        while let Some(node) = queue.pop_front() {
+            if !is_list_node(&node) {
+                continue;
+            }
+            for child in node.get_children() {
+                if is_list_item_node(&child) {
+                    format_list_indent_strict(&child)?;
+                    if let Some(first_child) = child.get_first_child().filter(is_list_node) {
+                        queue.push_back(first_child);
+                    }
+                }
+            }
+        }
+        Ok(())
+    })
+}
+
+/// `$findChildrenEndListItemNode(listItemNode)`: the last item of the
+/// deepest list nested at the end of `list_item_node`, or the item itself.
+fn find_children_end_list_item_node(list_item_node: &NodeRef) -> NodeRef {
+    let mut current = list_item_node.clone();
+    let mut first_child = current.get_first_child();
+    while let Some(list) = first_child.filter(is_list_node) {
+        match list.get_last_child().filter(is_list_item_node) {
+            Some(last_child) => {
+                first_child = last_child.get_first_child();
+                current = last_child;
+            }
+            None => break,
+        }
+    }
+    current
 }

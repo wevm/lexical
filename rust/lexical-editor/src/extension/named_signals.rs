@@ -40,3 +40,59 @@ pub fn named_signals(defaults: &Object, opts: Option<&Object>) -> NamedSignalsOu
         .collect();
     NamedSignalsOutput { signals }
 }
+
+/// A typed config whose output is `namedSignals(config)`: the config
+/// struct, its `Partial` (each field an `Option`, merged as
+/// `shallowMergeConfig` merges), and the output, a [`Signal`] per field
+/// with an `of(config)` that makes them (JS's `namedSignals(config)`).
+macro_rules! named_signals_config {
+    (
+        $(#[$config_meta:meta])*
+        pub struct $config:ident;
+        $(#[$partial_meta:meta])*
+        pub struct $partial:ident;
+        $(#[$output_meta:meta])*
+        pub struct $output:ident {
+            $($(#[$field_meta:meta])* $field:ident: $ty:ty,)*
+        }
+    ) => {
+        $(#[$config_meta])*
+        #[derive(Clone)]
+        pub struct $config {
+            $($(#[$field_meta])* pub $field: $ty,)*
+        }
+
+        $(#[$partial_meta])*
+        #[derive(Clone, Default)]
+        pub struct $partial {
+            $(pub $field: Option<$ty>,)*
+        }
+
+        impl $crate::ExtensionConfigBase for $config {
+            type Partial = $partial;
+
+            fn shallow_merge(&self, overrides: &$partial) -> Self {
+                $config {
+                    $($field: overrides.$field.clone().unwrap_or_else(|| self.$field.clone()),)*
+                }
+            }
+        }
+
+        $(#[$output_meta])*
+        #[derive(Clone)]
+        pub struct $output {
+            $(pub $field: $crate::extension::Signal<$ty>,)*
+        }
+
+        impl $output {
+            /// `namedSignals(config)`.
+            pub fn of(config: &$config) -> Self {
+                $output {
+                    $($field: $crate::extension::signal(config.$field.clone()),)*
+                }
+            }
+        }
+    };
+}
+
+pub(crate) use named_signals_config;

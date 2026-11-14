@@ -84,8 +84,11 @@ devtools = []
 # lexical's extension-core types and a port of @preact/signals-core), its
 # model-level extensions with NormalizeInlineElementsExtension's transform,
 # and its decorators, HorizontalRuleNode (a block decorator) and
-# DecoratorTextNode (an inline one).
-extension = []
+# DecoratorTextNode (an inline one). Upstream it depends on @lexical/utils, for
+# TabIndentationExtension's $handleIndentAndOutdent and
+# HorizontalRuleExtension's $insertNodeToNearestRoot. With another package's
+# feature, that package's extensions (RichTextExtension, HistoryExtension...).
+extension = ["utils"]
 
 [dependencies]
 # Without `perf-literal`, which would add aho-corasick and memchr.

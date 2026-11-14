@@ -163,6 +163,11 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/package-extensions",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "scripts/plain-text",
             variant: None,
             check: crate::scripts::check,

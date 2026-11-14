@@ -4,10 +4,7 @@
 //! inline one that carries a text format (`DecoratorTextExtension.ts`),
 //! with their `$create`/`$is` functions. Neither has a schema of its own,
 //! so their JSON is `LexicalNode`'s, with `DecoratorTextNode`'s `format` as
-//! a flat NodeState. Also `NormalizeInlineElementsExtension`'s register
-//! ([`register_normalize_inline_elements`]), which `RichTextExtension`
-//! depends on.
-//!
+//! a flat NodeState.
 //!
 //! The extension API: [`build_editor_from_extensions`] and the builder
 //! (`LexicalBuilder.ts`, `internal/ExtensionRep.ts`), the dependency
@@ -16,7 +13,12 @@
 //! `watchedSignal` and the signals it is built on (`signals`, a port of
 //! `@preact/signals-core`), `getKnownTypesAndNodes`, and the model-level
 //! extensions `InitialStateExtension`, `ClearEditorExtension`,
-//! `EditorStateExtension` and `DecoratorTextExtension`. The types it builds
+//! `EditorStateExtension`, `DecoratorTextExtension`,
+//! `NormalizeInlineElementsExtension` (which `RichTextExtension` and
+//! `PlainTextExtension` depend on), `TabIndentationExtension`,
+//! `SelectBlockExtension` and the config of `PreventSelectAllExtension`.
+//! The other packages' extensions are in their modules, behind their
+//! features (`rich_text_extension`, `list_extension`...). The types it builds
 //! on are `lexical`'s `extension-core`, at the crate root
 //! ([`LexicalExtension`](crate::LexicalExtension),
 //! [`define_extension`](crate::define_extension)...).
@@ -25,7 +27,10 @@
 //! `importDOM`, which come with `html`; `applyFormatFromStyle`, which reads
 //! a CSS style declaration; `HorizontalRuleExtension`, which needs
 //! `NodeSelectionExtension`, clicks and the DOM (its `nodes` are in
-//! [`extension_nodes`]); and the package's other extensions (rust/PARITY.md).
+//! [`extension_nodes`]); `PreventSelectAllExtension`'s root element
+//! listener; `TabIndentationExtension`'s `KEY_TAB_COMMAND` handler, which
+//! reads a `KeyboardEvent`; and the package's other extensions
+//! (rust/PARITY.md).
 
 mod clear_editor_extension;
 mod config;
@@ -40,7 +45,9 @@ mod initial_state_extension;
 mod lexical_builder;
 mod named_signals;
 mod normalize_inline_elements_extension;
+mod select_block_extension;
 pub mod signals;
+mod tab_indentation_extension;
 mod watched_signal;
 
 pub use clear_editor_extension::{
@@ -68,11 +75,29 @@ pub use initial_state_extension::{
     InitialStateInit, initial_state_extension,
 };
 pub use lexical_builder::{LexicalBuilder, LexicalEditorWithDispose, build_editor_from_extensions};
+// For the package modules whose extensions use it (ListExtension, CodeIndentExtension).
+#[cfg(any(feature = "list", feature = "code"))]
+pub(crate) use named_signals::named_signals_config;
 pub use named_signals::{NamedSignalsOutput, named_signals};
-pub use normalize_inline_elements_extension::register_normalize_inline_elements;
+pub use normalize_inline_elements_extension::{
+    NormalizeInlineElementsConfig, NormalizeInlineElementsConfigOverrides,
+    NormalizeInlineElementsExtensionType, NormalizeInlineElementsOutput,
+    normalize_inline_elements_extension, register_normalize_inline_elements,
+};
+pub use select_block_extension::{
+    PreventSelectAllConfig, PreventSelectAllConfigOverrides, PreventSelectAllExtensionType,
+    PreventSelectAllOutput, SelectBlockConfig, SelectBlockConfigOverrides,
+    SelectBlockExtensionType, SelectBlockOutput, prevent_select_all_extension,
+    select_block_extension,
+};
 pub use signals::{
     ReadonlySignal, Signal, SignalCallback, SignalOptions, SignalValue, batch, computed, effect,
     signal, signal_with_options, untracked,
+};
+pub use tab_indentation_extension::{
+    CanIndentPredicate, TabIndentationConfig, TabIndentationConfigOverrides,
+    TabIndentationExtensionType, TabIndentationOutput, default_can_indent,
+    register_tab_indentation, tab_indentation_extension,
 };
 pub use watched_signal::watched_signal;
 

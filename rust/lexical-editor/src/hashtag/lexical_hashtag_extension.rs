@@ -124,3 +124,54 @@ pub fn register_lexical_hashtag(editor: &Editor, config: HashtagConfig) -> Unreg
         }
     })
 }
+
+/// `Partial<HashtagConfig>`.
+#[cfg(feature = "extension")]
+#[derive(Clone, Default)]
+pub struct HashtagConfigOverrides {
+    pub get_hashtag_match: Option<GetHashtagMatch>,
+}
+
+#[cfg(feature = "extension")]
+impl crate::ExtensionConfigBase for HashtagConfig {
+    type Partial = HashtagConfigOverrides;
+
+    fn shallow_merge(&self, overrides: &HashtagConfigOverrides) -> Self {
+        HashtagConfig {
+            get_hashtag_match: overrides
+                .get_hashtag_match
+                .clone()
+                .unwrap_or_else(|| self.get_hashtag_match.clone()),
+        }
+    }
+}
+
+/// `HashtagExtension`.
+#[cfg(feature = "extension")]
+pub type HashtagExtensionType = crate::LexicalExtension<HashtagConfig, (), ()>;
+
+#[cfg(feature = "extension")]
+fn make_hashtag_extension() -> Rc<HashtagExtensionType> {
+    use crate::extension_core::{ExtensionRegisterState, LexicalExtension, define_extension};
+    define_extension(LexicalExtension {
+        nodes: super::hashtag_nodes(),
+        register: Some(Rc::new(
+            |editor: &Editor, config: &HashtagConfig, _: &ExtensionRegisterState<(), ()>| {
+                Ok(register_lexical_hashtag(editor, config.clone()))
+            },
+        )),
+        ..LexicalExtension::new("@lexical/hashtag/Hashtag", HashtagConfig::default())
+    })
+}
+
+#[cfg(feature = "extension")]
+thread_local! {
+    static HASHTAG_EXTENSION: Rc<HashtagExtensionType> = make_hashtag_extension();
+}
+
+/// `HashtagExtension`: `HashtagNode` and [`register_lexical_hashtag`] with
+/// its config.
+#[cfg(feature = "extension")]
+pub fn hashtag_extension() -> Rc<HashtagExtensionType> {
+    HASHTAG_EXTENSION.with(Rc::clone)
+}

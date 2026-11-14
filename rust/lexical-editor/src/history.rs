@@ -6,10 +6,12 @@
 //! [`CLEAR_EDITOR_COMMAND`], dispatching [`CAN_UNDO_COMMAND`] and
 //! [`CAN_REDO_COMMAND`] as the stacks fill and empty.
 //!
-//! `HistoryExtension` and `SharedHistoryExtension` wait on the extension
-//! API; a [`HistoryState`] passed to `register_history` for several editors
-//! is shared history all the same. The delay and the depth are plain values
-//! where JS also takes signals.
+//! With the `extension` feature, [`history_extension`] and
+//! [`shared_history_extension`] are `HistoryExtension` and
+//! `SharedHistoryExtension`; without it, a [`HistoryState`] passed to
+//! `register_history` for several editors is shared history all the same.
+//! `register_history` takes the delay and the depth as values; the
+//! extension passes its signals, as JS does.
 
 use crate::commands::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND, REDO_COMMAND,
@@ -30,6 +32,17 @@ use crate::{Editor, EditorState, LexicalError, utf16};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+#[cfg(feature = "extension")]
+mod history_extension;
+
+#[cfg(feature = "extension")]
+pub use history_extension::{
+    CreateInitialHistoryState, HistoryConfig, HistoryConfigOverrides, HistoryExtensionInit,
+    HistoryExtensionOutput, HistoryExtensionType, HistoryNow, HistoryStateRef, SharedHistoryConfig,
+    SharedHistoryConfigOverrides, SharedHistoryExtensionType, SharedHistoryOutput,
+    SharedHistoryState, history_extension, shared_history_extension,
+};
 
 /// `MergeAction`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -287,10 +300,14 @@ fn are_nodes_unchanged(
     true
 }
 
-/// The state of `createMergeActionGetter(editor, delay, dateNow)`'s
+/// `number | ReadonlySignal<number>` and the like: a value
+/// [`register_history`] reads (`peek`s) each time it uses it.
+type Getter<T> = Rc<dyn Fn() -> T>;
+
+/// The state of `createMergeActionGetter(editor, delayOrStore, dateNow)`'s
 /// closure; [`get`](Self::get) is the function it returns.
 struct MergeActionGetter {
-    delay: f64,
+    delay: Getter<f64>,
     date_now: DateNow,
     prev_change_time: f64,
     prev_change_type: ChangeType,
@@ -303,8 +320,8 @@ struct MergeActionGetter {
 }
 
 impl MergeActionGetter {
-    /// `createMergeActionGetter(editor, delay, dateNow)`.
-    fn new(delay: f64, date_now: DateNow) -> Self {
+    /// `createMergeActionGetter(editor, delayOrStore, dateNow)`.
+    fn new(delay: Getter<f64>, date_now: DateNow) -> Self {
         let prev_change_time = date_now();
         Self {
             delay,
@@ -422,10 +439,11 @@ impl MergeActionGetter {
                 break 'merge_action MergeAction::DiscardHistoryCandidate;
             }
 
+            let delay = (self.delay)();
             if !should_push_history
                 && change_type != ChangeType::Other
                 && change_type == self.prev_change_type
-                && change_time < self.prev_change_time + self.delay
+                && change_time < self.prev_change_time + delay
                 && is_same_editor
             {
                 break 'merge_action MergeAction::HistoryMerge;
@@ -604,6 +622,28 @@ pub fn register_history(
     on_history_state_change: Option<HistoryStateChange>,
     max_depth: Option<usize>,
 ) -> Unregister {
+    register_history_with(
+        editor,
+        history_state,
+        Rc::new(move || delay),
+        date_now,
+        on_history_state_change,
+        Rc::new(move || max_depth),
+    )
+}
+
+/// `registerHistory` with `delay` and `maxDepth` given as what reads them,
+/// as JS also takes signals for them (`HistoryExtension` passes its
+/// output's): the delay is read when an update may merge, the depth when an
+/// entry is pushed.
+pub(crate) fn register_history_with(
+    editor: &Editor,
+    history_state: &Rc<RefCell<HistoryState>>,
+    delay: Getter<f64>,
+    date_now: Option<DateNow>,
+    on_history_state_change: Option<HistoryStateChange>,
+    max_depth: Getter<Option<usize>>,
+) -> Unregister {
     let date_now = date_now.unwrap_or_else(|| Rc::new(system_date_now));
     let get_merge_action = RefCell::new(MergeActionGetter::new(delay, date_now));
     let weak: Weak<EditorInner> = Rc::downgrade(&editor.0);
@@ -637,7 +677,7 @@ pub fn register_history(
                         {
                             let mut state = history_state.borrow_mut();
                             state.undo_stack.push(undo_entry);
-                            if let Some(cap) = max_depth
+                            if let Some(cap) = max_depth()
                                 && state.undo_stack.len() > cap
                             {
                                 // FIFO-evict the oldest entries so the stack

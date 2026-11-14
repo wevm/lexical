@@ -47,13 +47,23 @@ code = []
 # @lexical/overflow: OverflowNode.
 overflow = []
 # @lexical/text: registerLexicalTextEntity, the transforms that make text
-# entities (hashtags) of the text a matcher finds.
+# entities (hashtags) of the text a matcher finds, and the root helpers
+# ($rootTextContent, $isRootTextContentEmpty, $canShowPlaceholder,
+# $findTextIntersectionFromCharacters).
 text = []
 # @lexical/hashtag: HashtagNode, its matcher (getHashtagMatch, without the
 # `regex` crate) and registerLexicalHashtag. Upstream it also depends on
 # @lexical/extension and @lexical/utils, for HashtagExtension and
 # mergeRegister, which aren't ported.
 hashtag = ["text"]
+# @lexical/file: the .lexical document format, importFile and exportFile, with
+# the app picking and saving the file.
+file = []
+# @lexical/devtools-core: generateContent, the tree view's text. Upstream it
+# depends on @lexical/html, @lexical/link, @lexical/mark and @lexical/table;
+# the link branch is built with `link` (without it no link node can exist),
+# and the HTML form, mark and table nodes aren't ported.
+devtools = []
 # @lexical/extension's decorators: HorizontalRuleNode (a block decorator) and
 # DecoratorTextNode (an inline one), and NormalizeInlineElementsExtension's
 # transform. The rest of the package, the extension API, isn't ported.

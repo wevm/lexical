@@ -9,5 +9,10 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
         lexical::UPSTREAM_VERSION,
         case.str("lexicalVersion")?,
     )?;
+    same(
+        "Editor::VERSION",
+        lexical::Editor::VERSION,
+        format!("lexical-rust@{}", lexical::UPSTREAM_VERSION).as_str(),
+    )?;
     Ok(Outcome::Pass)
 }

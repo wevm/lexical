@@ -24,6 +24,22 @@ pub fn reset_random_key() {
     KEY_COUNTER.with(|c| c.set(1));
 }
 
+/// `createUID()`: five random lowercase letters, as JS takes them from
+/// `Math.random().toString(36)` (which can give fewer).
+pub(crate) fn create_uid() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    let mut bits = std::collections::hash_map::RandomState::new()
+        .build_hasher()
+        .finish();
+    (0..5)
+        .map(|_| {
+            let letter = b'a' + (bits % 26) as u8;
+            bits /= 26;
+            char::from(letter)
+        })
+        .collect()
+}
+
 /// `generateRandomKey()`.
 pub(crate) fn generate_random_key() -> String {
     KEY_COUNTER.with(|c| {

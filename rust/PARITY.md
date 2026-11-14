@@ -41,6 +41,8 @@ updated with each milestone.
 | Code nodes (the `code` feature) | `packages/lexical-code-core/src/CodeNode.ts` (`CodeNode`: `getLanguage`, `setLanguage`, `getTheme`, `setTheme`, `getIsSyntaxHighlightSupported`, `setIsSyntaxHighlightSupported`, `insertNewAfter` (the path of an editor without `CodeExtension`), `canIndent`, `collapseAtStart`; `$createCodeNode`, `$isCodeNode`, `DEFAULT_CODE_LANGUAGE`, `getDefaultCodeLanguage`, `$exitCodeNodeOnEnter`), `CodeHighlightNode.ts` (`CodeHighlightNode`: `getHighlightType`, `setHighlightType`, `setFormat` as a no-op, `isParentRequired`, `createParentElementNode`; `$createCodeHighlightNode`, `$isCodeHighlightNode`); their generated JSON (`LexicalCodeCoreGeneratedJSON.ts`, with `afterCloneCodeNode` and `afterCloneCodeHighlightNode` as `Clone`); `TextNode.setFormat` as a node hook; from the core `getTextDirection` and `RTL_REGEX`/`LTR_REGEX` (`LexicalUtils.ts`, `LexicalConstants.ts`) | `code`, `node`, `nodes::text`, `lexical_utils`, `constants` | `serialization/code`, the code cases of `property/documents`, `scripts/code` |
 | `FlatStructureUtils.ts` (the `code` feature) | `$getFirstCodeNodeOfLine`, `$getLastCodeNodeOfLine`, `$getCodeLineDirection`, `$getStartOfCodeInLine` (with `findNextNonBlankInLine`), `$getEndOfCodeInLine`, `$plainifyCodeContent`, `$outdentLeadingSpaces` | `code::flat_structure_utils` | `scripts/code`; a unit test against JS's output for each function |
 | `CodeExtension`'s register and `registerCodeIndentation` (the `code` feature) | `CodeExtension.ts` `register` (the `TabNode` transform), as `register_code`; `CodeIndentation.ts` `registerCodeIndentation`'s handlers of `INSERT_TAB_COMMAND`, `INDENT_CONTENT_COMMAND` and `OUTDENT_CONTENT_COMMAND` (`$isSelectionInCode`, `$getCodeLines`, `$outdentLineAtCaret`, `$handleMultilineIndent`), with `tabSize` | `code::register_code`, `code::register_code_indentation` | `scripts/code` |
+| Mark node (the `mark` feature) | `packages/lexical-mark/src/MarkNode.ts` (`MarkNode`: `hasID`, `getIDs`, `setIDs`, `addID`, `deleteID`, `insertNewAfter`, `canInsertTextBefore`, `canInsertTextAfter`, `canBeEmpty`, `isInline`, `extractWithChild`, `excludeFromCopy`; `$createMarkNode`, `$isMarkNode`), its generated JSON (`LexicalMarkGeneratedJSON.ts`, with `afterCloneMarkNode` as `Clone`); `index.ts` (`$unwrapMarkNode`, `$wrapSelectionInMarkNode` with `createNode`, `$getMarkIDs`) | `mark` | `serialization/mark`, `scripts/mark` |
+| Mark ids as NodeState (the `mark` feature) | `packages/lexical-mark/src/MarkStateExtension.ts`, the parts that need no extension, for `MarkStateExtension`'s ids with the default `markableNodes`: `MARK_STATE_KEY`, `isValidMarkID`, the `markIds` state (`createMarkIDsState`, `arraySetValue(markIDValue())`'s parse, and `$setState`'s `canonicalValue` for it), `$isInlineDecoratorNode`, `$isMarkableNode`, `$getNodeMarkIDs`, `$addMarkID`, `$removeMarkID` (by selection, or walking the document), `$getMarkIDsAtSelection` (with `$getPointMarkIDs` and `$getAdjacentLeaf`), `$migrateMarkNodesToMarkState`, and their helpers (`$readNodeMarkIDs`, `$getMarkableIDs`, `$addNodeMarkIDs`, `$removeNodeMarkIDs`, `assertValidMarkID`, `$markableNodesInSelection`, `$collectMarkableNodes`, `$markableNodesIn`) | `mark::mark_state_extension` | `scripts/mark`, `serialization/mark` |
 | Overflow node (the `overflow` feature) | `packages/lexical-overflow/src/index.ts` (`OverflowNode`: `insertNewAfter` (its parent's), `excludeFromCopy`, the `$transform` of its `$config` that removes it once empty; `$createOverflowNode`, `$isOverflowNode`), with `ElementNode`'s generated JSON; `ElementNode.excludeFromCopy` as a node hook | `overflow`, `node` | `serialization/overflow`, the overflow cases of `property/documents`, `scripts/overflow` |
 | Hashtag node and matcher (the `hashtag` feature) | `packages/lexical-hashtag/src/LexicalHashtagNode.ts` (`HashtagNode`: `canInsertTextBefore`, `isTextEntity`; `$createHashtagNode`, `$isHashtagNode`), with `TextNode`'s generated JSON; `LexicalHashtagExtension.ts` (`getHashtagRegexStringChars`, `getHashtagRegexString` and `getHashtagMatch` as the default matcher, `HashtagConfig`, `registerLexicalHashtag`), the character classes as range tables generated from the JS source by `rust/scripts/generate-hashtag-tables.mjs`; `TextNode.isTextEntity` as a node hook | `hashtag`, `node` | `entities/hashtag-match`, `entities/hashtag-documents`, `entities/hashtag-typing`, the hashtag cases of `property/documents` |
 | `@lexical/extension`'s decorators (the `extension` feature) | `packages/lexical-extension/src/HorizontalRuleExtension.ts` (`HorizontalRuleNode`: a block decorator whose text is `\n`; `$createHorizontalRuleNode`, `$isHorizontalRuleNode`), `DecoratorTextExtension.ts` (`DecoratorTextNode`: inline, `__isInlineFormattable`, `getFormat`, `hasFormat`, `setFormat`, `toggleFormat`, its `format` as a flat NodeState; `$isDecoratorTextNode`), with `LexicalNode`'s generated JSON | `extension` | `scripts/decorator` |
@@ -201,6 +203,35 @@ touches:
   highlighter. Of the 25 `property/documents` cases with code nodes, 4
   also hold hashtag or overflow nodes; they waited on those packages,
   which are now ported.
+- `@lexical/mark`'s `createDOM` and `updateDOM` (the `mark` and
+  `markOverlap` theme classes), which come with `html`, and
+  `MarkExtension`, which needs the extension API (`mark_nodes()` is its
+  `nodes`). Of `MarkStateExtension.ts`, everything that needs the
+  extension API waits for it: `MarkStateExtension`, `MarkBaseExtension`,
+  `defineMarkExtension` and mark flavors (the flavor-first forms of the `$`
+  functions, `$getMarkIDsByFlavor`, `AnyMarkFlavorExtension`), the
+  `markableNodes` config (the functions use `DEFAULT_MARKABLE_NODES`, which
+  JS uses too when the extension is not installed), `disabled`, the
+  `markIDNodeKeys` output and `$getMarkIDCandidates` (so `$removeMarkID`
+  without a selection always walks the document, as JS does without the
+  extension), `registerMarkIDsListener` and `reportMarkIDs`, and
+  `registerMarkState`'s inserted-text rule (`$applyInsertedTextMarkIDs` and
+  the segment matching, composition, the `CONTROLLED_TEXT_INSERTION_COMMAND`
+  and `PASTE_COMMAND` recorders). Rendering (`$decorateMarkIDs`,
+  `isMarkIDShown` and its rerender, `exportIDsToHTML`) and the HTML import
+  rule (`data-lexical-mark-ids`) come with `html` and the DOM. Slots aren't
+  ported, so `$forEachSlot` is not: the functions do not look into slots.
+  JS's `markIds` state is an `arraySetValue`; the port has no schema
+  builders yet, so its config is a `StateValueConfig` with the same parse,
+  JSON and equality, and the canonical form `$setState` gives a set-valued
+  state is applied where the module writes it. Ids sort by UTF-16 code
+  units, as JS's `sort()` does. In a headless editor,
+  `MarkNode.canInsertTextBefore` and `canInsertTextAfter` change nothing a
+  vector can see, as for `LinkNode`: `$insertText` puts text typed at the
+  edge of an inline parent's text outside it either way. `extractWithChild`
+  and `excludeFromCopy` are node hooks that nothing calls yet (their
+  callers are `@lexical/clipboard`'s and `@lexical/html`'s copies);
+  `scripts/mark` calls them directly.
 - `@lexical/overflow`'s `createDOM` and `updateDOM`, which come with
   `html`, and `OverflowExtension`, which isn't ported yet
   (`overflow_nodes()` is its `nodes`). `excludeFromCopy` is a node hook

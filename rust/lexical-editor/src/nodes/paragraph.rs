@@ -5,13 +5,14 @@ use crate::generated_json::{
     export_compact_element_node, export_element_node, update_element_node,
 };
 use crate::json::{Object, Value};
+use crate::lexical_selection::SelectionRef;
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
-use crate::selection::SelectionRef;
+use crate::selection_deletion::is_js_whitespace;
 
 /// `$createParagraphNode()`.
 pub fn create_paragraph_node() -> NodeRef {
-    crate::utils::set_node_key(Box::new(ParagraphNode::default()))
+    crate::lexical_utils::set_node_key(Box::new(ParagraphNode::default()))
 }
 
 #[derive(Clone, Debug, Default)]
@@ -92,5 +93,28 @@ impl LexicalNode for ParagraphNode {
         new_element.set_element_style(self.element.get_style());
         this.insert_after(&new_element, restore_selection)?;
         Ok(Some(new_element))
+    }
+
+    /// `ParagraphNode.collapseAtStart()`: an empty (trimmed) paragraph is
+    /// removed as long as there is a sibling to go to. Every child has to
+    /// be blank text: a non-text child is content even with no text.
+    fn collapse_at_start(&self, this: &NodeRef, _: &SelectionRef) -> Result<bool, LexicalError> {
+        if this
+            .get_children()
+            .iter()
+            .all(|child| child.is_text() && child.get_text_content().chars().all(is_js_whitespace))
+        {
+            if this.get_next_sibling().is_some() {
+                this.select_next(None, None)?;
+                this.remove(false)?;
+                return Ok(true);
+            }
+            if this.get_previous_sibling().is_some() {
+                this.select_previous(None, None)?;
+                this.remove(false)?;
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 }

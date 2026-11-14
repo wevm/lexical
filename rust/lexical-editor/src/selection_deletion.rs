@@ -35,15 +35,17 @@ use crate::caret_utils::{
     update_range_selection_from_caret_range,
 };
 use crate::error::invariant;
+use crate::lexical_selection::{Point, PointType, RangeSelection, SelectionRef, Which};
+use crate::lexical_utils::{
+    get_root, is_block, is_shadow_root_node, restore_empty_container_paragraph,
+};
 use crate::node::NodeRef;
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::nodes::line_break::LineBreakNode;
-use crate::nodes::paragraph::{ParagraphNode, create_paragraph_node};
-use crate::selection::{Point, PointType, RangeSelection, SelectionRef, Which};
+use crate::nodes::paragraph::create_paragraph_node;
 use crate::selection_insert_nodes::normalize_selection;
 use crate::updates::get_active_editor;
 use crate::utf16;
-use crate::utils::{get_root, is_block, is_shadow_root_node, restore_empty_container_paragraph};
 use std::rc::Rc;
 
 /// `'character'`, `'word'`, `'line'` or `'lineboundary'`.
@@ -1002,7 +1004,7 @@ fn collapse_at_start(selection: &SelectionRef, start_node: &NodeRef) -> Result<b
     let mut node = Some(start_node.clone());
     while let Some(n) = node {
         if n.is_element() {
-            if element_collapse_at_start(&n, selection)? {
+            if n.collapse_at_start(selection)? {
                 return Ok(true);
             }
             if is_root_or_shadow_root(&*n.get_latest()) {
@@ -1013,41 +1015,6 @@ fn collapse_at_start(selection: &SelectionRef, start_node: &NodeRef) -> Result<b
             break;
         }
         node = n.get_parent();
-    }
-    Ok(false)
-}
-
-/// `node.collapseAtStart(selection)` of the ported elements: `RootNode`
-/// returns true, `ParagraphNode` removes itself when it holds only blank
-/// text, and `ElementNode` returns false.
-fn element_collapse_at_start(
-    node: &NodeRef,
-    _selection: &SelectionRef,
-) -> Result<bool, LexicalError> {
-    if node.is_root() {
-        return Ok(true);
-    }
-    if !node.get_latest().is::<ParagraphNode>() {
-        return Ok(false);
-    }
-    // `ParagraphNode.collapseAtStart()`: an empty (trimmed) paragraph is
-    // removed as long as there is a sibling to go to. Every child has to be
-    // blank text.
-    if node
-        .get_children()
-        .iter()
-        .all(|child| child.is_text() && child.get_text_content().chars().all(is_js_whitespace))
-    {
-        if node.get_next_sibling().is_some() {
-            node.select_next(None, None)?;
-            node.remove(false)?;
-            return Ok(true);
-        }
-        if node.get_previous_sibling().is_some() {
-            node.select_previous(None, None)?;
-            node.remove(false)?;
-            return Ok(true);
-        }
     }
     Ok(false)
 }
@@ -1361,7 +1328,7 @@ const EMOJI: &[(u32, u32)] = &[
 
 /// A JS `\s` character (WhiteSpace or LineTerminator), what `trim()` and
 /// `/\S/` use: Unicode `White_Space` without U+0085, plus U+FEFF.
-fn is_js_whitespace(c: char) -> bool {
+pub(crate) fn is_js_whitespace(c: char) -> bool {
     (c.is_whitespace() && c != '\u{85}') || c == '\u{FEFF}'
 }
 
@@ -1410,7 +1377,7 @@ fn remove_segment(node: &NodeRef, is_backward: bool, offset: usize) -> Result<()
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::selection::{Selection, create_range_selection, set_selection};
+    use crate::lexical_selection::{Selection, create_range_selection, set_selection};
     use crate::{
         CreateEditorArgs, UpdateOptions, create_editor, json, parse_serialized_node,
         reset_random_key,

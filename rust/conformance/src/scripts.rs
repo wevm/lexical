@@ -11,6 +11,9 @@
 //! name Lexical's own commands (`UNDO_COMMAND`, `CAN_UNDO_COMMAND`...) as JS
 //! exports them, and any other name is a command the script makes.
 //!
+//! A script with `richText: true` registers `@lexical/rich-text`'s nodes
+//! (`HeadingNode`, `QuoteNode`).
+//!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
 
@@ -657,7 +660,14 @@ impl Session {
     /// `startSession(script)`: a new headless editor, with keys restarted.
     pub fn start(script: &Value) -> Result<Session, String> {
         reset_random_key();
-        let editor = create_editor(CreateEditorArgs::default());
+        let rich_text = script.get("richText").and_then(Value::as_bool) == Some(true);
+        let editor = create_editor(CreateEditorArgs {
+            nodes: if rich_text {
+                lexical::rich_text::rich_text_nodes()
+            } else {
+                Vec::new()
+            },
+        });
         let ctx = Rc::new(Ctx::default());
         for name in script
             .get("transforms")

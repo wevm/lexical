@@ -7,13 +7,13 @@ use crate::LexicalError;
 use crate::caret::TextPointCaretSlice;
 use crate::caret_utils::{caret_range_from_selection, get_text_point_caret_slice_for_node};
 use crate::constants::{TEXT_TYPE_TO_FORMAT, lookup};
-use crate::node::NodeRef;
-use crate::nodes::tab::TabNode;
-use crate::nodes::text::{to_int32, toggle_text_format_type};
-use crate::selection::{
+use crate::lexical_selection::{
     PointType, SelectionRef, Which, get_selection, selection_touches_element,
     update_element_selection_on_create_delete_node,
 };
+use crate::node::NodeRef;
+use crate::nodes::tab::TabNode;
+use crate::nodes::text::{to_int32, toggle_text_format_type};
 use crate::utf16;
 
 impl SelectionRef {
@@ -83,7 +83,7 @@ impl SelectionRef {
             return Ok((0, 0));
         }
         // `getCharacterOffset(point)`
-        let character_offset = |point: &crate::selection::Point| {
+        let character_offset = |point: &crate::lexical_selection::Point| {
             if point.point_type == PointType::Text {
                 return Ok(point.offset);
             }
@@ -299,7 +299,7 @@ pub(crate) fn split_text_point_caret_slice(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::selection::{create_range_selection, set_selection};
+    use crate::lexical_selection::{create_range_selection, set_selection};
     use crate::{
         CreateEditorArgs, Editor, UpdateOptions, create_editor, get_root, json,
         parse_serialized_node, reset_random_key,
@@ -329,7 +329,7 @@ mod tests {
         let range = state
             .read(|| get_selection().and_then(|s| s.range()))
             .unwrap();
-        let spec = |p: &crate::selection::Point| -> Spec {
+        let spec = |p: &crate::lexical_selection::Point| -> Spec {
             (p.key.clone().leak(), p.offset, p.point_type)
         };
         (

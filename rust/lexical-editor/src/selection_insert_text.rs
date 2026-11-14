@@ -10,12 +10,12 @@
 use crate::LexicalError;
 use crate::caret::{CaretDirection, get_sibling_caret};
 use crate::error::invariant;
+use crate::lexical_selection::{PointType, SelectionRef, Which, get_selection, set_selection};
 use crate::node::NodeRef;
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::nodes::paragraph::{ParagraphNode, create_paragraph_node};
 use crate::nodes::tab::TabNode;
 use crate::nodes::text::create_text_node;
-use crate::selection::{PointType, SelectionRef, Which, get_selection, set_selection};
 
 impl SelectionRef {
     /// `selection.insertText(text)`: inserts `text` at a range selection,
@@ -421,7 +421,7 @@ mod tests {
             editor
                 .update(
                     move || {
-                        let selection = crate::selection::create_range_selection();
+                        let selection = crate::lexical_selection::create_range_selection();
                         selection.point_set(Which::Anchor, key, offset, point_type)?;
                         selection.point_set(Which::Focus, key, offset, point_type)?;
                         set_selection(Some(selection.clone()));
@@ -437,7 +437,7 @@ mod tests {
                 "{children}"
             );
             let range = editor_state.selection().unwrap().range().unwrap();
-            let end = crate::selection::Point::new(end_key, end_offset, PointType::Text);
+            let end = crate::lexical_selection::Point::new(end_key, end_offset, PointType::Text);
             assert_eq!(
                 (range.anchor, range.focus),
                 (end.clone(), end),

@@ -7,8 +7,8 @@ use crate::caret_utils::{
     SliceMode, caret_range_from_selection, remove_text_from_caret_range,
     update_range_selection_from_caret_range,
 };
+use crate::lexical_selection::{SelectionRef, get_selection, set_selection};
 use crate::nodes::text::{to_int32, toggle_text_format_type};
-use crate::selection::{SelectionRef, get_selection, set_selection};
 
 impl SelectionRef {
     /// `toggleFormat(format)`: toggles a format on the selection's pending

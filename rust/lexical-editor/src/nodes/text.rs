@@ -7,16 +7,16 @@ use crate::constants::{
 use crate::error::invariant;
 use crate::generated_json::{export_compact_text_node, export_text_node, update_text_node};
 use crate::json::Object;
-use crate::node::{LexicalNode, NodeBase, NodeRef};
-use crate::nodes::tab::TabNode;
-use crate::selection::{
+use crate::lexical_selection::{
     Point, PointType, SelectionRef, Which, adjust_point_offset_for_merged_sibling, get_selection,
     internal_make_range_selection, update_element_selection_on_create_delete_node,
 };
-use crate::updates::error_on_read_only;
-use crate::utils::{
+use crate::lexical_utils::{
     get_writable, internal_mark_siblings_as_dirty, mutate, set_node_key, with_writable,
 };
+use crate::node::{LexicalNode, NodeBase, NodeRef};
+use crate::nodes::tab::TabNode;
+use crate::updates::error_on_read_only;
 use crate::{LexicalError, utf16};
 
 /// The fields `TextNode` adds. `format` and `detail` are kept as the JS

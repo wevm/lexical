@@ -381,12 +381,18 @@ public final class DataTransfer {
   public var files: [DataTransferFile] = []
   public var dropEffect = "none"
   public var effectAllowed = "uninitialized"
+  /// Whether the transfer carries files that it doesn't hold yet, as a
+  /// browser's `dragover` reports a dragged file in `types` while `files`
+  /// stays empty until the drop.
+  package var hasUnreadFiles = false
 
   public init() {}
 
   /// The MIME types set so far, in order (`"Files"` last when there are
   /// files, as browsers report it).
-  public var types: [String] { entries.map(\.type) + (files.isEmpty ? [] : ["Files"]) }
+  public var types: [String] {
+    entries.map(\.type) + (files.isEmpty && !hasUnreadFiles ? [] : ["Files"])
+  }
 
   /// The format a type names: lowercased, with `text` read as
   /// `text/plain` and `url` as `text/uri-list`, as browsers do.

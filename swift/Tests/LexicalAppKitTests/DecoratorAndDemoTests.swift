@@ -279,6 +279,47 @@
       #expect(view.draggingUpdated(other) != .move)
     }
 
+    /// A file dragged over the view is not read until it is dropped: as a
+    /// browser's `dragover` does, `DRAGOVER_COMMAND`'s transfer lists the
+    /// `Files` type with no files, and the drop's has the file's data.
+    @Test func readsADraggedFileOnlyWhenItIsDropped() throws {
+      let (view, window) = try showDemo()
+      var overTypes: [String] = []
+      var overFiles: [DataTransferFile] = []
+      var droppedFiles: [DataTransferFile] = []
+      let unregisterDragOver = view.editor.registerCommand(
+        DRAGOVER_COMMAND,
+        { event, _ in
+          overTypes = event.dataTransfer?.types ?? []
+          overFiles = event.dataTransfer?.files ?? []
+          return false
+        }, COMMAND_PRIORITY_HIGH)
+      defer { unregisterDragOver() }
+      let unregisterDrop = view.editor.registerCommand(
+        DROP_COMMAND,
+        { event, _ in
+          droppedFiles = event.dataTransfer?.files ?? []
+          return true
+        }, COMMAND_PRIORITY_HIGH)
+      defer { unregisterDrop() }
+      let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("lexical-drag-\(UUID().uuidString).txt")
+      try Data("dragged".utf8).write(to: url)
+      defer { try? FileManager.default.removeItem(at: url) }
+      let pasteboard = NSPasteboard(name: .init("lexical-test-\(UUID().uuidString)"))
+      defer { pasteboard.releaseGlobally() }
+      pasteboard.clearContents()
+      pasteboard.writeObjects([url as NSURL])
+      let point = view.convert(NSPoint(x: 40, y: 10), to: nil)
+      let drag = Drag(from: nil, over: window, at: point, pasteboard)
+      _ = view.draggingUpdated(drag)
+      #expect(overTypes.contains("Files"))
+      #expect(overFiles.map(\.data.count) == [])
+      _ = view.performDragOperation(drag)
+      #expect(droppedFiles.map(\.name) == [url.lastPathComponent])
+      #expect(droppedFiles.map(\.data) == [Array("dragged".utf8)])
+    }
+
     /// A line with an inline decorator taller than the line height, as an
     /// image is, in a paragraph or a list item: its text and the item's
     /// marker sit on the decorator's baseline, as an inline image's line's

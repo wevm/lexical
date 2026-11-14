@@ -21,6 +21,7 @@ let package = Package(
   platforms: [.iOS(.v26), .macOS(.v26)],
   products: [
     .library(name: "Lexical", targets: ["Lexical"]),
+    .library(name: "LexicalMacros", targets: ["LexicalMacros"]),
     .library(name: "LexicalTesting", targets: ["LexicalTesting"]),
     .library(name: "LexicalTextKit", targets: ["LexicalTextKit"]),
     .library(name: "LexicalAppKit", targets: ["LexicalAppKit"]),
@@ -51,21 +52,24 @@ let package = Package(
     .library(name: "LexicalFile", targets: ["LexicalFile"]),
   ],
   dependencies: [
-    // The `@LexicalNode` macro (Q30).
+    // The `@LexicalNode` macro (Q30), which only LexicalMacros uses.
     .package(url: "https://github.com/swiftlang/swift-syntax", "603.0.0"..<"605.0.0")
   ],
   targets: [
-    .target(name: "Lexical", dependencies: ["LexicalMacros"]),
+    .target(name: "Lexical"),
+    // The optional `@LexicalNode` and `@Field` macros (Q30): the
+    // declarations, and the compiler plugin that expands them.
+    .target(name: "LexicalMacros", dependencies: ["Lexical", "LexicalMacrosPlugin"]),
     .macro(
-      name: "LexicalMacros",
+      name: "LexicalMacrosPlugin",
       dependencies: [
         .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
         .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
       ]),
     .testTarget(
-      name: "LexicalMacrosTests",
+      name: "LexicalMacrosPluginTests",
       dependencies: [
-        "LexicalMacros",
+        "LexicalMacrosPlugin",
         .product(name: "SwiftSyntaxMacroExpansion", package: "swift-syntax"),
         .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax"),
       ]),
@@ -257,6 +261,7 @@ let package = Package(
       name: "LexicalHistoryTests",
       dependencies: [
         "Lexical", "LexicalClipboard", "LexicalExtension", "LexicalHistory", "LexicalHTML",
+        "LexicalMacros",
         "LexicalPlainText", "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalUtils",
       ]),
     // @lexical/plain-text: the plain text commands.
@@ -335,7 +340,7 @@ let package = Package(
       name: "LexicalTests",
       dependencies: [
         "Lexical", "LexicalExtension", "LexicalHistory", "LexicalHTML", "LexicalLink",
-        "LexicalList",
+        "LexicalList", "LexicalMacros",
         "LexicalRichText", "LexicalTesting",
       ]),
   ],

@@ -108,6 +108,43 @@ the editor instead, with the commands and listeners a Lexical web app uses:
 | `textViewDidChange` | `registerUpdateListener`, `registerTextContentListener` |
 | `shouldChangeTextIn`, Return | `CONTROLLED_TEXT_INSERTION_COMMAND`, `KEY_ENTER_COMMAND`, `BEFORE_INPUT_COMMAND` |
 
+## Custom nodes
+
+A node class declares its type and JSON schema in `config()`, as a JS node
+does in `$config()`, with a `SchemaField` for each property stored in a
+field (JS's `withField`):
+
+```swift
+final class CalloutNode: ElementNode {
+  var __label: String = ""
+
+  override class func config() throws -> NodeConfig? {
+    try NodeConfig(
+      CalloutNode.self, type: "callout", extends: ElementNode.self,
+      json: [SchemaField("label", stringValue(), field: \CalloutNode.__label)])
+  }
+}
+```
+
+The config derives `clone`, `importJSON` and `exportJSON` in both forms, as
+`$config` does. The optional `LexicalMacros` product has shorthand for it:
+`@LexicalNode` writes the same `config()` from its `@Field` properties, and a
+`getX()`/`setX(_:)` pair for each.
+
+```swift
+import Lexical
+import LexicalMacros
+
+@LexicalNode(type: "callout", extends: ElementNode.self)
+final class CalloutNode: ElementNode {
+  @Field(stringValue()) var __label: String = ""
+}
+```
+
+`LexicalMacros` builds swift-syntax (unless SwiftPM finds a prebuilt one), and
+Xcode asks to trust its macro the first time, or `xcodebuild` needs
+`-skipMacroValidation`. The other products use no macros.
+
 ## Code highlighting
 
 `LexicalCodeCore`'s `CodeHighlighterExtension` highlights code blocks with

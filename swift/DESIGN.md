@@ -156,9 +156,15 @@ integral and within 32 bits.
   thread or actor that created it; `$functions` find the active editor through
   a task-local or thread-local. Only the UI modules are `@MainActor`.
 - **Linux** (Q24): every non-UI module builds and tests on Linux.
-- **Nodes** (Q30): a `@LexicalNode` macro generates `clone`, JSON import and
-  export in both forms with schema key order, and accessors. Built-in nodes
-  use it too.
+- **Nodes** (Q30): a node's `config()` is the runtime form of `$config`, from
+  which `clone` and JSON import and export in both forms, with schema key
+  order, are derived. Built-in nodes write it by hand. An optional
+  `@LexicalNode` macro writes it from `@Field` properties, with accessors. It
+  ships in its own `LexicalMacros` product (the declarations, over the
+  `LexicalMacrosPlugin` compiler plugin) since 0.2.0, so an app that doesn't
+  use it builds no swift-syntax and has no macro to trust in Xcode; SwiftPM
+  has no binary macros, and swift-syntax prebuilts cover only some
+  toolchains.
 - **Composition** (Q18): the upstream extension API (`defineExtension`).
 - **HTML and clipboard** (Q17): a Swift DOM abstraction over a pure-Swift HTML
   parser, byte-exact HTML export, and a clipboard carrying
@@ -225,10 +231,11 @@ These are reversible choices made while porting, under Q7 and Q27.
   and `Set`. `JSONObject` keeps key order the way a JS object does, array-index
   keys first, and holds `undefined` (`nil`), which `stringify` skips.
 - **Schemas** (`SchemaField`, `NodeConfig`) are the runtime form of
-  `$config`; `@LexicalNode` generates them from `@Field` properties
-  (`withField`), in declaration order, with `getX`/`setX` accessors. Fields
-  with custom accessors (`withAccessors`) and the built-in nodes, whose
-  properties all have them, still write `SchemaField`s by hand. A schema's
+  `$config`, and the documented way to write a node. `@LexicalNode` (in
+  `LexicalMacros`) generates them from `@Field` properties (`withField`), in
+  declaration order, with `getX`/`setX` accessors. Fields with custom
+  accessors (`withAccessors`) and the built-in nodes, whose properties all
+  have them, write `SchemaField`s by hand. A schema's
   values are `JSONValue?`.
   A field's accessors are closures on its `SchemaField`, not names resolved
   by reflection, so the JS tests of accessor naming are skipped as

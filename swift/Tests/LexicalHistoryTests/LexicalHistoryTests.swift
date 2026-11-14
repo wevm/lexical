@@ -1,6 +1,7 @@
 import Lexical
 import LexicalExtension
 import LexicalHistory
+import LexicalMacros
 import LexicalRichText
 import LexicalSelection
 import LexicalTesting

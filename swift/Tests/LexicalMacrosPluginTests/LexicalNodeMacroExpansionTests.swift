@@ -1,4 +1,4 @@
-import LexicalMacros
+import LexicalMacrosPlugin
 import SwiftSyntaxMacroExpansion
 import SwiftSyntaxMacrosGenericTestSupport
 import Testing

@@ -49,23 +49,29 @@ for side in base pkg; do
   (cd "$work/$side" && swift build -q --scratch-path "$work/build-$side" \
     -Xswiftc -emit-symbol-graph -Xswiftc -emit-symbol-graph-dir \
     -Xswiftc "$work/graphs-$side" >/dev/null)
+  # Macro plugins run in the compiler, so their public types aren't API.
+  # Each side names its own: LexicalMacros was the plugin up to 0.1.x.
+  (cd "$work/$side" && swift package dump-package) >"$work/manifest-$side.json"
 done
-python3 - "$work/graphs-base" "$work/graphs-pkg" <<'EOF' || status=1
+python3 - "$work" <<'EOF' || status=1
 import glob, json, os, sys
 
-def public(d):
+def public(side):
+    d = os.path.join(sys.argv[1], f"graphs-{side}")
+    manifest = json.load(open(os.path.join(sys.argv[1], f"manifest-{side}.json")))
+    plugins = {t["name"] for t in manifest["targets"] if t["type"] == "macro"}
     out = {}
     for f in glob.glob(os.path.join(d, "Lexical*.symbols.json")):
-        if os.path.basename(f).startswith("LexicalMacros"):
-            continue
         g = json.load(open(f))
+        if g["module"]["name"] in plugins:
+            continue
         for s in g["symbols"]:
             if s["accessLevel"] in ("public", "open"):
                 name = ".".join(s["pathComponents"])
                 out[s["identifier"]["precise"]] = f'{g["module"]["name"]}: {name}'
     return out
 
-base, new = public(sys.argv[1]), public(sys.argv[2])
+base, new = public("base"), public("pkg")
 # A protocol's default implementation shows on a conforming type as a
 # synthesized symbol; once the type implements it itself, the symbol has its
 # own identifier but stays public under the same name.

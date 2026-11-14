@@ -1,11 +1,13 @@
 //! `nodes/LexicalParagraphNode.ts`.
 
+use crate::LexicalError;
 use crate::generated_json::{
     export_compact_element_node, export_element_node, update_element_node,
 };
 use crate::json::{Object, Value};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
+use crate::selection::SelectionRef;
 
 /// `$createParagraphNode()`.
 pub fn create_paragraph_node() -> NodeRef {
@@ -68,5 +70,27 @@ impl LexicalNode for ParagraphNode {
 
     fn update_from_json(&mut self, json: &Object) {
         update_element_node(&mut self.element, json);
+    }
+
+    /// `ParagraphNode.insertNewAfter`: a paragraph with the selection's
+    /// format and style as its text format and style, and this paragraph's
+    /// direction, alignment and style.
+    fn insert_new_after(
+        &self,
+        this: &NodeRef,
+        selection: &SelectionRef,
+        restore_selection: bool,
+    ) -> Result<Option<NodeRef>, LexicalError> {
+        let (format, style) = selection
+            .with_range(|r| (r.format, r.style.clone()))
+            .unwrap_or_default();
+        let new_element = create_paragraph_node();
+        new_element.set_text_format(format);
+        new_element.set_text_style(&style);
+        new_element.set_direction(self.element.get_direction());
+        new_element.set_element_format(self.element.get_format_type());
+        new_element.set_element_style(self.element.get_style());
+        this.insert_after(&new_element, restore_selection)?;
+        Ok(Some(new_element))
     }
 }

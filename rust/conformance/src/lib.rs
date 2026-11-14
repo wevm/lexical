@@ -9,6 +9,7 @@
 //! and the rest still run.
 
 mod case;
+pub mod scripts;
 mod suites;
 
 pub use case::{Case, Outcome};

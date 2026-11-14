@@ -3,8 +3,13 @@
 use crate::constants::IS_UNMERGEABLE;
 use crate::generated_json::{export_compact_tab_node, export_tab_node, update_tab_node};
 use crate::json::Object;
-use crate::node::{LexicalNode, NodeBase};
+use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::text::TextData;
+
+/// `$createTabNode()`.
+pub fn create_tab_node() -> NodeRef {
+    crate::utils::set_node_key(Box::new(TabNode::default()))
+}
 
 /// A text node that always holds one `\t` and never merges.
 #[derive(Clone, Debug)]
@@ -41,6 +46,12 @@ impl LexicalNode for TabNode {
     }
     fn text_mut(&mut self) -> Option<&mut TextData> {
         Some(&mut self.text)
+    }
+    fn can_insert_text_before(&self) -> bool {
+        false
+    }
+    fn can_insert_text_after(&self) -> bool {
+        false
     }
     fn export_json(&self, compact: bool) -> Object {
         if compact {

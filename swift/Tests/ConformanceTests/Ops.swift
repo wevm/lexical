@@ -1,6 +1,7 @@
 import Foundation
 import Lexical
 import LexicalHistory
+import LexicalPlainText
 import LexicalRichText
 
 // The Swift interpreter of the script vectors that
@@ -459,6 +460,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   let ctx = ScriptContext(editor)
   if script["richText"]?.boolValue == true {
     _ = registerRichText(editor)
+  }
+  if script["plainText"]?.boolValue == true {
+    _ = registerPlainText(editor)
   }
   for name in script["transforms"]?.arrayValue ?? [] {
     try registerTransform(name.stringValue.orThrow(), ctx)

@@ -25,6 +25,8 @@ selection = []
 utils = ["selection"]
 # @lexical/rich-text: HeadingNode and QuoteNode.
 rich-text = ["selection", "utils"]
+# @lexical/plain-text: registerPlainText's model command handlers.
+plain-text = []
 
 [lints]
 workspace = true

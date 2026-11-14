@@ -63,6 +63,8 @@ mod node;
 pub mod nodes;
 mod normalization;
 mod ordered;
+#[cfg(feature = "plain-text")]
+pub mod plain_text;
 #[cfg(feature = "rich-text")]
 pub mod rich_text;
 #[cfg(feature = "selection")]

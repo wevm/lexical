@@ -39,10 +39,19 @@ import {
 } from '@lexical/list';
 import {OverflowNode} from '@lexical/overflow';
 import {registerPlainText} from '@lexical/plain-text';
-import {HeadingNode, QuoteNode, registerRichText} from '@lexical/rich-text';
+import {
+  $createHeadingNode,
+  $createQuoteNode,
+  HeadingNode,
+  type HeadingTagType,
+  QuoteNode,
+  registerRichText,
+} from '@lexical/rich-text';
+import {$setBlocksType} from '@lexical/selection';
 import {
   $caretRangeFromSelection,
   $createNodeSelection,
+  $createParagraphNode,
   $createRangeSelection,
   $getCaretRange,
   $getChildCaret,
@@ -165,6 +174,12 @@ export type Action =
    * or `'new'` when that state has no node with the key.
    */
   | {do: 'logStateChange'; key: string; state: string}
+  /**
+   * `$setBlocksType($getSelection(), $create)` (@lexical/selection), with its
+   * default `$afterCreateElement` (`$copyBlockFormatIndent`), where `$create`
+   * is `$createParagraphNode`, `$createQuoteNode` or `$createHeadingNode(tag)`.
+   */
+  | {do: 'setBlocksType'; block: 'paragraph' | 'quote' | HeadingTagType}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /**
@@ -684,6 +699,26 @@ function $runAction(action: Action, ctx: Context): void {
               stateConfig(action.state),
             ) as Json),
       ]);
+      return;
+    }
+    case 'setBlocksType': {
+      const {block} = action;
+      $setBlocksType($getSelection(), (): ElementNode => {
+        switch (block) {
+          case 'paragraph':
+            return $createParagraphNode();
+          case 'quote':
+            return $createQuoteNode();
+          case 'h1':
+          case 'h2':
+          case 'h3':
+          case 'h4':
+          case 'h5':
+          case 'h6':
+            return $createHeadingNode(block);
+        }
+        throw new Error(`unknown block ${block}`);
+      });
       return;
     }
     case 'dispatch':

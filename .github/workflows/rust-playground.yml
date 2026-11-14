@@ -1,0 +1,114 @@
+name: Rust playgrounds
+
+# rust/apps: the desktop playgrounds on the Rust port. Each is a Cargo
+# workspace of its own (Rune needs a newer Rust than lexical-editor's 1.88).
+# Path-filtered because macOS runners are slow to start. Linux checks that
+# the Rune app builds, passes its tests, and renders headless; macOS builds
+# and renders it as it runs on tmm's Mac.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rust/**'
+      - 'packages/lexical-conformance/vectors/**'
+      - '.github/workflows/rust-playground.yml'
+  # Any base, so a PR stacked on another one gets checked too.
+  pull_request:
+    paths:
+      - 'rust/**'
+      - 'packages/lexical-conformance/vectors/**'
+      - '.github/workflows/rust-playground.yml'
+
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  rune-linux:
+    name: Rune playground (Linux)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: rust/apps/lexical-playground-rune
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      # Rune's windowing libraries, and a software Vulkan driver for its
+      # headless renderer on a runner without a GPU.
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libwayland-dev mesa-vulkan-drivers
+      # rustup is preinstalled; rust-toolchain.toml picks the version.
+      - name: Install the toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/apps/lexical-playground-rune/target
+          key: lexical-playground-rune-${{ runner.os }}-${{ hashFiles('rust/apps/lexical-playground-rune/Cargo.lock', 'rust/apps/lexical-playground-rune/rust-toolchain.toml') }}
+          restore-keys: lexical-playground-rune-${{ runner.os }}-
+      - name: Format
+        run: cargo fmt --check
+      - name: Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test --locked
+      # The app's first frame with a typed session, drawn by Rune's own
+      # renderer as a window would.
+      - name: Render headless
+        run: |
+          cargo run --locked -- --snap "$RUNNER_TEMP/lexical-playground-rune-linux.png" --size 1100x720 --scene typed
+          test -s "$RUNNER_TEMP/lexical-playground-rune-linux.png"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: lexical-playground-rune-linux-snapshot
+          path: ${{ runner.temp }}/lexical-playground-rune-linux.png
+          if-no-files-found: ignore
+
+  rune-macos:
+    name: Rune playground (macOS)
+    runs-on: macos-26
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: rust/apps/lexical-playground-rune
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Install the toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/apps/lexical-playground-rune/target
+          key: lexical-playground-rune-${{ runner.os }}-${{ hashFiles('rust/apps/lexical-playground-rune/Cargo.lock', 'rust/apps/lexical-playground-rune/rust-toolchain.toml') }}
+          restore-keys: lexical-playground-rune-${{ runner.os }}-
+      - name: Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test --locked
+      - name: Render headless
+        run: |
+          cargo build --locked --release
+          ./target/release/lexical-playground-rune --snap "$RUNNER_TEMP/lexical-playground-rune-macos.png" --size 1100x720 --scene typed
+          test -s "$RUNNER_TEMP/lexical-playground-rune-macos.png"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: lexical-playground-rune-macos-snapshot
+          path: ${{ runner.temp }}/lexical-playground-rune-macos.png
+          if-no-files-found: ignore

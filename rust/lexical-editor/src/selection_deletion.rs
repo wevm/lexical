@@ -80,6 +80,17 @@ pub trait SelectionMovement {
         is_backward: bool,
         granularity: SelectionGranularity,
     ) -> Result<Option<Point>, LexicalError>;
+
+    /// Whether the window gives a DOM selection to measure with
+    /// (`getDOMSelection(getWindow(editor))` is not null). Where it gives
+    /// none, as in a window installed after Lexical loaded (the upstream
+    /// unit tests install jsdom's that way, so `CAN_USE_DOM` is false),
+    /// `$extendSelectionForDeletion` and `modify` stop after their model
+    /// step and leave the selection as it left it, and `landed_point` is
+    /// never asked. True by default.
+    fn has_dom_selection(&self) -> bool {
+        true
+    }
 }
 
 /// `deleteCharacter`'s scan for a block to merge with.
@@ -501,6 +512,10 @@ impl SelectionRef {
         }
         let collapse = alter == SelectionAlter::Move;
         let movement = selection_movement()?;
+        // `if (!domSelection) return;`
+        if !movement.has_dom_selection() {
+            return Ok(());
+        }
         // Removing the DOM block cursor element: there is no DOM. When the
         // selection is dirty JS first syncs the DOM selection to it; the
         // movement always measures from the model's focus.
@@ -611,6 +626,10 @@ fn extend_selection_for_deletion(
         return Ok(false);
     }
     let movement = selection_movement()?;
+    // `!domSelection`.
+    if !movement.has_dom_selection() {
+        return Ok(false);
+    }
     // Removing the DOM block cursor element: there is no DOM.
     let range = selection.range().expect("a range selection");
     let anchor = range.anchor.clone();
@@ -2987,5 +3006,56 @@ extend>l 10 3:0:e 3:0:e | 3:0:e 3:0:e 0 | =
             result.map_err(|e| e.message().to_owned()),
             Err("window object not found".to_owned())
         );
+    }
+
+    /// A window that gives no DOM selection, as jsdom's does when installed
+    /// after Lexical loaded (property.ts's `sequenceEditor`).
+    struct WindowWithoutSelection;
+
+    impl SelectionMovement for WindowWithoutSelection {
+        fn landed_point(
+            &self,
+            _from: &Point,
+            _is_backward: bool,
+            _granularity: SelectionGranularity,
+        ) -> Result<Option<Point>, LexicalError> {
+            unreachable!("nothing measures without a DOM selection")
+        }
+
+        fn has_dom_selection(&self) -> bool {
+            false
+        }
+    }
+
+    /// JS, with `sequenceEditor`'s window: `modify` past the model step
+    /// returns at `if (!domSelection)`, leaving `abc` selected at 1 for both
+    /// alters.
+    #[test]
+    fn modify_without_a_dom_selection_matches_js() {
+        for alter in [SelectionAlter::Move, SelectionAlter::Extend] {
+            reset_random_key();
+            let editor = create_editor(CreateEditorArgs::default());
+            editor.set_selection_movement(Some(Rc::new(WindowWithoutSelection)));
+            let result = editor.update(
+                move || {
+                    let paragraph = create_paragraph_node();
+                    let text = crate::create_text_node("abc");
+                    paragraph.append(std::slice::from_ref(&text))?;
+                    get_root().append(&[paragraph])?;
+                    let selection = text.select(Some(1), Some(1))?;
+                    selection.modify(alter, true, SelectionGranularity::Character)
+                },
+                UpdateOptions {
+                    discrete: true,
+                    ..UpdateOptions::default()
+                },
+            );
+            assert_eq!(result.map_err(|e| e.message().to_owned()), Ok(()));
+            let offsets = editor.read(|| {
+                let range = get_selection().and_then(|s| s.range());
+                range.map(|r| (r.anchor.offset, r.focus.offset))
+            });
+            assert_eq!(offsets.ok().flatten(), Some((1, 1)));
+        }
     }
 }

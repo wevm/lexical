@@ -28,6 +28,31 @@ zbugs-gpui is. macOS.
 - **The toolbar.** Bold, italic, underline, strikethrough, code, highlight,
   subscript and superscript follow the selection's format. Select all, and
   Reset.
+- **The block row.** Normal, H1-H3 and Quote run `$setBlocksType`; the
+  bullet, numbered and check list buttons dispatch the list commands (the
+  list the caret is already in turns back into paragraphs, as in the web
+  playground's block menu). Link toggles a link to `https://` on the
+  selection, or removes the one at the caret (`TOGGLE_LINK_COMMAND`).
+  Outdent and Indent dispatch `OUTDENT_CONTENT_COMMAND` and
+  `INDENT_CONTENT_COMMAND`, as do Shift-Tab and Tab at a block's start
+  (`$indentOverTab`; elsewhere Tab inserts a tab). In a check item, a
+  button, or a click on its box, checks or unchecks it (`toggleChecked`). The toolbar follows the
+  selection the editor shows, so a click shows the format and block there
+  before the next edit, with the format a browser's `selectionchange` gives
+  it.
+- **Blocks.** Headings draw larger and bolder, list items with their
+  marker (•, 1., ☐ or ☑) indented by depth, a checked item struck through,
+  a quote with a bar, a code block monospaced on a tinted background, and
+  links in blue, underlined.
+- **Markdown shortcuts.** Typing markdown turns it into rich text, as
+  the web playground's `MarkdownShortcutPlugin` does
+  (`registerMarkdownShortcuts` with `TRANSFORMERS`): `# ` to `###### `
+  make headings, `> ` a quote, `- `, `* `, `+ ` and `1. ` list items,
+  `` ``` `` and a space or Return a code block, and `**bold**`, `*italic*`,
+  `~~strikethrough~~`, `` `code` ``, `==highlight==` and
+  `[text](url)` their formats and links once the closing tag is typed.
+  Undo takes a shortcut back to the text typed. Return dispatches
+  `KEY_ENTER_COMMAND`.
 - **Light and dark.** The window follows the Mac's appearance and switches
   live when it changes, as the Rune playground does.
 - **The side panel.**
@@ -44,7 +69,7 @@ zbugs-gpui is. macOS.
     LEXICAL_REPLAY=/path/to/lexical-playground-session.json pnpm exec vitest run src/replay.test.ts
     ```
 
-Headings, lists, links, code blocks, HTML and Markdown arrive as the
+Code blocks, hashtags, HTML and Markdown arrive as the
 port gets the packages ([DESIGN.md](../../DESIGN.md), milestones).
 
 ## Running it
@@ -73,7 +98,10 @@ to edit it.
 
 Built with the `e2e` feature, the app drives its own window once it's up:
 it types, formats, composes with an input method, types an emoji and
-deletes it, adds a paragraph and a line break, and undoes and redoes, through the input
+deletes it, adds a paragraph and a line break, undoes and redoes, and
+turns the paragraph into a heading and a list, nests and unnests the item
+with Tab and Shift-Tab and ends the list, then types markdown shortcuts
+(a heading, bold text, a list item and a code block), through the input
 handler and the key bindings, checking the document after each step. It
 writes the session to `$LEXICAL_PLAYGROUND_E2E` and exits 0, or 1 with the
 step that failed. CI (`.github/workflows/rust-playground.yml`) then replays

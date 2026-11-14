@@ -8,7 +8,7 @@ fn playground() -> Playground {
 fn reads_the_example_as_blocks_of_runs() {
     let p = playground();
     let doc = p.document();
-    assert_eq!(doc.blocks.len(), 2);
+    assert_eq!(doc.blocks.len(), 8);
     let first = &doc.blocks[0];
     assert_eq!(first.kind, "paragraph");
     assert_eq!(
@@ -52,7 +52,7 @@ fn typing_enter_and_formatting_edit_the_document() {
     };
     p.set_selection(Some(Sel::caret(end)));
     assert_eq!(p.insert_paragraph().error, None);
-    assert_eq!(p.document().blocks.len(), 3);
+    assert_eq!(p.document().blocks.len(), 9);
     assert_eq!(p.format_text("bold").error, None);
     assert!(p.has_format("bold"));
     assert_eq!(p.insert_text("Bold").error, None);
@@ -130,7 +130,8 @@ fn a_change_the_field_made_replays_as_a_lexical_edit() {
     // A cut across the two blocks.
     let cut = format!("家{}", &new[new.find("Type").unwrap()..]);
     assert_eq!(p.apply_text(&cut).map(|o| o.error), Some(None));
-    assert_eq!(p.document().blocks.len(), 1);
+    // The two paragraphs are one; the heading, lists and quote follow.
+    assert_eq!(p.document().blocks.len(), 7);
     assert_eq!(p.document().text(), cut);
     assert_eq!(p.apply_text(&cut), None);
     // Offsets round-trip through the joined text.
@@ -298,4 +299,224 @@ fn format_toggles_on_and_off_with_one_press_each() {
         // The first press also gives the editor the selection.
         assert_eq!(p.step_count() - steps, if press == 0 { 2 } else { 1 });
     }
+}
+
+#[test]
+fn a_click_gives_the_selection_the_format_there_as_selectionchange_does() {
+    // "Hello from **Rust**": a caret in "Rust" takes its bold, so the
+    // toolbar shows bold before any edit and typing there stays bold, as in
+    // a browser; a range shows only the format all of its text has.
+    let mut p = playground();
+    let in_rust = Sel::caret(Pos { block: 0, byte: 13 });
+    assert_eq!(p.format_at(in_rust), format_flag("bold"));
+    let across = Sel {
+        anchor: Pos { block: 0, byte: 6 },
+        focus: Pos { block: 0, byte: 15 },
+    };
+    assert_eq!(p.format_at(across), 0);
+    // A range that ends at the start of "Rust" covers none of it.
+    let before = Sel {
+        anchor: Pos { block: 0, byte: 6 },
+        focus: Pos { block: 0, byte: 11 },
+    };
+    assert_eq!(p.format_at(before), 0);
+    let rust = Sel {
+        anchor: Pos { block: 0, byte: 11 },
+        focus: Pos { block: 0, byte: 15 },
+    };
+    assert_eq!(p.format_at(rust), format_flag("bold"));
+    p.set_selection(Some(in_rust));
+    assert!(p.has_format("bold"));
+    let steps = p.step_count();
+    assert_eq!(p.insert_text("y").error, None);
+    let runs: Vec<(&str, bool)> = p.document().blocks[0]
+        .runs
+        .iter()
+        .map(|r| (r.text.as_str(), r.has_format("bold")))
+        .collect();
+    assert_eq!(runs[1], ("Ruyst", true));
+    // The select step, then the typing.
+    assert_eq!(p.step_count() - steps, 2);
+}
+
+fn caret_in(p: &mut Playground, block: usize, byte: usize) {
+    p.set_selection(Some(Sel::caret(Pos { block, byte })));
+}
+
+#[test]
+fn reads_headings_lists_links_and_quotes() {
+    let p = playground();
+    let doc = p.document();
+    let types: Vec<&str> = doc.blocks.iter().map(Block::block_type).collect();
+    assert_eq!(
+        types,
+        [
+            "paragraph",
+            "paragraph",
+            "h2",
+            "bullet",
+            "bullet",
+            "check",
+            "check",
+            "quote"
+        ]
+    );
+    let link = doc.blocks[4]
+        .runs
+        .iter()
+        .find(|r| r.link.is_some())
+        .unwrap();
+    assert_eq!(
+        (link.text.as_str(), link.link.as_deref()),
+        ("lexical.dev", Some("https://lexical.dev"))
+    );
+    // The link's runs are its parent's second child.
+    assert_eq!(link.child, 1);
+    assert!(doc.blocks[5].list.as_ref().unwrap().checked);
+    assert!(!doc.blocks[6].list.as_ref().unwrap().checked);
+    // An element point in the root is the start of the block it names.
+    let root = Point {
+        key: "root".into(),
+        offset: 3,
+        text: false,
+    };
+    assert_eq!(doc.pos_of(&root), Some(Pos { block: 3, byte: 0 }));
+    // After the link: an element point after the block's second child.
+    let after_link = doc.blocks[4].runs.iter().find(|r| r.text == ".").unwrap();
+    let point = doc.point_at(Pos {
+        block: 4,
+        byte: after_link.start + 1,
+    });
+    assert!(point.text);
+}
+
+#[test]
+fn the_block_menu_converts_blocks_and_toggles_lists() {
+    let mut p = playground();
+    caret_in(&mut p, 1, 3);
+    assert_eq!(p.set_block_type("h1").error, None);
+    assert_eq!(p.document().blocks[1].block_type(), "h1");
+    assert_eq!(p.block_type(), "h1");
+    assert_eq!(p.set_block_type("quote").error, None);
+    assert_eq!(p.block_type(), "quote");
+    assert_eq!(p.set_block_type("number").error, None);
+    assert_eq!(p.block_type(), "number");
+    // The same list again makes it a paragraph.
+    assert_eq!(p.set_block_type("number").error, None);
+    assert_eq!(p.block_type(), "paragraph");
+    assert_eq!(
+        p.document().blocks[1].text,
+        "Type, delete, press Enter, or select text and make it bold."
+    );
+}
+
+#[test]
+fn enter_in_a_list_item_adds_an_item_and_an_empty_one_ends_the_list() {
+    let mut p = playground();
+    let end = p.document().blocks[3].text.len();
+    caret_in(&mut p, 3, end);
+    assert_eq!(p.insert_paragraph().error, None);
+    let doc = p.document();
+    assert_eq!(doc.blocks[4].block_type(), "bullet");
+    assert_eq!(doc.blocks[4].text, "");
+    assert_eq!(p.selection(), Some(Sel::caret(Pos { block: 4, byte: 0 })));
+    // Enter in the empty item: a paragraph after the list.
+    assert_eq!(p.insert_paragraph().error, None);
+    assert_eq!(p.block_type(), "paragraph");
+    assert_eq!(p.document().blocks.len(), 9);
+}
+
+#[test]
+fn indenting_a_list_item_nests_it() {
+    let mut p = playground();
+    caret_in(&mut p, 4, 2);
+    assert_eq!(p.indent(false).error, None);
+    let item = &p.document().blocks[4];
+    assert_eq!(item.list.as_ref().map(|l| l.depth), Some(1));
+    assert_eq!(p.indent(true).error, None);
+    assert_eq!(
+        p.document().blocks[4].list.as_ref().map(|l| l.depth),
+        Some(0)
+    );
+}
+
+#[test]
+fn links_toggle_on_a_selection_and_off_at_a_caret() {
+    let mut p = playground();
+    p.set_selection(Some(Sel {
+        anchor: Pos { block: 0, byte: 0 },
+        focus: Pos { block: 0, byte: 5 },
+    }));
+    assert_eq!(p.toggle_link(Some("https://example.com")).error, None);
+    let run = &p.document().blocks[0].runs[0];
+    assert_eq!(
+        (run.text.as_str(), run.link.as_deref()),
+        ("Hello", Some("https://example.com"))
+    );
+    caret_in(&mut p, 0, 2);
+    assert_eq!(p.link(), Some("https://example.com"));
+    assert_eq!(p.toggle_link(None).error, None);
+    assert!(p.document().blocks[0].runs.iter().all(|r| r.link.is_none()));
+    assert_eq!(
+        p.document().blocks[0].text,
+        "Hello from Rust. This document lives in a lexical-editor editor."
+    );
+}
+
+#[test]
+fn clicking_a_check_box_toggles_the_item() {
+    let mut p = playground();
+    assert_eq!(p.toggle_checked(6).error, None);
+    assert!(p.document().blocks[6].list.as_ref().unwrap().checked);
+    assert_eq!(p.undo().error, None);
+    assert!(!p.document().blocks[6].list.as_ref().unwrap().checked);
+}
+
+#[test]
+fn the_tree_shows_lists_above_their_items() {
+    let tree = playground().document().tree();
+    assert!(
+        tree.contains("  (11) list bullet\n    (12) listitem bullet\n"),
+        "{tree}"
+    );
+    assert!(tree.contains("  (19) list check\n    (20) listitem check ☑\n"));
+}
+
+/// Types `text` a character at a time, as keys do.
+fn type_keys(p: &mut Playground, text: &str) {
+    for c in text.chars() {
+        assert_eq!(p.insert_text(&c.to_string()).error, None, "typing {c:?}");
+    }
+}
+
+#[test]
+fn markdown_shortcuts_turn_typed_markdown_into_rich_text() {
+    let mut p = Playground::new(vec![]).expect("an empty document");
+    caret_in(&mut p, 0, 0);
+    type_keys(&mut p, "# Title");
+    assert_eq!(p.document().blocks[0].block_type(), "h1");
+    assert_eq!(p.document().blocks[0].text, "Title");
+    p.insert_paragraph();
+    type_keys(&mut p, "- one **bold** and `code`");
+    let item = &p.document().blocks[1];
+    assert_eq!(item.block_type(), "bullet");
+    assert_eq!(item.text, "one bold and code");
+    let run = |text: &str| item.runs.iter().find(|r| r.text == text).unwrap();
+    assert!(run("bold").has_format("bold"));
+    assert!(run("code").has_format("code"));
+    // An empty item ends the list; then a code fence on Enter.
+    p.insert_paragraph();
+    p.insert_paragraph();
+    type_keys(&mut p, "```rust");
+    p.insert_paragraph();
+    type_keys(&mut p, "let x = 1;");
+    let code = &p.document().blocks[2];
+    assert_eq!(code.kind, "code");
+    assert_eq!(code.text, "let x = 1;");
+    // Undo takes the code back to the fence's text.
+    let steps = p.step_count();
+    p.undo();
+    p.undo();
+    assert_eq!(p.document().blocks[2].text, "```rust");
+    assert_eq!(p.step_count(), steps + 2);
 }

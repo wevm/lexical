@@ -103,7 +103,10 @@ struct Layout {
 impl Layout {
     /// The line holding byte `index`.
     fn line_of(&self, index: usize) -> Option<&(usize, Pixels, WrappedLine)> {
-        self.lines.iter().rev().find(|(start, _, _)| *start <= index)
+        self.lines
+            .iter()
+            .rev()
+            .find(|(start, _, _)| *start <= index)
     }
 
     /// The byte under `position` (window coordinates).
@@ -151,7 +154,11 @@ impl Layout {
                 let x0 = layout.x_for_index(from);
                 let width = layout.x_for_index(to) - x0;
                 let y = *top + self.line_height * row as f32;
-                rows.push((start + from..start + to, self.bounds.origin + point(px(0.), y), width));
+                rows.push((
+                    start + from..start + to,
+                    self.bounds.origin + point(px(0.), y),
+                    width,
+                ));
             }
         }
         rows
@@ -215,9 +222,15 @@ impl LexicalEditor {
         let text = self.surface.display_text();
         let caret = self.surface.caret();
         if backward {
-            text[..caret].grapheme_indices(true).next_back().map_or(0, |(i, _)| i)
+            text[..caret]
+                .grapheme_indices(true)
+                .next_back()
+                .map_or(0, |(i, _)| i)
         } else {
-            text[caret..].graphemes(true).next().map_or(caret, |g| caret + g.len())
+            text[caret..]
+                .graphemes(true)
+                .next()
+                .map_or(caret, |g| caret + g.len())
         }
     }
 
@@ -235,9 +248,15 @@ impl LexicalEditor {
     fn vertical(&mut self, up: bool, extend: bool, cx: &mut Context<Self>) {
         let Some(layout) = &self.layout else { return };
         let caret = self.surface.caret();
-        let Some(at) = layout.position_of(caret) else { return };
+        let Some(at) = layout.position_of(caret) else {
+            return;
+        };
         let x = *self.goal_x.get_or_insert(at.x);
-        let y = if up { at.y - layout.line_height * 0.5 } else { at.y + layout.line_height * 1.5 };
+        let y = if up {
+            at.y - layout.line_height * 0.5
+        } else {
+            at.y + layout.line_height * 1.5
+        };
         let to = if y < layout.bounds.top() {
             0
         } else {
@@ -261,7 +280,12 @@ impl LexicalEditor {
         self.move_to(to, extend, cx);
     }
 
-    fn on_mouse_down(&mut self, event: &MouseDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+    fn on_mouse_down(
+        &mut self,
+        event: &MouseDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         window.focus(&self.focus_handle, cx);
         let Some(layout) = &self.layout else { return };
         let at = layout.index_at(event.position);
@@ -281,7 +305,9 @@ impl LexicalEditor {
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, _: &mut Window, cx: &mut Context<Self>) {
-        if self.selecting && let Some(layout) = &self.layout {
+        if self.selecting
+            && let Some(layout) = &self.layout
+        {
             let at = layout.index_at(event.position);
             self.move_to(at, true, cx);
         }
@@ -345,7 +371,12 @@ impl EntityInputHandler for LexicalEditor {
         Some(UTF16Selection { range, reversed })
     }
 
-    fn set_selected_text_range(&mut self, range: Range<usize>, _: &mut Window, cx: &mut Context<Self>) {
+    fn set_selected_text_range(
+        &mut self,
+        range: Range<usize>,
+        _: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         self.surface.set_selected_range_utf16(range);
         cx.notify();
     }
@@ -422,15 +453,43 @@ impl Render for LexicalEditor {
             .cursor(CursorStyle::IBeam)
             .size_full()
             .overflow_y_scroll()
-            .on_action(cx.listener(|this, _: &Backspace, _, cx| this.delete(Unit::Character, true, cx)))
-            .on_action(cx.listener(|this, _: &Delete, _, cx| this.delete(Unit::Character, false, cx)))
-            .on_action(cx.listener(|this, _: &DeleteWordBackward, _, cx| this.delete(Unit::Word, true, cx)))
-            .on_action(cx.listener(|this, _: &DeleteWordForward, _, cx| this.delete(Unit::Word, false, cx)))
-            .on_action(cx.listener(|this, _: &DeleteLineBackward, _, cx| this.delete(Unit::Line, true, cx)))
-            .on_action(cx.listener(|this, _: &DeleteLineForward, _, cx| this.delete(Unit::Line, false, cx)))
-            .on_action(cx.listener(|this, _: &InsertParagraph, _, cx| this.edit(cx, Playground::insert_paragraph)))
-            .on_action(cx.listener(|this, _: &InsertLineBreak, _, cx| this.edit(cx, Playground::insert_line_break)))
-            .on_action(cx.listener(|this, _: &InsertTab, _, cx| this.edit(cx, |p| p.insert_raw_text("\t"))))
+            .on_action(
+                cx.listener(|this, _: &Backspace, _, cx| this.delete(Unit::Character, true, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &Delete, _, cx| this.delete(Unit::Character, false, cx)),
+            )
+            .on_action(
+                cx.listener(|this, _: &DeleteWordBackward, _, cx| {
+                    this.delete(Unit::Word, true, cx)
+                }),
+            )
+            .on_action(
+                cx.listener(|this, _: &DeleteWordForward, _, cx| {
+                    this.delete(Unit::Word, false, cx)
+                }),
+            )
+            .on_action(
+                cx.listener(|this, _: &DeleteLineBackward, _, cx| {
+                    this.delete(Unit::Line, true, cx)
+                }),
+            )
+            .on_action(
+                cx.listener(|this, _: &DeleteLineForward, _, cx| {
+                    this.delete(Unit::Line, false, cx)
+                }),
+            )
+            .on_action(cx.listener(|this, _: &InsertParagraph, _, cx| {
+                this.edit(cx, Playground::insert_paragraph)
+            }))
+            .on_action(cx.listener(|this, _: &InsertLineBreak, _, cx| {
+                this.edit(cx, Playground::insert_line_break)
+            }))
+            .on_action(
+                cx.listener(|this, _: &InsertTab, _, cx| {
+                    this.edit(cx, |p| p.insert_raw_text("\t"))
+                }),
+            )
             .on_action(cx.listener(|this, _: &Left, _, cx| this.horizontal(true, false, cx)))
             .on_action(cx.listener(|this, _: &Right, _, cx| this.horizontal(false, false, cx)))
             .on_action(cx.listener(|this, _: &SelectLeft, _, cx| this.horizontal(true, true, cx)))
@@ -441,21 +500,37 @@ impl Render for LexicalEditor {
             .on_action(cx.listener(|this, _: &SelectDown, _, cx| this.vertical(false, true, cx)))
             .on_action(cx.listener(|this, _: &LineStart, _, cx| this.line_edge(false, false, cx)))
             .on_action(cx.listener(|this, _: &LineEnd, _, cx| this.line_edge(true, false, cx)))
-            .on_action(cx.listener(|this, _: &SelectLineStart, _, cx| this.line_edge(false, true, cx)))
+            .on_action(
+                cx.listener(|this, _: &SelectLineStart, _, cx| this.line_edge(false, true, cx)),
+            )
             .on_action(cx.listener(|this, _: &SelectLineEnd, _, cx| this.line_edge(true, true, cx)))
-            .on_action(cx.listener(|this, _: &SelectAll, _, cx| this.edit(cx, Playground::select_all)))
-            .on_action(cx.listener(|this, _: &Bold, _, cx| this.edit(cx, |p| p.format_text("bold"))))
-            .on_action(cx.listener(|this, _: &Italic, _, cx| this.edit(cx, |p| p.format_text("italic"))))
-            .on_action(cx.listener(|this, _: &Underline, _, cx| this.edit(cx, |p| p.format_text("underline"))))
+            .on_action(
+                cx.listener(|this, _: &SelectAll, _, cx| this.edit(cx, Playground::select_all)),
+            )
+            .on_action(
+                cx.listener(|this, _: &Bold, _, cx| this.edit(cx, |p| p.format_text("bold"))),
+            )
+            .on_action(
+                cx.listener(|this, _: &Italic, _, cx| this.edit(cx, |p| p.format_text("italic"))),
+            )
+            .on_action(cx.listener(|this, _: &Underline, _, cx| {
+                this.edit(cx, |p| p.format_text("underline"))
+            }))
             .on_action(cx.listener(Self::copy))
             .on_action(cx.listener(Self::cut))
             .on_action(cx.listener(Self::paste))
-            .on_action(cx.listener(|_, _: &ShowCharacterPalette, window, _| window.show_character_palette()))
+            .on_action(
+                cx.listener(|_, _: &ShowCharacterPalette, window, _| {
+                    window.show_character_palette()
+                }),
+            )
             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_move(cx.listener(Self::on_mouse_move))
-            .child(EditorElement { editor: cx.entity() })
+            .child(EditorElement {
+                editor: cx.entity(),
+            })
     }
 }
 
@@ -467,7 +542,11 @@ fn text_runs(surface: &Surface, base: &TextStyle, accent: Hsla) -> Vec<TextRun> 
         .into_iter()
         .map(|run| {
             let has = |name| run.format & format_flag(name) != 0;
-            let mut font = if has("code") { font("Menlo") } else { base_font.clone() };
+            let mut font = if has("code") {
+                font("Menlo")
+            } else {
+                base_font.clone()
+            };
             if has("bold") {
                 font.weight = FontWeight::BOLD;
             }
@@ -478,7 +557,11 @@ fn text_runs(surface: &Surface, base: &TextStyle, accent: Hsla) -> Vec<TextRun> 
             TextRun {
                 len: run.range.len(),
                 font,
-                color: if has("subscript") || has("superscript") { accent } else { base.color },
+                color: if has("subscript") || has("superscript") {
+                    accent
+                } else {
+                    base.color
+                },
                 background_color: if has("highlight") {
                     Some(hsla(48. / 360., 0.96, 0.75, 1.))
                 } else if has("code") {
@@ -529,7 +612,13 @@ fn shape(
 ) -> Vec<(usize, Pixels, WrappedLine)> {
     let shaped = window
         .text_system()
-        .shape_text(SharedString::from(text.to_owned()), font_size, runs, width, None)
+        .shape_text(
+            SharedString::from(text.to_owned()),
+            font_size,
+            runs,
+            width,
+            None,
+        )
         .unwrap_or_default();
     let mut out = Vec::new();
     let (mut start, mut top) = (0, px(0.));
@@ -570,17 +659,18 @@ impl Element for EditorElement {
         let line_height = window.line_height();
         let mut layout_style = Style::default();
         layout_style.size.width = relative(1.).into();
-        let id = window.request_measured_layout(layout_style, move |known, available, window, _| {
-            let width = known.width.or(match available.width {
-                AvailableSpace::Definite(w) => Some(w),
-                _ => None,
+        let id =
+            window.request_measured_layout(layout_style, move |known, available, window, _| {
+                let width = known.width.or(match available.width {
+                    AvailableSpace::Definite(w) => Some(w),
+                    _ => None,
+                });
+                let lines = shape(window, &text, &runs, font_size, line_height, width);
+                let height = lines.last().map_or(line_height, |(_, top, line)| {
+                    *top + line_height * (line.wrap_boundaries.len() + 1) as f32
+                });
+                size(width.unwrap_or(px(0.)), height)
             });
-            let lines = shape(window, &text, &runs, font_size, line_height, width);
-            let height = lines.last().map_or(line_height, |(_, top, line)| {
-                *top + line_height * (line.wrap_boundaries.len() + 1) as f32
-            });
-            size(width.unwrap_or(px(0.)), height)
-        });
         (id, ())
     }
 
@@ -621,12 +711,12 @@ impl Element for EditorElement {
                 if range.end < row.start || range.start > row.end {
                     continue;
                 }
-                let layout_x = |i: usize| {
-                    layout
-                        .position_of(i)
-                        .map_or(origin.x, |p| p.x)
+                let layout_x = |i: usize| layout.position_of(i).map_or(origin.x, |p| p.x);
+                let x0 = if range.start <= row.start {
+                    origin.x
+                } else {
+                    layout_x(range.start)
                 };
-                let x0 = if range.start <= row.start { origin.x } else { layout_x(range.start) };
                 // A selection that goes on past the row covers its end, and
                 // past a line's end, the newline.
                 let x1 = if range.end > row.end {
@@ -636,7 +726,10 @@ impl Element for EditorElement {
                 };
                 if x1 > x0 {
                     selection.push(fill(
-                        Bounds::from_corners(point(x0, origin.y), point(x1, origin.y + line_height)),
+                        Bounds::from_corners(
+                            point(x0, origin.y),
+                            point(x1, origin.y + line_height),
+                        ),
                         cx.theme().selection,
                     ));
                 }
@@ -647,7 +740,8 @@ impl Element for EditorElement {
             .then(|| layout.position_of(editor.surface.caret()))
             .flatten()
             .map(|at| fill(Bounds::new(at, size(px(2.), line_height)), cx.theme().caret));
-        self.editor.update(cx, |editor, _| editor.layout = Some(layout));
+        self.editor
+            .update(cx, |editor, _| editor.layout = Some(layout));
         Prepaint {
             lines,
             selection,
@@ -677,10 +771,24 @@ impl Element for EditorElement {
         let line_height = window.line_height();
         for (_, top, line) in prepaint.lines.iter() {
             let origin = bounds.origin + point(px(0.), *top);
-            line.paint_background(origin, line_height, TextAlign::Left, Some(bounds), window, cx)
-                .ok();
-            line.paint(origin, line_height, TextAlign::Left, Some(bounds), window, cx)
-                .ok();
+            line.paint_background(
+                origin,
+                line_height,
+                TextAlign::Left,
+                Some(bounds),
+                window,
+                cx,
+            )
+            .ok();
+            line.paint(
+                origin,
+                line_height,
+                TextAlign::Left,
+                Some(bounds),
+                window,
+                cx,
+            )
+            .ok();
         }
         if focus_handle.is_focused(window)
             && let Some(caret) = prepaint.caret.take()

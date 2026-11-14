@@ -18,6 +18,7 @@ struct ScriptTests {
     "scripts/updates", "scripts/selection", "scripts/transforms", "scripts/commands",
     "scripts/listeners", "scripts/caret", "scripts/rich-text", "scripts/rich-text-commands",
     "scripts/plain-text", "scripts/history", "scripts/list", "scripts/link",
+    "scripts/set-blocks-type",
     "fuzz/core",
   ]
 

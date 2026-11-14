@@ -30,6 +30,8 @@ use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
 use lexical::link;
 use lexical::list;
+use lexical::rich_text::{HeadingTagType, create_heading_node, create_quote_node};
+use lexical::selection::set_blocks_type;
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
     COMMAND_PRIORITY_EDITOR, CONTROLLED_TEXT_INSERTION_COMMAND, CaretDirection, CreateEditorArgs,
@@ -40,10 +42,10 @@ use lexical::{
     RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND, SelectionRef, SliceMode,
     TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
     caret_range_from_selection, create_command, create_editor, create_node_selection,
-    create_range_selection, get_caret_range, get_child_caret, get_node_by_key, get_root,
-    get_selection, get_sibling_caret, get_text_point_caret, insert_nodes, normalize_caret,
-    parse_serialized_node, remove_text_from_caret_range, reset_random_key, select_all,
-    set_selection, set_selection_from_caret_range, utf16,
+    create_paragraph_node, create_range_selection, get_caret_range, get_child_caret,
+    get_node_by_key, get_root, get_selection, get_sibling_caret, get_text_point_caret,
+    insert_nodes, normalize_caret, parse_serialized_node, remove_text_from_caret_range,
+    reset_random_key, select_all, set_selection, set_selection_from_caret_range, utf16,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -293,7 +295,8 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "dispatch"
             | "logCaretRange"
             | "removeTextFromCaretRange"
-            | "logNormalizeCaret",
+            | "logNormalizeCaret"
+            | "setBlocksType",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -681,6 +684,19 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
                 caret_snapshot(&normalize_caret(&caret(spec)?)),
             ]);
             Ok(())
+        }
+        Some("setBlocksType") => {
+            let block = action.get("block").and_then(Value::as_str).unwrap_or("");
+            let create: Box<dyn Fn() -> NodeRef> = match block {
+                "paragraph" => Box::new(create_paragraph_node),
+                "quote" => Box::new(|| create_quote_node(false)),
+                tag => {
+                    let tag = HeadingTagType::parse(tag)
+                        .ok_or_else(|| err(format!("unknown block {tag}")))?;
+                    Box::new(move || create_heading_node(tag))
+                }
+            };
+            set_blocks_type(get_selection().as_ref(), create, None)
         }
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");

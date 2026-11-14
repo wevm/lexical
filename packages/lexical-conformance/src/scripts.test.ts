@@ -1918,3 +1918,226 @@ test('scripts/link', () => {
     ],
   );
 });
+
+test('scripts/set-blocks-type', () => {
+  // `@lexical/selection`'s `$setBlocksType` with its default
+  // `$afterCreateElement` (`$copyBlockFormatIndent`), turning the blocks a
+  // selection touches into paragraphs, quotes and headings, with rich
+  // text's nodes, and lists and links where a case needs them.
+  const richText = true;
+  const set = (block: 'paragraph' | 'quote' | `h${1 | 2 | 3 | 4 | 5 | 6}`) =>
+    update({block, do: 'setBlocksType'});
+  const url = 'https://lexical.dev';
+  emit(
+    'set-blocks-type',
+    "@lexical/selection's $setBlocksType with $copyBlockFormatIndent: carets, forward and backward ranges, a focus that overshoots into the next block, format and indent, links, list items, element points, node selections, no selection and undo.",
+    [
+      {
+        name: 'a caret in a paragraph: to h1, h2, a quote and back',
+        richText,
+        steps: [
+          doc(p(t('Hello')), p(t('world'))),
+          update(select(['2', 2, 'text'])),
+          set('h1'),
+          set('h2'),
+          set('quote'),
+          set('paragraph'),
+          // At the end of the second paragraph.
+          update(select(['4', 5, 'text'])),
+          set('h6'),
+        ],
+      },
+      {
+        name: 'a range across several blocks',
+        richText,
+        steps: [
+          doc(p(t('one')), p(t('two')), h('h2', t('three')), p(t('four'))),
+          update(select(['2', 1, 'text'], ['6', 2, 'text'])),
+          set('h3'),
+          set('quote'),
+          // With the root's element points, every block.
+          update(select(['root', 0, 'element'], ['root', 4, 'element'])),
+          set('h5'),
+          update({do: 'selectAll'}),
+          set('paragraph'),
+        ],
+      },
+      {
+        name: 'a backward range',
+        richText,
+        steps: [
+          doc(p(t('one')), p(t('two')), p(t('three'))),
+          update(select(['6', 2, 'text'], ['2', 1, 'text'])),
+          set('h4'),
+          // Backward within one block.
+          update(select(['4', 3, 'text'], ['4', 0, 'text'])),
+          set('quote'),
+        ],
+      },
+      {
+        name: 'a focus that overshoots to the edge of the next block',
+        richText,
+        steps: [
+          doc(p(t('one')), p(t('two')), p(t('three')), p()),
+          // Forward, to the start of the next block's text: that block is
+          // skipped.
+          update(select(['2', 1, 'text'], ['4', 0, 'text'])),
+          set('h1'),
+          // To an element point at the start of the next block.
+          update(select(['4', 1, 'text'], ['5', 0, 'element'])),
+          set('h2'),
+          // Backward, to the end of the previous block's text.
+          update(select(['6', 2, 'text'], ['4', 3, 'text'])),
+          set('quote'),
+          // Into an empty block, which is the whole block: not skipped.
+          update(select(['6', 2, 'text'], ['7', 0, 'element'])),
+          set('h3'),
+          // From the start of a block to the start of the next: only the
+          // anchor's block.
+          update(select(['2', 0, 'text'], ['4', 0, 'text'])),
+          set('paragraph'),
+        ],
+      },
+      {
+        name: 'format and indent are copied',
+        richText,
+        steps: [
+          doc(
+            {...p(t('centered')), format: 'center', indent: 2} as Node,
+            {...h('h2', t('right')), format: 'right'} as Node,
+            {...q(t('indented')), indent: 1} as Node,
+          ),
+          update(select(['2', 0, 'text'], ['6', 3, 'text'])),
+          set('h1'),
+          set('paragraph'),
+          update(select(['4', 1, 'text'])),
+          set('quote'),
+        ],
+      },
+      {
+        link: true,
+        name: 'a caret and a range inside a link',
+        richText,
+        steps: [
+          doc(
+            p(t('see '), a(url, t('link')), t(' here')),
+            p(a(url, t('two')), t(' x')),
+          ),
+          update(select(['4', 2, 'text'])),
+          set('h2'),
+          update(select(['4', 1, 'text'], ['8', 2, 'text'])),
+          set('quote'),
+        ],
+      },
+      {
+        list: true,
+        name: 'a list item to a heading, at the start, middle and end',
+        richText,
+        steps: [
+          doc(
+            list('bullet', li(t('one')), li(t('two')), li(t('three'))),
+            list('number', li(t('a')), li(t('b'))),
+          ),
+          // The middle item: the list splits around the heading.
+          update(select(['5', 1, 'text'])),
+          set('h1'),
+          update(select(['3', 0, 'text'])),
+          set('h2'),
+          // The only item left in a list: the list goes.
+          update(select(['7', 5, 'text'])),
+          set('quote'),
+          // Backward across the second list's items.
+          update(select(['12', 1, 'text'], ['10', 0, 'text'])),
+          set('paragraph'),
+        ],
+      },
+      {
+        list: true,
+        name: 'a range across list items and a paragraph',
+        richText,
+        steps: [
+          doc(
+            p(t('before')),
+            list('number', li(t('a')), li(t('b')), li(t('c'))),
+            p(t('after')),
+          ),
+          update(select(['5', 0, 'text'], ['7', 1, 'text'])),
+          set('quote'),
+          update(select(['2', 3, 'text'], ['9', 1, 'text'])),
+          set('h3'),
+        ],
+      },
+      {
+        list: true,
+        name: 'a nested list item',
+        richText,
+        steps: [
+          doc(
+            list('bullet', li(t('a')), {
+              ...li(list('bullet', li(t('b')), li(t('c')))),
+              value: 2,
+            } as Node),
+          ),
+          update(select(['7', 0, 'text'])),
+          set('h1'),
+          update(select(['9', 1, 'text'])),
+          set('paragraph'),
+        ],
+      },
+      {
+        name: 'an element point in an empty paragraph',
+        richText,
+        steps: [
+          doc(p(t('a')), p(), p()),
+          update(select(['3', 0, 'element'])),
+          set('h1'),
+          // A range of element points over the two empty blocks.
+          update(select(['5', 0, 'element'], ['4', 0, 'element'])),
+          set('quote'),
+          // An element point in a block with text.
+          update(select(['1', 1, 'element'])),
+          set('h2'),
+        ],
+      },
+      {
+        name: 'node selections',
+        richText,
+        steps: [
+          doc(p(t('a')), p(t('b')), p(t('c'), t('d', {format: 1}))),
+          // Text nodes: their blocks.
+          update({do: 'selectNodes', keys: ['2', '6']}),
+          set('h1'),
+          // A block itself.
+          update({do: 'selectNodes', keys: ['3']}),
+          set('quote'),
+          // Two nodes in one block.
+          update({do: 'selectNodes', keys: ['6', '7']}),
+          set('paragraph'),
+        ],
+      },
+      {
+        name: 'no selection',
+        richText,
+        steps: [
+          doc(p(t('a')), p(t('b'))),
+          update({do: 'clearSelection'}),
+          set('h1'),
+        ],
+      },
+      {
+        history: {delay: 300},
+        name: 'undoing a conversion',
+        richText,
+        steps: [
+          doc(p(t('one')), p(t('two'))),
+          {...update(select(['2', 1, 'text'], ['4', 1, 'text'])), now: 1000},
+          {...set('h1'), now: 2000},
+          {...set('quote'), now: 3000},
+          {dispatch: 'UNDO_COMMAND', now: 4000},
+          {dispatch: 'UNDO_COMMAND', now: 5000},
+          {dispatch: 'REDO_COMMAND', now: 6000},
+        ],
+      },
+    ],
+  );
+});

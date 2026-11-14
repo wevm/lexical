@@ -9,6 +9,7 @@ import LexicalList
 import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
+import LexicalSelection
 
 // The Swift interpreter of the script vectors that
 // packages/lexical-conformance/src/ops.ts writes. It must do exactly what
@@ -574,6 +575,14 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
       change = .string("new")
     }
     ctx.log.append(.array([.string("stateChange"), .string(key), .string(name), change]))
+  case "setBlocksType":
+    switch try action["block"]?.stringValue.orThrow() {
+    case "paragraph": try setBlocksType(getSelection()) { try createParagraphNode() }
+    case "quote": try setBlocksType(getSelection()) { try createQuoteNode() }
+    case let tag? where ["h1", "h2", "h3", "h4", "h5", "h6"].contains(tag):
+      try setBlocksType(getSelection()) { try createHeadingNode(tag) }
+    case let block: throw ScriptError("unknown block \(String(describing: block))")
+    }
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)

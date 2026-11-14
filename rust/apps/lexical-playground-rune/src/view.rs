@@ -111,7 +111,7 @@ fn editor(s: &State, k: &Kit) -> El {
         .key("editor")
         .w_full()
         .grow(1.0)
-        .decorations(decorations(s.playground.document()))
+        .decorations(decorations(s.playground.document(), k.dark))
         .on_edit(|s: &mut State| &mut s.edit)
         .on_input_key(on_key)
         .on_input_paste(on_paste)

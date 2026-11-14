@@ -204,8 +204,9 @@ pub fn mirror(doc: &Document, selection: Option<Sel>) -> TextEdit {
 }
 
 /// Highlight, subscript and superscript, which the field has no marks for,
-/// drawn over it.
-pub fn decorations(doc: &Document) -> Vec<rune::Span> {
+/// drawn over it. `dark` is the window's appearance: highlight is a marker
+/// yellow behind dark text and a deep amber behind light text.
+pub fn decorations(doc: &Document, dark: bool) -> Vec<rune::Span> {
     let mut spans = Vec::new();
     let mut offset = 0;
     for block in &doc.blocks {
@@ -216,7 +217,11 @@ pub fn decorations(doc: &Document) -> Vec<rune::Span> {
             }
             if run.has_format("highlight") {
                 let mut span = rune::Span::new(start, end);
-                span.bg = Some(rune::oklch(0.92, 0.12, 95.0));
+                span.bg = Some(if dark {
+                    rune::oklch(0.5, 0.1, 75.0)
+                } else {
+                    rune::oklch(0.92, 0.12, 95.0)
+                });
                 spans.push(span);
             }
             if run.has_format("subscript") || run.has_format("superscript") {

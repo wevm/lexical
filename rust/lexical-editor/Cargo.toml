@@ -54,6 +54,10 @@ text = []
 # @lexical/extension and @lexical/utils, for HashtagExtension and
 # mergeRegister, which aren't ported.
 hashtag = ["text"]
+# @lexical/extension's decorators: HorizontalRuleNode (a block decorator) and
+# DecoratorTextNode (an inline one). The rest of the package, the extension
+# API, isn't ported.
+extension = []
 
 [dependencies]
 # Without `perf-literal`, which would add aho-corasick and memchr.

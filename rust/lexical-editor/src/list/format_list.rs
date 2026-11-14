@@ -26,9 +26,9 @@ use crate::selection_deletion::is_js_whitespace;
 use crate::selection_insert_nodes::is_block_container;
 use crate::utils::get_nearest_node_of_type;
 
-/// `$isLeafNode(node)`: text, a line break (or a decorator, once ported).
+/// `$isLeafNode(node)`: text, a line break or a decorator.
 fn is_leaf_node(node: &NodeRef) -> bool {
-    node.is_text() || node.get_latest().is::<LineBreakNode>()
+    node.is_text() || node.get_latest().is::<LineBreakNode>() || node.is_decorator()
 }
 
 /// `$isSelectingEmptyListItem(anchorNode, nodes)`.

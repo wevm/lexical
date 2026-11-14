@@ -192,7 +192,9 @@ pub(crate) fn error_on_insert_text_node_on_root(
     insert_node: &NodeRef,
 ) -> Result<(), LexicalError> {
     invariant!(
-        !node.get_parent().is_some_and(|p| p.is_root()) || insert_node.is_element(),
+        !node.get_parent().is_some_and(|p| p.is_root())
+            || insert_node.is_element()
+            || insert_node.is_decorator(),
         "Only element or decorator nodes can be inserted in to the root node"
     );
     Ok(())

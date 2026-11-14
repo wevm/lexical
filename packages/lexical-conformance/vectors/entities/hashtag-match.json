@@ -53,5 +53,15 @@
 {"match":{"end":8,"start":4},"text":"one #two three #four"},
 {"match":null,"text":"#×÷a"},
 {"match":{"end":2,"start":0},"text":"#ǅ"},
-{"match":{"end":2,"start":0},"text":"#ᾈ"}
+{"match":{"end":2,"start":0},"text":"#ᾈ"},
+{"match":{"end":2,"start":0},"text":"#ͻ"},
+{"match":{"end":2,"start":0},"text":"#ᏸ"},
+{"match":{"end":2,"start":0},"text":"#ᲀ"},
+{"match":{"end":2,"start":0},"text":"#Ა"},
+{"match":{"end":3,"start":0},"text":"#1Ɫ"},
+{"match":null,"text":"ͻ#a"},
+{"match":{"end":5,"start":3},"text":"a😀#b"},
+{"match":null,"text":"#𝐀"},
+{"match":{"end":2,"start":0},"text":"#a𝐀"},
+{"match":{"end":4,"start":2},"text":"𝐀#a"}
 ]}

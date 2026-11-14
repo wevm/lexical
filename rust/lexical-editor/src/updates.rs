@@ -65,6 +65,13 @@ pub(crate) fn get_active_editor_state() -> EditorState {
         })
 }
 
+/// `INTERNAL_getActiveEditorState()`: the editor state of the update or
+/// read that is running, if any.
+#[cfg_attr(not(feature = "text"), allow(dead_code))]
+pub(crate) fn internal_get_active_editor_state() -> Option<EditorState> {
+    ACTIVE.with(|a| a.borrow().editor_state.clone())
+}
+
 /// `internalGetActiveEditor()`: the editor whose update or read is running,
 /// if any. Reading an editor state on its own ([`EditorState::read`],
 /// parsing) has none.

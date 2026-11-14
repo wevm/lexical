@@ -15,14 +15,16 @@ belongs to upstream Lexical's npm packages):
 'lexical-swift': patch
 ---
 
-`LexicalList` keeps a check item's state when it is split.
+Fixed `LexicalList` losing a check item's state when the item was split.
 ```
 
 - `patch` for fixes and additions, `minor` for a break (an app that built
   against the last release no longer compiles, or a behavior it relied on
   changes) while the package is below 1.0, and `major` only from 1.0.
 - The body is the changelog entry: written for someone who uses the
-  package, in the present tense. A break says what to change.
+  package, in the past tense, starting with what was done ("Added …",
+  "Changed …", "Fixed …", "Removed …"). A break says what to change.
+  Sections of `CHANGELOG.md` already released stay as they were written.
 
 `swift/scripts/api-breaks.sh` fails CI on a public API break since the last
 release unless a pending changeset bumps by a `minor` (below 1.0) or more.

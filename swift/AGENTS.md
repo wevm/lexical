@@ -75,7 +75,8 @@ UI changes also run on macOS and the iOS Simulator.
 
 A user-facing change to the package (API, behavior, types, platforms) adds
 a changeset in `swift/.changeset/` in the same pull request; its README has
-the format. A break needs a `minor` changeset below 1.0. Tests, the
+the format. Write its body in the past tense ("Added …", "Changed …",
+"Fixed …"). A break needs a `minor` changeset below 1.0. Tests, the
 playground, examples and CI need none. Don't edit `swift/CHANGELOG.md` or
 `swift/VERSION` by hand.
 

@@ -9,7 +9,7 @@
 
 use gpui_kit::component::{ActiveTheme, Theme};
 use gpui_kit::*;
-use lexical_playground_core::{Outcome, Playground, Surface, Unit, format_flag};
+use lexical_playground_core::{Document, Outcome, Playground, RunKind, Surface, Unit, format_flag};
 use std::ops::Range;
 use std::rc::Rc;
 use std::time::Duration;
@@ -27,6 +27,7 @@ actions!(
         InsertParagraph,
         InsertLineBreak,
         InsertTab,
+        Outdent,
         Left,
         Right,
         Up,
@@ -72,6 +73,7 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("enter", InsertParagraph, c),
         KeyBinding::new("shift-enter", InsertLineBreak, c),
         KeyBinding::new("tab", InsertTab, c),
+        KeyBinding::new("shift-tab", Outdent, c),
         KeyBinding::new("left", Left, c),
         KeyBinding::new("right", Right, c),
         KeyBinding::new("up", Up, c),
@@ -99,22 +101,123 @@ pub fn bind_keys(cx: &mut App) {
     ]);
 }
 
+/// How a line of the display text is drawn: its block's text size and
+/// weight (a heading's), its left edge (a list item's or a quote's
+/// indent), and what goes in the margin (a list marker, a quote's bar).
+#[derive(Clone, Debug)]
+struct LineStyle {
+    /// The block the line is in.
+    block: usize,
+    size: Pixels,
+    /// The height of each of the line's rows.
+    height: Pixels,
+    left: Pixels,
+    /// A list item's marker, on its first line.
+    marker: Option<String>,
+    /// Whether the marker is a check box, which a click toggles.
+    check: bool,
+    quote: bool,
+}
+
+/// One indent step: a list's nesting level, or a block's `indent`.
+const INDENT: f32 = 24.;
+
+/// A heading's text size and weight, as the JS playground's theme (and the
+/// Rune app) draws `h1` ... `h6` in a 16-point body.
+fn heading_style(tag: &str) -> Option<(f32, FontWeight)> {
+    Some(match tag {
+        "h1" => (26., FontWeight::BOLD),
+        "h2" => (21., FontWeight::BOLD),
+        "h3" => (18., FontWeight::SEMIBOLD),
+        "h4" => (16., FontWeight::SEMIBOLD),
+        "h5" => (14., FontWeight::SEMIBOLD),
+        "h6" => (13., FontWeight::SEMIBOLD),
+        _ => return None,
+    })
+}
+
+/// The style of each line of the display text: a block's lines are its
+/// first and one more per line break.
+fn line_styles(doc: &Document, size: Pixels, height: Pixels) -> Vec<LineStyle> {
+    let mut out = Vec::new();
+    for (i, block) in doc.blocks.iter().enumerate() {
+        let (size, height) = match block.tag.as_deref().and_then(heading_style) {
+            Some((s, _)) => (px(s), px((s * 1.5).round())),
+            None => (size, height),
+        };
+        let mut style = LineStyle {
+            block: i,
+            size,
+            height,
+            left: px(INDENT * block.indent as f32),
+            marker: None,
+            check: false,
+            quote: block.kind == "quote",
+        };
+        if let Some(list) = &block.list {
+            style.left = px(INDENT * (list.depth + 1) as f32);
+            style.check = list.list_type == "check";
+            style.marker = Some(match list.list_type.as_str() {
+                "number" => format!("{}.", list.value),
+                "check" => if list.checked { "☑" } else { "☐" }.to_owned(),
+                _ => ["•", "◦", "▪"][list.depth % 3].to_owned(),
+            });
+        } else if style.quote {
+            style.left += px(16.);
+        }
+        let breaks = block
+            .runs
+            .iter()
+            .filter(|r| r.kind == RunKind::LineBreak)
+            .count();
+        out.push(style.clone());
+        // The marker goes on the item's first line only.
+        style.marker = None;
+        out.extend(std::iter::repeat_n(style, breaks));
+    }
+    out
+}
+
+/// A line of the display text as the last paint laid it out.
+struct Line {
+    /// Its first byte in the display text.
+    start: usize,
+    top: Pixels,
+    style: LineStyle,
+    shape: WrappedLine,
+}
+
+impl Line {
+    fn rows(&self) -> usize {
+        self.shape.wrap_boundaries.len() + 1
+    }
+
+    fn bottom(&self) -> Pixels {
+        self.top + self.style.height * self.rows() as f32
+    }
+}
+
 /// Where the last paint put each line of the display text.
 struct Layout {
     bounds: Bounds<Pixels>,
-    line_height: Pixels,
     text: String,
-    /// Each `\n`-separated line: its first byte, its top, and its shape.
-    lines: Rc<Vec<(usize, Pixels, WrappedLine)>>,
+    lines: Rc<Vec<Line>>,
 }
 
 impl Layout {
     /// The line holding byte `index`.
-    fn line_of(&self, index: usize) -> Option<&(usize, Pixels, WrappedLine)> {
+    fn line_of(&self, index: usize) -> Option<&Line> {
+        self.lines.iter().rev().find(|l| l.start <= index)
+    }
+
+    /// The line at `y` (window coordinates), or the first.
+    fn line_at(&self, y: Pixels) -> Option<&Line> {
+        let local = y - self.bounds.origin.y;
         self.lines
             .iter()
             .rev()
-            .find(|(start, _, _)| *start <= index)
+            .find(|l| l.top <= local)
+            .or(self.lines.first())
     }
 
     /// The byte under `position` (window coordinates).
@@ -123,49 +226,63 @@ impl Layout {
         if local.y < px(0.) {
             return 0;
         }
-        let line = self
-            .lines
-            .iter()
-            .rev()
-            .find(|(_, top, _)| *top <= local.y)
-            .or(self.lines.first());
-        let Some((start, top, line)) = line else {
+        let Some(line) = self.line_at(position.y) else {
             return 0;
         };
-        let at = point(local.x.max(px(0.)), local.y - *top);
-        match line.closest_index_for_position(at, self.line_height) {
-            Ok(i) | Err(i) => start + i,
+        let at = point((local.x - line.style.left).max(px(0.)), local.y - line.top);
+        match line.shape.closest_index_for_position(at, line.style.height) {
+            Ok(i) | Err(i) => line.start + i,
         }
     }
 
-    /// The top left of the caret at byte `index` (window coordinates).
-    fn position_of(&self, index: usize) -> Option<Point<Pixels>> {
-        let (start, top, line) = self.line_of(index)?;
-        let at = line.position_for_index(index - start, self.line_height)?;
-        Some(self.bounds.origin + point(at.x, *top + at.y))
+    /// The top left of the caret at byte `index` (window coordinates), and
+    /// its height.
+    fn position_of(&self, index: usize) -> Option<(Point<Pixels>, Pixels)> {
+        let line = self.line_of(index)?;
+        let at = line
+            .shape
+            .position_for_index(index - line.start, line.style.height)?;
+        Some((
+            self.bounds.origin + point(line.style.left + at.x, line.top + at.y),
+            line.style.height,
+        ))
     }
 
-    /// Each row of each line as `(byte range, top left, width)`.
-    fn rows(&self) -> Vec<(Range<usize>, Point<Pixels>, Pixels)> {
+    /// The check item whose box is under `position`, as its block.
+    fn check_at(&self, position: Point<Pixels>) -> Option<usize> {
+        let local = position - self.bounds.origin;
+        let line = self.line_at(position.y)?;
+        let hit = line.style.check
+            && line.style.marker.is_some()
+            && local.y < line.top + line.style.height
+            && local.x < line.style.left
+            && local.x >= line.style.left - px(INDENT);
+        hit.then_some(line.style.block)
+    }
+
+    /// Each row of each line as `(byte range, top left, width, height)`.
+    fn rows(&self) -> Vec<(Range<usize>, Point<Pixels>, Pixels, Pixels)> {
         let mut rows = Vec::new();
-        for (start, top, line) in self.lines.iter() {
-            let layout = &line.unwrapped_layout;
+        for line in self.lines.iter() {
+            let layout = &line.shape.unwrapped_layout;
             let mut breaks: Vec<usize> = line
+                .shape
                 .wrap_boundaries
                 .iter()
                 .map(|b| layout.runs[b.run_ix].glyphs[b.glyph_ix].index)
                 .collect();
             breaks.insert(0, 0);
-            breaks.push(line.len());
+            breaks.push(line.shape.len());
             for (row, pair) in breaks.windows(2).enumerate() {
                 let (from, to) = (pair[0], pair[1]);
                 let x0 = layout.x_for_index(from);
                 let width = layout.x_for_index(to) - x0;
-                let y = *top + self.line_height * row as f32;
+                let y = line.top + line.style.height * row as f32;
                 rows.push((
-                    start + from..start + to,
-                    self.bounds.origin + point(px(0.), y),
+                    line.start + from..line.start + to,
+                    self.bounds.origin + point(line.style.left, y),
                     width,
+                    line.style.height,
                 ));
             }
         }
@@ -326,14 +443,15 @@ impl LexicalEditor {
     fn vertical(&mut self, up: bool, extend: bool, cx: &mut Context<Self>) {
         let Some(layout) = &self.layout else { return };
         let caret = self.surface.caret();
-        let Some(at) = layout.position_of(caret) else {
+        let Some((at, height)) = layout.position_of(caret) else {
             return;
         };
         let x = *self.goal_x.get_or_insert(at.x);
+        // Into the middle of the row above or below, whatever its height.
         let y = if up {
-            at.y - layout.line_height * 0.5
+            at.y - px(4.)
         } else {
-            at.y + layout.line_height * 1.5
+            at.y + height + px(4.)
         };
         let to = if y < layout.bounds.top() {
             0
@@ -350,8 +468,8 @@ impl LexicalEditor {
         let to = self.layout.as_ref().and_then(|l| {
             l.rows()
                 .into_iter()
-                .find(|(r, _, _)| r.start <= caret && caret <= r.end)
-                .map(|(r, _, _)| if end { r.end } else { r.start })
+                .find(|(r, ..)| r.start <= caret && caret <= r.end)
+                .map(|(r, ..)| if end { r.end } else { r.start })
         });
         let text = self.surface.display_text();
         let to = to.unwrap_or(if end { text.len() } else { 0 });
@@ -365,6 +483,16 @@ impl LexicalEditor {
         cx: &mut Context<Self>,
     ) {
         window.focus(&self.focus_handle, cx);
+        // A check item's box, as the JS playground's CheckListPlugin
+        // toggles it on a click.
+        let check = self
+            .layout
+            .as_ref()
+            .and_then(|l| l.check_at(event.position));
+        if let Some(block) = check {
+            self.edit(cx, |p| p.toggle_checked(block));
+            return;
+        }
         let Some(layout) = &self.layout else { return };
         let at = layout.index_at(event.position);
         self.selecting = true;
@@ -506,8 +634,8 @@ impl EntityInputHandler for LexicalEditor {
         let layout = self.layout.as_ref()?;
         let text = &layout.text;
         let start = lexical_playground_core::byte_of_utf16(text, range.start);
-        let at = layout.position_of(start)?;
-        Some(Bounds::new(at, size(px(2.), layout.line_height)))
+        let (at, height) = layout.position_of(start)?;
+        Some(Bounds::new(at, size(px(2.), height)))
     }
 
     fn character_index_for_point(
@@ -563,11 +691,8 @@ impl Render for LexicalEditor {
             .on_action(cx.listener(|this, _: &InsertLineBreak, _, cx| {
                 this.edit(cx, Playground::insert_line_break)
             }))
-            .on_action(
-                cx.listener(|this, _: &InsertTab, _, cx| {
-                    this.edit(cx, |p| p.insert_raw_text("\t"))
-                }),
-            )
+            .on_action(cx.listener(|this, _: &InsertTab, _, cx| this.edit(cx, |p| p.tab(false))))
+            .on_action(cx.listener(|this, _: &Outdent, _, cx| this.edit(cx, |p| p.tab(true))))
             .on_action(cx.listener(|this, _: &Left, _, cx| this.horizontal(true, false, cx)))
             .on_action(cx.listener(|this, _: &Right, _, cx| this.horizontal(false, false, cx)))
             .on_action(cx.listener(|this, _: &SelectLeft, _, cx| this.horizontal(true, true, cx)))
@@ -614,10 +739,20 @@ impl Render for LexicalEditor {
     }
 }
 
-/// The text runs to shape: each run's format as a font, colors and lines.
+/// The text runs to shape: each run's format as a font, colors and lines,
+/// with a heading's weight, a link's color and underline, and a checked
+/// item struck through, as the JS playground's theme draws them.
 fn text_runs(surface: &Surface, base: &TextStyle, theme: &Theme) -> Vec<TextRun> {
     let base_font = base.font();
     let accent = theme.primary;
+    let doc = surface.playground.document();
+    // The JS playground's link blue (#216FDB), lighter on a dark window:
+    // the kit's neutral theme draws links in the text color.
+    let link = if theme.is_dark() {
+        hsla(214. / 360., 0.9, 0.68, 1.)
+    } else {
+        hsla(214. / 360., 0.74, 0.49, 1.)
+    };
     // A marker yellow behind dark text, a deep amber behind light text.
     let highlight = if theme.is_dark() {
         hsla(40. / 360., 0.75, 0.3, 1.)
@@ -629,26 +764,38 @@ fn text_runs(surface: &Surface, base: &TextStyle, theme: &Theme) -> Vec<TextRun>
         .into_iter()
         .map(|run| {
             let has = |name| run.format & format_flag(name) != 0;
+            let block = doc.blocks.get(run.block);
+            let heading = block.and_then(|b| b.tag.as_deref()).and_then(heading_style);
+            let checked = block
+                .and_then(|b| b.list.as_ref())
+                .is_some_and(|l| l.list_type == "check" && l.checked);
             let mut font = if has("code") {
                 font("Menlo")
             } else {
                 base_font.clone()
             };
+            if let Some((_, weight)) = heading {
+                font.weight = weight;
+            }
             if has("bold") {
                 font.weight = FontWeight::BOLD;
             }
             if has("italic") {
                 font.style = FontStyle::Italic;
             }
-            let line = |on: bool| on.then_some(px(1.));
+            let color = if run.link {
+                link
+            } else if has("subscript") || has("superscript") {
+                accent
+            } else if checked {
+                theme.muted_foreground
+            } else {
+                base.color
+            };
             TextRun {
                 len: run.range.len(),
                 font,
-                color: if has("subscript") || has("superscript") {
-                    accent
-                } else {
-                    base.color
-                },
+                color,
                 background_color: if has("highlight") {
                     Some(highlight)
                 } else if has("code") {
@@ -656,14 +803,16 @@ fn text_runs(surface: &Surface, base: &TextStyle, theme: &Theme) -> Vec<TextRun>
                 } else {
                     None
                 },
-                underline: (has("underline") || run.composing).then(|| UnderlineStyle {
-                    thickness: px(1.),
-                    color: Some(if run.composing { accent } else { base.color }),
-                    wavy: false,
+                underline: (has("underline") || run.composing || run.link).then(|| {
+                    UnderlineStyle {
+                        thickness: px(1.),
+                        color: Some(if run.composing { accent } else { color }),
+                        wavy: false,
+                    }
                 }),
-                strikethrough: line(has("strikethrough")).map(|thickness| StrikethroughStyle {
-                    thickness,
-                    color: Some(base.color),
+                strikethrough: (has("strikethrough") || checked).then(|| StrikethroughStyle {
+                    thickness: px(1.),
+                    color: Some(color),
                 }),
             }
         })
@@ -675,9 +824,13 @@ struct EditorElement {
 }
 
 struct Prepaint {
-    lines: Rc<Vec<(usize, Pixels, WrappedLine)>>,
+    lines: Rc<Vec<Line>>,
     selection: Vec<PaintQuad>,
     caret: Option<PaintQuad>,
+    /// List markers: where each goes, its row's height, and its shape.
+    markers: Vec<(Point<Pixels>, Pixels, ShapedLine)>,
+    /// Quotes' bars.
+    bars: Vec<PaintQuad>,
 }
 
 impl IntoElement for EditorElement {
@@ -688,33 +841,62 @@ impl IntoElement for EditorElement {
     }
 }
 
-/// Shapes `text` at `width`: each line's first byte, top and shape.
+/// The part of `runs` (which cover the whole text) over `range`.
+fn slice_runs(runs: &[TextRun], range: Range<usize>) -> Vec<TextRun> {
+    let mut out = Vec::new();
+    let mut at = 0;
+    for run in runs {
+        let (from, to) = (at.max(range.start), (at + run.len).min(range.end));
+        at += run.len;
+        if from < to {
+            let mut run = run.clone();
+            run.len = to - from;
+            out.push(run);
+        }
+    }
+    out
+}
+
+/// Shapes each line of `text` in its style, wrapping at `width` less the
+/// line's indent.
 fn shape(
     window: &mut Window,
     text: &str,
     runs: &[TextRun],
-    font_size: Pixels,
-    line_height: Pixels,
+    styles: &[LineStyle],
     width: Option<Pixels>,
-) -> Vec<(usize, Pixels, WrappedLine)> {
-    let shaped = window
-        .text_system()
-        .shape_text(
-            SharedString::from(text.to_owned()),
-            font_size,
-            runs,
-            width,
-            None,
-        )
-        .unwrap_or_default();
+) -> Vec<Line> {
     let mut out = Vec::new();
     let (mut start, mut top) = (0, px(0.));
-    for line in shaped {
-        let rows = line.wrap_boundaries.len() + 1;
-        let len = line.len();
-        out.push((start, top, line));
-        start += len + 1;
-        top += line_height * rows as f32;
+    for (i, line_text) in text.split('\n').enumerate() {
+        let style = styles
+            .get(i)
+            .or(styles.last())
+            .cloned()
+            .expect("a document has a block");
+        let line_runs = slice_runs(runs, start..start + line_text.len());
+        let wrap = width.map(|w| (w - style.left).max(px(40.)));
+        let shape = window
+            .text_system()
+            .shape_text(
+                SharedString::from(line_text.to_owned()),
+                style.size,
+                &line_runs,
+                wrap,
+                None,
+            )
+            .ok()
+            .and_then(|lines| lines.into_iter().next())
+            .unwrap_or_default();
+        let line = Line {
+            start,
+            top,
+            style,
+            shape,
+        };
+        start += line_text.len() + 1;
+        top = line.bottom();
+        out.push(line);
     }
     out
 }
@@ -742,8 +924,11 @@ impl Element for EditorElement {
         let text = editor.surface.display_text();
         let style = window.text_style();
         let runs = text_runs(&editor.surface, &style, cx.theme());
-        let font_size = style.font_size.to_pixels(window.rem_size());
-        let line_height = window.line_height();
+        let styles = line_styles(
+            editor.surface.playground.document(),
+            style.font_size.to_pixels(window.rem_size()),
+            window.line_height(),
+        );
         let mut layout_style = Style::default();
         layout_style.size.width = relative(1.).into();
         let id =
@@ -752,10 +937,8 @@ impl Element for EditorElement {
                     AvailableSpace::Definite(w) => Some(w),
                     _ => None,
                 });
-                let lines = shape(window, &text, &runs, font_size, line_height, width);
-                let height = lines.last().map_or(line_height, |(_, top, line)| {
-                    *top + line_height * (line.wrap_boundaries.len() + 1) as f32
-                });
+                let lines = shape(window, &text, &runs, &styles, width);
+                let height = lines.last().map_or(px(0.), Line::bottom);
                 size(width.unwrap_or(px(0.)), height)
             });
         (id, ())
@@ -774,30 +957,31 @@ impl Element for EditorElement {
         let text = editor.surface.display_text();
         let style = window.text_style();
         let runs = text_runs(&editor.surface, &style, cx.theme());
-        let font_size = style.font_size.to_pixels(window.rem_size());
-        let line_height = window.line_height();
+        let styles = line_styles(
+            editor.surface.playground.document(),
+            style.font_size.to_pixels(window.rem_size()),
+            window.line_height(),
+        );
         let lines = Rc::new(shape(
             window,
             &text,
             &runs,
-            font_size,
-            line_height,
+            &styles,
             Some(bounds.size.width),
         ));
         let layout = Layout {
             bounds,
-            line_height,
             text: text.clone(),
             lines: lines.clone(),
         };
         let (range, _) = editor.surface.selection();
         let mut selection = Vec::new();
         if !range.is_empty() {
-            for (row, origin, width) in layout.rows() {
+            for (row, origin, width, height) in layout.rows() {
                 if range.end < row.start || range.start > row.end {
                     continue;
                 }
-                let layout_x = |i: usize| layout.position_of(i).map_or(origin.x, |p| p.x);
+                let layout_x = |i: usize| layout.position_of(i).map_or(origin.x, |(p, _)| p.x);
                 let x0 = if range.start <= row.start {
                     origin.x
                 } else {
@@ -812,10 +996,7 @@ impl Element for EditorElement {
                 };
                 if x1 > x0 {
                     selection.push(fill(
-                        Bounds::from_corners(
-                            point(x0, origin.y),
-                            point(x1, origin.y + line_height),
-                        ),
+                        Bounds::from_corners(point(x0, origin.y), point(x1, origin.y + height)),
                         cx.theme().selection,
                     ));
                 }
@@ -825,13 +1006,49 @@ impl Element for EditorElement {
             .is_empty()
             .then(|| layout.position_of(editor.surface.caret()))
             .flatten()
-            .map(|at| fill(Bounds::new(at, size(px(2.), line_height)), cx.theme().caret));
+            .map(|(at, height)| fill(Bounds::new(at, size(px(2.), height)), cx.theme().caret));
+        let mut markers = Vec::new();
+        let mut bars = Vec::new();
+        let muted = cx.theme().muted_foreground;
+        for line in lines.iter() {
+            let top = bounds.origin.y + line.top;
+            if let Some(marker) = &line.style.marker {
+                let color = if line.style.check { style.color } else { muted };
+                let run = TextRun {
+                    len: marker.len(),
+                    font: style.font(),
+                    color,
+                    background_color: None,
+                    underline: None,
+                    strikethrough: None,
+                };
+                let shaped = window.text_system().shape_line(
+                    SharedString::from(marker.clone()),
+                    line.style.size,
+                    &[run],
+                    None,
+                );
+                let x = bounds.origin.x + line.style.left - shaped.width() - px(8.);
+                markers.push((point(x, top), line.style.height, shaped));
+            }
+            if line.style.quote {
+                bars.push(fill(
+                    Bounds::new(
+                        point(bounds.origin.x + line.style.left - px(14.), top),
+                        size(px(3.), line.bottom() - line.top),
+                    ),
+                    muted.opacity(0.5),
+                ));
+            }
+        }
         self.editor
             .update(cx, |editor, _| editor.layout = Some(layout));
         Prepaint {
             lines,
             selection,
             caret,
+            markers,
+            bars,
         }
     }
 
@@ -857,27 +1074,37 @@ impl Element for EditorElement {
         for quad in prepaint.selection.drain(..) {
             window.paint_quad(quad);
         }
-        let line_height = window.line_height();
-        for (_, top, line) in prepaint.lines.iter() {
-            let origin = bounds.origin + point(px(0.), *top);
-            line.paint_background(
-                origin,
-                line_height,
-                TextAlign::Left,
-                Some(bounds),
-                window,
-                cx,
-            )
-            .ok();
-            line.paint(
-                origin,
-                line_height,
-                TextAlign::Left,
-                Some(bounds),
-                window,
-                cx,
-            )
-            .ok();
+        for quad in prepaint.bars.drain(..) {
+            window.paint_quad(quad);
+        }
+        for (origin, height, marker) in &prepaint.markers {
+            marker
+                .paint(*origin, *height, TextAlign::Left, None, window, cx)
+                .ok();
+        }
+        for line in prepaint.lines.iter() {
+            let origin = bounds.origin + point(line.style.left, line.top);
+            let line_bounds = Bounds::from_corners(origin, bounds.bottom_right());
+            line.shape
+                .paint_background(
+                    origin,
+                    line.style.height,
+                    TextAlign::Left,
+                    Some(line_bounds),
+                    window,
+                    cx,
+                )
+                .ok();
+            line.shape
+                .paint(
+                    origin,
+                    line.style.height,
+                    TextAlign::Left,
+                    Some(line_bounds),
+                    window,
+                    cx,
+                )
+                .ok();
         }
         if focus_handle.is_focused(window)
             && window.is_window_active()

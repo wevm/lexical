@@ -27,11 +27,12 @@ on:
       - '!**/*.md'
       - '.github/workflows/swift-macos.yml'
 
-# A newer commit cancels the run of an older one on a branch and on main, where
-# the newest run covers the commits before it.
+# A newer commit cancels the run of an older one on a pull request. On main a
+# started run finishes and only the newest waiting one is kept: runs wait
+# hours for a runner, so cancelling there left main with no finished run.
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

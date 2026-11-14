@@ -17,10 +17,14 @@ mod format_list;
 mod generated_json;
 #[cfg(feature = "extension")]
 mod lexical_list_extension;
+#[cfg(all(feature = "html", feature = "extension"))]
+mod list_import_extension;
 mod list_item_node;
 mod list_node;
 mod register_list;
 mod utils;
+#[cfg(all(feature = "html", feature = "extension"))]
+mod word_list_import_extension;
 
 pub use format_list::{
     handle_indent, handle_list_insert_paragraph, handle_outdent, insert_list, merge_lists,
@@ -31,6 +35,8 @@ pub use lexical_list_extension::{
     CheckListConfig, CheckListConfigOverrides, CheckListExtensionType, CheckListOutput, ListConfig,
     ListConfigOverrides, ListExtensionType, ListOutput, check_list_extension, list_extension,
 };
+#[cfg(all(feature = "html", feature = "extension"))]
+pub use list_import_extension::{list_import_rules, list_schema};
 pub use list_item_node::{ListItemNode, create_list_item_node, is_list_item_node};
 pub use list_node::{ListNode, ListType, create_list_node, is_list_node};
 pub use register_list::{
@@ -42,6 +48,8 @@ pub use utils::{
     get_all_list_items, get_list_depth, get_new_list_start, get_top_list_node, is_nested_list_node,
     remove_highest_empty_list_parent,
 };
+#[cfg(all(feature = "html", feature = "extension"))]
+pub use word_list_import_extension::word_list_import_extension;
 
 use crate::NodeClass;
 

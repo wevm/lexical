@@ -16,9 +16,18 @@ fn make() -> Rc<RichTextExtensionType> {
         // others act on the DOM: `HeadingAnnounceExtension` (a mutation
         // listener that announces headings), `DragonExtension` and
         // `NormalizeTripleClickSelectionExtension` (root element
-        // listeners), and `CoreImportExtension` and `DOMImportExtension`
-        // with `RichTextImportRules` (HTML import), which come with `html`.
-        dependencies: vec![normalize_inline_elements_extension().into()],
+        // listeners). `CoreImportExtension` and `DOMImportExtension` with
+        // `RichTextImportRules` (HTML import) come with `html`.
+        dependencies: {
+            #[allow(unused_mut)]
+            let mut dependencies = vec![normalize_inline_elements_extension().into()];
+            #[cfg(feature = "html")]
+            dependencies.extend(crate::html::import::package_import_dependencies(
+                super::rich_text_import_rules(),
+                Vec::new(),
+            ));
+            dependencies
+        },
         nodes: rich_text_nodes(),
         // JS's `register` runs `registerRichText(editor,
         // escapeFormatTriggers, shouldHandlePasteAsFiles)` in an effect of

@@ -25,6 +25,8 @@ mod code_extension;
 mod code_highlight_node;
 #[cfg(feature = "code-highlight")]
 mod code_highlighter;
+#[cfg(all(feature = "html", feature = "extension"))]
+mod code_import_extension;
 mod code_indentation;
 mod code_node;
 #[cfg(feature = "code-highlight")]
@@ -48,6 +50,8 @@ pub use code_highlighter::{
 };
 #[cfg(feature = "code-highlight")]
 pub use code_highlighter::{register_code_highlighting, register_highlighting_only};
+#[cfg(all(feature = "html", feature = "extension"))]
+pub use code_import_extension::{code_import_rules, install_vscode_code_paste_overlay};
 pub use code_indentation::register_code_indentation;
 pub use code_node::{
     CodeNode, DEFAULT_CODE_LANGUAGE, create_code_node, exit_code_node_on_enter,

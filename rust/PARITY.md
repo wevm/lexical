@@ -67,6 +67,7 @@ updated with each milestone.
 | `@lexical/html` (the `html` feature) | `packages/lexical-html/src/index.ts`: `$generateHtmlFromNodes`, `$generateDOMFromNodes`, `$generateDOMFromRoot`, `$appendNodeToHTML` (`$appendNodesToHTML` with `$appendTerminatingLineBreak`, and `@lexical/selection`'s `$sliceSelectedTextNodeContent` for a selection), `$generateNodesFromDOM` (`IGNORE_TAGS`, `getConversionFunction`, `$createNodesFromDOM`, `wrapContinuousInlines`, `$unwrapArtificialNodes`, `isDomNodeBetweenTwoInlineNodes`) | `html` | `html/export`, `html/import` |
 | `DOMImportExtension` (the `html` and `extension` features) | `packages/lexical-html/src/import/`: `DOMImportExtension.ts` (`DOMImportConfig` and its `mergeConfig`, `$runPreprocessStack`, `DefaultHoistRule`, `$generateNodesFromDOMViaExtension`), `CoreImportExtension.ts`, `HorizontalRuleImportExtension.ts`, `coreImportRules.ts` (the inline format, `#text` with `collapseWhitespace` and `findAdjacentTextOnLine`, script and style, `<br>`, `<p>`, `<hr>` and transparent block rules, `isAlignmentValue`), `defineImportRule.ts`, `compileImportRules.ts`, `defineOverlayRules.ts`, `ImportContext.ts` (`createImportState`, `ImportSource`, `ImportTextFormat`, `ImportTextStyle`, `ImportWhitespaceConfig` with `defaultPreservesWhitespace` and `defaultIsInline`, `ImportOverlays`, `ImportSessionImpl`, `$getImportContextValue`, `$withImportContext`), `runImport.ts`, `schemas.ts` (`$isBlockLevel`, `$distributeInlineWrapper`, `$applySchema`, `$propagateTextAlignToBlockChildren`, `BlockSchema`, `InlineSchema`, `NestedBlockSchema`, `RootSchema`), `sel.ts` (with `RegExp` matchers as functions), `parseCss.ts`, `inlineStylesFromStyleSheets.ts`; `internal/ContextRecord.ts`'s import half; `CSSStyleSheet.cssRules` and `querySelectorAll` in the DOM | `html::import`, `html::internal`, `dom` | `html/import-extension`; unit tests of the style sheet parser and the selectors against jsdom |
 | `DOMRenderExtension` (the `html` and `extension` features) | `packages/lexical-html/src/internal/`: `DOMRenderExtension.ts` (its `init`, `build`, `mergeConfig` and the `RootNode` export), `domOverride.ts`, `compileDOMRenderConfigOverrides.ts` (`sortedOverrides`, `getPredicate`, the merge of each export hook), `DOMRenderRuntime.ts` (`createEditorContextRecord`, `filterEditorInstalled`, `setContextValue`, `getSessionConfig` with its cache), `RenderContext.ts` (`createRenderState`, `RenderContextRoot`, `RenderContextExport`, `$getRenderContextValue`, `$setRenderContextValue`, `$updateRenderContextValue`, `$getSessionDOMRenderConfig`, `$withRenderContext`), `types.ts`'s render half, `ContextRecord.ts`'s render half; from the core `EditorDOMRenderConfig`'s export hooks, `$getEditorDOMRenderConfig` and `createEditor`'s `dom`; from `@lexical/extension` `buildCreateEditorArgs`'s `html` merge; `$generateDOMFromNodes` and `$generateDOMFromRoot` with the render context and the session's render config | `html`, `html::internal`, `lexical_dom`, `extension` | `html/export-render` |
+| The packages' import rules (the `html` and `extension` features with each package's) | `packages/lexical-rich-text/src/RichTextImportExtension.ts` (`RichTextImportRules`, the heading, Google Docs title and blockquote rules, and the shadow root quote rule), `packages/lexical-list/src/ListImportExtension.ts` (`ListImportRules`, `isDomChecklist`, the list schema with its flatten step), `packages/lexical-list/src/WordListImportExtension.ts` (the `mso-list` paragraph preprocess and rules), `packages/lexical-link/src/LinkImportExtension.ts` (`LinkImportRules`), `packages/lexical-code-core/src/CodeImportExtension.ts` (`CodeImportRules` and the VS Code paste overlay); each package extension depends on `CoreImportExtension` and its rules, as in JS | `rich_text::rich_text_import_extension`, `list::list_import_extension`, `list::word_list_import_extension`, `link::link_import_extension`, `code::code_import_extension` | `html/import-packages` |
 | Inline CSS text | `utils/setDOMStyle.ts` (`getStyleObjectFromCSS`, with JS's property order; with the `html` feature `setDOMStyleObject` and `setDOMStyleFromCSS`) | `set_dom_style` | through `css/values`; unit tests against JS's output |
 | Clipboard, JSON and plain text (the `clipboard` feature) | `packages/lexical-clipboard/src/clipboard.ts`: `$generateJSONFromSelectedNodes` (`$appendNodesToJSON`: `isSelected`, `excludeFromCopy('clone')`, `extractWithChild`, the text sliced at the selection's edges, empty slices left out, a node selection's element taking its subtree), `$generateNodesFromSerializedNodes`, `$insertGeneratedNodes` (`SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`, `$updateSelectionOnInsert`), `$getLexicalContent`, `$insertDataTransferForPlainText`, `$insertDataTransferForRichText` (the default stack of `ClipboardImportExtension.ts`: `$runImport` with `$defaultLexicalEditorImporter` and `$defaultPlainTextImporter` for `text/plain` and `text/uri-list`, by `DEFAULT_IMPORT_MIME_TYPE_PRIORITY`), `$getClipboardDataFromSelection` (the default `ExportMimeTypeConfig` but `text/html`), `setLexicalClipboardDataTransfer`; `$sliceSelectedTextNodeContent` (`@lexical/selection`, `'clone'`); from the core `LexicalNode.isSelected`, `createEditor`'s `namespace` and `getNamespace` (as the devtools row has them), `insertNodes`' CASE 1 (inside a code block), `PASTE_COMMAND`, `COPY_COMMAND`, `CUT_COMMAND` and `SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`, and `DataTransfer` (`getData`, `setData`, `types`, as Swift's in `LexicalEvents.swift`); the `extractWithChild` of `ParagraphNode`, `ListNode` and `ListItemNode` | `clipboard`, `events`, `selection`, `node`, `editor`, `commands`, `selection_insert_nodes`, `nodes::paragraph`, `list` | `scripts/clipboard` |
 | Copy, cut and paste handlers (the `rich-text` and `plain-text` features) | `registerRichText`'s `COPY_COMMAND` (`copyToClipboard` with an event, `$copyToClipboardEvent`), `CUT_COMMAND` (`onCutForRichText`, with `INTERNAL_$expandSelectionToWholeDocument`) and `PASTE_COMMAND` (`onPasteForRichText`) handlers; `registerPlainText`'s (`onCopyForPlainText`, `onCutForPlainText`, `onPasteForPlainText`), with JS's `paste` and `cut` tags | `rich_text`, `plain_text`, `clipboard` | unit tests (no vector: headless JS has no `ClipboardEvent`) |
@@ -152,10 +153,8 @@ touches:
   packages' extensions, the DOM, click and focus ones
   (`ClickableLinkExtension`, `DragonExtension`,
   `NormalizeTripleClickSelectionExtension`, `CheckListExtension`'s
-  pointer, focus and key handlers, `registerCodeGutter`) and the HTML
-  import ones (`RichTextImportExtension`, `ListImportExtension`,
-  `WordListImportExtension`, `LinkImportExtension`, `CodeImportExtension`,
-  which come with `html`) aren't ported, nor are the `KEY_*` handlers
+  pointer, focus and key handlers, `registerCodeGutter`) aren't ported
+  (the HTML import ones come with `html`), nor are the `KEY_*` handlers
   (`KEY_ENTER_COMMAND` in `CodeExtension`, `KEY_TAB_COMMAND` and the arrow
   keys in `CodeIndentExtension`, whose `escapeWithArrows` is kept, with no
   handler to read it). `HistoryExtension`'s `disabled` defaults to `false`,
@@ -214,9 +213,10 @@ touches:
   here); `$isEditorIsNestedEditor` (an editor has no parent editor yet);
   and `trimTextContentFromAnchor`, JS's deprecated other name for
   `$trimTextContentFromAnchor`.
-- Of `@lexical/list`'s DOM parts, `updateDOM` (the reconciler's),
-  `ListImportExtension`/`ListImportRules` and `WordListImportExtension`
-  (the import-rule pipeline);
+- Of `@lexical/list`'s DOM parts, `updateDOM` (the reconciler's);
+  `ListImportRules`' flatten step never lifts a nested list's blocks out
+  (`INTERNAL_$liftsFromStructure` is always false), as
+  `NodeStructureExtension` isn't ported;
   `registerList`'s `KEY_BACKSPACE_COMMAND` handler and
   `registerCheckList`'s pointer, focus, arrow, Space and Escape handlers,
   which need an input layer (`deleteCharacter` reaches the same
@@ -228,8 +228,7 @@ touches:
   at the start of a document's first item, with nothing before it, needs
   `Selection.modify` in headless JS, which throws, as `scripts/list`
   records.
-- Of `@lexical/link`'s DOM parts, `updateDOM`, `LinkImportRules` and
-  `LinkImportExtension`. `sanitizeUrl` asks `new URL` whether a URL
+- Of `@lexical/link`'s DOM parts, `updateDOM`. `sanitizeUrl` asks `new URL` whether a URL
   parses and for its protocol; as in Swift, that is a model of the WHATWG
   parser's scheme and host rules without IDNA or IPv4 parsing, so a host
   only those reject (`https://1.2.3.4.5`) is taken as parsing.
@@ -248,8 +247,7 @@ touches:
   the text outside the parent either way, and
   `$resolveSelectionPointOnBoundary`, which also reads them, runs only
   after `Selection.modify`.
-- Of `@lexical/code-core`'s DOM parts, `updateDOM`,
-  `CodeImportRules`/`CodeImportExtension` and the VS Code paste overlay,
+- Of `@lexical/code-core`'s DOM parts, `updateDOM`
   and `registerCodeGutter`, which writes to the
   DOM; `registerCodeIndentation`'s handlers of `KEY_TAB_COMMAND`,
   the arrow keys (`$handleTab`, `$handleShiftLines`, `escapeWithArrows`),
@@ -380,9 +378,7 @@ touches:
   DOM's `Selection.modify` to get there and throws, which `scripts/rich-text`
   records.
 - Of `@lexical/html` and the core's DOM side (the `html` feature):
-  `BlockIdHTMLExtension`, the packages' import rules
-  (`ListImportRules`, `RichTextImportRules`, `CodeImportRules`,
-  `LinkImportRules`, `WordListImportExtension`) and `ImportSourceDataTransfer`
+  `BlockIdHTMLExtension` and `ImportSourceDataTransfer`
   (no `DataTransfer`). `$inlineStylesFromStyleSheets` parses each `<style>`
   sheet itself (`dom::parse_style_sheet`) and matches its selectors with
   `DomNode::query_selector_all`, which takes compound selectors, combinators

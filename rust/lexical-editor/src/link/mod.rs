@@ -23,6 +23,8 @@ mod auto_link_announce_extension;
 mod auto_link_extension;
 mod generated_json;
 mod link_extension;
+#[cfg(all(feature = "html", feature = "extension"))]
+mod link_import_extension;
 mod link_node;
 
 #[cfg(feature = "autolink")]
@@ -46,6 +48,8 @@ pub use link_extension::{LinkConfig, ValidateUrl, register_link};
 pub use link_extension::{
     LinkConfigOverrides, LinkExtensionType, LinkOutput, ValidateUrlFn, link_extension,
 };
+#[cfg(all(feature = "html", feature = "extension"))]
+pub use link_import_extension::link_import_rules;
 #[cfg(feature = "html")]
 pub use link_node::link_dom::sanitize_url;
 pub use link_node::{

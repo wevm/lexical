@@ -36,6 +36,16 @@ pub use compile_import_rules::{CompiledOverlayRules, DomImportRuleEntry, define_
 pub use core_import_rules::{core_import_rules, is_alignment_value};
 #[cfg(feature = "extension")]
 pub use define_import_rule::{DomImportFn, DomImportRule, ImportNext, define_import_rule};
+#[cfg(all(
+    feature = "extension",
+    any(
+        feature = "rich-text",
+        feature = "list",
+        feature = "link",
+        feature = "code"
+    )
+))]
+pub(crate) use dom_import_extension::package_import_dependencies;
 #[cfg(feature = "extension")]
 pub use dom_import_extension::{
     DomImportConfig, DomImportConfigOverrides, DomImportExtensionOutput, DomImportExtensionType,

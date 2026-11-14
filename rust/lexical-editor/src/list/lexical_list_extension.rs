@@ -40,9 +40,13 @@ fn make_list_extension() -> Rc<ListExtensionType> {
                 Ok(ListOutput::of(config))
             },
         )),
-        // JS's dependencies, `CoreImportExtension` and `DOMImportExtension`
-        // with `ListImportRules`, are the HTML import, which comes with
-        // `html`.
+        // `CoreImportExtension` and `DOMImportExtension` with
+        // `ListImportRules`: the HTML import, with `html`.
+        #[cfg(feature = "html")]
+        dependencies: crate::html::import::package_import_dependencies(
+            super::list_import_rules(),
+            Vec::new(),
+        ),
         nodes: list_nodes(),
         register: Some(Rc::new(
             |editor: &Editor, _: &ListConfig, state: &ExtensionRegisterState<(), ListOutput>| {

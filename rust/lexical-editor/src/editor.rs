@@ -10,6 +10,7 @@ use crate::nodes::{
     text::TextNode,
 };
 use crate::ordered::{OrderedMap, OrderedSet};
+use crate::selection_deletion::SelectionMovement;
 use crate::updates::{
     begin_update, commit_pending_updates, parse_editor_state, read_editor_state,
     trigger_command_listeners, update_editor_sync,
@@ -209,6 +210,8 @@ pub(crate) struct EditorInner {
     text_content_listeners: Listeners<dyn Fn(&str)>,
     commands: RefCell<HashMap<u64, CommandListeners>>,
     next_id: Cell<u64>,
+    /// Stands in for the DOM's `Selection.modify` (no JS field).
+    selection_movement: RefCell<Option<Rc<dyn SelectionMovement>>>,
 }
 
 /// `createEditor(config)`: registers the core nodes (root, text, line
@@ -241,6 +244,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         text_content_listeners: RefCell::new(Vec::new()),
         commands: RefCell::new(HashMap::new()),
         next_id: Cell::new(1),
+        selection_movement: RefCell::new(None),
     }))
 }
 
@@ -259,6 +263,21 @@ impl Editor {
 
     fn weak(&self) -> Weak<EditorInner> {
         Rc::downgrade(&self.0)
+    }
+
+    /// Sets what stands in for the DOM's `Selection.modify` in this editor:
+    /// where a caret lands when `modify`, `deleteCharacter`, `deleteWord` or
+    /// `deleteLine` move it within text, which only text layout knows.
+    /// Without one (the default) the editor behaves as JS does with no root
+    /// element: those moves fail with `window object not found`.
+    pub fn set_selection_movement(&self, movement: Option<Rc<dyn SelectionMovement>>) {
+        *self.0.selection_movement.borrow_mut() = movement;
+    }
+
+    /// The movement [`set_selection_movement`](Self::set_selection_movement)
+    /// set.
+    pub(crate) fn selection_movement(&self) -> Option<Rc<dyn SelectionMovement>> {
+        self.0.selection_movement.borrow().clone()
     }
 
     /// `getEditorState()`: the committed state.

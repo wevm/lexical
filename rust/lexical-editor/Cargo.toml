@@ -64,9 +64,11 @@ file = []
 # the link branch is built with `link` (without it no link node can exist),
 # and the HTML form, mark and table nodes aren't ported.
 devtools = []
-# @lexical/extension's decorators: HorizontalRuleNode (a block decorator) and
-# DecoratorTextNode (an inline one), and NormalizeInlineElementsExtension's
-# transform. The rest of the package, the extension API, isn't ported.
+# @lexical/extension: the extension API (buildEditorFromExtensions, with
+# lexical's extension-core types and a port of @preact/signals-core), its
+# model-level extensions with NormalizeInlineElementsExtension's transform,
+# and its decorators, HorizontalRuleNode (a block decorator) and
+# DecoratorTextNode (an inline one).
 extension = []
 
 [dependencies]

@@ -13,9 +13,21 @@ import {
   registerCodeIndentation,
 } from '@lexical/code-core';
 import {
+  batch,
+  buildEditorFromExtensions,
+  ClearEditorExtension,
+  computed,
+  DecoratorTextExtension,
   DecoratorTextNode,
+  EditorStateExtension,
+  effect,
+  getExtensionDependencyFromEditor,
+  getKnownTypesAndNodes,
+  getPeerDependencyFromEditor,
   HorizontalRuleNode,
   namedSignals,
+  type NamedSignalsOutput,
+  untracked,
 } from '@lexical/extension';
 import {HashtagNode, registerLexicalHashtag} from '@lexical/hashtag';
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
@@ -65,6 +77,7 @@ import {
   $createNodeSelection,
   $createParagraphNode,
   $createRangeSelection,
+  $createTextNode,
   $getCaretRange,
   $getChildCaret,
   $getNodeByKey,
@@ -87,6 +100,8 @@ import {
   $setSelectionFromCaretRange,
   $setState,
   type AnyLexicalCommand,
+  type AnyLexicalExtension,
+  type AnyLexicalExtensionArgument,
   type AnyStateConfig,
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,
@@ -94,10 +109,12 @@ import {
   CLEAR_EDITOR_COMMAND,
   CLEAR_HISTORY_COMMAND,
   COMMAND_PRIORITY_EDITOR,
+  configExtension,
   CONTROLLED_TEXT_INSERTION_COMMAND,
   createCommand,
   createEditor,
   createState,
+  declarePeerDependency,
   DELETE_CHARACTER_COMMAND,
   DELETE_LINE_COMMAND,
   DELETE_WORD_COMMAND,
@@ -110,6 +127,8 @@ import {
   INSERT_TAB_COMMAND,
   type LexicalCommand,
   type LexicalEditor,
+  type LexicalEditorWithDispose,
+  type LexicalExtension,
   type LexicalNode,
   type NodeCaret,
   OUTDENT_CONTENT_COMMAND,
@@ -120,8 +139,10 @@ import {
   resetRandomKey,
   RootNode,
   SELECT_ALL_COMMAND,
+  type SerializedEditorState,
   type SerializedLexicalNode,
   SET_TEXT_FORMAT_COMMAND,
+  shallowMergeConfig,
   TextNode,
   UNDO_COMMAND,
 } from 'lexical';
@@ -241,7 +262,126 @@ export type HandlerSpec = {
 export type Step = (
   | {update: Action[]; tag?: string[]}
   | {dispatch: string; payload?: Json}
+  /** `editor.dispose()` of an editor built from `extensions`. */
+  | {dispose: true}
+  /**
+   * In one `batch`, `output[signal].value = value` for each
+   * `[extension, signal, value]`, where `output` is
+   * `getExtensionDependencyFromEditor(editor, extension).output` of an
+   * extension of `extensionDefs` with `signals` (its `namedSignals`).
+   */
+  | {setSignals: [string, string, Json][]}
+  /**
+   * Logs `['dependency', key, config]`:
+   * `getExtensionDependencyFromEditor(editor, extension).config` of an
+   * extension of `extensionDefs`.
+   */
+  | {logDependency: string}
+  /**
+   * Logs `['peer', name, config]`: the config of
+   * `getPeerDependencyFromEditor(editor, name)`, or `null` without one.
+   */
+  | {logPeer: string}
 ) & {now?: number};
+
+/** A config of an extension of `extensionDefs`, or overrides of one. */
+export type ExtensionConfig = {[key: string]: Json};
+
+/**
+ * An extension, by its key in `extensionDefs` or its name in
+ * REAL_EXTENSIONS, alone or with config overrides
+ * (`configExtension(extension, ...overrides)`).
+ */
+export type ExtensionArg = string | [string, ...ExtensionConfig[]];
+
+/** The phases an extension of `extensionDefs` defines. */
+export type ExtensionPhase =
+  | 'init'
+  | 'build'
+  | 'register'
+  | 'afterRegistration';
+
+/**
+ * A test extension, made by `testExtension` from JSON so that every runner
+ * can make the same one. Each phase it defines (all four by default) logs
+ * its name and merged config: `['init', name, config]`,
+ * `['build', name, config]`, `['register', name, config, text]` and
+ * `['afterRegistration', name, config, text]`, where `text` is the root
+ * text of `editor.getEditorState()`. `init` returns `{init: name}`. The
+ * clean-ups that `register` and `afterRegistration` return log
+ * `['unregister', name]` and `['afterUnregister', name]`. Unless it has
+ * `signals`, `register` also handles `EXTENSION_COMMAND` (a command the
+ * script makes), logging `['handled', name, payload]` and returning false.
+ */
+export type ExtensionSpec = {
+  name: string;
+  /** The default config; without it, the builder's default is `{}`. */
+  config?: ExtensionConfig;
+  dependencies?: ExtensionArg[];
+  /** `declarePeerDependency(name, config?)` each. */
+  peerDependencies?: [string, ExtensionConfig?][];
+  conflictsWith?: string[];
+  /** Node types, of `@lexical/extension`'s decorators (NODES). */
+  nodes?: string[];
+  /**
+   * `$initialEditorState`: `null`, an editor state serialized with
+   * `JSON.stringify` (`json`), or a function that appends a paragraph
+   * with `text` to the root.
+   */
+  initialEditorState?: null | {json: SerializedEditorState} | {text: string};
+  /**
+   * `mergeConfig` that merges with `shallowMergeConfig`, then concatenates
+   * every array of the overrides to the config's array of the same key.
+   */
+  mergeConfig?: 'concat';
+  phases?: ExtensionPhase[];
+  /**
+   * `init` logs `['initPeer', name, peer, config]` for `state.getPeer(peer)`
+   * of each, `null` when it is absent.
+   */
+  initPeers?: string[];
+  /** `build` logs `['buildPeer', name, peer, config]`, as `initPeers`. */
+  buildPeers?: string[];
+  /**
+   * `init` logs `['initDependency', name, key, config]` and `build`
+   * `['buildDependency', name, key, config]` for
+   * `state.getDependency(extension)` of each key of `extensionDefs`.
+   */
+  lookups?: string[];
+  /** `register` logs `['initResult', name, state.getInitResult()]`. */
+  initResult?: boolean;
+  /**
+   * `init` logs `['knownTypes', name, types]` of
+   * `getKnownTypesAndNodes(editorConfig)`, `['dependents', name, names]` of
+   * `state.getDirectDependentNames()` and `['peerNames', name, names]` of
+   * `state.getPeerNameSet()`.
+   */
+  inspect?: boolean;
+  /** `register` logs `['aborted', name]` when `state.getSignal()` aborts. */
+  abort?: boolean;
+  /**
+   * `register` registers an update listener that logs
+   * `['update', name, tags]` (sorted).
+   */
+  listen?: boolean;
+  /**
+   * `build` returns `namedSignals(config)`, of a config with a boolean
+   * `disabled` and a string `label`; `register` runs two effects. One logs
+   * `['summary', name, summary]`, where `summary` is a `computed` of
+   * `'off'` when disabled and `on:<label>` otherwise. The other, unless
+   * disabled, logs `['enable', name, label]` with the label read
+   * `untracked`, and handles `EXTENSION_COMMAND`, logging
+   * `['handled', name, label, payload]`; its clean-up logs
+   * `['disable', name]` and unregisters the handler.
+   */
+  signals?: boolean;
+  /**
+   * `register` runs an effect that logs `['editorState', name, text]`, the
+   * root text of the output of `EditorStateExtension`, which the extension
+   * has as a dependency.
+   */
+  editorState?: boolean;
+};
 
 export type Script = {
   name: string;
@@ -314,6 +454,16 @@ export type Script = {
    * registrations (inserting a rule by command, clicks) are left out.
    */
   extension?: boolean;
+  /**
+   * Build the editor with `buildEditorFromExtensions(...)` of these
+   * extensions instead of `createEditor`; the package flags above don't
+   * apply. The transforms, handlers and history are registered on the
+   * built editor. The build is recorded in `build`, and when it throws,
+   * the script has no steps.
+   */
+  extensions?: ExtensionArg[];
+  /** The test extensions `extensions` names, by key. */
+  extensionDefs?: {[key: string]: ExtensionSpec};
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -331,12 +481,32 @@ export type StepResult = {
   error?: true;
 };
 
-export type ScriptResult = Script & {results: StepResult[]};
+/**
+ * What `buildEditorFromExtensions` logged, then either the state, selection
+ * and text of the built editor, as a step records them, or the message it
+ * threw.
+ */
+export type BuildResult = {
+  log: Json[];
+  state?: string;
+  compact?: string;
+  selection?: Json;
+  text?: string;
+  error?: string;
+};
+
+export type ScriptResult = Script & {
+  build?: BuildResult;
+  results: StepResult[];
+};
 
 type Context = {
   editor: LexicalEditor;
   log: Json[];
   commands: Map<string, LexicalCommand<Json>>;
+  /** The test extensions made so far, by key. */
+  extensions: Map<string, AnyLexicalExtension>;
+  defs: {[key: string]: ExtensionSpec};
 };
 
 function $node(key: string): LexicalNode {
@@ -940,33 +1110,336 @@ const TRANSFORMS: Record<string, (ctx: Context) => () => void> = {
     }),
 };
 
+/**
+ * The extensions of `@lexical/extension` an `ExtensionArg` may name, as the
+ * package exports them, without config overrides (their configs aren't
+ * JSON).
+ */
+const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
+  ['ClearEditorExtension', ClearEditorExtension],
+  ['DecoratorTextExtension', DecoratorTextExtension],
+  ['EditorStateExtension', EditorStateExtension],
+]);
+
+/** The node classes an `ExtensionSpec`'s `nodes` names, by type. */
+const NODES = new Map<string, typeof LexicalNode>([
+  ['decorator-text', DecoratorTextNode],
+  ['horizontalrule', HorizontalRuleNode],
+]);
+
+const EXTENSION_PHASES: ExtensionPhase[] = [
+  'init',
+  'build',
+  'register',
+  'afterRegistration',
+];
+
+function extensionOf(ctx: Context, key: string): AnyLexicalExtension {
+  const real = REAL_EXTENSIONS.get(key);
+  if (real !== undefined) {
+    return real;
+  }
+  let made = ctx.extensions.get(key);
+  if (made === undefined) {
+    const spec = ctx.defs[key];
+    if (spec === undefined) {
+      throw new Error(`unknown extension ${key}`);
+    }
+    made = testExtension(ctx, spec);
+    ctx.extensions.set(key, made);
+  }
+  return made;
+}
+
+function extensionArg(
+  ctx: Context,
+  extensionArgument: ExtensionArg,
+): AnyLexicalExtensionArgument {
+  if (typeof extensionArgument === 'string') {
+    return extensionOf(ctx, extensionArgument);
+  }
+  const [key, ...configs] = extensionArgument;
+  return configExtension(extensionOf(ctx, key), ...configs);
+}
+
+/** The test extension `spec` describes (see `ExtensionSpec`). */
+function testExtension(ctx: Context, spec: ExtensionSpec): AnyLexicalExtension {
+  const {name} = spec;
+  const log = (...entry: Json[]) => {
+    ctx.log.push(entry);
+  };
+  const phases = new Set(spec.phases ?? EXTENSION_PHASES);
+  const rootText = (editor: LexicalEditor) =>
+    editor.getEditorState().read(() => $getRoot().getTextContent());
+  type Signals = NamedSignalsOutput<{disabled: boolean; label: string}>;
+  const extension: LexicalExtension<ExtensionConfig, string, unknown, unknown> =
+    {name};
+  if (spec.config !== undefined) {
+    extension.config = spec.config;
+  }
+  if (spec.conflictsWith !== undefined) {
+    extension.conflictsWith = spec.conflictsWith;
+  }
+  if (spec.dependencies !== undefined) {
+    extension.dependencies = spec.dependencies.map(d => extensionArg(ctx, d));
+  }
+  if (spec.peerDependencies !== undefined) {
+    extension.peerDependencies = spec.peerDependencies.map(([peer, config]) =>
+      config === undefined
+        ? declarePeerDependency(peer)
+        : declarePeerDependency(peer, config),
+    );
+  }
+  if (spec.nodes !== undefined) {
+    const nodes = spec.nodes;
+    extension.nodes = () =>
+      nodes.map(type => {
+        const klass = NODES.get(type);
+        if (klass === undefined) {
+          throw new Error(`unknown node type ${type}`);
+        }
+        return klass;
+      });
+  }
+  if (spec.initialEditorState !== undefined) {
+    const initial = spec.initialEditorState;
+    if (initial === null) {
+      extension.$initialEditorState = null;
+    } else if ('json' in initial) {
+      extension.$initialEditorState = JSON.stringify(initial.json);
+    } else {
+      extension.$initialEditorState = () => {
+        $getRoot().append(
+          $createParagraphNode().append($createTextNode(initial.text)),
+        );
+      };
+    }
+  }
+  if (spec.mergeConfig === 'concat') {
+    extension.mergeConfig = (config, overrides) => {
+      const merged = shallowMergeConfig(config, overrides);
+      for (const k in overrides) {
+        const [a, b] = [config[k], overrides[k]];
+        if (Array.isArray(a) && Array.isArray(b)) {
+          merged[k] = [...a, ...b];
+        }
+      }
+      return merged;
+    };
+  }
+  if (phases.has('init')) {
+    extension.init = (editorConfig, config, state) => {
+      log('init', name, config);
+      if (spec.inspect) {
+        log('knownTypes', name, [...getKnownTypesAndNodes(editorConfig).types]);
+        log('dependents', name, [...state.getDirectDependentNames()]);
+        log('peerNames', name, [...state.getPeerNameSet()]);
+      }
+      for (const peer of spec.initPeers ?? []) {
+        const dep = state.getPeer<AnyLexicalExtension>(peer);
+        log('initPeer', name, peer, dep === undefined ? null : dep.config);
+      }
+      for (const key of spec.lookups ?? []) {
+        const {config: depConfig} = state.getDependency(extensionOf(ctx, key));
+        log('initDependency', name, key, depConfig);
+      }
+      return {init: name};
+    };
+  }
+  if (phases.has('build')) {
+    extension.build = (editor, config, state) => {
+      log('build', name, config);
+      for (const peer of spec.buildPeers ?? []) {
+        const dep = state.getPeer<AnyLexicalExtension>(peer);
+        log('buildPeer', name, peer, dep === undefined ? null : dep.config);
+      }
+      for (const key of spec.lookups ?? []) {
+        const {config: depConfig} = state.getDependency(extensionOf(ctx, key));
+        log('buildDependency', name, key, depConfig);
+      }
+      return spec.signals ? namedSignals(config) : undefined;
+    };
+  }
+  if (phases.has('register')) {
+    extension.register = (editor, config, state) => {
+      log('register', name, config, rootText(editor));
+      if (spec.initResult) {
+        log('initResult', name, state.getInitResult() as Json);
+      }
+      const cleanups: (() => void)[] = [];
+      if (spec.abort) {
+        state.getSignal().addEventListener('abort', () => log('aborted', name));
+      }
+      if (spec.listen) {
+        cleanups.push(
+          editor.registerUpdateListener(({tags}) =>
+            log('update', name, [...tags].sort()),
+          ),
+        );
+      }
+      const extensionCommand = command(ctx, 'EXTENSION_COMMAND');
+      if (spec.signals) {
+        const {disabled, label} = state.getOutput() as Signals;
+        const summary = computed(() =>
+          disabled.value ? 'off' : `on:${label.value}`,
+        );
+        cleanups.push(
+          effect(() => {
+            log('summary', name, summary.value);
+          }),
+          effect(() => {
+            if (disabled.value) {
+              return;
+            }
+            const current = untracked(() => label.value);
+            log('enable', name, current);
+            const unregister = editor.registerCommand(
+              extensionCommand,
+              payload => {
+                log('handled', name, current, payload);
+                return false;
+              },
+              COMMAND_PRIORITY_EDITOR,
+            );
+            return () => {
+              log('disable', name);
+              unregister();
+            };
+          }),
+        );
+      } else {
+        cleanups.push(
+          editor.registerCommand(
+            extensionCommand,
+            payload => {
+              log('handled', name, payload);
+              return false;
+            },
+            COMMAND_PRIORITY_EDITOR,
+          ),
+        );
+      }
+      if (spec.editorState) {
+        const editorState = state.getDependency(EditorStateExtension).output;
+        cleanups.push(
+          effect(() => {
+            log(
+              'editorState',
+              name,
+              editorState.value.read(() => $getRoot().getTextContent()),
+            );
+          }),
+        );
+      }
+      return () => {
+        log('unregister', name);
+        for (const cleanup of cleanups.reverse()) {
+          cleanup();
+        }
+      };
+    };
+  }
+  if (phases.has('afterRegistration')) {
+    extension.afterRegistration = (editor, config) => {
+      log('afterRegistration', name, config, rootText(editor));
+      return () => log('afterUnregister', name);
+    };
+  }
+  return extension;
+}
+
 /** A script's editor, set up with its transforms, handlers and listeners,
  * that runs steps one at a time. */
 export type Session = {
   editor: LexicalEditor;
+  /** What building the editor from `extensions` recorded. */
+  build?: BuildResult;
   /** Runs `step` and records it; `snapshot` records the state too. */
   run(step: Step, snapshot: boolean): StepResult;
 };
 
+/** The editor's state, selection and text, as a step records them. */
+function snapshotOf(
+  editor: LexicalEditor,
+  log: Json[],
+  snapshot: boolean,
+): StepResult {
+  // A dispatch outside an update commits in a microtask; `editor.read`
+  // commits it first.
+  const result: StepResult = editor.read(() => ({
+    log,
+    selection: $selectionSnapshot(),
+    text: $getRoot().getTextContent(),
+  }));
+  if (snapshot) {
+    const state = editor.getEditorState();
+    result.state = JSON.stringify(state.toJSON());
+    result.compact = JSON.stringify(state.toJSON(true));
+  }
+  return result;
+}
+
 /** Starts `script` (without running its steps) on a new headless editor. */
 export function startSession(script: Omit<Script, 'steps'>): Session {
   resetRandomKey();
-  const editor = createEditor({
-    namespace: '',
-    nodes: [
-      ...(script.richText ? [HeadingNode, QuoteNode] : []),
-      ...(script.list ? [ListNode, ListItemNode] : []),
-      ...(script.link ? [LinkNode, AutoLinkNode] : []),
-      ...(script.code ? [CodeNode, CodeHighlightNode] : []),
-      ...(script.overflow ? [OverflowNode] : []),
-      ...(script.hashtag ? [HashtagNode] : []),
-      ...(script.extension ? [HorizontalRuleNode, DecoratorTextNode] : []),
-    ],
-    onError: e => {
-      throw e;
-    },
-  });
-  const ctx: Context = {commands: new Map(), editor, log: []};
+  const ctx: Context = {
+    commands: new Map(),
+    defs: script.extensionDefs ?? {},
+    editor: undefined as never,
+    extensions: new Map(),
+    log: [],
+  };
+  let build: BuildResult | undefined;
+  if (script.extensions !== undefined) {
+    for (const flag of [
+      'richText',
+      'plainText',
+      'list',
+      'link',
+      'code',
+      'overflow',
+      'hashtag',
+      'extension',
+    ] as const) {
+      if (script[flag]) {
+        throw new Error(`extensions and ${flag} don't mix`);
+      }
+    }
+    let built: LexicalEditorWithDispose;
+    try {
+      built = buildEditorFromExtensions(
+        ...script.extensions.map(e => extensionArg(ctx, e)),
+      );
+    } catch (e) {
+      build = {error: (e as Error).message, log: ctx.log};
+      return {
+        build,
+        editor: undefined as never,
+        run: () => {
+          throw new Error('the editor failed to build');
+        },
+      };
+    }
+    ctx.editor = built;
+    build = snapshotOf(built, ctx.log, true) as BuildResult;
+  } else {
+    ctx.editor = createEditor({
+      namespace: '',
+      nodes: [
+        ...(script.richText ? [HeadingNode, QuoteNode] : []),
+        ...(script.list ? [ListNode, ListItemNode] : []),
+        ...(script.link ? [LinkNode, AutoLinkNode] : []),
+        ...(script.code ? [CodeNode, CodeHighlightNode] : []),
+        ...(script.overflow ? [OverflowNode] : []),
+        ...(script.hashtag ? [HashtagNode] : []),
+        ...(script.extension ? [HorizontalRuleNode, DecoratorTextNode] : []),
+      ],
+      onError: e => {
+        throw e;
+      },
+    });
+  }
+  const {editor} = ctx;
   if (script.richText) {
     registerRichText(editor);
   }
@@ -1083,7 +1556,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
           },
           {discrete: true, tag: step.tag},
         );
-      } else {
+      } else if ('dispatch' in step) {
         ctx.log.push([
           'dispatched',
           step.dispatch,
@@ -1092,28 +1565,19 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
             step.payload ?? null,
           ),
         ]);
+      } else {
+        runExtensionStep(step, ctx);
       }
     } catch {
       error = true;
     }
-    // A dispatch outside an update commits in a microtask; `editor.read`
-    // commits it first.
-    const result: StepResult = editor.read(() => ({
-      log: ctx.log,
-      selection: $selectionSnapshot(),
-      text: $getRoot().getTextContent(),
-    }));
-    if (snapshot) {
-      const state = editor.getEditorState();
-      result.state = JSON.stringify(state.toJSON());
-      result.compact = JSON.stringify(state.toJSON(true));
-    }
+    const result = snapshotOf(editor, ctx.log, snapshot);
     if (error) {
       result.error = true;
     }
     return result;
   };
-  return {editor, run};
+  return build === undefined ? {editor, run} : {build, editor, run};
 }
 
 /** Runs `script` on a new headless editor and records every step. */
@@ -1125,5 +1589,44 @@ export function runScript(script: Script): ScriptResult {
       script.snapshot !== 'final' || i === script.steps.length - 1,
     ),
   );
-  return {...script, results};
+  return session.build === undefined
+    ? {...script, results}
+    : {...script, build: session.build, results};
+}
+
+/** A step of an editor built from extensions. */
+function runExtensionStep(
+  step: Exclude<Step, {update: Action[]} | {dispatch: string}>,
+  ctx: Context,
+): void {
+  const editor = ctx.editor;
+  if ('dispose' in step) {
+    (editor as LexicalEditorWithDispose).dispose();
+  } else if ('setSignals' in step) {
+    batch(() => {
+      for (const [key, name, value] of step.setSignals) {
+        const output = getExtensionDependencyFromEditor(
+          editor,
+          extensionOf(ctx, key),
+        ).output as NamedSignalsOutput<ExtensionConfig>;
+        output[name].value = value;
+      }
+    });
+  } else if ('logDependency' in step) {
+    const {config} = getExtensionDependencyFromEditor(
+      editor,
+      extensionOf(ctx, step.logDependency),
+    );
+    ctx.log.push(['dependency', step.logDependency, config]);
+  } else {
+    const dep = getPeerDependencyFromEditor<AnyLexicalExtension>(
+      editor,
+      step.logPeer,
+    );
+    ctx.log.push([
+      'peer',
+      step.logPeer,
+      dep === undefined ? null : (dep.config as Json),
+    ]);
+  }
 }

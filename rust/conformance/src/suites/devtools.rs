@@ -188,6 +188,7 @@ pub fn check_tree(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let editor = create_editor(CreateEditorArgs {
         nodes: lexical::rich_text::rich_text_nodes(),
         namespace: "playground".to_owned(),
+        ..CreateEditorArgs::default()
     });
     let state = editor
         .parse_editor_state(editor_state)

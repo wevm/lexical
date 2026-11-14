@@ -2552,6 +2552,7 @@ impl Session {
         let editor = create_editor(CreateEditorArgs {
             nodes,
             namespace: NAMESPACE.to_owned(),
+            ..Default::default()
         });
         let ctx = Rc::new(Ctx::default());
         Self::start_on(script, editor, ctx)

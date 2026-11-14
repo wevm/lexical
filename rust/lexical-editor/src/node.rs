@@ -485,6 +485,49 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         element::should_serialize_text_styles(self.as_node())
     }
 
+    /// `createDOM(config, editor)` (the `html` feature): the element the
+    /// node renders as. `LexicalNode` throws, and `TextNode` renders its
+    /// text; every other node that renders overrides it.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        this: &NodeRef,
+        config: &crate::EditorConfig,
+        editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        let _ = (this, editor);
+        if self.text().is_some() {
+            return crate::nodes::text::create_dom(self.as_node(), config);
+        }
+        Err(LexicalError::new("createDOM: base method not extended"))
+    }
+
+    /// `exportDOM(editor)` (the `html` feature): the DOM the node exports
+    /// to HTML. `LexicalNode` exports the element `$createDOM` makes, which
+    /// `ElementNode` gives the indent and direction and `TextNode` its
+    /// formats.
+    #[cfg(feature = "html")]
+    fn export_dom(
+        &self,
+        this: &NodeRef,
+        editor: &crate::Editor,
+    ) -> Result<crate::lexical_dom::DomExportOutput, LexicalError> {
+        if self.element().is_some() {
+            element::export_dom(self.as_node(), this, editor)
+        } else if self.text().is_some() {
+            crate::nodes::text::export_dom(self.as_node(), this, editor)
+        } else {
+            crate::lexical_dom::export_dom_base(self.as_node(), this, editor)
+        }
+    }
+
+    /// The class's static `importDOM()` (the `html` feature): the
+    /// conversions it offers by DOM node name, or `None`.
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        None
+    }
+
     /// `exportJSON(compact)`: the node's own properties, with an empty
     /// `children` array for an element (the export walk fills it).
     fn export_json(&self, compact: bool) -> Object;

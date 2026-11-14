@@ -35,6 +35,22 @@ list = ["utils"]
 # it also depends on @lexical/extension and @lexical/html, for LinkExtension
 # and the DOM import, which aren't ported.
 link = ["utils"]
+# @lexical/link's registerAutoLink and its matchers (LexicalAutoLinkExtension.ts),
+# whose regular expressions need the `regex` crate: the one feature with a
+# third-party dependency (rust/DESIGN.md, "Architecture").
+autolink = ["link", "dep:regex"]
+
+[dependencies]
+# Without `perf-literal`, which would add aho-corasick and memchr.
+regex = { version = "1.13", optional = true, default-features = false, features = [
+    "std",
+    "unicode",
+    "perf-backtrack",
+    "perf-cache",
+    "perf-dfa",
+    "perf-inline",
+    "perf-onepass",
+] }
 
 [lints]
 workspace = true

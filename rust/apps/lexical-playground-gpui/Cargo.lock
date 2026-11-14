@@ -3373,6 +3373,9 @@ dependencies = [
 [[package]]
 name = "lexical-editor"
 version = "0.0.0"
+dependencies = [
+ "regex",
+]
 
 [[package]]
 name = "lexical-playground-core"

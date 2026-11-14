@@ -88,6 +88,16 @@ pub fn all() -> Vec<Suite> {
             check: serialization::check,
         },
         Suite {
+            file: "scripts/character-limit",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/table-of-contents",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "scripts/updates",
             variant: None,
             check: crate::scripts::check,

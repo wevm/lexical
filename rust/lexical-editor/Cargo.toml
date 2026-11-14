@@ -24,7 +24,10 @@ selection = []
 # @lexical/utils.
 utils = ["selection"]
 # @lexical/rich-text: HeadingNode, QuoteNode and registerRichText's model
-# command handlers, with its copy, cut and paste handlers (@lexical/clipboard).
+# command handlers, with its copy, cut and paste handlers (@lexical/clipboard),
+# and @lexical/react's table of contents (LexicalTableOfContentsPlugin.tsx),
+# whose mutation listeners hear from the core's reconciler once the editor has
+# a root element.
 rich-text = ["selection", "utils", "clipboard"]
 # @lexical/plain-text: registerPlainText's model command handlers, with its
 # copy, cut and paste handlers (@lexical/clipboard). Upstream it also depends
@@ -60,8 +63,13 @@ code = []
 # @lexical/html, for MarkExtension, MarkStateExtension and the DOM, which
 # aren't ported.
 mark = ["utils"]
-# @lexical/overflow: OverflowNode.
-overflow = []
+# @lexical/overflow: OverflowNode; with @lexical/react's character limit
+# (shared/useCharacterLimit.ts), which wraps the text past a limit in overflow
+# nodes. That needs @lexical/text ($rootTextContent) and @lexical/utils
+# ($dfsWithSlots, $unwrapNode), as upstream's @lexical/react does, and splits
+# text between grapheme clusters with tables generated from Unicode's data
+# (rust/scripts/generate-grapheme-tables.mjs), without a dependency.
+overflow = ["text", "utils"]
 # @lexical/text: registerLexicalTextEntity, the transforms that make text
 # entities (hashtags) of the text a matcher finds, and the root helpers
 # ($rootTextContent, $isRootTextContentEmpty, $canShowPlaceholder,

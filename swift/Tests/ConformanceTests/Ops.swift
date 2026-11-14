@@ -228,6 +228,45 @@ private struct ScriptState {
   }
 }
 
+/// `STRLEN[name]` in ops.ts: UTF-16 code units, or with `utf8` UTF-8 bytes.
+private func scriptStrlen(_ name: String) throws -> (String) -> Int {
+  switch name {
+  case "utf16": return { $0.utf16.count }
+  case "utf8": return { $0.utf8.count }
+  default: throw ScriptError("unknown strlen \(name)")
+  }
+}
+
+/// `mountStep(step, ctx)` in ops.ts: `useCharacterLimit` or
+/// `TableOfContentsPlugin`, as their registrations.
+private func mountStep(_ step: JSONValue, _ ctx: ScriptContext) throws {
+  let editor: Editor = ctx.editor
+  if let spec = step["characterLimit"] {
+    guard let maxCharacters = spec["maxCharacters"]?.int else {
+      throw ScriptError("characterLimit needs maxCharacters")
+    }
+    let remainingCharacters: (Int) -> Void = { characters in
+      ctx.log.append(.array([.string("remainingCharacters"), .number(Double(characters))]))
+    }
+    if let name = spec["strlen"]?.stringValue {
+      ctx.mounted["characterLimit"] = try registerCharacterLimit(
+        editor, maxCharacters: maxCharacters, strlen: scriptStrlen(name),
+        remainingCharacters: remainingCharacters)
+    } else {
+      ctx.mounted["characterLimit"] = try registerCharacterLimit(
+        editor, maxCharacters: maxCharacters, remainingCharacters: remainingCharacters)
+    }
+  } else {
+    ctx.mounted["tableOfContents"] = try registerTableOfContents(editor) { entries in
+      ctx.log.append(
+        .array([
+          .string("tableOfContents"),
+          .array(entries.map { .array([.string($0.key), .string($0.text), .string($0.tag)]) }),
+        ]))
+    }
+  }
+}
+
 private final class ScriptContext {
   /// Set once the editor is made: a script with `extensions` makes it after
   /// its extensions have started logging.
@@ -242,6 +281,8 @@ private final class ScriptContext {
   var saved: [String: EditorState] = [:]
   /// The block handles `logBlockHandles` kept, by name.
   var handles: [String: JSMap<String, String>] = [:]
+  /// What `characterLimit` and `tableOfContents` mounted, to unmount.
+  var mounted: [String: () -> Void] = [:]
   /// The session's root element, made on first use (`setRootElement`).
   private var root: SessionRoot?
 
@@ -563,8 +604,13 @@ private func runNodeMethod(
     ctx.log.append(
       .array([.string("hasID"), .string(n.getKey()), .string(id), .bool(try markNode(n).hasID(id))])
     )
-  case "insertAfter": _ = try n.insertAfter(one(), restoreSelection: a1.boolValue ?? true)
-  case "insertBefore": _ = try n.insertBefore(one(), restoreSelection: a1.boolValue ?? true)
+  // A string names an existing node, which moves.
+  case "insertAfter":
+    _ = try n.insertAfter(
+      a0.stringValue.map(node) ?? one(), restoreSelection: a1.boolValue ?? true)
+  case "insertBefore":
+    _ = try n.insertBefore(
+      a0.stringValue.map(node) ?? one(), restoreSelection: a1.boolValue ?? true)
   case "markDirty": try n.markDirty()
   case "mergeWithSibling":
     _ = try text(n).mergeWithSibling(text(node(a0.stringValue.orThrow())))
@@ -1015,6 +1061,23 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     let text = try action["text"]?.stringValue.orThrow() ?? ""
     ctx.log.append(
       .array([.string("singleTokenPaste"), .string(text), .bool(isSingleToken(text))]))
+  case "findOffset":
+    let text = try action["text"]?.stringValue.orThrow() ?? ""
+    let name = action["strlen"]?.stringValue ?? "utf16"
+    let strlen = try scriptStrlen(name)
+    let offsets = (action["maxCharacters"]?.arrayValue ?? []).map { max -> JSONValue in
+      .number(Double(findOffset(text, max.int ?? 0, strlen)))
+    }
+    ctx.log.append(
+      .array([.string("findOffset"), .string(text), .string(name), .array(offsets)]))
+  case "wrapOverflowedNodes":
+    try wrapOverflowedNodes(action["offset"]?.int ?? 0)
+  case "mergePrevious":
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    guard let overflowNode = try node(key) as? OverflowNode else {
+      throw ScriptError("\(key) is not an overflow node")
+    }
+    try mergePrevious(overflowNode)
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)
@@ -1527,6 +1590,13 @@ private func runSteps(
               try match.map { .bool(try isSelectionOnEntityBoundary($0.leadOffset)) } ?? .null,
             ]))
         }
+      } else if step["characterLimit"] != nil || step["tableOfContents"] != nil {
+        try mountStep(step, ctx)
+      } else if let name = step["unmount"]?.stringValue {
+        guard let unmount = ctx.mounted.removeValue(forKey: name) else {
+          throw ScriptError("nothing mounted as \(name)")
+        }
+        unmount()
       } else {
         try extensions.orThrow().runStep(step, editor)
       }

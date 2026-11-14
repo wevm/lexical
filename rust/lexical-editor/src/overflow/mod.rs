@@ -7,9 +7,21 @@
 //! With the `extension` feature, `overflow_extension` is
 //! `OverflowExtension`.
 //!
+//! `character_limit` is `@lexical/react`'s character limit
+//! (`shared/useCharacterLimit.ts`), which makes overflow nodes:
+//! `register_character_limit` (`useCharacterLimit`), `find_offset`,
+//! `wrap_overflowed_nodes` and `merge_previous`, with `grapheme`, the
+//! extended grapheme clusters JS's `Intl.Segmenter` gives `findOffset`.
+//!
 //! Not ported: `createDOM` and `updateDOM`, which come with `html`.
-//! `$wrapOverflowedNodes`, which makes overflow nodes,
-//! is `@lexical/react`'s (rust/PARITY.md).
+
+mod character_limit;
+mod grapheme;
+mod grapheme_tables;
+
+pub use character_limit::{
+    Strlen, find_offset, merge_previous, register_character_limit, wrap_overflowed_nodes,
+};
 
 use crate::generated_json::{
     export_compact_element_node, export_element_node, update_element_node,

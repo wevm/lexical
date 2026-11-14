@@ -6752,3 +6752,464 @@ test('scripts/auto-embed', () => {
     ],
   );
 });
+
+test('scripts/character-limit', () => {
+  // @lexical/react's character limit (shared/useCharacterLimit.ts), the
+  // logic of CharacterLimitPlugin: `findOffset`, whose limit falls between
+  // the grapheme clusters `Intl.Segmenter` gives, `$wrapOverflowedNodes`,
+  // `$mergePrevious` and `useCharacterLimit` itself, mounted with its
+  // effects (`characterLimit`), which logs the remaining characters.
+  const act = (action: Record<string, unknown>): Action => action as Action;
+  const upTo = (n: number): number[] => [...Array(n + 1).keys()];
+  const findOffset = (
+    text: string,
+    strlen?: 'utf8',
+    maxCharacters: number[] = upTo(text.length + 1),
+  ): Action =>
+    act(
+      strlen === undefined
+        ? {do: 'findOffset', maxCharacters, text}
+        : {do: 'findOffset', maxCharacters, strlen, text},
+    );
+  const limit = (maxCharacters: number, strlen?: 'utf8'): Step =>
+    ({
+      characterLimit:
+        strlen === undefined ? {maxCharacters} : {maxCharacters, strlen},
+    }) as Step;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const backspace = run('DELETE_CHARACTER_COMMAND', true);
+  const forwardDelete = run('DELETE_CHARACTER_COMMAND', false);
+  const unmount = {unmount: 'characterLimit'} as Step;
+  // Logs every node's key and depth, so the steps after can name them.
+  const dfs: Action = act({do: 'logDfs'});
+  const overflowed = true;
+  const richText = true;
+  // The texts where the limit and the code units differ: combining marks,
+  // emoji ZWJ sequences and modifiers, regional-indicator flags (an odd one
+  // out), Hangul jamo and syllables, CR LF, text outside the BMP, Indic
+  // conjuncts (GB9c), spacing marks and prepended concatenation marks.
+  const combining = 'e\u0301e\u0301\u0302x';
+  const family = 'a\u{1F468}\u200D\u{1F469}\u200D\u{1F467}\u200D\u{1F466}b';
+  const thumbs = '\u{1F44D}\u{1F3FD}\u{1F44D}';
+  const flags = '\u{1F1FA}\u{1F1F8}\u{1F1EB}\u{1F1F7}\u{1F1E9}';
+  const hangul = '\u1100\u1161\u11A8\uD55C\u1100\u1100\u1161\uAC00\u11A8';
+  const crlf = 'a\r\nb\r\r\n\n';
+  const astral = '\u{1D4B3}\u{1D4B4}x\u{20000}';
+  const devanagari = '\u0915\u094D\u0937\u093F\u0928\u094D\u200D';
+  const prepend = '\u0600\u0661\u0915\u093F';
+  const zwjAlone = 'x\u200D\u{1F468}\u2764\uFE0F\u200D\u{1F525}';
+  emit(
+    'character-limit',
+    "@lexical/react's character limit (shared/useCharacterLimit.ts): findOffset at and around the limit in grapheme clusters, with UTF-16 and UTF-8 lengths; $wrapOverflowedNodes and $mergePrevious; and useCharacterLimit's count, wrapping and unwrapping as text is typed and deleted, its Backspace handler, and its clean-up.",
+    [
+      {
+        name: 'findOffset in grapheme clusters',
+        steps: [
+          update(
+            findOffset('hello'),
+            findOffset(combining),
+            findOffset(family),
+            findOffset(thumbs),
+            findOffset(flags),
+            findOffset(hangul),
+            findOffset(crlf),
+            findOffset(astral),
+            findOffset(devanagari),
+            findOffset(prepend),
+            findOffset(zwjAlone),
+            findOffset(''),
+          ),
+        ],
+      },
+      {
+        name: 'findOffset with UTF-8 lengths',
+        steps: [
+          update(
+            findOffset('h\u00E9llo', 'utf8', upTo(8)),
+            findOffset(combining, 'utf8', upTo(12)),
+            findOffset(family, 'utf8', upTo(28)),
+            findOffset(flags, 'utf8', upTo(22)),
+            findOffset(hangul, 'utf8', upTo(28)),
+            findOffset(astral, 'utf8', upTo(14)),
+            findOffset(crlf, 'utf8', upTo(9)),
+          ),
+        ],
+      },
+      {
+        name: 'under, at and over the limit as text is typed',
+        overflow: overflowed,
+        richText,
+        steps: [
+          // Keys: the paragraph 1, "hello" 2.
+          doc(p(t('hello'))),
+          limit(7),
+          update(select(['2', 5, 'text'])),
+          type('!!'),
+          type('?'),
+          type('??'),
+          update(dfs),
+          // Back under the limit: the overflow node unwraps. Without a DOM
+          // selection to extend, Backspace deletes a range.
+          update(select(['3', 1, 'text'], ['3', 3, 'text'])),
+          backspace,
+          update(dfs),
+          update(select(['2', 6, 'text'], ['3', 1, 'text'])),
+          backspace,
+          update(dfs),
+          update(select(['2', 0, 'text'])),
+          type('>>>'),
+          update(dfs),
+        ],
+      },
+      {
+        name: 'over the limit when it registers, across blocks',
+        overflow: overflowed,
+        richText,
+        steps: [
+          // The "\n\n" between blocks counts.
+          doc(p(t('one two')), p(t('three')), p(t('four', {format: 1}))),
+          limit(10),
+          update(select(['4', 2, 'text'])),
+          type('x'),
+          // Typing into the overflow node.
+          update(select(['6', 1, 'text'])),
+          type('y'),
+          // Removing the first block brings the rest back under.
+          update(node('1', 'remove')),
+          update(node('3', 'remove')),
+        ],
+      },
+      {
+        name: 'the limit between grapheme clusters',
+        overflow: overflowed,
+        richText,
+        steps: [
+          doc(
+            p(t(family)),
+            p(t(flags)),
+            p(t(combining)),
+            p(t(hangul)),
+            p(t(astral)),
+          ),
+          limit(4),
+          update(node('2', 'setTextContent', 'abc' + family)),
+          update(node('2', 'setTextContent', 'ab')),
+        ],
+      },
+      {
+        name: 'the limit in a cluster after each step',
+        overflow: overflowed,
+        richText,
+        steps: [
+          doc(p(t('ab'))),
+          limit(5),
+          update(select(['2', 2, 'text'])),
+          type('\u{1F1FA}\u{1F1F8}'),
+          type('\u{1F1EB}'),
+          type('\u{1F1F7}'),
+          type('e\u0301'),
+          type('\r\n'),
+          update(dfs),
+        ],
+      },
+      {
+        name: 'UTF-8 lengths',
+        overflow: overflowed,
+        richText,
+        steps: [
+          doc(p(t('h\u00E9llo'))),
+          limit(5, 'utf8'),
+          update(select(['2', 6, 'text'])),
+          type(' w\u00F6rld'),
+          update(node('2', 'setTextContent', '\uD55C\uAD6D')),
+          update(node('2', 'setTextContent', family)),
+          update(node('2', 'setTextContent', 'a' + astral)),
+        ],
+      },
+      {
+        name: 'CR LF in text',
+        overflow: overflowed,
+        richText,
+        steps: [doc(p(t('ab\r\ncd'))), limit(3), limit(2)],
+      },
+      {
+        name: 'text that is not simple, and line breaks',
+        overflow: overflowed,
+        richText,
+        steps: [
+          // A token and a segmented text are wrapped whole, as a line
+          // break is.
+          doc(
+            p(
+              t('abc'),
+              t('token', {mode: 'token'}),
+              br(),
+              t('seg ment', {mode: 'segmented'}),
+              t('tail'),
+            ),
+          ),
+          limit(5),
+          update(node('2', 'setTextContent', 'abcdefgh')),
+          update(node('2', 'setTextContent', 'a')),
+        ],
+      },
+      {
+        name: "Backspace and Delete with the limit's handler",
+        overflow: overflowed,
+        richText,
+        steps: [
+          // Keys: the paragraph 1, "abcdef" 2, the paragraph 3, "ghij" 4.
+          doc(p(t('abcdef')), p(t('ghij'))),
+          limit(4),
+          update(dfs),
+          // Across the start of the overflow node.
+          update(select(['2', 3, 'text'], ['5', 1, 'text'])),
+          backspace,
+          update(dfs),
+          // Emptying an overflow node's paragraph removes the paragraph.
+          update(select(['4', 0, 'text'], ['4', 4, 'text'])),
+          forwardDelete,
+          update(dfs),
+        ],
+      },
+      {
+        name: 'Delete in an overflow node removes an empty block after it',
+        overflow: overflowed,
+        richText,
+        steps: [
+          // Keys: the paragraph 1, "abcdef" 2, the empty paragraph 3; the
+          // limit splits off "ef" 4 into the overflow node 5.
+          doc(p(t('abcdef')), p()),
+          limit(4),
+          update(dfs),
+          update(select(['4', 0, 'text'], ['4', 1, 'text'])),
+          forwardDelete,
+          update(dfs),
+        ],
+      },
+      {
+        listen: true,
+        name: 'updates the limit tags history-merge',
+        overflow: overflowed,
+        richText,
+        steps: [
+          doc(p(t('abcdef'))),
+          limit(3),
+          update(select(['2', 1, 'text'])),
+          type('x'),
+        ],
+      },
+      {
+        name: 'clean-up',
+        overflow: overflowed,
+        richText,
+        steps: [
+          doc(p(t('abc'))),
+          limit(2),
+          unmount,
+          update(select(['2', 1, 'text'])),
+          type('x'),
+          // Mounted again, it counts and wraps what is there.
+          limit(10),
+          type('y'),
+        ],
+      },
+      {
+        extension: true,
+        name: 'slots count',
+        overflow: overflowed,
+        richText,
+        steps: [
+          // Keys: the host paragraph 1, "Body" 2, the slot value 3, "Title"
+          // 4, the rule 5.
+          doc(p(t('Body'))),
+          update(
+            act({do: 'setSlot', key: '1', name: 'title', node: p(t('Title'))}),
+          ),
+          limit(6),
+          update(
+            act({
+              do: 'setSlot',
+              key: '1',
+              name: 'rule',
+              node: {type: 'horizontalrule', version: 1} as Node,
+            }),
+          ),
+          update(node('2', 'setTextContent', 'B')),
+        ],
+      },
+      {
+        name: '$wrapOverflowedNodes',
+        overflow: overflowed,
+        richText,
+        steps: [
+          // Keys: the paragraph 1, "abc" 2, an overflow 3 with "def" 4, "g"
+          // 5, an overflow 6 with "hi" 7, the paragraph 8, "jk" 9.
+          doc(
+            p(
+              t('abc'),
+              overflow(t('def', {format: 1})),
+              t('g'),
+              overflow(t('hi', {format: 2})),
+            ),
+            p(t('jk')),
+          ),
+          update(act({do: 'wrapOverflowedNodes', offset: 8}), dfs),
+          update(act({do: 'wrapOverflowedNodes', offset: 1}), dfs),
+          update(act({do: 'wrapOverflowedNodes', offset: 11}), dfs),
+          update(act({do: 'wrapOverflowedNodes', offset: 20}), dfs),
+        ],
+      },
+      {
+        name: '$mergePrevious',
+        overflow: overflowed,
+        richText,
+        steps: [
+          // Keys: the paragraph 1, overflows 2, 4 and 6 with "x" 3, "y" 5
+          // and "z" 7.
+          doc(
+            p(
+              overflow(t('x')),
+              overflow(t('y', {format: 1})),
+              overflow(t('z', {format: 2})),
+            ),
+          ),
+          // The selection in the previous node, then in the node itself.
+          update(
+            select(['2', 0, 'element'], ['4', 1, 'element']),
+            act({do: 'mergePrevious', key: '4'}),
+          ),
+          // Text points stay.
+          update(
+            select(['5', 0, 'text'], ['5', 1, 'text']),
+            act({do: 'mergePrevious', key: '6'}),
+          ),
+          // Into an empty overflow node (8), in the update that makes it,
+          // before its transform removes it.
+          update(
+            node('1', 'append', [overflow()]),
+            select(['6', 1, 'element'], ['6', 3, 'element']),
+            act({do: 'mergePrevious', key: '8'}),
+          ),
+          // Without an overflow node before it, nothing changes.
+          update(act({do: 'mergePrevious', key: '8'})),
+        ],
+      },
+    ],
+  );
+});
+
+test('scripts/table-of-contents', () => {
+  // @lexical/react's TableOfContentsPlugin, mounted with its effects
+  // (`tableOfContents`): its entries ([key, text, tag]) at once, and as its
+  // update listener and its HeadingNode and TextNode mutation listeners see
+  // headings made, removed, edited and moved. Mutation listeners only hear
+  // from the reconciler, so most sessions set a root element first; one
+  // without shows what the update listener alone does. With a root and no
+  // DOM selection, an update starts with no selection, so each update that
+  // selects clears it again.
+  const act = (action: Record<string, unknown>): Action => action as Action;
+  const toc = {tableOfContents: true} as Step;
+  const root = {setRootElement: true} as Step;
+  const richText = true;
+  const clear: Action = act({do: 'clearSelection'});
+  const blocks = (type: string): Action =>
+    act({block: type, do: 'setBlocksType'});
+  emit(
+    'table-of-contents',
+    "@lexical/react's TableOfContentsPlugin: the initial entries, then headings created, destroyed, updated, retagged, moved and edited, kept in document order, with and without a root element, and its clean-up.",
+    [
+      {
+        name: 'initial entries',
+        richText,
+        steps: [
+          // Keys: h1 1 "Intro" 2, p 3 "text" 4, h2 5 "Part" 6, quote 7
+          // "q" 8, h3 9 (empty).
+          doc(
+            h('h1', t('Intro')),
+            p(t('text')),
+            h('h2', t('Part')),
+            q(t('q')),
+            h('h3'),
+          ),
+          toc,
+        ],
+      },
+      {
+        name: 'created, destroyed and edited headings',
+        richText,
+        steps: [
+          doc(h('h1', t('One')), p(t('a')), h('h2', t('Two'))),
+          toc,
+          root,
+          // Appended at the end, inserted first, inserted in the middle.
+          update(node('root', 'append', [h('h3', t('Three'))])),
+          update(node('1', 'insertBefore', h('h2', t('Zero')))),
+          update(node('3', 'insertAfter', h('h4', t('Half')))),
+          // Text edited in a heading, and appended to one.
+          update(node('2', 'setTextContent', 'Uno')),
+          update(node('5', 'append', [t(' more', {format: 1})])),
+          // Removed.
+          update(node('1', 'remove')),
+          update(node('root', 'clear')),
+        ],
+      },
+      {
+        name: 'retagged and turned into paragraphs',
+        richText,
+        steps: [
+          doc(h('h1', t('One')), p(t('a')), h('h2', t('Two'))),
+          root,
+          toc,
+          update(node('5', 'setTag', 'h4')),
+          update(select(['4', 0, 'text']), blocks('h3'), clear),
+          update(select(['4', 0, 'text']), blocks('paragraph'), clear),
+          update(
+            select(['2', 0, 'text'], ['6', 1, 'text']),
+            blocks('h5'),
+            clear,
+          ),
+        ],
+      },
+      {
+        name: 'moved headings',
+        richText,
+        steps: [
+          doc(h('h1', t('A')), h('h2', t('B')), p(t('x')), h('h3', t('C'))),
+          root,
+          toc,
+          // C moves first, then A last.
+          update(node('1', 'insertBefore', '7')),
+          update(node('5', 'insertAfter', '1')),
+          // B and A swap in one update.
+          update(node('3', 'insertBefore', '1'), node('7', 'insertAfter', '3')),
+        ],
+      },
+      {
+        name: 'without a root element',
+        richText,
+        steps: [
+          doc(h('h1', t('One')), p(t('a'))),
+          toc,
+          update(node('root', 'append', [h('h2', t('Two'))])),
+          update(node('2', 'setTextContent', 'Uno')),
+          update(node('1', 'remove')),
+        ],
+      },
+      {
+        name: 'clean-up',
+        richText,
+        steps: [
+          doc(h('h1', t('One'))),
+          root,
+          toc,
+          {unmount: 'tableOfContents'} as Step,
+          update(node('root', 'append', [h('h2', t('Two'))])),
+        ],
+      },
+    ],
+  );
+});

@@ -68,7 +68,7 @@ public func registerCharacterLimit(
 
 /// The UTF-16 offset in `text` after the grapheme clusters that fit in
 /// `maxCharacters` as `strlen` measures them.
-func findOffset(_ text: String, _ maxCharacters: Int, _ strlen: (String) -> Int) -> Int {
+package func findOffset(_ text: String, _ maxCharacters: Int, _ strlen: (String) -> Int) -> Int {
   var offsetUtf16 = 0
   var offset = 0
   for grapheme in text {

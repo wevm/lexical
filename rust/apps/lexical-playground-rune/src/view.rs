@@ -1,7 +1,7 @@
 //! The window: a toolbar, the editor, and a side panel with the editor's
 //! tree, its JSON, and parity with JS Lexical.
 
-use crate::{Panel, State, decorations, on_change, on_key, on_paste};
+use crate::{Panel, State, decorations, on_change, on_key, on_paste, on_window_focus};
 use lexical_playground_core::{Playground, example, replay_vectors};
 use rune::{Color, Cx, El, ScrollSpec, TextStyle, col, row, text, text_input};
 use rune_kit::{Button, ButtonVariant, Kit, SegmentedControl};
@@ -34,6 +34,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .w_full()
         .h_full()
         .fill(k.c.page)
+        .on_window_focus(on_window_focus)
         .child(toolbar(s, k, cx.chrome_insets().leading))
         .child(
             row()
@@ -99,7 +100,14 @@ fn editor(s: &State, k: &Kit) -> El {
     // the system's appearance.
     let field = text_input(&s.edit, TextStyle::new(16.0, 400.0))
         .color(k.c.text_base)
-        .caret(k.c.text_base, k.selection())
+        .caret(
+            if s.blink.on {
+                k.c.text_base
+            } else {
+                Color::TRANSPARENT
+            },
+            k.selection(),
+        )
         .key("editor")
         .w_full()
         .grow(1.0)

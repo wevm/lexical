@@ -41,7 +41,11 @@ impl PlaygroundApp {
 
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let editor = cx.new(|cx| {
-            LexicalEditor::new(Playground::new(example()).expect("the example loads"), cx)
+            LexicalEditor::new(
+                Playground::new(example()).expect("the example loads"),
+                window,
+                cx,
+            )
         });
         let subscription = cx.subscribe(&editor, |this, _, _: &EditorEvent, cx| {
             this.status = None;
@@ -113,8 +117,9 @@ impl PlaygroundApp {
                 .ghost()
                 .label("Reset")
                 .on_click(cx.listener(|this, _, window, cx| {
-                    let editor =
-                        cx.new(|cx| LexicalEditor::new(Playground::new(example()).unwrap(), cx));
+                    let editor = cx.new(|cx| {
+                        LexicalEditor::new(Playground::new(example()).unwrap(), window, cx)
+                    });
                     this._subscription = cx.subscribe(&editor, |this, _, _: &EditorEvent, cx| {
                         this.status = None;
                         cx.notify();

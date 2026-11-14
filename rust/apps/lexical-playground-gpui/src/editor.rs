@@ -12,6 +12,7 @@ use gpui_kit::*;
 use lexical_playground_core::{Outcome, Playground, Surface, Unit, format_flag};
 use std::ops::Range;
 use std::rc::Rc;
+use std::time::Duration;
 use unicode_segmentation::UnicodeSegmentation;
 
 actions!(
@@ -50,6 +51,9 @@ actions!(
 );
 
 const CONTEXT: &str = "LexicalEditor";
+
+/// How long the caret stays on, then off, as a Mac text field's does.
+const BLINK_PHASE: Duration = Duration::from_millis(500);
 
 /// The editor's keys, as a browser's `contenteditable` takes them on macOS.
 pub fn bind_keys(cx: &mut App) {
@@ -174,18 +178,86 @@ pub struct LexicalEditor {
     goal_x: Option<Pixels>,
     /// The last edit's error.
     pub error: Option<String>,
+    /// Whether the caret is in its on phase (see [`LexicalEditor::blink`]).
+    caret_on: bool,
+    /// Bumped by every restart, so an older blink loop stops.
+    blink_epoch: usize,
+    _blink: Task<()>,
+    _subscriptions: Vec<Subscription>,
 }
 
 impl LexicalEditor {
-    pub fn new(playground: Playground, cx: &mut Context<Self>) -> Self {
+    pub fn new(playground: Playground, window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let focus_handle = cx.focus_handle();
+        let this = cx.entity().downgrade();
+        let _subscriptions = vec![
+            // Every keystroke shows the caret, before its action runs, as
+            // gpui-component's input does: a key binding can consume it.
+            cx.intercept_keystrokes({
+                let focus_handle = focus_handle.clone();
+                move |_, window, cx| {
+                    if focus_handle.is_focused(window) {
+                        _ = this.update(cx, |editor, cx| editor.blink(cx));
+                    }
+                }
+            }),
+            cx.observe_window_activation(window, |editor, window, cx| {
+                if window.is_window_active() && editor.focus_handle.is_focused(window) {
+                    editor.blink(cx);
+                } else {
+                    editor.stop_blink(cx);
+                }
+            }),
+            cx.on_focus(&focus_handle, window, |editor, _, cx| editor.blink(cx)),
+            cx.on_blur(&focus_handle, window, |editor, _, cx| editor.stop_blink(cx)),
+        ];
         LexicalEditor {
             surface: Surface::new(playground),
-            focus_handle: cx.focus_handle(),
+            focus_handle,
             layout: None,
             selecting: false,
             goal_x: None,
             error: None,
+            caret_on: true,
+            blink_epoch: 0,
+            _blink: Task::ready(()),
+            _subscriptions,
         }
+    }
+
+    /// Shows the caret and blinks it from now, as a Mac text field does
+    /// after a key, an edit or a move: on for a phase, then off and on
+    /// every phase, until the editor or the window loses the keyboard.
+    fn blink(&mut self, cx: &mut Context<Self>) {
+        self.blink_epoch = self.blink_epoch.wrapping_add(1);
+        let epoch = self.blink_epoch;
+        self.caret_on = true;
+        cx.notify();
+        self._blink = cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(BLINK_PHASE).await;
+                let blinking = this.update(cx, |editor, cx| {
+                    if editor.blink_epoch != epoch {
+                        return false;
+                    }
+                    editor.caret_on = !editor.caret_on;
+                    cx.notify();
+                    true
+                });
+                if !matches!(blinking, Ok(true)) {
+                    break;
+                }
+            }
+        });
+    }
+
+    /// Stops blinking; the caret isn't drawn while the editor or the
+    /// window doesn't have the keyboard.
+    fn stop_blink(&mut self, cx: &mut Context<Self>) {
+        self.blink_epoch = self.blink_epoch.wrapping_add(1);
+        self._blink = Task::ready(());
+        self.caret_on = false;
+        cx.notify();
     }
 
     /// Whether the element has painted, so keys can move the caret.
@@ -203,6 +275,7 @@ impl LexicalEditor {
     fn done(&mut self, outcome: Outcome, cx: &mut Context<Self>) {
         self.error = outcome.error;
         self.goal_x = None;
+        self.blink(cx);
         cx.emit(EditorEvent::Changed);
         cx.notify();
     }
@@ -214,6 +287,7 @@ impl LexicalEditor {
 
     fn move_to(&mut self, offset: usize, extend: bool, cx: &mut Context<Self>) {
         self.surface.move_to(offset, extend);
+        self.blink(cx);
         cx.emit(EditorEvent::Changed);
         cx.notify();
     }
@@ -759,7 +833,10 @@ impl Element for EditorElement {
         window: &mut Window,
         cx: &mut App,
     ) {
-        let focus_handle = self.editor.read(cx).focus_handle.clone();
+        let (focus_handle, caret_on) = {
+            let editor = self.editor.read(cx);
+            (editor.focus_handle.clone(), editor.caret_on)
+        };
         window.handle_input(
             &focus_handle,
             ElementInputHandler::new(bounds, self.editor.clone()),
@@ -791,6 +868,8 @@ impl Element for EditorElement {
             .ok();
         }
         if focus_handle.is_focused(window)
+            && window.is_window_active()
+            && caret_on
             && let Some(caret) = prepaint.caret.take()
         {
             window.paint_quad(caret);

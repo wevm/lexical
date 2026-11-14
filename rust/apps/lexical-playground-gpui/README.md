@@ -56,8 +56,14 @@ installs that toolchain on the first build.
 
 `cargo run` runs the app as an app: `bundle.sh`, Cargo's runner on macOS
 (`.cargo/config.toml`), makes `Lexical Playground (GPUI).app` beside the
-executable and runs the app from inside it, so it shows in the Dock. The
-bundle stays, to open from Finder.
+executable and runs the app from inside it, so it shows in the Dock with its
+icon. The bundle stays, to open from Finder.
+
+The icon, `AppIcon.icon`, is an Icon Composer document, as wevm/zero's
+zbugs-gpui has: the Lexical mark of the Swift playground's icon, with the
+GPUI mark in the bottom right corner, in light and dark. `bundle.sh`
+compiles it with Xcode's `actool` when it changes. Open it in Icon Composer
+to edit it.
 
 ## End to end
 

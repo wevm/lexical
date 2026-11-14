@@ -1,9 +1,10 @@
 //! `caret/LexicalCaretUtils.ts`: carets from selection points and back,
 //! normalization, and removing the text and nodes of a caret range.
 //!
-//! Slots, NodeState and the text edit log are not ported, so the parts of
-//! `$removeTextFromCaretRange` that keep a slot host, carry NodeState to a
-//! replacement node or record deletions do nothing here.
+//! Slots and the text edit log are not ported, so the parts of
+//! `$removeTextFromCaretRange` that keep a slot host or record deletions do
+//! nothing here; a segmented node made plain text carries its NodeState
+//! (`$carryNodeState`) as in JS.
 
 use crate::LexicalError;
 use crate::caret::{
@@ -23,6 +24,7 @@ use crate::lexical_utils::{
     remove_from_parent, restore_empty_container_paragraph,
 };
 use crate::node::{NodeKey, NodeRef};
+use crate::node_state::carry_node_state;
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::nodes::text::create_text_node;
@@ -290,8 +292,9 @@ pub fn remove_text_from_caret_range(
                 plain_text_node.set_style(data.get_style());
                 plain_text_node.set_format(data.get_format());
                 plain_text_node.set_detail(data.get_detail())?;
-                // The characters left keep their NodeState, once NodeState
-                // is ported (`$carryNodeState`).
+                // The characters left keep their NodeState (comment ids,
+                // for example)
+                carry_node_state(&src, &plain_text_node)?;
                 caret_before.replace_or_insert(&plain_text_node, false)?;
                 next_caret = get_text_point_caret(
                     &plain_text_node,

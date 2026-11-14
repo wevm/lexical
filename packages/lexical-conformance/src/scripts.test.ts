@@ -2536,3 +2536,279 @@ test('scripts/overflow', () => {
     ],
   );
 });
+
+test('scripts/node-state', () => {
+  // NodeState (LexicalNodeState.ts) on the core nodes, with the configs of
+  // ops.ts's STATES: setting and reading values, updaters, defaults left out
+  // of the JSON, the `$` JSON round trip with keys no config reads (and what
+  // a read does to them), copies (`$copyNode`) and history, text nodes that
+  // merge or split, a key collision, a flat state (QuoteNode's
+  // `shadowRoot`), the NodeState that text keeps when a segmented node turns
+  // into plain text, and the NodeState hashtags take from their text
+  // (registerLexicalTextEntity).
+  const set = (key: string, name: string, value: Json): Action => ({
+    do: 'setState',
+    key,
+    state: name,
+    value,
+  });
+  const apply = (key: string, name: string, updater: string): Action => ({
+    do: 'updateState',
+    key,
+    state: name,
+    updater,
+  });
+  const get = (key: string, name: string): Action => ({
+    do: 'logState',
+    key,
+    state: name,
+  });
+  const change = (key: string, name: string): Action => ({
+    do: 'logStateChange',
+    key,
+    state: name,
+  });
+  const withState = (n: Node, $: Json): Node => ({...n, $}) as Node;
+  const tag = (text: string, extra: Record<string, unknown> = {}): Node =>
+    t(text, {...extra, type: 'hashtag'});
+  const at = (now: number, step: Step): Step => ({...step, now});
+  emit(
+    'node-state',
+    'NodeState: createState configs set and read on nodes (values and updaters), defaults left out of the JSON, the `$` JSON round trip with keys no config reads, reading and copying such keys, $copyNode and history, text nodes merging or splitting by their NodeState, a key collision, a flat state, segmented text made plain, and hashtags taking NodeState from their text.',
+    [
+      {
+        listen: true,
+        name: 'set, get and defaults',
+        steps: [
+          doc(p(t('one'), t('two', {format: 1}))),
+          update(
+            get('2', 'count'),
+            get('2', 'label'),
+            get('2', 'words'),
+            get('1', 'fresh'),
+          ),
+          // A value equal to the default is set, but not written to JSON.
+          update(
+            set('2', 'label', 'x'),
+            set('2', 'count', 1),
+            get('2', 'label'),
+            get('2', 'count'),
+            change('2', 'label'),
+            change('3', 'label'),
+          ),
+          update(
+            set('2', 'count', 5),
+            set('3', 'words', ['a', 'b']),
+            set('1', 'fresh', true),
+            change('2', 'count'),
+            change('3', 'words'),
+          ),
+          // Back to the defaults: only the label is left.
+          update(
+            set('2', 'count', 1),
+            set('3', 'words', []),
+            set('1', 'fresh', false),
+          ),
+          update(get('2', 'label'), get('3', 'words'), get('1', 'fresh')),
+        ],
+      },
+      {
+        listen: true,
+        name: 'updaters',
+        steps: [
+          doc(p(t('a'), t('b', {format: 1}))),
+          update(
+            apply('2', 'count', 'count:increment'),
+            apply('2', 'count', 'count:increment'),
+            get('2', 'count'),
+          ),
+          // An updater that returns an equal value writes nothing.
+          update(apply('3', 'count', 'count:same')),
+          update(apply('3', 'words', 'words:copy')),
+          update(
+            apply('3', 'words', 'words:push-x'),
+            apply('3', 'label', 'label:exclaim'),
+            get('3', 'words'),
+          ),
+          update(apply('3', 'words', 'words:copy')),
+          update(apply('1', 'label', 'label:exclaim'), change('1', 'label')),
+        ],
+      },
+      {
+        name: 'JSON with keys no config has read',
+        steps: [
+          doc(
+            withState(
+              p(
+                t('x', {
+                  $: {count: 'bad', label: 'kept', mystery: {deep: [1, 2]}},
+                }),
+                t('y', {$: {words: 'b c'}, format: 1}),
+                t('z', {$: {'2': 'two', a: 3, b: 1}, format: 2}),
+                t('w', {$: 'ab', format: 4}),
+                t('v', {$: null, format: 8}),
+              ),
+              {label: 'para'},
+            ),
+          ),
+          // A read parses the value and keeps it, without changing the JSON.
+          update(get('2', 'label'), get('1', 'label')),
+          // `bad` is no count: the read gives the default, which the JSON
+          // leaves out.
+          update(get('2', 'count')),
+          // A write copies the state, parsing the keys a config has read.
+          update(set('2', 'label', 'new')),
+          update(get('3', 'words'), set('3', 'count', 2)),
+          update(set('4', 'count', 7), set('5', 'label', 's')),
+        ],
+      },
+      {
+        name: 'text nodes merge only with equivalent NodeState',
+        steps: [
+          doc(
+            p(
+              t('a', {$: {label: 'x'}}),
+              t('b'),
+              t('c', {$: {label: 'x'}}),
+              t('d', {$: {label: 'x'}}),
+            ),
+          ),
+          update(set('3', 'label', 'x')),
+          update(set('2', 'count', 2)),
+          update(set('2', 'count', 1)),
+        ],
+      },
+      {
+        name: 'merging compares unread JSON values by identity',
+        steps: [
+          doc(p(t('ef', {$: {m: {z: 1}}}), t('g', {$: {m: {z: 1}}}))),
+          // The parts of a split share the values, so they merge back.
+          update(node('2', 'splitText', 1), node('2', 'toggleFormat', 'bold')),
+          update(node('2', 'toggleFormat', 'bold')),
+        ],
+      },
+      {
+        name: 'splitText gives the parts the NodeState',
+        steps: [
+          doc(p(t('abcdef', {$: {label: 'x', other: 1}}))),
+          update(node('2', 'splitText', 2, 4), set('3', 'label', 'y')),
+          update(node('4', 'setMode', 'segmented'), node('4', 'splitText', 1)),
+          update(set('2', 'count', 3), node('2', 'splitText', 1)),
+          update(get('5', 'label'), get('5', 'count')),
+        ],
+      },
+      {
+        handlers: [
+          {
+            command: 'CAN_UNDO_COMMAND',
+            id: 'canUndo',
+            priority: 0,
+            result: false,
+          },
+        ],
+        history: {delay: 300},
+        list: true,
+        name: '$copyNode and history',
+        richText: true,
+        steps: [
+          at(
+            0,
+            doc(
+              list(
+                'bullet',
+                withState(li(t('item', {$: {label: 'x'}})), {
+                  fresh: true,
+                  label: 'li',
+                }),
+                withState(li(t('two')), {fresh: true}),
+              ),
+            ),
+          ),
+          at(1000, update(select(['3', 4, 'text']), get('2', 'fresh'))),
+          // The new item is a copy: it keeps `label` and resets `fresh`,
+          // which was read.
+          at(2000, {dispatch: 'INSERT_PARAGRAPH_COMMAND'}),
+          // This item's `fresh` was never read, but the type's config for it
+          // is known now: the copy parses it and resets it too.
+          at(2500, update(select(['5', 3, 'text']))),
+          at(2600, {dispatch: 'INSERT_PARAGRAPH_COMMAND'}),
+          at(3000, update(set('3', 'count', 4), get('2', 'fresh'))),
+          at(4000, {dispatch: 'UNDO_COMMAND'}),
+          at(5000, update(get('3', 'count'))),
+          at(6000, {dispatch: 'UNDO_COMMAND'}),
+          at(7000, {dispatch: 'REDO_COMMAND'}),
+          at(8000, {dispatch: 'REDO_COMMAND'}),
+        ],
+      },
+      {
+        name: 'a key collision',
+        steps: [
+          doc(p(t('a'))),
+          update(set('2', 'label', 'x')),
+          update(set('2', 'otherLabel', 'y')),
+          update(get('2', 'otherLabel')),
+          update(get('2', 'label')),
+          // The paragraph has not used `label`: the other config takes it.
+          update(set('1', 'otherLabel', 'p')),
+          update(get('1', 'label')),
+        ],
+      },
+      {
+        name: 'a flat state',
+        richText: true,
+        steps: [
+          doc(withState(q(t('a')), {shadowRoot: true}), {
+            ...withState(q(p(t('b'))), {label: 'q', shadowRoot: false}),
+            shadowRoot: true,
+          } as Node),
+          update(set('4', 'label', 'r'), set('2', 'count', 3)),
+        ],
+      },
+      {
+        name: 'segmented text made plain keeps its NodeState',
+        steps: [
+          doc(
+            p(t('seg ment', {$: {label: 'x'}, mode: 'segmented'}), t(' after')),
+            p(t('two seg', {$: {count: 2}, mode: 'segmented'})),
+          ),
+          update(select(['2', 3, 'text']), call('insertText', 'X')),
+          update(select(['5', 0, 'text'], ['5', 4, 'text']), {
+            do: 'removeTextFromCaretRange',
+          }),
+        ],
+      },
+      {
+        hashtag: true,
+        name: 'hashtags take the NodeState of their text',
+        steps: [
+          doc(
+            p(t('see #tag now', {$: {label: 'x'}})),
+            p(t('hello ', {$: {label: 'x'}})),
+            p(t('hi ', {$: {label: 'x'}})),
+          ),
+          // Text typed at once is not the text's: its hashtag takes nothing.
+          update(select(['4', 6, 'text']), call('insertText', '#ab')),
+          // A `#` already there is: the hashtag takes the NodeState.
+          update(select(['6', 3, 'text']), call('insertText', '#')),
+          update(call('insertText', 'a')),
+        ],
+      },
+      {
+        hashtag: true,
+        name: 'text split off a hashtag and a hashtag turned into text',
+        steps: [
+          doc(
+            p(tag('#tag', {$: {label: 'x'}})),
+            p(tag('#t', {$: {label: 'y'}}), t(' x')),
+          ),
+          update(select(['2', 4, 'text']), call('insertText', ' #b')),
+          // `#` is no hashtag: the text it turns into keeps its NodeState.
+          update(
+            select(['4', 1, 'text'], ['4', 2, 'text']),
+            call('removeText'),
+          ),
+        ],
+      },
+    ],
+  );
+});

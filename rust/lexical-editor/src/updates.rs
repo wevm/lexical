@@ -18,10 +18,11 @@ use crate::json::Value;
 use crate::lexical_selection::has_dirty_selection;
 use crate::lexical_utils::{get_node_by_key, get_root};
 use crate::node::NodeRef;
+use crate::node_state::{apply_flat_states, update_state_from_json};
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::normalization::normalize_text_node;
 use crate::ordered::{OrderedMap, OrderedSet};
-use crate::{Editor, EditorState, LexicalError, constants::NODE_STATE_KEY};
+use crate::{Editor, EditorState, LexicalError};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 
@@ -32,6 +33,10 @@ struct Active {
     editor: Option<Editor>,
     editor_state: Option<EditorState>,
     read_only: bool,
+    /// The editor whose node classes `$getEditor()` finds while
+    /// `parseEditorState` runs, which JS makes the active editor and Rust
+    /// doesn't (so nothing is marked dirty in it).
+    registry: Option<Editor>,
 }
 
 thread_local! {
@@ -79,6 +84,15 @@ pub(crate) fn get_active_editor() -> Option<Editor> {
     ACTIVE.with(|a| a.borrow().editor.clone())
 }
 
+/// `$getEditor()` for the node classes: the active editor, or the one
+/// `parseEditorState` parses for.
+pub(crate) fn get_registry_editor() -> Option<Editor> {
+    ACTIVE.with(|a| {
+        let a = a.borrow();
+        a.editor.clone().or_else(|| a.registry.clone())
+    })
+}
+
 /// `isCurrentlyReadOnlyMode()`.
 pub(crate) fn is_currently_read_only_mode() -> bool {
     ACTIVE.with(|a| a.borrow().read_only)
@@ -115,6 +129,7 @@ pub(crate) fn read_editor_state<R>(
             editor: editor.cloned(),
             editor_state: Some(editor_state.clone()),
             read_only: true,
+            registry: None,
         },
         f,
     )
@@ -327,15 +342,16 @@ fn parse_serialized_node_impl(
     };
     // Not ported yet; refused rather than dropped (rust/PARITY.md).
     invariant!(
-        !object.contains_key(NODE_STATE_KEY),
-        "parseEditorState: NodeState (\"$\") is not ported to Rust yet"
-    );
-    invariant!(
         !object.contains_key("$slots"),
         "parseEditorState: slots (\"$slots\") are not ported to Rust yet"
     );
 
     let node = (registered.import_json)(object)?;
+    // What `updateFromJSON` applies besides the class's own properties:
+    // the nested NodeState (`$updateStateFromJSON`), then the flat states
+    // the class declares (`$applyFlatStates`).
+    update_state_from_json(&node, object)?;
+    apply_flat_states(&node, object)?;
     if let Some(Value::Array(children)) = object.get("children")
         && node.is_element()
     {
@@ -368,6 +384,7 @@ pub(crate) fn parse_editor_state(
         editor: None,
         editor_state: Some(editor_state.clone()),
         read_only: false,
+        registry: Some(editor.clone()),
     };
     with_active(active, || {
         let serialized_node = serialized_editor_state.get("root");
@@ -572,6 +589,7 @@ pub(crate) fn begin_update(
         editor: Some(editor.clone()),
         editor_state: Some(pending.clone()),
         read_only: false,
+        registry: None,
     };
     let result = with_active(active, || {
         let run = || -> Result<(), LexicalError> {

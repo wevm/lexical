@@ -12,4 +12,5 @@ mod value;
 pub use number::number_to_string;
 pub use parse::{ParseError, parse};
 pub use stringify::stringify;
+pub(crate) use value::array_index;
 pub use value::{Object, Value};

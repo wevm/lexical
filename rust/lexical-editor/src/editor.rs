@@ -6,6 +6,7 @@ use crate::error::invariant;
 use crate::json::{self, Object, Value};
 use crate::lexical_utils::set_node_key;
 use crate::node::{LexicalNode, NodeKey, NodeRef};
+use crate::node_state::{RequiredNodeStateConfig, SharedNodeState, create_shared_node_state};
 use crate::nodes::{
     line_break::LineBreakNode, paragraph::ParagraphNode, root::RootNode, tab::TabNode,
     text::TextNode,
@@ -29,6 +30,12 @@ use std::rc::{Rc, Weak};
 pub struct NodeClass {
     pub(crate) node_type: &'static str,
     pub(crate) import_json: fn(&Object) -> Result<NodeRef, LexicalError>,
+    /// The `stateConfigs` of the class's `$config`.
+    pub(crate) state_configs: fn() -> Vec<RequiredNodeStateConfig>,
+}
+
+fn state_configs_of<T: LexicalNode + Default>() -> Vec<RequiredNodeStateConfig> {
+    T::default().state_configs()
 }
 
 /// The `importJSON` a class gets when it declares none
@@ -46,10 +53,11 @@ impl NodeClass {
         Self {
             node_type: T::default().get_type(),
             import_json: import_default::<T>,
+            state_configs: state_configs_of::<T>,
         }
     }
 
-    /// A class with its own `importJSON`.
+    /// A class with its own `importJSON`, which declares no NodeState.
     pub fn with_import_json(
         node_type: &'static str,
         import_json: fn(&Object) -> Result<NodeRef, LexicalError>,
@@ -57,6 +65,7 @@ impl NodeClass {
         Self {
             node_type,
             import_json,
+            state_configs: Vec::new,
         }
     }
 
@@ -240,6 +249,8 @@ type CommandListeners = [Vec<(u64, Rc<dyn Any>)>; 5];
 
 pub(crate) struct EditorInner {
     nodes: HashMap<&'static str, NodeClass>,
+    /// Each registered node's `sharedNodeState`.
+    shared_node_states: HashMap<&'static str, Rc<SharedNodeState>>,
     pub(crate) editor_state: RefCell<EditorState>,
     pub(crate) pending: RefCell<Option<EditorState>>,
     pub(crate) dirty: RefCell<Dirty>,
@@ -267,13 +278,21 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         NodeClass::of::<TabNode>(),
         NodeClass::of::<ParagraphNode>(),
     ];
-    let nodes = core
+    let nodes: HashMap<&'static str, NodeClass> = core
         .into_iter()
         .chain(args.nodes)
         .map(|class| (class.node_type, class))
         .collect();
+    let shared_node_states = nodes
+        .iter()
+        .map(|(&node_type, class)| {
+            let shared = create_shared_node_state((class.state_configs)());
+            (node_type, Rc::new(shared))
+        })
+        .collect();
     Editor(Rc::new(EditorInner {
         nodes,
+        shared_node_states,
         editor_state: RefCell::new(create_empty_editor_state()),
         pending: RefCell::new(None),
         dirty: RefCell::new(Dirty::default()),
@@ -294,6 +313,11 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
 impl Editor {
     pub(crate) fn registered_nodes(&self) -> &HashMap<&'static str, NodeClass> {
         &self.0.nodes
+    }
+
+    /// The `sharedNodeState` of a registered node type.
+    pub(crate) fn shared_node_state(&self, node_type: &str) -> Option<Rc<SharedNodeState>> {
+        self.0.shared_node_states.get(node_type).cloned()
     }
 
     pub(crate) fn ptr_eq(&self, other: &Editor) -> bool {

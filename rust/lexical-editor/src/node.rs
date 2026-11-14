@@ -11,6 +11,7 @@ use crate::lexical_selection::{
     move_selection_point_to_end, move_selection_point_to_sibling, set_selection,
 };
 use crate::lexical_utils::{get_node_by_key_impl, get_writable, mutate, with_writable};
+use crate::node_state::{NodeStateRef, RequiredNodeStateConfig};
 use crate::nodes::element::{self, ElementData, is_root_or_shadow_root};
 use crate::nodes::root::RootNode;
 use crate::nodes::text::TextData;
@@ -24,14 +25,19 @@ use std::rc::Rc;
 /// from a per-thread counter (`generateRandomKey`).
 pub type NodeKey = String;
 
-/// The fields every node has: its key and its links to its parent and
-/// siblings (`__key`, `__parent`, `__prev`, `__next`).
+/// The fields every node has: its key, its links to its parent and
+/// siblings (`__key`, `__parent`, `__prev`, `__next`) and its NodeState
+/// (`__state`), which a clone shares until one of them writes it.
 #[derive(Clone, Debug, Default)]
 pub struct NodeBase {
     pub(crate) key: NodeKey,
     pub(crate) parent: Option<NodeKey>,
     pub(crate) prev: Option<NodeKey>,
     pub(crate) next: Option<NodeKey>,
+    pub(crate) state: Option<NodeStateRef>,
+    /// The id of the editor state this version was made writable (or
+    /// created) in: with the key, which version of the node this is.
+    pub(crate) written_in: u64,
 }
 
 /// What every node implements. JS's class hierarchy (`LexicalNode`,
@@ -206,9 +212,17 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         Ok(())
     }
 
+    /// The `stateConfigs` of the node's `$config`, its class's and those it
+    /// inherits: the NodeState its type knows before any node reads it.
+    /// None by default.
+    fn state_configs(&self) -> Vec<RequiredNodeStateConfig> {
+        Vec::new()
+    }
+
     /// `resetOnCopyNodeFrom(originalNode)` on `this`, the copy `$copyNode`
-    /// just made of `original`. `LexicalNode`'s resets NodeState, which
-    /// isn't ported, so the default does nothing.
+    /// just made of `original`, beyond `LexicalNode`'s, which resets the
+    /// NodeState that asks for it (`$copyNode` does that first). Nothing by
+    /// default.
     fn reset_on_copy_node_from(&self, this: &NodeRef, original: &NodeRef) {
         let _ = (this, original);
     }
@@ -435,9 +449,9 @@ impl NodeRef {
         self.get_latest().get_text_content()
     }
 
-    /// `exportJSON(compact)`.
+    /// `exportJSON(compact)`, with the node's NodeState.
     pub fn export_json(&self, compact: bool) -> Object {
-        self.get_latest().export_json(compact)
+        crate::node_state::export_json_with_state(&*self.get_latest(), compact)
     }
 
     /// `updateFromJSON(json)`.

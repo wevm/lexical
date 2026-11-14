@@ -3,17 +3,26 @@
 
 use crate::LexicalError;
 use crate::node::NodeRef;
+use crate::node_state::node_states_are_equivalent;
 use crate::updates::get_active_editor;
+use std::rc::Rc;
 
-/// `$canSimpleTextNodesBeMerged(node1, node2)`. NodeState comes with its
-/// port.
+/// `$canSimpleTextNodesBeMerged(node1, node2)`: the same mode, format and
+/// style, and equivalent NodeState.
 fn can_simple_text_nodes_be_merged(node1: &NodeRef, node2: &NodeRef) -> bool {
-    let (a, b) = (node1.get_latest(), node2.get_latest());
+    let (node1, node2) = (node1.get_latest(), node2.get_latest());
     let (a, b) = (
-        a.text().expect("a text node"),
-        b.text().expect("a text node"),
+        node1.text().expect("a text node"),
+        node2.text().expect("a text node"),
     );
-    a.mode == b.mode && a.format == b.format && a.style == b.style
+    let (node1_state, node2_state) = (node1.base().state.as_ref(), node2.base().state.as_ref());
+    a.mode == b.mode
+        && a.format == b.format
+        && a.style == b.style
+        && (node1_state
+            .zip(node2_state)
+            .is_some_and(|(a, b)| Rc::ptr_eq(a, b))
+            || node_states_are_equivalent(node1_state, node2_state))
 }
 
 /// `$mergeTextNodes(node1, node2)`.

@@ -68,6 +68,7 @@ pub mod link;
 #[cfg(feature = "list")]
 pub mod list;
 mod node;
+mod node_state;
 pub mod nodes;
 mod normalization;
 mod ordered;
@@ -135,6 +136,11 @@ pub use lexical_utils::{
     copy_node, get_node_by_key, get_root, get_text_direction, reset_random_key,
 };
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};
+pub use node_state::{
+    AnyStateConfig, RequiredNodeStateConfig, StateConfig, StateIsEqual, StateValue,
+    StateValueConfig, create_state, create_state_with, get_state, get_state_change,
+    get_state_direct, set_state, set_state_with,
+};
 pub use nodes::element::{Direction, ElementData};
 pub use nodes::paragraph::create_paragraph_node;
 pub use nodes::text::{TextData, create_text_node, toggle_text_format_type};

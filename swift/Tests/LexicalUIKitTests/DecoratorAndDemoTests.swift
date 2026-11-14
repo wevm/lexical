@@ -444,5 +444,66 @@
       #expect(abs(try height(lines: 1) - 43.2) <= 1.5)
       _ = window
     }
+
+    /// `configure` runs after the editor's own settings on every update,
+    /// so it can follow SwiftUI state, and the editor sizes to the content
+    /// with the inset it set: one 27.2pt line between the insets.
+    @Test func configuresTheTextViewOnEveryUpdate() throws {
+      let editor = try makeDemoEditor()
+      var runs = 0
+      func composer(inset: CGFloat) -> some View {
+        VStack(spacing: 0) {
+          LexicalEditor(editor).sizedToContent(maxHeight: 300).configure { textView in
+            runs += 1
+            textView.textContainerInset = UIEdgeInsets(
+              top: inset, left: 8, bottom: inset, right: 8)
+          }
+          Spacer(minLength: 0)
+        }
+      }
+      let host = UIHostingController(rootView: composer(inset: 8))
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 520))
+      window.rootViewController = host
+      window.makeKeyAndVisible()
+      settle(host.view)
+      let textView = try #require(editor.getRootElement() as? LexicalUITextView)
+      #expect(runs >= 1)
+      #expect(abs(textView.frame.height - 43.2) <= 1.5)
+      let before = runs
+      host.rootView = composer(inset: 20)
+      settle(host.view)
+      #expect(runs > before)
+      #expect(textView.textContainerInset.top == 20)
+      #expect(abs(textView.frame.height - 67.2) <= 1.5)
+      _ = window
+    }
+
+    /// SwiftUI measures the editor at another width without resizing the
+    /// text view, and gets the height the view has once it is that wide.
+    @Test func measuresWithoutResizingTheTextView() throws {
+      let editor = try makeDemoEditor()
+      try editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createParagraphNode().append(
+            createTextNode(String(repeating: "Measure the text at a width. ", count: 8))))
+      }
+      let host = UIHostingController(
+        rootView: LexicalEditor(editor).sizedToContent(maxHeight: 2000))
+      // Its size is the editor's, without the window's safe area.
+      host.safeAreaRegions = []
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 1000))
+      window.rootViewController = host
+      window.makeKeyAndVisible()
+      settle(host.view)
+      let textView = try #require(editor.getRootElement() as? LexicalUITextView)
+      let frame = textView.frame
+      let narrow = host.sizeThatFits(in: CGSize(width: 200, height: 1000)).height
+      #expect(textView.frame == frame)
+      #expect(narrow > frame.height + 20)
+      window.frame.size.width = 200
+      settle(host.view)
+      #expect(abs(textView.frame.height - narrow) <= 1)
+      _ = window
+    }
   }
 #endif

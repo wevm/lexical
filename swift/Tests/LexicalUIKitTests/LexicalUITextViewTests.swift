@@ -121,6 +121,31 @@
       _ = (autoFocusedWindow, focusedWindow, blurredWindow)
     }
 
+    /// The view is editable while the editor is, as `ContentEditable`
+    /// renders `contentEditable={isEditable}`, and input doesn't edit a
+    /// read-only editor, as `LexicalEvents` skips it.
+    @Test func followsTheEditorsEditability() throws {
+      let (view, window) = try makeView()
+      view.insertText("Hello")
+      #expect(view.isEditable)
+      try view.editor.setEditable(false)
+      #expect(!view.isEditable)
+      view.insertText("a")
+      #expect(view.text == "Hello")
+      view.deleteBackward()
+      #expect(view.text == "Hello")
+      try view.editor.setEditable(true)
+      #expect(view.isEditable)
+      view.insertText("a")
+      #expect(view.text == "Helloa")
+      // A view starts read-only for an editor that is.
+      let readOnly = try buildEditorFromExtensions(
+        defineExtension(name: "read-only", dependencies: [RichTextExtension]))
+      try readOnly.setEditable(false)
+      #expect(!LexicalUITextView(editor: readOnly).isEditable)
+      _ = window
+    }
+
     @Test func typesDeletesAndEnters() throws {
       let (view, window) = try makeView()
       view.insertText("Hello")

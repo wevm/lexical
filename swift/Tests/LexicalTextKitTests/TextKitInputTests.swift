@@ -359,6 +359,53 @@ private func key(
     #expect(c.document.string == " worldHello")
   }
 
+  /// A read-only editor takes no input but clicks and copies, as
+  /// `LexicalEvents` skips the root element's other events while
+  /// `editor.isEditable()` is false, and its selection drags out.
+  @Test func aReadOnlyEditorTakesNoInputButClicksAndCopies() throws {
+    let c = try makeController()
+    try type(c, "Hello")
+    let editor = c.editor
+    var dispatched: [String] = []
+    _ = editor.registerCommand(
+      CLICK_COMMAND,
+      { _, _ in
+        dispatched.append("click")
+        return false
+      }, COMMAND_PRIORITY_CRITICAL)
+    _ = editor.registerCommand(
+      FOCUS_COMMAND,
+      { _, _ in
+        dispatched.append("focus")
+        return false
+      }, COMMAND_PRIORITY_CRITICAL)
+    try editor.setEditable(false)
+    try c.insertText("x")
+    try c.insertText("y", replacementRange: TextKitRange(location: 0, length: 1))
+    #expect(try !c.keyDown(key("Enter")))
+    #expect(try !c.keyDown(key("Backspace")))
+    try c.beforeInput("deleteContentBackward")
+    try c.beforeInput("historyUndo")
+    try c.setMarkedText("k", selectedRange: TextKitRange(location: 1, length: 0))
+    try c.focusChanged(true)
+    try c.setSelectedRange(location: 0, length: 5)
+    #expect(try c.cut() == nil)
+    let data = DataTransfer()
+    data.setData("text/plain", "pasted")
+    #expect(try !c.paste(data))
+    #expect(try !c.drop(data, x: 0, y: 0))
+    #expect(c.document.string == "Hello")
+    #expect(try c.copy()?.getData("text/plain") == "Hello")
+    // The selection still drags out, as a page's selected text does.
+    #expect(try c.dragStart(x: 0, y: 0)?.getData("text/plain") == "Hello")
+    try c.click(MouseEvent("click", targetKey: "root"))
+    #expect(dispatched == ["click"])
+    try editor.setEditable(true)
+    try c.setSelectedRange(location: 5, length: 0)
+    try c.insertText("!")
+    #expect(c.document.string == "Hello!")
+  }
+
   @Test func pastesHTML() throws {
     let c = try makeController()
     var update = TextKitUpdate()

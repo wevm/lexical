@@ -61,6 +61,23 @@ struct ContentView: View {
 }
 ```
 
+`LexicalEditor` takes a placeholder, `sizedToContent(minHeight:maxHeight:)`,
+`theme(_:)` and `editorBackground(_:)`. Anything else on the text view goes
+in `configure`, which runs each time SwiftUI updates the editor, so it can
+read SwiftUI state and must set the same values each time. Commands and
+listeners belong to the editor, not here, and read-only is the editor's
+too: `editor.setEditable(false)`, which the view follows.
+
+```swift
+LexicalEditor(editor, placeholder: "Message")
+  .sizedToContent(minHeight: 36, maxHeight: 160)
+  .configure { textView in  // LexicalUITextView on iOS
+    textView.textContainerInset = UIEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
+    textView.textContainer.lineFragmentPadding = 0
+    textView.accessibilityLabel = "Message"
+  }
+```
+
 The model API is Lexical's, without the `$` prefix (Swift identifiers can't
 start with `$`), and the `$` functions throw:
 

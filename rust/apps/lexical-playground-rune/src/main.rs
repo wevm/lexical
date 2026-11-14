@@ -229,6 +229,10 @@ fn main() {
                 typed(s);
                 s.panel = Panel::Json;
             }),
+            ("parity", |s| {
+                s.panel = Panel::Parity;
+                s.report = Some(view::replay());
+            }),
         ],
         // Inline code (`Mark::Code`) draws in the mono slot: the system's
         // monospaced face (SF Mono on macOS).

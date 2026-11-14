@@ -4,7 +4,8 @@ name: Rust playgrounds
 # workspace of its own (Rune needs a newer Rust than lexical-editor's 1.88).
 # Path-filtered because macOS runners are slow to start. Linux checks that
 # the Rune app builds, passes its tests, and renders headless; macOS builds
-# and renders it as it runs on tmm's Mac.
+# and renders it as it runs on tmm's Mac. The GPUI app is macOS only here: it
+# runs an end-to-end session in a real window, and JS replays the session.
 
 on:
   push:
@@ -69,11 +70,18 @@ jobs:
         run: |
           cargo run --locked -- --snap "$RUNNER_TEMP/lexical-playground-rune-linux.png" --size 1100x720 --scene typed
           test -s "$RUNNER_TEMP/lexical-playground-rune-linux.png"
+      # The Parity panel after Replay vectors, run in the app.
+      - name: Render the parity panel
+        run: |
+          cargo run --locked -- --snap "$RUNNER_TEMP/lexical-playground-rune-parity.png" --size 1100x720 --scene parity
+          test -s "$RUNNER_TEMP/lexical-playground-rune-parity.png"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: lexical-playground-rune-linux-snapshot
-          path: ${{ runner.temp }}/lexical-playground-rune-linux.png
+          path: |
+            ${{ runner.temp }}/lexical-playground-rune-linux.png
+            ${{ runner.temp }}/lexical-playground-rune-parity.png
           if-no-files-found: ignore
 
   rune-macos:
@@ -111,4 +119,64 @@ jobs:
         with:
           name: lexical-playground-rune-macos-snapshot
           path: ${{ runner.temp }}/lexical-playground-rune-macos.png
+          if-no-files-found: ignore
+
+  gpui-macos:
+    name: GPUI playground (macOS)
+    runs-on: macos-26
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: rust/apps/lexical-playground-gpui
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Install the toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/apps/lexical-playground-gpui/target
+          key: lexical-playground-gpui-${{ runner.os }}-${{ hashFiles('rust/apps/lexical-playground-gpui/Cargo.lock', 'rust/apps/lexical-playground-gpui/rust-toolchain.toml') }}
+          restore-keys: lexical-playground-gpui-${{ runner.os }}-
+      - name: Format
+        run: cargo fmt --check
+      - name: Lint
+        run: |
+          cargo clippy --all-targets --locked -- -D warnings
+          cargo clippy --all-targets --locked --features e2e -- -D warnings
+      - name: Test
+        run: cargo test --locked
+      # The end-to-end run (src/e2e.rs): the app types, composes and deletes
+      # in its own window through the input handler and key bindings, and
+      # exports the session...
+      - name: Run end to end
+        run: |
+          cargo build --locked --features e2e
+          LEXICAL_PLAYGROUND_E2E="$RUNNER_TEMP/gpui-session.json" \
+          LEXICAL_PLAYGROUND_E2E_SHOT="$RUNNER_TEMP/lexical-playground-gpui-e2e.png" \
+            ./target/debug/lexical-playground-gpui
+      # ...which JS Lexical replays, comparing every step with its own.
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.24.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - name: Replay the session in JS
+        working-directory: packages/lexical-conformance
+        run: LEXICAL_REPLAY="$RUNNER_TEMP/gpui-session.json" pnpm exec vitest run src/replay.test.ts
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: lexical-playground-gpui-e2e
+          path: |
+            ${{ runner.temp }}/lexical-playground-gpui-e2e.png
+            ${{ runner.temp }}/gpui-session.json
           if-no-files-found: ignore

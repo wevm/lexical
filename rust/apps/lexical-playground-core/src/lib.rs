@@ -16,11 +16,17 @@
 //!   `scripts/*` vector case that JS Lexical replays
 //!   (`packages/lexical-conformance/src/replay.test.ts`): parity for a
 //!   session typed by hand.
+//! - [`Surface`]: the text input client for frameworks that hand the app
+//!   raw text input and input-method compositions (GPUI), over a
+//!   [`Playground`].
 //! - [`replay_vectors`]: the conformance report, run in the app.
 
 use lexical::json::{self, Object, Value};
 use lexical::{NodeRef, get_root};
 use lexical_conformance::scripts::Session;
+
+mod surface;
+pub use surface::{DisplayRun, Surface, byte_of_utf16, utf16_of_byte};
 
 /// A run of a block: a text node, a tab, or a line break.
 #[derive(Clone, Debug, PartialEq)]
@@ -899,11 +905,62 @@ impl Playground {
 }
 
 /// Replays the conformance vectors (`packages/lexical-conformance/vectors`,
-/// or `$LEXICAL_CONFORMANCE_VECTORS`) and returns the report as Markdown,
-/// and whether nothing failed.
+/// or `$LEXICAL_CONFORMANCE_VECTORS`) and returns a plain-text summary sized
+/// for an app's side panel, and whether nothing failed.
 pub fn replay_vectors() -> Result<(String, bool), String> {
+    use lexical_conformance::Status;
+    use std::collections::BTreeMap;
+    use std::fmt::Write;
     let report = lexical_conformance::run(None)?;
-    Ok((report.markdown(), report.ok()))
+    let replayed: Vec<_> = report
+        .files
+        .iter()
+        .filter(|f| f.status != Status::NotImplemented)
+        .collect();
+    let sum = |n: fn(&lexical_conformance::FileReport) -> usize| -> usize {
+        replayed.iter().map(|f| n(f)).sum()
+    };
+    let waiting = |f: &lexical_conformance::FileReport| f.not_ported.values().sum::<usize>();
+    let mut out = format!(
+        "{} cases · {} match JS · {} wait on a package · {} fail\n\n",
+        sum(|f| f.cases),
+        sum(|f| f.passed + f.exceptions.values().sum::<usize>()),
+        sum(waiting),
+        sum(|f| f.failed),
+    );
+    let width = replayed.iter().map(|f| f.file.len()).max().unwrap_or(0);
+    for f in &replayed {
+        let checked = f.cases - waiting(f);
+        let _ = write!(out, "{:width$}  {}/{}", f.file, checked - f.failed, checked);
+        if let Status::Unreadable(e) = &f.status {
+            let _ = write!(out, "  unreadable: {e}");
+        }
+        if waiting(f) > 0 {
+            let _ = write!(out, "  (+{} waiting)", waiting(f));
+        }
+        out.push('\n');
+    }
+    let mut by_package: BTreeMap<&str, usize> = BTreeMap::new();
+    for f in &replayed {
+        for (package, n) in &f.not_ported {
+            *by_package.entry(package).or_default() += n;
+        }
+    }
+    if !by_package.is_empty() {
+        let list: Vec<String> = by_package.iter().map(|(p, n)| format!("{p} {n}")).collect();
+        let _ = write!(out, "\nWaiting on: {}\n", list.join(", "));
+    }
+    let _ = writeln!(
+        out,
+        "Not replayed yet: {} vector files",
+        report.files.len() - replayed.len()
+    );
+    for f in &replayed {
+        for message in &f.failures {
+            let _ = write!(out, "\n{}: {message}\n", f.file);
+        }
+    }
+    Ok((out, report.ok()))
 }
 
 /// The document the playgrounds open with.

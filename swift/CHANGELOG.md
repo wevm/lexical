@@ -4,6 +4,17 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.1.10
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- On macOS, `LexicalNSTextView` no longer reads every dragged file into memory each time the pointer moves during a drag. As a browser's `dragover` does, `DRAGOVER_COMMAND`'s `DataTransfer` lists the `Files` type with empty `files`; the files are read once, on the drop.
+- `LexicalUITextView` and `LexicalNSTextView` take a focus asked for before they are in a window (by `AutoFocusExtension`, `editor.focus()` or `focus()`) once they land in one, as a contenteditable is focused when it mounts. On macOS that focus was lost; a `blur()` in between now cancels it on both platforms.
+- On macOS, `LexicalNSTextView` takes files dragged in from Finder or another app while the editor is editable, as a contenteditable takes a dropped file, so the drop reaches `DROP_COMMAND` and `DRAG_DROP_PASTE`. Before, `NSTextView` refused the drag, so a dropped file never reached the editor.
+- A named font family draws at the weight a theme or inline `font-weight` asks for, picking the family's face as CSS font matching does: the faces nearest the normal width, then of the slant, then of the weight. On macOS every weight drew as Regular or Bold before: `font-weight: 500` in Avenir Next now draws Medium and 600 Demi Bold. On iOS, 500 drew Bold in a family without a Medium (Georgia, Menlo, Optima, Baskerville), 900 switched Helvetica Neue and Futura to their condensed faces, and an italic lost its weight; each now draws as on the web.
+
 ## 0.1.9
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

@@ -5,6 +5,31 @@
   // The theme's platform-neutral descriptors as AppKit attributes.
 
   extension TextKitColor {
+    /// `color` as it resolves in the light (aqua) appearance, with its dark
+    /// (dark aqua) resolution as the dark variant when that differs, so a
+    /// dynamic color, such as `.labelColor`, an asset catalog color, or a
+    /// SwiftUI `Color` through `NSColor(_:)`, still follows the appearance.
+    /// Only those two are kept: a high-contrast appearance draws the
+    /// regular variants. The components are sRGB; a color that has none,
+    /// such as a pattern, is clear.
+    public init(nsColor color: NSColor) {
+      func resolved(_ name: NSAppearance.Name) -> TextKitColor {
+        var result = TextKitColor(red: 0, green: 0, blue: 0, alpha: 0)
+        NSAppearance(named: name)?.performAsCurrentDrawingAppearance {
+          // Converting a dynamic color resolves it for the current
+          // drawing appearance.
+          guard let srgb = color.usingColorSpace(.sRGB) else { return }
+          result = TextKitColor(
+            red: srgb.redComponent, green: srgb.greenComponent, blue: srgb.blueComponent,
+            alpha: srgb.alphaComponent)
+        }
+        return result
+      }
+      let light = resolved(.aqua)
+      let dark = resolved(.darkAqua)
+      self = dark == light ? light : light.withDark(dark)
+    }
+
     /// The color, or with a dark variant, a dynamic color that resolves to
     /// it in a dark appearance.
     var nsColor: NSColor {

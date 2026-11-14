@@ -596,7 +596,11 @@ Reversible choices made porting `@lexical/extension` under Q18.
   as tall as its text; the cost is that a deep indent takes more of a
   narrow screen. A change of category renders the document again. A
   decorator's SwiftUI view scales only if it uses text styles or
-  `@ScaledMetric`. AppKit has no Dynamic Type.
+  `@ScaledMetric`. AppKit has no Dynamic Type. An app with fixed sizes
+  opts out with the platform's own trait, not a theme flag:
+  `.dynamicTypeSize(.large)` on `LexicalEditor`, or
+  `traitOverrides.preferredContentSizeCategory = .large` on the view,
+  where the theme's sizes are its points.
 - **A decorator's VoiceOver label is its view's, or else its text.** The
   attachment's `accessibilityLabel` (iOS), or its hosting view's
   `accessibilityLabel()` (macOS), is the labels of the SwiftUI view's

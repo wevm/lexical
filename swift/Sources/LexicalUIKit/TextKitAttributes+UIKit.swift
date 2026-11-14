@@ -5,6 +5,29 @@
   // The theme's platform-neutral descriptors as UIKit attributes.
 
   extension TextKitColor {
+    /// `color` as it resolves in the light user interface style, with its
+    /// dark style's resolution as the dark variant when that differs, so a
+    /// dynamic color, such as `.label`, an asset catalog color, or a
+    /// SwiftUI `Color` through `UIColor(_:)`, still follows the appearance.
+    /// Only those two are kept: a high-contrast variant draws as its
+    /// regular one. The components are extended sRGB, as
+    /// `getRed(_:green:blue:alpha:)` gives them, so a Display P3 color keeps
+    /// its gamut. A pattern color has no components and is clear.
+    public init(uiColor color: UIColor) {
+      func resolved(_ style: UIUserInterfaceStyle) -> TextKitColor {
+        var (red, green, blue, alpha): (CGFloat, CGFloat, CGFloat, CGFloat) = (0, 0, 0, 0)
+        if !color.resolvedColor(with: UITraitCollection(userInterfaceStyle: style))
+          .getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        {
+          (red, green, blue, alpha) = (0, 0, 0, 0)
+        }
+        return TextKitColor(red: red, green: green, blue: blue, alpha: alpha)
+      }
+      let light = resolved(.light)
+      let dark = resolved(.dark)
+      self = dark == light ? light : light.withDark(dark)
+    }
+
     /// The color, or with a dark variant, a dynamic color that resolves to
     /// it in the dark user interface style.
     var uiColor: UIColor {

@@ -71,6 +71,23 @@
         setNeedsLayout()
       }
     }
+    /// The look of the rendered text and the placeholder, the controller's
+    /// `theme` (`TextKitTheme.default` until set). A different theme draws
+    /// the document again; an equal one leaves it as it is.
+    ///
+    /// The theme's sizes are its points at the default text size, scaled
+    /// with Dynamic Type for the view's `preferredContentSizeCategory`. To
+    /// keep them fixed, pin the category:
+    /// `traitOverrides.preferredContentSizeCategory = .large`, or
+    /// `.dynamicTypeSize(.large)` on a SwiftUI `LexicalEditor`.
+    public var theme: TextKitTheme {
+      get { controller.theme }
+      set {
+        guard newValue != controller.theme else { return }
+        controller.theme = newValue
+        controller.report { try controller.renderAll(replacing: textStorage.length) }
+      }
+    }
     /// When set, the view's intrinsic height is its content's
     /// (`contentHeight`) kept within the range, so it grows with its text
     /// up to the upper bound, as a chat composer does, and scrolls past it.

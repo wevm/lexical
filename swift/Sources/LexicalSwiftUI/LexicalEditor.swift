@@ -65,9 +65,12 @@
       return editor
     }
 
-    /// Draws the text with `theme`, such as `TextKitTheme.default` with
-    /// styles for an app's own node types under their theme keys. The text
-    /// is drawn again when the theme changes.
+    /// Draws the text with `theme` (the text view's `theme`), such as
+    /// `TextKitTheme.default` with styles for an app's own node types under
+    /// their theme keys. The text is drawn again when the theme changes.
+    ///
+    /// On iOS the theme's sizes scale with Dynamic Type; to keep them at
+    /// the theme's points, pin the size with `.dynamicTypeSize(.large)`.
     public func theme(_ theme: TextKitTheme) -> Self {
       var editor = self
       editor.textKitTheme = theme
@@ -110,15 +113,6 @@
       let height = textView.contentHeight(atWidth: width)
       return min(max(height, heightRange.lowerBound), heightRange.upperBound)
     }
-
-    /// Applies `textKitTheme` to the text view's controller, drawing the
-    /// text again when it changes.
-    fileprivate func applyTheme(_ controller: TextKitInputController, length: Int) {
-      let theme = textKitTheme ?? .default
-      guard controller.theme != theme else { return }
-      controller.theme = theme
-      controller.report { try controller.renderAll(replacing: length) }
-    }
   }
 
   extension LexicalEditor {
@@ -155,7 +149,7 @@
         textView.placeholder = placeholder
         textView.heightRange = heightRange
         textView.drawsBackground = drawsBackground
-        applyTheme(textView.controller, length: textView.textStorage?.length ?? 0)
+        textView.theme = textKitTheme ?? .default
         for configure in configurations { configure(textView) }
       }
 
@@ -184,7 +178,7 @@
         } else {
           textView.backgroundColor = .clear
         }
-        applyTheme(textView.controller, length: textView.textStorage.length)
+        textView.theme = textKitTheme ?? .default
         for configure in configurations { configure(textView) }
       }
 

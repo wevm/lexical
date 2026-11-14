@@ -42,6 +42,19 @@ impl LexicalNode for HashtagNode {
     fn get_type(&self) -> &'static str {
         "hashtag"
     }
+    /// `HashtagNode.createDOM(config)`: `TextNode`'s, with the theme's
+    /// `hashtag` class names.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, crate::LexicalError> {
+        let element = crate::nodes::text::create_dom(self, config)?;
+        crate::lexical_dom::add_theme_class_names(&element, &config.theme, "hashtag");
+        Ok(element)
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }

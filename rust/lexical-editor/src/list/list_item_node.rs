@@ -152,6 +152,27 @@ impl LexicalNode for ListItemNode {
     fn get_type(&self) -> &'static str {
         "listitem"
     }
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        list_item_dom::create_dom(self, this, config)
+    }
+    #[cfg(feature = "html")]
+    fn export_dom(
+        &self,
+        this: &NodeRef,
+        editor: &crate::Editor,
+    ) -> Result<crate::lexical_dom::DomExportOutput, LexicalError> {
+        list_item_dom::export_dom(self, this, editor)
+    }
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        Some(list_item_dom::import_dom())
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }
@@ -480,5 +501,247 @@ impl LexicalNode for ListItemNode {
             }
         }
         Ok(())
+    }
+}
+
+// The DOM side of `ListItemNode` (the `html` feature).
+
+#[cfg(feature = "html")]
+pub(super) mod list_item_dom {
+    use super::super::list_node::{ListType, is_list_node};
+    use super::super::utils::is_nested_list_node;
+    use super::{ListItemNode, create_list_item_node};
+    use crate::dom::DomNode;
+    use crate::json::{Object, Value};
+    use crate::lexical_dom::{
+        DomConversionNode, DomConversionOutput, DomExportOutput, get_document,
+        normalize_class_names, set_direction_from_dom, set_format_from_dom,
+    };
+    use crate::node::NodeRef;
+    use crate::nodes::paragraph::ParagraphNode;
+    use crate::set_dom_style::{get_style_object_from_css, set_dom_style_from_css};
+    use crate::{EditorConfig, LexicalError};
+
+    /// `ListItemNode.createDOM(config)`: an `<li>`, through
+    /// `updateListItemDOM(null, element, config)`.
+    pub(crate) fn create_dom(
+        node: &ListItemNode,
+        this: &NodeRef,
+        config: &EditorConfig,
+    ) -> Result<DomNode, LexicalError> {
+        let dom = get_document().create_element("li");
+        update_list_item_checked(&dom, node, this);
+        // `dom.value = this.__value`: a `long`, written as its attribute.
+        dom.set_attribute(
+            "value",
+            &crate::nodes::text::to_int32(node.value).to_string(),
+        );
+        set_list_item_theme_class_names(&dom, &config.theme, node, this);
+        let style = node.element.get_style();
+        if !style.is_empty() {
+            set_dom_style_from_css(&dom.style(), style, "");
+        }
+        apply_marker_styles(&dom, node);
+        Ok(dom)
+    }
+
+    /// `applyMarkerStyles(dom, node, null)`: the text style as
+    /// `--listitem-marker-*` properties.
+    fn apply_marker_styles(dom: &DomNode, node: &ListItemNode) {
+        let style = dom.style();
+        for (k, v) in get_style_object_from_css(node.element.get_text_style()).iter() {
+            style.set_property(&format!("--listitem-marker-{k}"), v, "");
+        }
+    }
+
+    /// `ListItemNode.exportDOM(editor)`: `createDOM`'s element with the
+    /// alignment and the direction. A nested list's item moves its
+    /// children into the item before it.
+    pub(crate) fn export_dom(
+        node: &ListItemNode,
+        this: &NodeRef,
+        editor: &crate::Editor,
+    ) -> Result<DomExportOutput, LexicalError> {
+        let element = create_dom(node, this, editor.config())?;
+        let format_type = node.element.get_format_type();
+        if !format_type.is_empty() {
+            element.style().set_property("text-align", format_type, "");
+        }
+        if let Some(direction) = node.element.get_direction() {
+            element.set_dir(direction.as_str());
+        }
+        if is_nested_list_node(this) {
+            return Ok(DomExportOutput {
+                element: Some(element),
+                after: Some(Box::new(|container: &DomNode| {
+                    if container.is_element()
+                        && let Some(prev_sibling) = container.previous_element_sibling()
+                        && prev_sibling.node_name() == "LI"
+                    {
+                        while let Some(child) = container.first_child() {
+                            prev_sibling.append_child(&child);
+                        }
+                        container.remove();
+                    }
+                    Ok(Some(container.clone()))
+                })),
+                ..DomExportOutput::default()
+            });
+        }
+        Ok(DomExportOutput::element(element))
+    }
+
+    fn class_names_of(value: Option<&Value>) -> Vec<String> {
+        value
+            .and_then(Value::as_str)
+            .map(|v| normalize_class_names(&[v]))
+            .unwrap_or_default()
+    }
+
+    /// `$setListItemThemeClassNames(dom, editorThemeClasses, node)`.
+    fn set_list_item_theme_class_names(
+        dom: &DomNode,
+        theme: &Object,
+        node: &ListItemNode,
+        this: &NodeRef,
+    ) {
+        let Some(list_theme) = theme.get("list").filter(|t| {
+            !matches!(t, Value::Undefined | Value::Null | Value::Bool(false))
+                && t.as_str() != Some("")
+        }) else {
+            return;
+        };
+        let list_item_class_name = list_theme.get("listitem");
+        let nested_list_item_class_name = list_theme.get("nested").and_then(|n| n.get("listitem"));
+        let parent = this.get_parent();
+        let is_check_list = parent
+            .as_ref()
+            .is_some_and(|p| p.get_list_type() == Some(ListType::Check));
+        let checked = node.checked == Some(true);
+        let is_nested = this.get_children().iter().any(is_list_node);
+        let mut classes_to_remove = class_names_of(list_theme.get("listitemChecked"));
+        classes_to_remove.extend(class_names_of(list_theme.get("listitemUnchecked")));
+        classes_to_remove.extend(class_names_of(nested_list_item_class_name));
+        if !classes_to_remove.is_empty() {
+            dom.class_list().remove(&classes_to_remove);
+        }
+        let mut classes_to_add = class_names_of(list_item_class_name);
+        if is_check_list {
+            let key = if checked {
+                "listitemChecked"
+            } else {
+                "listitemUnchecked"
+            };
+            classes_to_add.extend(class_names_of(list_theme.get(key)));
+        }
+        if is_nested {
+            classes_to_add.extend(class_names_of(nested_list_item_class_name));
+        }
+        if !classes_to_add.is_empty() {
+            dom.class_list().add(&classes_to_add);
+        }
+    }
+
+    /// `updateListItemChecked(dom, listItemNode, null)`: a leaf item of a
+    /// check list is a checkbox.
+    fn update_list_item_checked(dom: &DomNode, node: &ListItemNode, this: &NodeRef) {
+        let is_checkbox = this
+            .get_parent()
+            .is_some_and(|p| p.get_list_type() == Some(ListType::Check))
+            && !this.get_first_child().is_some_and(|c| is_list_node(&c));
+        if !is_checkbox {
+            dom.remove_attribute("role");
+            dom.remove_attribute("tabIndex");
+            dom.remove_attribute("aria-checked");
+        } else {
+            dom.set_attribute("role", "checkbox");
+            dom.set_attribute("tabIndex", "-1");
+            dom.set_attribute(
+                "aria-checked",
+                if node.checked == Some(true) {
+                    "true"
+                } else {
+                    "false"
+                },
+            );
+        }
+    }
+
+    /// `ListItemNode`'s `importDOM`: `<li>`.
+    pub(crate) fn import_dom() -> crate::lexical_dom::DomConversionMap {
+        vec![(
+            "li".to_owned(),
+            crate::lexical_dom::importer(0, convert_list_item_element),
+        )]
+    }
+
+    /// `$convertListItemElement(domNode)`: a list item, checked or not for
+    /// a GitHub or Joplin task item or an `aria-checked` one.
+    fn convert_list_item_element(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        if dom_node.class_list().contains("task-list-item") {
+            for child in dom_node.children() {
+                if child.tag_name() == "INPUT" {
+                    return convert_checkbox_input(&child);
+                }
+            }
+        }
+        if dom_node.class_list().contains("joplin-checkbox") {
+            for child in dom_node.children() {
+                let grandchildren = child.children();
+                if child.class_list().contains("checkbox-wrapper")
+                    && grandchildren
+                        .first()
+                        .is_some_and(|c| c.tag_name() == "INPUT")
+                {
+                    return convert_checkbox_input(&grandchildren[0]);
+                }
+            }
+        }
+        let checked = match dom_node.get_attribute("aria-checked").as_deref() {
+            Some("true") => Some(true),
+            Some("false") => Some(false),
+            _ => None,
+        };
+        let node = create_list_item_node(checked);
+        set_format_from_dom(&node, dom_node);
+        set_direction_from_dom(&node, dom_node);
+        Ok(Some(with_format_from_children(node)))
+    }
+
+    /// `$convertCheckboxInput(domNode)`.
+    fn convert_checkbox_input(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        if dom_node.get_attribute("type").as_deref() != Some("checkbox") {
+            return Ok(Some(DomConversionOutput::node(None)));
+        }
+        let node = create_list_item_node(Some(dom_node.has_attribute("checked")));
+        Ok(Some(with_format_from_children(node)))
+    }
+
+    /// `{after: setFormatFromChildren.bind(null, node), node}`: an item
+    /// whose one child is an aligned paragraph (as Google Docs writes)
+    /// takes the paragraph's alignment and its children.
+    fn with_format_from_children(node: NodeRef) -> DomConversionOutput {
+        let list_item_node = node.clone();
+        DomConversionOutput {
+            node: DomConversionNode::One(node),
+            after: Some(Box::new(move |children: Vec<NodeRef>| {
+                if let [first_child] = children.as_slice()
+                    && first_child.get_latest().is::<ParagraphNode>()
+                    && list_item_node.element_data().get_format_type().is_empty()
+                {
+                    let format_type = first_child.element_data().get_format_type();
+                    if !format_type.is_empty() {
+                        list_item_node.set_element_format(format_type);
+                        return Ok(first_child.get_children());
+                    }
+                }
+                Ok(children)
+            })),
+            ..DomConversionOutput::default()
+        }
     }
 }

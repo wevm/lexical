@@ -49,6 +49,22 @@ impl LexicalNode for OverflowNode {
     fn get_type(&self) -> &'static str {
         "overflow"
     }
+    /// `OverflowNode.createDOM(config)`: a `<span>` whose class is the
+    /// theme's `characterLimit`.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, crate::LexicalError> {
+        let span = crate::lexical_dom::get_document().create_element("span");
+        if let Some(class_name) = crate::lexical_dom::theme_string(&config.theme, "characterLimit")
+        {
+            span.set_class_name(class_name);
+        }
+        Ok(span)
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }

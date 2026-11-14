@@ -145,6 +145,36 @@ impl LexicalNode for HeadingNode {
     fn get_type(&self) -> &'static str {
         "heading"
     }
+    /// `HeadingNode.createDOM(config)`: an `<h1>` to `<h6>` with the
+    /// theme's `heading[tag]` class names.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        let tag = self.tag.as_str();
+        let element = crate::lexical_dom::get_document().create_element(tag);
+        if let Some(Value::Object(class_names)) = config.theme.get("heading") {
+            crate::lexical_dom::add_theme_class_names(&element, class_names, tag);
+        }
+        Ok(element)
+    }
+    #[cfg(feature = "html")]
+    fn export_dom(
+        &self,
+        this: &NodeRef,
+        editor: &Editor,
+    ) -> Result<crate::lexical_dom::DomExportOutput, LexicalError> {
+        rich_text_dom::export_block_dom(self, this, editor)
+    }
+    /// `HeadingNode`'s `importDOM`: `<h1>` to `<h6>`, and a Google Docs
+    /// title (a `<span>` of `font-size: 26pt`, and the `<p>` around one).
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        Some(rich_text_dom::heading_import_dom())
+    }
     /// `HeadingNode.extractWithChild()`: a heading always goes with a
     /// child that is copied.
     fn extract_with_child(
@@ -285,6 +315,35 @@ impl LexicalNode for QuoteNode {
     fn get_type(&self) -> &'static str {
         "quote"
     }
+    /// `QuoteNode.createDOM(config)`: a `<blockquote>` with the theme's
+    /// `quote` class names.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        let element = crate::lexical_dom::get_document().create_element("blockquote");
+        crate::lexical_dom::add_theme_class_names(&element, &config.theme, "quote");
+        Ok(element)
+    }
+    #[cfg(feature = "html")]
+    fn export_dom(
+        &self,
+        this: &NodeRef,
+        editor: &Editor,
+    ) -> Result<crate::lexical_dom::DomExportOutput, LexicalError> {
+        rich_text_dom::export_block_dom(self, this, editor)
+    }
+    /// `QuoteNode`'s `importDOM`: `<blockquote>`.
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        Some(vec![(
+            "blockquote".to_owned(),
+            crate::lexical_dom::importer(0, rich_text_dom::convert_blockquote_element),
+        )])
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }
@@ -379,6 +438,113 @@ impl LexicalNode for QuoteNode {
 /// The current selection when it is a range selection.
 fn range_selection() -> Option<SelectionRef> {
     get_selection().filter(SelectionRef::is_range)
+}
+
+// The DOM side of `HeadingNode` and `QuoteNode` (the `html` feature).
+#[cfg(feature = "html")]
+mod rich_text_dom {
+    use super::{HeadingTagType, create_heading_node, create_quote_node};
+    use crate::dom::DomNode;
+    use crate::lexical_dom::{
+        DomConversion, DomConversionMap, DomConversionOutput, DomExportOutput, get_document,
+        importer, set_direction_from_dom, set_format_from_dom, set_node_indent_from_dom,
+    };
+    use crate::node::{LexicalNode, NodeRef};
+    use crate::{Editor, LexicalError};
+    use std::rc::Rc;
+
+    /// `HeadingNode.exportDOM(editor)` and `QuoteNode.exportDOM(editor)`:
+    /// `ElementNode`'s, with a `<br>` when empty, the alignment as
+    /// `text-align`, and the direction.
+    pub(super) fn export_block_dom(
+        node: &dyn LexicalNode,
+        this: &NodeRef,
+        editor: &Editor,
+    ) -> Result<DomExportOutput, LexicalError> {
+        let output = crate::nodes::element::export_dom(node, this, editor)?;
+        if let Some(element) = output.element.as_ref().filter(|e| e.is_element()) {
+            if this.is_empty() {
+                element.append_child(&get_document().create_element("br"));
+            }
+            let data = node.element().expect("an element");
+            let format_type = data.get_format_type();
+            if !format_type.is_empty() {
+                element.style().set_property("text-align", format_type, "");
+            }
+            if let Some(direction) = data.get_direction() {
+                element.set_dir(direction.as_str());
+            }
+        }
+        Ok(DomExportOutput {
+            element: output.element,
+            ..DomExportOutput::default()
+        })
+    }
+
+    /// `isGoogleDocsTitle(domNode)`.
+    fn is_google_docs_title(dom_node: &DomNode) -> bool {
+        dom_node.node_name().eq_ignore_ascii_case("span")
+            && dom_node.style().get_property_value("font-size") == "26pt"
+    }
+
+    pub(super) fn heading_import_dom() -> DomConversionMap {
+        let mut map: DomConversionMap = ["h1", "h2", "h3", "h4", "h5", "h6"]
+            .into_iter()
+            .map(|tag| (tag.to_owned(), importer(0, convert_heading_element)))
+            .collect();
+        map.push((
+            "p".to_owned(),
+            Rc::new(|node: &DomNode| {
+                let first_child = node.first_child()?;
+                is_google_docs_title(&first_child).then(|| DomConversion {
+                    conversion: Rc::new(|_| Ok(Some(DomConversionOutput::node(None)))),
+                    priority: 3,
+                })
+            }),
+        ));
+        map.push((
+            "span".to_owned(),
+            Rc::new(|node: &DomNode| {
+                is_google_docs_title(node).then(|| DomConversion {
+                    conversion: Rc::new(|_| {
+                        Ok(Some(DomConversionOutput::node(Some(create_heading_node(
+                            HeadingTagType::H1,
+                        )))))
+                    }),
+                    priority: 3,
+                })
+            }),
+        ));
+        map
+    }
+
+    /// `$convertHeadingElement(element)`.
+    fn convert_heading_element(
+        element: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        let node = match HeadingTagType::parse(&element.node_name().to_lowercase()) {
+            Some(tag) => {
+                let node = create_heading_node(tag);
+                set_node_indent_from_dom(element, &node)?;
+                set_format_from_dom(&node, element);
+                set_direction_from_dom(&node, element);
+                Some(node)
+            }
+            None => None,
+        };
+        Ok(Some(DomConversionOutput::node(node)))
+    }
+
+    /// `$convertBlockquoteElement(element)`.
+    pub(super) fn convert_blockquote_element(
+        element: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        let node = create_quote_node(false);
+        set_format_from_dom(&node, element);
+        set_node_indent_from_dom(element, &node)?;
+        set_direction_from_dom(&node, element);
+        Ok(Some(DomConversionOutput::node(Some(node))))
+    }
 }
 
 /// `registerRichText(editor)`: registers the rich text command handlers

@@ -20,8 +20,8 @@ fn unported_package(node: &Value) -> Option<&'static str> {
 
 /// `property/documents.json`: a random document parses (or fails to, when
 /// JS's did) to the same state, written in both forms, a second parse of
-/// each form gives what JS's gave, and the text content is the same. The
-/// Markdown and HTML JS recorded are checked once those packages are ported.
+/// each form gives what JS's gave, and the text content and the HTML are the
+/// same. The Markdown JS recorded is checked once that package is ported.
 pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let input = case.str("input")?;
     let parsed_input = json::parse(input).map_err(|e| format!("input: {e}"))?;
@@ -105,5 +105,16 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
         .read(|| get_root().get_text_content())
         .map_err(|e| format!("reading the text: {e}"))?;
     same("text", text.as_str(), case.str("text")?)?;
+
+    // `$generateHtmlFromNodes`, or null when it throws.
+    let html = editor
+        .read(|| lexical::html::generate_html_from_nodes(&editor, None))
+        .map_err(|e| format!("reading the HTML: {e}"))?
+        .ok();
+    let want_html = match case.field("html")? {
+        Value::Null => None,
+        _ => Some(case.str("html")?),
+    };
+    same("html", html.as_deref(), want_html)?;
     Ok(Outcome::Pass)
 }

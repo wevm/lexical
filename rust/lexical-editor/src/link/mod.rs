@@ -28,6 +28,8 @@ pub use auto_link_extension::{
 };
 
 pub use link_extension::{LinkConfig, register_link};
+#[cfg(feature = "html")]
+pub use link_node::link_dom::sanitize_url;
 pub use link_node::{
     AutoLinkAttributes, AutoLinkNode, LinkAttributes, LinkNode, TOGGLE_LINK_COMMAND,
     ToggleLinkPayload, create_auto_link_node, create_link_node, format_url, is_auto_link_node,

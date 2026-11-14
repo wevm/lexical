@@ -92,7 +92,29 @@ fn node_to_json(node: &NodeRef) -> Value {
 /// `html/import`: `$generateNodesFromDOM` makes the nodes jsdom's import
 /// made of the parsed HTML.
 pub fn check_import(case: &Value, _file: &Value) -> Result<Outcome, String> {
-    let editor = create_editor(CreateEditorArgs::default());
+    import(case, create_editor(CreateEditorArgs::default()))
+}
+
+/// `html/import-nodes`: as `html/import`, with the node packages'
+/// importers (the nodes of `property/documents` and `HorizontalRuleNode`).
+pub fn check_import_nodes(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    let editor = create_editor(CreateEditorArgs {
+        nodes: [
+            lexical::rich_text::rich_text_nodes(),
+            lexical::list::list_nodes(),
+            lexical::link::link_nodes(),
+            lexical::code::code_nodes(),
+            lexical::overflow::overflow_nodes(),
+            lexical::hashtag::hashtag_nodes(),
+            lexical::extension::extension_nodes(),
+        ]
+        .concat(),
+        ..Default::default()
+    });
+    import(case, editor)
+}
+
+fn import(case: &Value, editor: lexical::Editor) -> Result<Outcome, String> {
     let dom = parse_from_string(case.str("html")?);
     let nodes = Rc::new(RefCell::new(String::new()));
     let (out, update_editor) = (nodes.clone(), editor.clone());

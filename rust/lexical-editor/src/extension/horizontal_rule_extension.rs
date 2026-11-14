@@ -27,6 +27,42 @@ impl LexicalNode for HorizontalRuleNode {
     fn get_type(&self) -> &'static str {
         "horizontalrule"
     }
+    /// `HorizontalRuleNode.createDOM(config)`: an `<hr>` with the theme's
+    /// `hr` class names.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, crate::LexicalError> {
+        let element = crate::lexical_dom::get_document().create_element("hr");
+        crate::lexical_dom::add_theme_class_names(&element, &config.theme, "hr");
+        Ok(element)
+    }
+    /// `HorizontalRuleNode.exportDOM()`: a bare `<hr>`.
+    #[cfg(feature = "html")]
+    fn export_dom(
+        &self,
+        _this: &NodeRef,
+        _editor: &crate::Editor,
+    ) -> Result<crate::lexical_dom::DomExportOutput, crate::LexicalError> {
+        Ok(crate::lexical_dom::DomExportOutput::element(
+            crate::lexical_dom::get_document().create_element("hr"),
+        ))
+    }
+    /// `HorizontalRuleNode`'s `importDOM`: `<hr>`.
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        Some(vec![(
+            "hr".to_owned(),
+            crate::lexical_dom::importer(0, |_| {
+                Ok(Some(crate::lexical_dom::DomConversionOutput::node(Some(
+                    create_horizontal_rule_node(),
+                ))))
+            }),
+        )])
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }

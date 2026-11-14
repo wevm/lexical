@@ -300,6 +300,19 @@ impl LexicalNode for LinkNode {
     fn get_type(&self) -> &'static str {
         "link"
     }
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        Ok(link_dom::create_dom(self, config))
+    }
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        Some(link_dom::import_dom())
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }
@@ -377,6 +390,20 @@ impl LexicalNode for LinkNode {
 impl LexicalNode for AutoLinkNode {
     fn get_type(&self) -> &'static str {
         "autolink"
+    }
+    /// `AutoLinkNode.createDOM(config)`: a `<span>` once unlinked, else
+    /// `LinkNode`'s `<a>`.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        if self.is_unlinked {
+            return Ok(crate::lexical_dom::get_document().create_element("span"));
+        }
+        Ok(link_dom::create_dom(&self.link, config))
     }
     fn base(&self) -> &NodeBase {
         &self.link.base
@@ -1034,5 +1061,194 @@ mod tests {
         ] {
             assert_eq!(format_url(url), formatted, "{url:?}");
         }
+    }
+}
+
+// The DOM side of `LinkNode` and `AutoLinkNode` (the `html` feature).
+
+#[cfg(feature = "html")]
+pub(super) mod link_dom {
+    use super::{LinkNode, create_link_node, format_url, is_js_whitespace};
+    use crate::dom::DomNode;
+    use crate::lexical_dom::{
+        DomConversionMap, DomConversionOutput, add_theme_class_names, get_document, importer,
+    };
+    use crate::{EditorConfig, LexicalError};
+
+    /// `SUPPORTED_URL_PROTOCOLS`.
+    const SUPPORTED_URL_PROTOCOLS: [&str; 5] = ["http:", "https:", "mailto:", "sms:", "tel:"];
+
+    /// The scheme `/^([a-z][a-z0-9+.-]*):/i` matches at the start.
+    fn leading_scheme(url: &str) -> Option<&str> {
+        let end = url.find(':')?;
+        let scheme = &url[..end];
+        let mut chars = scheme.chars();
+        (chars.next()?.is_ascii_alphabetic()
+            && chars.all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '.' | '-')))
+        .then_some(scheme)
+    }
+
+    /// The `protocol` of `new URL(url)`, or `None` where it throws. Like
+    /// Swift's (`swift/Sources/LexicalLink/LinkNode.swift`), this follows
+    /// the WHATWG URL parser as far as an absolute URL's scheme and host
+    /// decide whether it parses, without IDNA or IPv4 parsing.
+    fn whatwg_url_protocol(url: &str) -> Option<String> {
+        let trimmed = url.trim_matches(|c: char| c <= ' ');
+        let input: String = trimmed
+            .chars()
+            .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+            .collect();
+        let scheme = leading_scheme(&input)?.to_ascii_lowercase();
+        let is_special = ["http", "https", "ws", "wss", "ftp", "file"].contains(&scheme.as_str());
+        let mut rest = &input[scheme.len() + 1..];
+        if is_special {
+            if scheme == "file" {
+                return Some("file:".to_owned());
+            }
+            rest = rest.trim_start_matches(['/', '\\']);
+        } else if let Some(r) = rest.strip_prefix("//") {
+            rest = r;
+        } else {
+            return Some(format!("{scheme}:"));
+        }
+        let authority_end = rest
+            .find(|c| matches!(c, '/' | '?' | '#') || (is_special && c == '\\'))
+            .unwrap_or(rest.len());
+        let mut authority = &rest[..authority_end];
+        if let Some(at) = authority.rfind('@') {
+            authority = &authority[at + 1..];
+        }
+        let mut host = authority;
+        let mut port = None;
+        if host.starts_with('[') {
+            let close = host.find(']')?;
+            let after = &host[close + 1..];
+            if let Some(p) = after.strip_prefix(':') {
+                port = Some(p);
+            } else if !after.is_empty() {
+                return None;
+            }
+            host = &host[..=close];
+        } else if let Some(colon) = host.find(':') {
+            port = Some(&host[colon + 1..]);
+            host = &host[..colon];
+        }
+        if let Some(port) = port.filter(|p| !p.is_empty())
+            && (!port.bytes().all(|b| b.is_ascii_digit())
+                || port.trim_start_matches('0').len() > 5
+                || port.trim_start_matches('0').parse::<u32>().unwrap_or(0) > 65535)
+        {
+            return None;
+        }
+        if host.is_empty() {
+            return if is_special || port.is_some() {
+                None
+            } else {
+                Some(format!("{scheme}:"))
+            };
+        }
+        if !host.starts_with('[') {
+            let forbidden = |c: char| {
+                matches!(
+                    c,
+                    '\0' | '\t'
+                        | '\n'
+                        | '\r'
+                        | ' '
+                        | '#'
+                        | '/'
+                        | ':'
+                        | '<'
+                        | '>'
+                        | '?'
+                        | '@'
+                        | '['
+                        | '\\'
+                        | ']'
+                        | '^'
+                        | '|'
+                ) || (is_special && (c <= '\u{1f}' || c == '%' || c == '\u{7f}'))
+            };
+            if host.chars().any(forbidden) {
+                return None;
+            }
+        }
+        Some(format!("{scheme}:"))
+    }
+
+    /// `LinkNode.sanitizeUrl(url)`: `about:blank` for a URL whose scheme
+    /// isn't supported, else the URL with `formatUrl`'s protocol.
+    pub fn sanitize_url(url: &str) -> String {
+        let raw_url = url;
+        let url = format_url(url);
+        match whatwg_url_protocol(&format_url(&url)) {
+            Some(protocol) => {
+                if !SUPPORTED_URL_PROTOCOLS.contains(&protocol.as_str()) {
+                    return "about:blank".to_owned();
+                }
+            }
+            None => {
+                // `new URL()` threw: an explicit scheme in the input, once
+                // C0 controls, DEL and whitespace are dropped, that isn't
+                // supported is neutralized.
+                let normalized: String = raw_url
+                    .chars()
+                    .filter(|&c| !(c <= '\u{1f}' || c == '\u{7f}' || is_js_whitespace(c)))
+                    .collect();
+                if let Some(scheme) = leading_scheme(&normalized) {
+                    let protocol = format!("{}:", scheme.to_ascii_lowercase());
+                    if !SUPPORTED_URL_PROTOCOLS.contains(&protocol.as_str()) {
+                        return "about:blank".to_owned();
+                    }
+                }
+            }
+        }
+        url
+    }
+
+    /// `LinkNode.createDOM(config)`: an `<a>` with the sanitized URL, the
+    /// target, rel and title it has (`updateLinkDOM(null, ...)`), and the
+    /// theme's `link` class names.
+    pub(crate) fn create_dom(link: &LinkNode, config: &EditorConfig) -> DomNode {
+        let element = get_document().create_element("a");
+        element.set_attribute("href", &sanitize_url(&link.url));
+        for (attr, value) in [
+            ("target", &link.target),
+            ("rel", &link.rel),
+            ("title", &link.title),
+        ] {
+            match value.as_deref().filter(|v| !v.is_empty()) {
+                Some(value) => element.set_attribute(attr, value),
+                None => element.remove_attribute(attr),
+            }
+        }
+        add_theme_class_names(&element, &config.theme, "link");
+        element
+    }
+
+    /// `LinkNode`'s `importDOM`: `<a>`.
+    pub(crate) fn import_dom() -> DomConversionMap {
+        vec![("a".to_owned(), importer(1, convert_anchor_element))]
+    }
+
+    /// `$convertAnchorElement(domNode)`: a link for an `<a>` with content.
+    fn convert_anchor_element(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        let mut node = None;
+        if dom_node.is_element()
+            && dom_node.local_name() == "a"
+            && (!dom_node.text_content().is_empty() || !dom_node.children().is_empty())
+        {
+            node = Some(create_link_node(
+                &dom_node.get_attribute("href").unwrap_or_default(),
+                &super::LinkAttributes {
+                    rel: Some(dom_node.get_attribute("rel")),
+                    target: Some(dom_node.get_attribute("target")),
+                    title: Some(dom_node.get_attribute("title")),
+                },
+            ));
+        }
+        Ok(Some(DomConversionOutput::node(node)))
     }
 }

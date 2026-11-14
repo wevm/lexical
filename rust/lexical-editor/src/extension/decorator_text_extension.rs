@@ -75,6 +75,16 @@ impl LexicalNode for DecoratorTextNode {
     fn get_type(&self) -> &'static str {
         "decorator-text"
     }
+    /// `DecoratorTextNode.createDOM()`: a `<span>`.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        _config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        Ok(crate::lexical_dom::get_document().create_element("span"))
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }
@@ -113,4 +123,84 @@ impl LexicalNode for DecoratorTextNode {
         }
     }
     fn update_from_json(&mut self, _json: &Object) {}
+}
+
+/// `applyFormatFromStyle(lexicalNode, style, shouldApply)` (the `html`
+/// feature): gives the decorator text node the formats a Google Docs style
+/// implies (bold, strikethrough, italic, underline, subscript,
+/// superscript), and `should_apply`, as `TextNode`'s import does.
+#[cfg(feature = "html")]
+pub fn apply_format_from_style(
+    lexical_node: &NodeRef,
+    style: &crate::dom::CssStyle,
+    should_apply: Option<&str>,
+) -> Result<(), LexicalError> {
+    let font_weight = style.get_property_value("font-weight");
+    let text_decoration = style.get_property_value("text-decoration");
+    let text_decoration: Vec<&str> = text_decoration.split(' ').collect();
+    let vertical_align = style.get_property_value("vertical-align");
+    let mut formats = Vec::new();
+    if font_weight == "700" || font_weight == "bold" {
+        formats.push("bold");
+    }
+    if text_decoration.contains(&"line-through") {
+        formats.push("strikethrough");
+    }
+    if style.get_property_value("font-style") == "italic" {
+        formats.push("italic");
+    }
+    if text_decoration.contains(&"underline") {
+        formats.push("underline");
+    }
+    if vertical_align == "sub" {
+        formats.push("subscript");
+    }
+    if vertical_align == "super" {
+        formats.push("superscript");
+    }
+    formats.extend(should_apply);
+    for format in formats {
+        if !DecoratorTextNode::has_format(lexical_node, format)? {
+            DecoratorTextNode::toggle_format(lexical_node, format)?;
+        }
+    }
+    Ok(())
+}
+
+/// `DEFAULT_TAG_NAME_TO_FORMAT`.
+#[cfg(feature = "html")]
+pub const DEFAULT_TAG_NAME_TO_FORMAT: &[(&str, &str)] = &[
+    ("b", "bold"),
+    ("code", "code"),
+    ("em", "italic"),
+    ("i", "italic"),
+    ("mark", "highlight"),
+    ("s", "strikethrough"),
+    ("strong", "bold"),
+    ("sub", "subscript"),
+    ("sup", "superscript"),
+    ("u", "underline"),
+];
+
+/// `applyFormatToDom(lexicalNode, domNode, tagNameToFormat)` (the `html`
+/// feature): `dom_node` inside an element of each tag whose format the
+/// node has, in the table's order.
+#[cfg(feature = "html")]
+pub fn apply_format_to_dom(
+    lexical_node: &NodeRef,
+    dom_node: &crate::dom::DomNode,
+    tag_name_to_format: &[(&str, &str)],
+) -> Result<crate::dom::DomNode, LexicalError> {
+    let mut rval = dom_node.clone();
+    for (tag, format) in tag_name_to_format {
+        if DecoratorTextNode::has_format(lexical_node, format)? {
+            let el = rval
+                .owner_document()
+                .unwrap_or_else(crate::lexical_dom::get_document)
+                .create_element(tag);
+            el.append_child(&rval);
+            rval = el;
+        }
+    }
+    Ok(rval)
 }

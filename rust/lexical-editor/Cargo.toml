@@ -28,21 +28,22 @@ rich-text = ["selection", "utils"]
 # @lexical/plain-text: registerPlainText's model command handlers.
 plain-text = []
 # @lexical/list: ListNode, ListItemNode, registerList and the model parts of
-# registerCheckList. Upstream it also depends on @lexical/extension and
-# @lexical/html, for ListExtension and the DOM import, which aren't ported.
+# registerCheckList, with the DOM parts when `html` is on too. Upstream it also
+# depends on @lexical/extension, for ListExtension, which isn't ported.
 list = ["utils"]
-# @lexical/link: LinkNode, AutoLinkNode, $toggleLink and registerLink. Upstream
-# it also depends on @lexical/extension and @lexical/html, for LinkExtension
-# and the DOM import, which aren't ported.
+# @lexical/link: LinkNode, AutoLinkNode, $toggleLink and registerLink, with the
+# DOM parts when `html` is on too. Upstream it also depends on
+# @lexical/extension, for LinkExtension, which isn't ported.
 link = ["utils"]
 # @lexical/link's registerAutoLink and its matchers (LexicalAutoLinkExtension.ts),
 # whose regular expressions need the `regex` crate: the one feature with a
 # third-party dependency (rust/DESIGN.md, "Architecture").
 autolink = ["link", "dep:regex"]
 # @lexical/code-core: CodeNode, CodeHighlightNode, FlatStructureUtils and the
-# model parts of CodeExtension and registerCodeIndentation. Upstream it also
-# depends on @lexical/extension, @lexical/html and @lexical/utils, for the
-# extensions, the DOM import and the arrow-key handlers, which aren't ported.
+# model parts of CodeExtension and registerCodeIndentation, with the DOM parts
+# when `html` is on too. Upstream it also depends on @lexical/extension and
+# @lexical/utils, for the extensions and the arrow-key handlers, which aren't
+# ported.
 code = []
 # @lexical/overflow: OverflowNode.
 overflow = []

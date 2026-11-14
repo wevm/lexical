@@ -17,6 +17,10 @@
 mod decorator_text_extension;
 mod horizontal_rule_extension;
 
+#[cfg(feature = "html")]
+pub use decorator_text_extension::{
+    DEFAULT_TAG_NAME_TO_FORMAT, apply_format_from_style, apply_format_to_dom,
+};
 pub use decorator_text_extension::{
     DecoratorTextNode, create_decorator_text_node, decorator_text_format_state,
     is_decorator_text_node,

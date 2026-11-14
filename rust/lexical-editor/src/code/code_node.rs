@@ -218,6 +218,32 @@ impl LexicalNode for CodeNode {
     fn get_type(&self) -> &'static str {
         "code"
     }
+    /// `CodeNode.createDOM(config)`: a `<code>`.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        Ok(code_dom::code_element(self, "code", &config.theme))
+    }
+    /// `CodeNode.exportDOM(editor)`: a `<pre>`, with what `createDOM`
+    /// writes and without the indent and direction.
+    #[cfg(feature = "html")]
+    fn export_dom(
+        &self,
+        _this: &NodeRef,
+        editor: &crate::Editor,
+    ) -> Result<crate::lexical_dom::DomExportOutput, LexicalError> {
+        Ok(crate::lexical_dom::DomExportOutput::element(
+            code_dom::code_element(self, "pre", &editor.config().theme),
+        ))
+    }
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        Some(code_dom::import_dom())
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }
@@ -303,4 +329,159 @@ pub fn exit_code_node_on_enter(selection: &SelectionRef) -> Result<Option<NodeRe
         }
     }
     Ok(None)
+}
+
+// The DOM side of `CodeNode` (the `html` feature).
+
+#[cfg(feature = "html")]
+pub(super) mod code_dom {
+    use super::{CodeNode, create_code_node};
+    use crate::LexicalError;
+    use crate::dom::DomNode;
+    use crate::json::Object;
+    use crate::lexical_dom::{
+        DomConversion, DomConversionMap, DomConversionOutput, add_theme_class_names, closest,
+        get_document, importer,
+    };
+    use crate::set_dom_style::set_dom_style_from_css;
+    use std::rc::Rc;
+
+    /// `LANGUAGE_DATA_ATTRIBUTE`.
+    const LANGUAGE_DATA_ATTRIBUTE: &str = "data-language";
+    /// `HIGHLIGHT_LANGUAGE_DATA_ATTRIBUTE`.
+    const HIGHLIGHT_LANGUAGE_DATA_ATTRIBUTE: &str = "data-highlight-language";
+    /// `THEME_DATA_ATTRIBUTE`.
+    const THEME_DATA_ATTRIBUTE: &str = "data-theme";
+
+    /// What `createDOM` (a `<code>`) and `exportDOM` (a `<pre>`) both
+    /// write: the theme's `code` class names, `spellcheck`, the language
+    /// and theme attributes, and the style.
+    pub(crate) fn code_element(code: &CodeNode, tag: &str, theme: &Object) -> DomNode {
+        let element = get_document().create_element(tag);
+        add_theme_class_names(&element, theme, "code");
+        element.set_attribute("spellcheck", "false");
+        if let Some(language) = code.language() {
+            element.set_attribute(LANGUAGE_DATA_ATTRIBUTE, language);
+            if code.is_syntax_highlight_supported() {
+                element.set_attribute(HIGHLIGHT_LANGUAGE_DATA_ATTRIBUTE, language);
+            }
+        }
+        if let Some(theme) = code.theme() {
+            element.set_attribute(THEME_DATA_ATTRIBUTE, theme);
+        }
+        let style = code.element.get_style();
+        if !style.is_empty() {
+            set_dom_style_from_css(&element.style(), style, "");
+        }
+        element
+    }
+
+    /// `hasChildDOMNodeTag(node, tagName)`.
+    fn has_child_dom_node_tag(node: &DomNode, tag_name: &str) -> bool {
+        node.child_nodes().iter().any(|child| {
+            (child.is_element() && child.tag_name() == tag_name)
+                || has_child_dom_node_tag(child, tag_name)
+        })
+    }
+
+    /// `CodeNode`'s `importDOM`: `<pre>`, a multi-line `<code>`, a `<div>`
+    /// in a monospace font, and GitHub's code tables.
+    pub(crate) fn import_dom() -> DomConversionMap {
+        let noop = || -> crate::lexical_dom::DomConversionFn {
+            Rc::new(|_| Ok(Some(DomConversionOutput::node(None))))
+        };
+        vec![
+            (
+                "code".to_owned(),
+                Rc::new(|node: &DomNode| {
+                    let is_multi_line =
+                        node.text_content().contains('\n') || has_child_dom_node_tag(node, "BR");
+                    is_multi_line.then(|| DomConversion {
+                        conversion: Rc::new(convert_pre_element),
+                        priority: 1,
+                    })
+                }),
+            ),
+            ("div".to_owned(), importer(1, convert_div_element)),
+            ("pre".to_owned(), importer(0, convert_pre_element)),
+            (
+                "table".to_owned(),
+                Rc::new(|node: &DomNode| {
+                    is_git_hub_code_table(node).then(|| DomConversion {
+                        conversion: Rc::new(|_| {
+                            Ok(Some(DomConversionOutput::node(Some(create_code_node(
+                                None, None,
+                            )))))
+                        }),
+                        priority: 3,
+                    })
+                }),
+            ),
+            (
+                "td".to_owned(),
+                Rc::new(move |node: &DomNode| {
+                    let table = closest(node, "table");
+                    (is_git_hub_code_cell(node)
+                        || table.as_ref().is_some_and(is_git_hub_code_table))
+                    .then(|| DomConversion {
+                        conversion: noop(),
+                        priority: 3,
+                    })
+                }),
+            ),
+            (
+                "tr".to_owned(),
+                Rc::new(move |node: &DomNode| {
+                    closest(node, "table")
+                        .as_ref()
+                        .is_some_and(is_git_hub_code_table)
+                        .then(|| DomConversion {
+                            conversion: noop(),
+                            priority: 3,
+                        })
+                }),
+            ),
+        ]
+    }
+
+    /// `$convertPreElement(domNode)`: a code block with the element's
+    /// language and theme.
+    fn convert_pre_element(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        let language = dom_node.get_attribute(LANGUAGE_DATA_ATTRIBUTE);
+        let theme = dom_node.get_attribute(THEME_DATA_ATTRIBUTE);
+        Ok(Some(DomConversionOutput::node(Some(create_code_node(
+            language.as_deref(),
+            theme.as_deref(),
+        )))))
+    }
+
+    /// `$convertDivElement(domNode)`: a code block for a `<div>` in a
+    /// monospace font.
+    fn convert_div_element(
+        dom_node: &DomNode,
+    ) -> Result<Option<DomConversionOutput>, LexicalError> {
+        let is_code = is_code_element(dom_node);
+        Ok(Some(DomConversionOutput::node(
+            is_code.then(|| create_code_node(None, None)),
+        )))
+    }
+
+    /// `isCodeElement(div)`: `font-family` names `monospace`.
+    fn is_code_element(div: &DomNode) -> bool {
+        div.style()
+            .get_property_value("font-family")
+            .contains("monospace")
+    }
+
+    /// `isGitHubCodeCell(cell)`.
+    fn is_git_hub_code_cell(cell: &DomNode) -> bool {
+        cell.class_list().contains("js-file-line")
+    }
+
+    /// `isGitHubCodeTable(table)`.
+    fn is_git_hub_code_table(table: &DomNode) -> bool {
+        table.class_list().contains("js-file-line-container")
+    }
 }

@@ -48,6 +48,7 @@ updated with each milestone.
 | `$setBlocksType` (the `selection` feature) | `packages/lexical-selection/src/range-selection.ts` (`$setBlocksType`, with its default `$afterCreateElement`, `$copyBlockFormatIndent`, and `$isPointAtBlockEdge`), through `LexicalNode.replace` and `ListItemNode.replace` | `selection` | `scripts/set-blocks-type`, the block-decorator case of `scripts/decorator` |
 | The DOM (the `html` feature) | what a browser or jsdom gives JS: `Node` (`nodeType`, `nodeName`, `parentNode`, `childNodes`, siblings, `textContent`, `insertBefore`, `appendChild`, `append`, `prepend`, `removeChild`, `replaceChild`, `remove`, `replaceWith`, `replaceChildren`, `contains`, `cloneNode`), `Element` (attributes in order, `id`, `dir`, `className`, `classList`, `style`, `innerHTML`, `outerHTML`, `getElementsByTagName`), `Text`, `Comment`, `DocumentFragment`, `Document` (`createElement` and the other factories, `head`, `body`), `DOMTokenList`, `CSSStyleDeclaration` (`setProperty`, `getPropertyValue`, `getPropertyPriority`, `removeProperty`, `cssText`, `item`) with jsdom's normalization, `DOMParser.parseFromString`, the HTML fragment serialization algorithm; ported from the Swift port's `DOM/` | `dom` | `html/parse`, `html/entities`, `css/properties`, `css/values` |
 | Core DOM hooks (the `html` feature) | `LexicalNode.createDOM`, `exportDOM` and the static `importDOM` as node hooks (`create_dom`, `export_dom`, `import_dom`), `ElementNode.exportDOM` (indent as `padding-inline-start` and `data-lexical-indent`, `dir`); `DOMExportOutput`, `DOMConversionOutput`, `DOMChildConversion`, `DOMConversion`, `DOMConversionFn`, `DOMConversionMap`; `createEditor`'s `theme` and `html` (`export` overrides, `import` conversions), `editor._config`, `initializeConversionCache`; `DEFAULT_EDITOR_DOM_CONFIG` (`$createDOM`, `$exportDOM`, `$extractWithChild`, `$shouldExclude`, `$shouldInclude`); `LexicalNode.isSelected`; `TextNode` (`createDOM` with `getElementOuterTag`, `getElementInnerTag`, `$createTextInnerDOM` and `setTextThemeClassNames`; `exportDOM`; `importDOM` with `$convertTextDOMNode`, `findParentPreDOMNode`, `findTextInLine`, `convertSpanElement`, `convertBringAttentionToElement`, `convertTextFormatElement`, `applyTextFormatFromStyle`), `TabNode.createDOM`, `LineBreakNode` (`createDOM`, `importDOM`), `ParagraphNode` (`createDOM`, `exportDOM`, `importDOM` with `$convertParagraphElement`, `extractWithChild`), `ArtificialNode__DO_NOT_USE`; from `LexicalUtils.ts` `isInlineDomNode`, `isBlockDomNode`, `getCachedClassNameArray`, `removeEmptyDOMAttribute`, `setNodeIndentFromDOM`, `$setDirectionFromDOM`, `$setFormatFromDOM`, `isOnlyChildInBlockNode`, `isLastChildInBlockNode`; `utils/classNames.ts` | `lexical_dom`, `node`, `nodes::*`, `editor` | `html/export`, `html/import` |
+| The node packages' DOM parts (the `html` feature with each package's) | `createDOM`, `exportDOM` and `importDOM` of `HeadingNode` (with the Google Docs title), `QuoteNode` (`$convertHeadingElement`, `$convertBlockquoteElement`), `ListNode` (`$setListThemeClassNames`, `$convertListNode`, `$normalizeChildren`, `isDomChecklist`, `HTMLOListElement.start`), `ListItemNode` (`updateListItemDOM` with `updateListItemChecked`, `$setListItemThemeClassNames` and `applyMarkerStyles`, the nested item's `after`, `$convertListItemElement`, `$convertCheckboxInput`, `setFormatFromChildren`), `LinkNode` (`updateLinkDOM` for a new element, `sanitizeUrl`, `$convertAnchorElement`), `AutoLinkNode`, `CodeNode` (`$convertPreElement`, `$convertDivElement`, the GitHub table converters), `CodeHighlightNode`, `OverflowNode`, `HashtagNode`, `HorizontalRuleNode` and `DecoratorTextNode`, with `applyFormatFromStyle` and `applyFormatToDom` | `rich_text`, `list`, `link`, `code`, `overflow`, `hashtag`, `extension` | the HTML of `property/documents`, `html/import-nodes` |
 | `@lexical/html` (the `html` feature) | `packages/lexical-html/src/index.ts`: `$generateHtmlFromNodes`, `$generateDOMFromNodes`, `$generateDOMFromRoot`, `$appendNodeToHTML` (`$appendNodesToHTML` with `$appendTerminatingLineBreak`, and `@lexical/selection`'s `$sliceSelectedTextNodeContent` for a selection), `$generateNodesFromDOM` (`IGNORE_TAGS`, `getConversionFunction`, `$createNodesFromDOM`, `wrapContinuousInlines`, `$unwrapArtificialNodes`, `isDomNodeBetweenTwoInlineNodes`) | `html` | `html/export`, `html/import` |
 | Inline CSS text | `utils/setDOMStyle.ts` (`getStyleObjectFromCSS`, with JS's property order; with the `html` feature `setDOMStyleObject` and `setDOMStyleFromCSS`) | `set_dom_style` | through `css/values`; unit tests against JS's output |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
@@ -100,9 +101,9 @@ touches:
   `$selectAll(selection)`'s scoping isn't ported, nor
   `insertNodes`' CASE 3a (blocks with no block ancestor, which needs
   `$insertNodeToNearestRootAtCaret`).
-- `@lexical/list`'s DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
-  `importDOM`, the theme class names, `ListImportExtension`/`ListImportRules`
-  and `WordListImportExtension`), which come with `html`; `ListExtension`
+- Of `@lexical/list`'s DOM parts, `updateDOM` (the reconciler's),
+  `ListImportExtension`/`ListImportRules` and `WordListImportExtension`
+  (the import-rule pipeline); `ListExtension`
   and `CheckListExtension`, which need the extension API (`ListExtension`'s
   defaults are what `register_list` with `RegisterListOptions::default()`
   does); `registerListStrictIndentTransform` (`hasStrictIndent`, off by
@@ -119,11 +120,12 @@ touches:
   at the start of a document's first item, with nothing before it, needs
   `Selection.modify` in headless JS, which throws, as `scripts/list`
   records.
-- `@lexical/link`'s DOM parts (`createDOM`, `updateDOM`, `updateLinkDOM`,
-  `exportDOM`, `importDOM`, `$convertAnchorElement`, `LinkImportRules` and
-  `LinkImportExtension`), which come with `html`, and `sanitizeUrl`, which
-  only `updateLinkDOM` calls and which needs the WHATWG URL parser
-  (`new URL`); `LinkExtension`, which needs the extension API
+- Of `@lexical/link`'s DOM parts, `updateDOM`, `LinkImportRules` and
+  `LinkImportExtension`. `sanitizeUrl` asks `new URL` whether a URL
+  parses and for its protocol; as in Swift, that is a model of the WHATWG
+  parser's scheme and host rules without IDNA or IPv4 parsing, so a host
+  only those reject (`https://1.2.3.4.5`) is taken as parsing.
+  `LinkExtension`, which needs the extension API
   (`register_link` with `LinkConfig::default()` is what its defaults do,
   and the config is a value where JS reads signals); `registerLink`'s
   `PASTE_COMMAND` handler (registered only with `validateUrl`), which reads
@@ -143,10 +145,9 @@ touches:
   the text outside the parent either way, and
   `$resolveSelectionPointOnBoundary`, which also reads them, runs only
   after `Selection.modify`.
-- `@lexical/code-core`'s DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
-  `importDOM`, `$convertPreElement` and the other converters,
-  `CodeImportRules`/`CodeImportExtension` and the VS Code paste overlay),
-  which come with `html`, and `registerCodeGutter`, which writes to the
+- Of `@lexical/code-core`'s DOM parts, `updateDOM`,
+  `CodeImportRules`/`CodeImportExtension` and the VS Code paste overlay,
+  and `registerCodeGutter`, which writes to the
   DOM; `CodeExtension` and `CodeIndentExtension`, which need the extension
   API (`register_code` and `register_code_indentation(editor, None)` are
   what their defaults register); `CodeExtension`'s `KEY_ENTER_COMMAND`
@@ -165,11 +166,10 @@ touches:
   highlighter. Of the 25 `property/documents` cases with code nodes, 4
   also hold hashtag or overflow nodes; they waited on those packages,
   which are now ported.
-- `@lexical/overflow`'s `createDOM` and `updateDOM`, which come with
-  `html`, and `OverflowExtension`, which needs the extension API
-  (`overflow_nodes()` is its `nodes`). `excludeFromCopy` is a node hook
-  that nothing calls yet: its callers are `@lexical/clipboard`'s and
-  `@lexical/html`'s copies. `@lexical/react`'s character limit
+- `@lexical/overflow`'s `updateDOM`, and `OverflowExtension`, which needs
+  the extension API (`overflow_nodes()` is its `nodes`).
+  `excludeFromCopy` is a node hook that `@lexical/html`'s export calls;
+  `@lexical/clipboard`'s copy isn't ported. `@lexical/react`'s character limit
   (`useCharacterLimit.ts`: `$wrapOverflowedNodes`, `findOffset`,
   `$wrapNode`, `$unwrapNode`, `$mergePrevious`), which is what makes
   overflow nodes, isn't ported: no vector runs it (every vector's overflow
@@ -180,8 +180,7 @@ touches:
   and reads the text there, as JS does: a parsed state is all dirty, so
   the transforms run, and `OverflowNode`'s removes the empty ones a random
   document holds.
-- `@lexical/hashtag`'s `createDOM`, which comes with `html`, and
-  `HashtagExtension`, which needs the extension API (`hashtag_nodes()` is
+- `HashtagExtension`, which needs the extension API (`hashtag_nodes()` is
   its `nodes` and `register_lexical_hashtag(editor,
   HashtagConfig::default())` its `register`). Of `@lexical/text`, only
   `registerLexicalTextEntity`: `$canShowPlaceholder`,
@@ -221,9 +220,8 @@ touches:
   `MOVE_TO_END`, copy, cut, paste, drop and drag), which wait for an input
   layer, with its `escapeFormatTriggers` and `shouldHandlePasteAsFiles`;
   `CONTROLLED_TEXT_INSERTION_COMMAND`'s `beforeinput` form; and
-  `SELECT_ALL_COMMAND`'s scoping to a slot (slots aren't ported). The DOM
-  parts of `@lexical/rich-text` (`createDOM`, `exportDOM`, `importDOM`)
-  come with `html`.
+  `SELECT_ALL_COMMAND`'s scoping to a slot (slots aren't ported), and
+  `updateDOM`.
 - `registerPlainText`'s handlers of DOM events (the arrow keys, Backspace,
   Delete, Enter, copy, cut, paste, drop and drag) and `PlainTextExtension`
   with its dependencies (`DragonExtension`,

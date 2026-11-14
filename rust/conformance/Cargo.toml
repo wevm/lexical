@@ -1,0 +1,15 @@
+[package]
+name = "lexical-conformance"
+version.workspace = true
+description = "Replays the conformance vectors that packages/lexical-conformance records from the JS packages against the Rust port."
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+lexical.workspace = true
+
+[lints]
+workspace = true

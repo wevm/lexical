@@ -1,0 +1,21 @@
+[package]
+name = "lexical-editor"
+version.workspace = true
+description = "A Rust port of Lexical's model and headless packages, at parity with the JS implementation."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["lexical", "editor", "rich-text"]
+categories = ["text-processing"]
+# Nothing is published until tmm settles the name (rust/DESIGN.md).
+publish = false
+
+# One feature per upstream package, added as each package is ported
+# (rust/DESIGN.md, "Packages and features"). The core (`lexical`) is always
+# built. The default build has no third-party dependencies.
+[features]
+
+[lints]
+workspace = true

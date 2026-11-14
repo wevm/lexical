@@ -320,6 +320,38 @@
       #expect(droppedFiles.map(\.data) == [Array("dragged".utf8)])
     }
 
+    /// A file dragged over the view is taken as a copy, as a contenteditable
+    /// takes a dropped file by default (`NSTextView` itself refuses one),
+    /// so the drop reaches `DROP_COMMAND`; a read-only editor refuses it.
+    @Test func acceptsADraggedFileWhileEditable() throws {
+      // Plain rich text: no decorator under the drag to take it.
+      let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 400, height: 300), styleMask: [.titled],
+        backing: .buffered, defer: false)
+      let view = LexicalNSTextView(
+        editor: try makeRichTextEditor(), frame: window.contentLayoutRect)
+      window.contentView = view
+      view.insertText("Hello", replacementRange: NSRange(location: NSNotFound, length: 0))
+      let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("lexical-drag-\(UUID().uuidString).png")
+      try Data([0x89, 0x50, 0x4E, 0x47]).write(to: url)
+      defer { try? FileManager.default.removeItem(at: url) }
+      let pasteboard = NSPasteboard(name: .init("lexical-test-\(UUID().uuidString)"))
+      defer { pasteboard.releaseGlobally() }
+      pasteboard.clearContents()
+      // Only the file's URL, as Finder drags it: no text that `NSTextView`
+      // would take.
+      let item = NSPasteboardItem()
+      item.setString(url.absoluteString, forType: .fileURL)
+      pasteboard.writeObjects([item])
+      let point = view.convert(NSPoint(x: 40, y: 10), to: nil)
+      let drag = Drag(from: nil, over: window, at: point, pasteboard)
+      #expect(view.draggingUpdated(drag) == .copy)
+      #expect(view.prepareForDragOperation(drag))
+      try view.editor.setEditable(false)
+      #expect(view.draggingUpdated(drag) == [])
+    }
+
     /// A line with an inline decorator taller than the line height, as an
     /// image is, in a paragraph or a list item: its text and the item's
     /// marker sit on the decorator's baseline, as an inline image's line's

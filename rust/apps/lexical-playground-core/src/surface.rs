@@ -26,6 +26,11 @@ pub struct DisplayRun {
     pub range: Range<usize>,
     pub format: u32,
     pub composing: bool,
+    /// Whether the run is a link's text.
+    pub link: bool,
+    /// The block the run is in (the one a newline ends), an index into
+    /// [`Document::blocks`](crate::Document::blocks).
+    pub block: usize,
 }
 
 pub struct Surface {
@@ -97,6 +102,8 @@ impl Surface {
                     range: offset + run.start..offset + run.end(),
                     format: run.format,
                     composing: false,
+                    link: run.link.is_some(),
+                    block: i,
                 });
             }
             offset += block.text.len();
@@ -105,6 +112,8 @@ impl Surface {
                     range: offset..offset + 1,
                     format: 0,
                     composing: false,
+                    link: false,
+                    block: i,
                 });
                 offset += 1;
             }
@@ -133,6 +142,8 @@ impl Surface {
                     range: c.replaced.start..c.replaced.start + c.text.len(),
                     format: run.format,
                     composing: true,
+                    link: false,
+                    block: run.block,
                 });
             }
             if after.start < after.end {
@@ -143,10 +154,13 @@ impl Surface {
             }
         }
         if !out.iter().any(|r| r.composing) {
+            let last = self.playground.document().blocks.len().saturating_sub(1);
             out.push(DisplayRun {
                 range: c.replaced.start..c.replaced.start + c.text.len(),
                 format: 0,
                 composing: true,
+                link: false,
+                block: last,
             });
         }
         out.retain(|r| r.range.start < r.range.end);
@@ -179,12 +193,19 @@ impl Surface {
     }
 
     fn push_selection(&mut self) {
+        let sel = self.shown_selection();
+        self.playground.set_selection(Some(sel));
+    }
+
+    /// The selection the surface shows, which the toolbar reads (with
+    /// [`Playground::format_at`] and the like): a click or an arrow key
+    /// moves it before Lexical hears of it at the next edit.
+    pub fn shown_selection(&self) -> Sel {
         let doc = self.playground.document();
-        let sel = Sel {
+        Sel {
             anchor: doc.pos_at(self.anchor),
             focus: doc.pos_at(self.focus),
-        };
-        self.playground.set_selection(Some(sel));
+        }
     }
 
     /// Moves the caret to `offset` (in the display text, which is the

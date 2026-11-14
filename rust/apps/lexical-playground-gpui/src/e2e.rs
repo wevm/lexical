@@ -217,6 +217,66 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
             }
         }
     );
+    // The block menu and Tab, on the paragraph typed above (lines 1 and 2,
+    // split by the line break).
+    let block_menu = |block_type: &'static str| {
+        let editor = editor.clone();
+        move |_: &mut Window, cx: &mut App| {
+            editor.update(cx, |e, cx| e.edit(cx, |p| p.set_block_type(block_type)))
+        }
+    };
+    let block_is = |want: &'static str, depth: usize| {
+        let editor = editor.clone();
+        move |cx: &mut AsyncApp| -> Step {
+            let (got, got_depth) = editor.read_with(cx, |e, _| {
+                let p = &e.surface.playground;
+                let depth = p.document().blocks[1].list.as_ref().map_or(0, |l| l.depth);
+                (p.document().blocks[1].block_type().to_owned(), depth)
+            });
+            if (got.as_str(), got_depth) == (want, depth) {
+                Ok(())
+            } else {
+                Err(format!(
+                    "the block is {got} at depth {got_depth}, not {want} at {depth}"
+                ))
+            }
+        }
+    };
+    step!(
+        "H1 from the block menu",
+        block_menu("h1"),
+        block_is("h1", 0)
+    );
+    step!(
+        "• List from the block menu",
+        block_menu("bullet"),
+        block_is("bullet", 0)
+    );
+    step!(
+        "↑ to the item's first line",
+        key(Box::new(Up)),
+        expect(2, "next")
+    );
+    step!(
+        "To the line's start",
+        key(Box::new(LineStart)),
+        expect(1, "Typed in GPUI, then plain 日本")
+    );
+    step!(
+        "Tab nests the item",
+        key(Box::new(InsertTab)),
+        block_is("bullet", 1)
+    );
+    step!(
+        "⇧Tab brings it back",
+        key(Box::new(Outdent)),
+        block_is("bullet", 0)
+    );
+    step!(
+        "• List again ends the list",
+        block_menu("bullet"),
+        block_is("paragraph", 0)
+    );
     step!(
         "The third paragraph is untouched",
         |_: &mut Window, _: &mut App| {},

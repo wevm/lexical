@@ -4,6 +4,26 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.0
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Minor Changes
+
+- **Breaking:** pasted and dropped files are no longer read into memory on the main thread. As a web `File` is a lazy `Blob`, a `DataTransferFile` now has a `size` and reads its contents only when a handler awaits `bytes()`, off the main thread, so a paste or drop of large files no longer blocks the view, even when no handler wants the files. `DataTransferFile.data` is gone, and the type is no longer `Equatable`.
+  
+  To migrate, read a file's contents with `try await file.bytes()` where you read `file.data`, as upstream's `mediaFileReader` awaits each `File`. A `DRAG_DROP_PASTE` handler that needs the bytes returns `true` and reads them in a `Task`. `DataTransferFile(name:type:data:)` still makes a file in memory, and `DataTransferFile(name:type:size:load:)` makes a lazy one. Compare files by `name` and `type` where you compared them with `==`.
+  
+  On macOS, a dropped or pasted file is read from its URL; an image on the pasteboard with no file behind it is read from the pasteboard and throws once the pasteboard has changed. On iOS, UIKit lets items load only during the paste or drop, so each file starts loading into a temporary file then, `bytes()` waits for it, and `size` is `nil`. iOS drops and pastes now also carry files that aren't images, such as a PDF from Files, which were lost before.
+- [breaking] The `@LexicalNode` and `@Field` macros move out of `Lexical` into a new, optional `LexicalMacros` product, so an app that doesn't use them no longer builds swift-syntax, and Xcode no longer asks to trust a macro (or needs `-skipMacroValidation`) for `Lexical`. A node can declare its `config()` without them, with a `NodeConfig` and a `SchemaField` per property, as JS's `$config` does; the README's Custom nodes section shows both forms. To keep using the macros, add `.product(name: "LexicalMacros", package: "lexical-swift")` to the target (in Xcode, the LexicalMacros package product) and `import LexicalMacros` next to `import Lexical` in each file that uses them.
+- `lexical-swift` requires Swift 6.4 (Xcode 27) again, as it did before 0.1.9. Xcode 27 runs on macOS Tahoe 26.6 or later, so an app that builds with Xcode 26.5 or 26.6 moves to Xcode 27, or stays on `lexical-swift` 0.1.10 with `.upToNextMinor(from: "0.1.10")`. It still accepts swift-syntax 603 as well as 604.
+- `LexicalEditor.configure { textView in ... }` sets up the text view (`LexicalUITextView` on iOS, `LexicalNSTextView` on macOS, named `LexicalEditor.TextView`) each time SwiftUI updates the editor, after the editor's own settings: the text container's inset and padding, exclusion paths, the accessibility label, the macOS insertion point color. It runs on every update, so it can read SwiftUI state and must set the same values each time; register commands and listeners on the editor instead. With `sizedToContent`, `LexicalEditor` now measures its content at the width SwiftUI proposes without resizing the text view it is measuring.
+- Themes take an app's own colors and change on a live view. `TextKitColor(uiColor:)` and `TextKitColor(nsColor:)` make a theme color from a `UIColor` or `NSColor`, keeping a dynamic color's light and dark variants (a high-contrast variant draws as its regular one), so `TextKitColor(uiColor: .label)` or a SwiftUI `Color` through `UIColor(_:)` follows the appearance. `LexicalUITextView` and `LexicalNSTextView` have a `theme` property that draws the text again when set to a different theme, as `LexicalEditor.theme(_:)` already did, which now sets it. To keep a theme's sizes fixed on iOS instead of scaling with Dynamic Type, pin the size category with `.dynamicTypeSize(.large)` on `LexicalEditor` or `traitOverrides.preferredContentSizeCategory = .large` on the view.
+
+### Patch Changes
+
+- `LexicalUITextView` and `LexicalNSTextView` follow `editor.setEditable(_:)`: they are editable only while the editor is, as `ContentEditable` sets `contentEditable`, and a read-only editor takes no typing, deleting, cutting, pasting, dropping or check box toggles, only clicks, copies and drags of its selection, as on the web. Before, `setEditable(false)` left the views editable and input still changed the document.
+
 ## 0.1.10
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

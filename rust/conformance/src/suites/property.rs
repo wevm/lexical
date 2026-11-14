@@ -34,6 +34,7 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
             lexical::list::list_nodes(),
             lexical::link::link_nodes(),
             lexical::code::code_nodes(),
+            lexical::overflow::overflow_nodes(),
         ]
         .concat(),
     });
@@ -92,9 +93,15 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
         )?;
     }
 
-    // JS sets the state on the editor first, which may normalize it (merging
-    // adjacent text) without changing its text.
-    let text = state.read(|| get_root().get_text_content());
+    // JS sets the state on the editor first and reads the text there. A
+    // parsed state is all dirty, so normalization (merging adjacent text)
+    // and transforms run on it: `OverflowNode`'s removes an empty one.
+    editor
+        .set_editor_state(&state, None)
+        .map_err(|e| format!("setting the state: {e}"))?;
+    let text = editor
+        .read(|| get_root().get_text_content())
+        .map_err(|e| format!("reading the text: {e}"))?;
     same("text", text.as_str(), case.str("text")?)?;
     Ok(Outcome::Pass)
 }

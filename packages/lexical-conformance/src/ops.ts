@@ -36,6 +36,7 @@ import {
   REMOVE_LIST_COMMAND,
   UPDATE_LIST_START_COMMAND,
 } from '@lexical/list';
+import {OverflowNode} from '@lexical/overflow';
 import {registerPlainText} from '@lexical/plain-text';
 import {HeadingNode, QuoteNode, registerRichText} from '@lexical/rich-text';
 import {
@@ -226,6 +227,11 @@ export type Script = {
    * `CodeExtension` and exits the block itself.
    */
   code?: boolean;
+  /**
+   * Register `@lexical/overflow`'s `OverflowNode`, as `OverflowExtension`
+   * does. It registers nothing else: its `$transform` comes with the class.
+   */
+  overflow?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -706,6 +712,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       ...(script.list ? [ListNode, ListItemNode] : []),
       ...(script.link ? [LinkNode, AutoLinkNode] : []),
       ...(script.code ? [CodeNode, CodeHighlightNode] : []),
+      ...(script.overflow ? [OverflowNode] : []),
     ],
     onError: e => {
       throw e;

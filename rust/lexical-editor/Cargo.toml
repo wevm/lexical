@@ -44,6 +44,8 @@ autolink = ["link", "dep:regex"]
 # depends on @lexical/extension, @lexical/html and @lexical/utils, for the
 # extensions, the DOM import and the arrow-key handlers, which aren't ported.
 code = []
+# @lexical/overflow: OverflowNode.
+overflow = []
 
 [dependencies]
 # Without `perf-literal`, which would add aho-corasick and memchr.

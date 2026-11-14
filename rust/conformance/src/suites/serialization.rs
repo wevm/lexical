@@ -13,6 +13,7 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
             lexical::list::list_nodes(),
             lexical::link::link_nodes(),
             lexical::code::code_nodes(),
+            lexical::overflow::overflow_nodes(),
         ]
         .concat(),
     });

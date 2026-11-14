@@ -5,6 +5,7 @@ import LexicalExtension
 import LexicalHistory
 import LexicalLink
 import LexicalList
+import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
 
@@ -534,7 +535,8 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   // `registerList` and `registerCheckList`, and `link: true` @lexical/link's
   // nodes and `registerLink` with its default config, and `code: true`
   // @lexical/code-core's nodes, `CodeExtension`'s TabNode transform and
-  // `registerCodeIndentation`, as ops.ts does.
+  // `registerCodeIndentation`, and `overflow: true` @lexical/overflow's
+  // `OverflowNode`, as ops.ts does.
   var nodes: [LexicalNodeConfig] =
     script["richText"]?.boolValue == true
     ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
@@ -546,6 +548,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   }
   if script["code"]?.boolValue == true {
     nodes += [.klass(CodeNode.self), .klass(CodeHighlightNode.self)]
+  }
+  if script["overflow"]?.boolValue == true {
+    nodes += [.klass(OverflowNode.self)]
   }
   let editor = try createEditor(
     CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))

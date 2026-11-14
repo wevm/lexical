@@ -229,6 +229,15 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         Ok(false)
     }
 
+    /// `ElementNode.excludeFromCopy(destination)`: whether copying (to
+    /// `"clone"` or `"html"`) leaves this element out and keeps its
+    /// children. `ElementNode` returns false. Nothing in the core calls it;
+    /// `@lexical/clipboard`'s and `@lexical/html`'s copies do.
+    fn exclude_from_copy(&self, destination: &str) -> bool {
+        let _ = destination;
+        false
+    }
+
     /// `TextNode.setFormat(format)` on the text node `this`: sets its
     /// `__format`, after `getWritable()`.
     fn set_format(&self, this: &NodeRef, format: f64) {
@@ -526,6 +535,11 @@ impl NodeRef {
     ) -> Result<bool, LexicalError> {
         self.get_latest()
             .extract_with_child(self, child, selection, destination)
+    }
+
+    /// `ElementNode.excludeFromCopy(destination)`.
+    pub fn exclude_from_copy(&self, destination: &str) -> bool {
+        self.get_latest().exclude_from_copy(destination)
     }
 
     /// `isParentOf(targetNode)`: whether this node is an ancestor of

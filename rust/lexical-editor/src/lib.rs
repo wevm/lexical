@@ -69,6 +69,8 @@ mod node;
 pub mod nodes;
 mod normalization;
 mod ordered;
+#[cfg(feature = "overflow")]
+pub mod overflow;
 #[cfg(feature = "plain-text")]
 pub mod plain_text;
 #[cfg(feature = "rich-text")]

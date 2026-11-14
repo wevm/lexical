@@ -10,8 +10,8 @@
 
 use crate::commands::{
     CONTROLLED_TEXT_INSERTION_COMMAND, DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND,
-    DELETE_WORD_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, REMOVE_TEXT_COMMAND,
-    SELECT_ALL_COMMAND,
+    DELETE_WORD_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, KEY_ENTER_COMMAND,
+    REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND,
 };
 use crate::editor::COMMAND_PRIORITY_EDITOR;
 use crate::lexical_selection::{SelectionRef, get_selection};
@@ -46,8 +46,8 @@ fn on_range<P: 'static>(
 
 /// `registerPlainText(editor)`: registers the plain text command handlers
 /// that act on the model, at `COMMAND_PRIORITY_EDITOR`, and returns what
-/// unregisters them. Enter (`INSERT_PARAGRAPH_COMMAND`) inserts a line
-/// break. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form,
+/// unregisters them. Enter (`KEY_ENTER_COMMAND` and
+/// `INSERT_PARAGRAPH_COMMAND`) inserts a line break. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form,
 /// and `SELECT_ALL_COMMAND` always selects the whole document, as JS does
 /// outside a slot (slots aren't ported).
 pub fn register_plain_text(editor: &Editor) -> Unregister {
@@ -79,6 +79,20 @@ pub fn register_plain_text(editor: &Editor) -> Unregister {
         on_range(editor, &INSERT_PARAGRAPH_COMMAND, |selection, _| {
             selection.insert_line_break(false)
         }),
+        editor.register_command(
+            &KEY_ENTER_COMMAND,
+            |event, editor| {
+                if !get_selection().is_some_and(|s| s.is_range()) {
+                    return Ok(false);
+                }
+                if let Some(event) = event {
+                    // No beforeinput to defer to (JS's iOS and Safari path).
+                    event.prevent_default();
+                }
+                editor.dispatch_command(&INSERT_LINE_BREAK_COMMAND, false)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
         editor.register_command(
             &SELECT_ALL_COMMAND,
             |_, _| {

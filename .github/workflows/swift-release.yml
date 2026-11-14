@@ -5,8 +5,11 @@ name: Swift Release
 # - With pending changesets in swift/.changeset, opens or updates the
 #   "chore(swift): version packages" pull request, which runs
 #   swift/scripts/version-packages.sh (bumps swift/VERSION, adds the
-#   version's section to swift/CHANGELOG.md), and starts the Swift CI
-#   workflows on it: a pull request opened with GITHUB_TOKEN triggers none.
+#   version's section to swift/CHANGELOG.md), and starts the Swift
+#   workflow on it: a pull request opened with GITHUB_TOKEN triggers none.
+#   It doesn't start Swift (macOS): the branch differs from main only in
+#   VERSION, CHANGELOG.md and the changesets, so main's Swift (macOS) run at
+#   the branch's base is the check for it (swift/AGENTS.md, Releases).
 # - Otherwise, if swift/VERSION names a version that isn't released yet:
 #   - publishes swift/ to the SwiftPM mirror (wevm/lexical-swift) and tags
 #     the version there. SwiftPM needs Package.swift at a repository root and
@@ -84,7 +87,6 @@ jobs:
             gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md"
           fi
           gh workflow run swift.yml --ref "$BRANCH"
-          gh workflow run swift-macos.yml --ref "$BRANCH"
 
   plan:
     name: Plan release

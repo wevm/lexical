@@ -1061,7 +1061,8 @@ upstream playground (Q31, Q39). Then `LexicalList`, `LexicalLink`,
   name the upstream version (Q23).
 - The API-break check (Q23), `scripts/api-breaks.sh`, compares the working
   tree with the mirror's newest release tag, in `Swift API breaks (Linux)`
-  and in the `Swift (macOS)` job (which also covers the view modules). It
+  and in the `Swift (macOS)` job (which also covers the view modules, and on
+  a pull request runs only when one of them changes). It
   runs `swift package diagnose-api-breaking-changes`, and also compares the
   public symbols of both sides' symbol graphs, because the digester counts
   `package` declarations as API and misses a public declaration made

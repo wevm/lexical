@@ -21,6 +21,21 @@ pub fn all() -> Vec<Suite> {
             check: entities::check_autolink_match,
         },
         Suite {
+            file: "entities/hashtag-match",
+            variant: None,
+            check: entities::check_hashtag_match,
+        },
+        Suite {
+            file: "entities/hashtag-documents",
+            variant: None,
+            check: entities::check_hashtag_documents,
+        },
+        Suite {
+            file: "entities/hashtag-typing",
+            variant: None,
+            check: entities::check_hashtag_typing,
+        },
+        Suite {
             file: "serialization/code",
             variant: None,
             check: serialization::check,
@@ -138,8 +153,9 @@ pub fn all() -> Vec<Suite> {
 pub fn package_of(node_type: &str) -> Option<&'static str> {
     Some(match node_type {
         "root" | "paragraph" | "text" | "linebreak" | "tab" | "heading" | "quote" | "list"
-        | "listitem" | "link" | "autolink" | "code" | "code-highlight" | "overflow" => return None,
-        "hashtag" => "lexical-hashtag",
+        | "listitem" | "link" | "autolink" | "code" | "code-highlight" | "overflow" | "hashtag" => {
+            return None;
+        }
         _ => "unknown",
     })
 }

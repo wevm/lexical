@@ -79,6 +79,19 @@ const TEXTS = [
   '#\u00d7\u00f7a',
   '#ǅ',
   '#ᾈ',
+  // Letters only the `i` flag's case folding adds to the classes.
+  '#\u037b',
+  '#\u13f8',
+  '#\u1c80',
+  '#\u1c90',
+  '#1\u2c62',
+  '\u037b#a',
+  // Surrogate pairs, which the regular expression (no `u`) sees as two code
+  // units each.
+  'a\u{1f600}#b',
+  '#\u{1d400}',
+  '#a\u{1d400}',
+  '\u{1d400}#a',
 ];
 
 test('entities/hashtag-match', () => {

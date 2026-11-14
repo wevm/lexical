@@ -40,6 +40,8 @@ updated with each milestone.
 | `FlatStructureUtils.ts` (the `code` feature) | `$getFirstCodeNodeOfLine`, `$getLastCodeNodeOfLine`, `$getCodeLineDirection`, `$getStartOfCodeInLine` (with `findNextNonBlankInLine`), `$getEndOfCodeInLine`, `$plainifyCodeContent`, `$outdentLeadingSpaces` | `code::flat_structure_utils` | `scripts/code`; a unit test against JS's output for each function |
 | `CodeExtension`'s register and `registerCodeIndentation` (the `code` feature) | `CodeExtension.ts` `register` (the `TabNode` transform), as `register_code`; `CodeIndentation.ts` `registerCodeIndentation`'s handlers of `INSERT_TAB_COMMAND`, `INDENT_CONTENT_COMMAND` and `OUTDENT_CONTENT_COMMAND` (`$isSelectionInCode`, `$getCodeLines`, `$outdentLineAtCaret`, `$handleMultilineIndent`), with `tabSize` | `code::register_code`, `code::register_code_indentation` | `scripts/code` |
 | Overflow node (the `overflow` feature) | `packages/lexical-overflow/src/index.ts` (`OverflowNode`: `insertNewAfter` (its parent's), `excludeFromCopy`, the `$transform` of its `$config` that removes it once empty; `$createOverflowNode`, `$isOverflowNode`), with `ElementNode`'s generated JSON; `ElementNode.excludeFromCopy` as a node hook | `overflow`, `node` | `serialization/overflow`, the overflow cases of `property/documents`, `scripts/overflow` |
+| Hashtag node and matcher (the `hashtag` feature) | `packages/lexical-hashtag/src/LexicalHashtagNode.ts` (`HashtagNode`: `canInsertTextBefore`, `isTextEntity`; `$createHashtagNode`, `$isHashtagNode`), with `TextNode`'s generated JSON; `LexicalHashtagExtension.ts` (`getHashtagRegexStringChars`, `getHashtagRegexString` and `getHashtagMatch` as the default matcher, `HashtagConfig`, `registerLexicalHashtag`), the character classes as range tables generated from the JS source by `rust/scripts/generate-hashtag-tables.mjs`; `TextNode.isTextEntity` as a node hook | `hashtag`, `node` | `entities/hashtag-match`, `entities/hashtag-documents`, `entities/hashtag-typing`, the hashtag cases of `property/documents` |
+| `registerLexicalTextEntity` (the `text` feature) | `packages/lexical-text/src/registerLexicalTextEntity.ts`: `EntityMatch`, `registerLexicalTextEntity` (the `TextNode` transform and `$reverseNodeTransform`, `$replaceWithSimpleText`, `$wasTurnedIntoText`, `getFirstMatchAfter`, `isNextTextEntity`, `isTextAfterOutsideSource`, `isEntityAfter`, `$checkNextSibling`, `$moveSelectionIntoEntity`, `$wouldMerge`, `MAX_MATCHES_PASSED`, `MAX_TURNED_INTO_TEXT`, the per-update `markedInUpdate` and `turnedIntoTextInUpdate`); from the core `INTERNAL_getActiveEditorState` | `text`, `updates` | `entities/hashtag-documents`, `entities/hashtag-typing` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -126,7 +128,8 @@ touches:
   other packages: no vector needs a tokenizer, since every recorded
   document carries its `highlightType`s, and `scripts/code` registers no
   highlighter. Of the 25 `property/documents` cases with code nodes, 4
-  also hold hashtag or overflow nodes and wait on those packages.
+  also hold hashtag or overflow nodes; they waited on those packages,
+  which are now ported.
 - `@lexical/overflow`'s `createDOM` and `updateDOM`, which come with
   `html`, and `OverflowExtension`, which needs the extension API
   (`overflow_nodes()` is its `nodes`). `excludeFromCopy` is a node hook
@@ -137,11 +140,29 @@ touches:
   overflow nodes, isn't ported: no vector runs it (every vector's overflow
   nodes are in its documents or built by a script), and it lives in a
   React package. Of the 36 `property/documents` cases that waited on
-  `lexical-overflow`, 11 also hold hashtag nodes and wait on
-  `lexical-hashtag`. That suite now sets each parsed state on the editor
+  `lexical-overflow`, 11 also hold hashtag nodes and waited on
+  `lexical-hashtag`, now ported. That suite now sets each parsed state on the editor
   and reads the text there, as JS does: a parsed state is all dirty, so
   the transforms run, and `OverflowNode`'s removes the empty ones a random
   document holds.
+- `@lexical/hashtag`'s `createDOM`, which comes with `html`, and
+  `HashtagExtension`, which needs the extension API (`hashtag_nodes()` is
+  its `nodes` and `register_lexical_hashtag(editor,
+  HashtagConfig::default())` its `register`). Of `@lexical/text`, only
+  `registerLexicalTextEntity`: `$canShowPlaceholder`,
+  `$isRootTextContentEmpty`, `$rootTextContent` and
+  `$findTextIntersectionFromCharacters` aren't used by anything ported and
+  no vector exercises them. Within `registerLexicalTextEntity`, NodeState
+  and the text edit log aren't ported, so what upstream does only for
+  them is left out: `$carryNodeState`, `haveEquivalentNodeState` (so
+  `$wouldMerge` compares format, style and detail), `splitOffInUpdate`,
+  `demotedInUpdate` and `$isInsertedText` (which only decide whether to
+  carry NodeState), `INTERNAL_$recordTextRetype`, and
+  `INTERNAL_$recordTextMove` (its callback runs as it is). The per-update
+  maps JS keeps in `WeakMap`s by pending editor state hold the entry of
+  the last state asked about, as one state is pending at a time. JS's
+  `targetNode` class is a node type here, as `registerNodeTransform`
+  takes one.
 - The slot-aware caret comparisons (`$comparePointCaretNextAcrossSlots`,
   `$getCommonAncestorAcrossSlots`). Without slots, NodeState or the text
   edit log, `$removeTextFromCaretRange` never meets a slot host and carries
@@ -176,6 +197,22 @@ touches:
   runs, except `$onUpdate`), and `RootNode.__cachedText`. So `history` passes
   `false` where JS passes `editor.isComposing()`, as a headless JS editor
   does; the `composition-start` and `composition-end` tags work as in JS.
+
+How `getHashtagMatch`'s regular expression runs without one (the
+`hashtag` feature): JS builds it with `i` and without `u`, so it matches
+UTF-16 code units, and the matcher works on the text's code units too.
+Its four classes (`[alpha]`, `[alphanumeric]`, the boundary
+`[^&/alphanumeric]` and `[#＃]`) are range tables that the generator gets
+by asking JS's own regular expression about every code unit, so they
+include the 73 code units `i`'s case folding adds (U+037B, U+13F8,
+U+1C80, U+1C90, U+2C62...) and the truncation `String.fromCharCode`
+applies to the CJK extension ranges in the source. A surrogate is never
+alphanumeric and always a boundary, so a hashtag stops at a character
+outside the BMP and may follow one. The pattern
+`(^|$|[^&/A])([H])(A*LA*)` is matched as a backtracking engine would:
+the first index where `^` or a boundary unit, a hash and an alphanumeric
+run holding a letter follow, group 3 being the whole run. The generator
+fails if upstream's pattern changes shape.
 
 How `registerAutoLink`'s regular expressions run on the `regex` crate (the
 `autolink` feature), where JS's `RegExp` behaves differently:

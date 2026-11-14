@@ -14,6 +14,7 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
             lexical::link::link_nodes(),
             lexical::code::code_nodes(),
             lexical::overflow::overflow_nodes(),
+            lexical::hashtag::hashtag_nodes(),
         ]
         .concat(),
     });

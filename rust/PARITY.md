@@ -26,6 +26,7 @@ updated with each milestone.
 | Update cycle | `LexicalUpdates.ts` (`$beginUpdate`, nested and queued updates, `$applyAllTransforms`, `$commitPendingUpdates`, `$discardPendingUpdate`, listeners, `triggerCommandListeners`, `updateEditorSync`), `LexicalNormalization.ts` (`$normalizeTextNode`), `LexicalGC.ts` (nodes) | `updates`, `normalization`, `gc` | `scripts/updates`, `scripts/listeners`, `scripts/transforms`, `scripts/commands` |
 | Editor state | `LexicalEditorState.ts` (`toJSON`, `read`, `isEmpty`, `_parsed`) | `editor_state` | `serialization/core` |
 | Parsing | `parseEditorState`, `$parseSerializedNode` (`LexicalUpdates.ts`) | `updates` | `serialization/core`, `property/documents` |
+| NodeState | `LexicalNodeState.ts`: `createState` (`StateConfig` with `parse`, `unparse`, `isEqual`, `defaultValue` and `resetOnCopyNode`), `$getState` (latest and direct), `$setState` with a value or an updater, `$getStateChange`, `$getWritableNodeState`, `NodeState` (`getValue`, `toJSON`, `getWritable` with `parseAndPruneNextUnknownState`, `updateFromKnown`, `updateFromUnknown`, `updateFromJSON`, `resetOnCopyNode`, the size count), `$getSharedNodeState` and `createSharedNodeState` (a class's `stateConfigs`, flat keys, key collisions), `$updateStateFromJSON` (`Object.entries` of a `"$"` that is not an object, too), `$applyFlatStates`, `$cloneNodeState`, `$copyNodeState`, `$carryNodeState`, `nodeStatesAreEquivalent`; their call sites: the `"$"` key and flat states in `exportJSON` and `$parseSerializedNode`, `$copyNode`, `splitText`, the merge of `$normalizeTextNode`, history's JSON, a segmented node made plain text (`$insertText`, `$removeTextFromCaretRange`); `QuoteNode`'s `quoteShadowRootState` as a flat state | `node_state`, `node`, `nodes::text`, `normalization`, `updates`, `rich_text`, `caret_utils`, `selection_insert_text` | `scripts/node-state`, the node state case of `serialization/core` |
 | Editor | `createEditor` (node registration), `update`, `read`, `getEditorState`, `setEditorState`, `registerNodeTransform`, `registerUpdateListener`, `registerTextContentListener`, `registerCommand`, `dispatchCommand`, `createCommand` | `editor` | `scripts/*` |
 | History (the `history` feature) | `packages/lexical-history/src/index.ts`: `registerHistory` (with `dateNow`, `onHistoryStateChange` and `maxDepth`), `createEmptyHistoryState`, `createMergeActionGetter`, `getChangeType`, `getDirtyNodes`, `isTextNodeUnchanged`, `areNodesUnchanged`, `getInverseEntry`, `getUndoEntry`, `undo`, `redo`, `clearHistory`; the commands it handles and dispatches from `LexicalCommands.ts` (`UNDO_COMMAND`, `REDO_COMMAND`, `CAN_UNDO_COMMAND`, `CAN_REDO_COMMAND`, `CLEAR_HISTORY_COMMAND`, `CLEAR_EDITOR_COMMAND`) and its tags from `LexicalUpdateTags.ts` | `history`, `commands`, `editor` | `scripts/history`; unit tests for a history shared by two editors (upstream's #8623 test) and `maxDepth` |
 | Rich text nodes (the `rich-text` feature) | `packages/lexical-rich-text/src/index.ts`: `HeadingNode` (`getTag`, `setTag`, `insertNewAfter`, `collapseAtStart`, `extractWithChild`), `QuoteNode` (`insertNewAfter`, `collapseAtStart`, `canMergeWhenEmpty`, the opt-in shadow root), `$createHeadingNode`, `$isHeadingNode`, `$createQuoteNode`, `$isQuoteNode`; their generated JSON (`LexicalRichTextGeneratedJSON.ts`); `ElementNode.collapseAtStart` as a node hook, and `ElementNode`'s own `$transform` (`$normalizeShadowRootChildren`); from `@lexical/selection` and `@lexical/utils` only `$isAtEdgeOfElement`, `$isAtStartOfNode`, `$isAtEndOfNode`, `$findMatchingParent` and `$handleIndentAndOutdent` | `rich_text`, `selection`, `utils`, `updates` | `scripts/rich-text`, the heading and quote cases of `property/documents` |
@@ -50,8 +51,20 @@ updated with each milestone.
 Everything else; [DESIGN.md](DESIGN.md) has the order. Within what M0
 touches:
 
-- **NodeState** (`"$"`) and **slots** (`"$slots"`): a document that carries
-  either fails to parse with an error naming it, rather than losing them.
+- **Slots** (`"$slots"`): a document that carries them fails to parse with
+  an error naming them, rather than losing them.
+- Of NodeState: the `SerializationSchema` builders as `parse` functions
+  (with them `canonicalValue`'s `arraySetValue` form and a config's
+  `derived` and `schema`), which come with the schema facility;
+  `$getStateChange`'s use in `updateDOM`, which comes with the DOM; and the
+  check that a flat key is not an `Object.prototype` property, which has no
+  counterpart in the port's own JSON object. JS tells the version of a node
+  that owns a NodeState by object identity; a node version here is its key
+  and the editor state it was made writable in. `StateConfig` values are
+  Rust types (`StateValue` for numbers, booleans, strings and `Option`, or
+  any `V` with `create_state_with`'s `StateValueConfig`); JS's unknown
+  values compare by identity (`===`), which the port keeps by holding each
+  one in an `Rc`.
 - Deletion and `modify` past the model: JS's `deleteCharacter`,
   `deleteWord`, `deleteLine` and `modify` measure moves within text with
   the DOM's `Selection.modify`. A headless JS editor has no window and
@@ -152,21 +165,25 @@ touches:
   `registerLexicalTextEntity`: `$canShowPlaceholder`,
   `$isRootTextContentEmpty`, `$rootTextContent` and
   `$findTextIntersectionFromCharacters` aren't used by anything ported and
-  no vector exercises them. Within `registerLexicalTextEntity`, NodeState
-  and the text edit log aren't ported, so what upstream does only for
-  them is left out: `$carryNodeState`, `haveEquivalentNodeState` (so
-  `$wouldMerge` compares format, style and detail), `splitOffInUpdate`,
-  `demotedInUpdate` and `$isInsertedText` (which only decide whether to
-  carry NodeState), `INTERNAL_$recordTextRetype`, and
-  `INTERNAL_$recordTextMove` (its callback runs as it is). The per-update
+  no vector exercises them. Within `registerLexicalTextEntity`,
+  `$carryNodeState`, `splitOffInUpdate`, `demotedInUpdate` and
+  `$isInsertedText` are ported (`scripts/node-state`'s hashtag cases), but
+  the NodeState half of `$wouldMerge` (`haveEquivalentNodeState` with
+  `readStateValue`) is not, so it compares format, style and detail: only
+  a token or segmented entity kept as one reaches it, and `createNode`
+  makes a hashtag in normal mode (a hashtag given token or segmented mode
+  in a document is replaced by a new one before that check, as JS
+  records), so no vector can. The text edit log isn't ported, so
+  `INTERNAL_$recordTextRetype` is not called and `INTERNAL_$recordTextMove`
+  just runs its callback. The per-update
   maps JS keeps in `WeakMap`s by pending editor state hold the entry of
   the last state asked about, as one state is pending at a time. JS's
   `targetNode` class is a node type here, as `registerNodeTransform`
   takes one.
 - The slot-aware caret comparisons (`$comparePointCaretNextAcrossSlots`,
-  `$getCommonAncestorAcrossSlots`). Without slots, NodeState or the text
-  edit log, `$removeTextFromCaretRange` never meets a slot host and carries
-  no NodeState or deletion records.
+  `$getCommonAncestorAcrossSlots`). Without slots or the text edit log,
+  `$removeTextFromCaretRange` never meets a slot host and records no
+  deletions.
 - `HistoryExtension` and `SharedHistoryExtension` (`@lexical/history`), which
   need the extension API. Sharing one `HistoryState` between editors through
   `register_history` works. `register_history` takes the delay and
@@ -186,9 +203,9 @@ touches:
   `NormalizeInlineElementsExtension`,
   `NormalizeTripleClickSelectionExtension`), which need an input layer and
   the extension API.
-  `quoteShadowRootState` is a flat NodeState in JS; with NodeState not
-  ported, `QuoteNode` keeps it in a field that parses and serializes as the
-  flat state does. A shadow root quote's `collapseAtStart` (dissolving into
+  `quoteShadowRootState` is a flat NodeState, as in JS
+  (`quote_shadow_root_state`; `scripts/node-state` sets and reads it). A
+  shadow root quote's `collapseAtStart` (dissolving into
   its blocks) is ported but no vector reaches it: headless JS needs the
   DOM's `Selection.modify` to get there and throws, which `scripts/rich-text`
   records.

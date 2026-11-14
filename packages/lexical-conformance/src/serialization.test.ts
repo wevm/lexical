@@ -31,6 +31,8 @@ import {
   $createTabNode,
   $createTextNode,
   $getRoot,
+  $setState,
+  createState,
 } from 'lexical';
 import {test} from 'vitest';
 
@@ -74,6 +76,22 @@ test('serialization/core', () => {
         $createParagraphNode()
           .setDirection('rtl')
           .append($createTextNode('שלום')),
+      );
+    },
+    // NodeState under `$`, which an editor that has none of these configs
+    // writes back as it came. `count` 0 is the default, which is left out.
+    'node state': () => {
+      const label = createState('label', {
+        parse: v => (typeof v === 'string' ? v : ''),
+      });
+      const count = createState('count', {
+        parse: v => (typeof v === 'number' ? v : 0),
+      });
+      $getRoot().append(
+        $setState($createParagraphNode(), label, 'p').append(
+          $setState($setState($createTextNode('x'), label, 'one'), count, 2),
+          $setState($createTextNode('y'), count, 0),
+        ),
       );
     },
   };

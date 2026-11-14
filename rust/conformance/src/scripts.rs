@@ -25,8 +25,13 @@
 //! and a change handler that logs `['autoLink', url, prevUrl]`. One with
 //! `code: true` registers `@lexical/code-core`'s nodes (`CodeNode`,
 //! `CodeHighlightNode`), `CodeExtension`'s transform and
-//! `registerCodeIndentation`, and one with `overflow: true`
-//! `@lexical/overflow`'s `OverflowNode`.
+//! `registerCodeIndentation`, one with `overflow: true`
+//! `@lexical/overflow`'s `OverflowNode`, and one with `hashtag: true`
+//! `@lexical/hashtag`'s `HashtagNode` and `registerLexicalHashtag`.
+//!
+//! `setState`, `updateState`, `logState` and `logStateChange` name the
+//! NodeState configs of `ops.ts`'s `STATES` and its `UPDATERS`, made here
+//! with the same parse, unparse and equality (`States`).
 //!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
@@ -44,12 +49,13 @@ use lexical::{
     INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, LexicalCommand, LexicalError, NodeRef,
     OUTDENT_CONTENT_COMMAND, PointCaret, PointType, REDO_COMMAND, REMOVE_TEXT_COMMAND,
     RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND, SelectionRef, SliceMode,
-    TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
-    caret_range_from_selection, create_command, create_editor, create_node_selection,
-    create_range_selection, get_caret_range, get_child_caret, get_node_by_key, get_root,
-    get_selection, get_sibling_caret, get_text_point_caret, insert_nodes, normalize_caret,
+    StateConfig, StateValueConfig, TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister,
+    UpdateOptions, Which, caret_range_from_selection, create_command, create_editor,
+    create_node_selection, create_range_selection, create_state, create_state_with,
+    get_caret_range, get_child_caret, get_node_by_key, get_root, get_selection, get_sibling_caret,
+    get_state, get_state_change, get_text_point_caret, insert_nodes, normalize_caret,
     parse_serialized_node, remove_text_from_caret_range, reset_random_key, select_all,
-    set_selection, set_selection_from_caret_range, utf16,
+    set_selection, set_selection_from_caret_range, set_state, set_state_with, utf16,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -60,6 +66,97 @@ use std::rc::Rc;
 struct Ctx {
     log: RefCell<Vec<Value>>,
     commands: RefCell<HashMap<String, LexicalCommand<Value>>>,
+    states: States,
+}
+
+/// `ops.ts`'s `STATES`, one set per session (JS's are shared by every
+/// session, which no session can tell: a node type learns a config in one
+/// editor only).
+struct States {
+    /// A number, 1 by default.
+    count: StateConfig<f64>,
+    /// A flag that a copy of its node does not keep.
+    fresh: StateConfig<bool>,
+    /// A string, '' by default.
+    label: StateConfig<String>,
+    /// Another config with the key of `label`.
+    other_label: StateConfig<String>,
+    /// An array of words, written as one string and compared by its words.
+    words: StateConfig<Vec<String>>,
+}
+
+impl Default for States {
+    fn default() -> Self {
+        let string = |v: &Value| v.as_str().unwrap_or("").to_owned();
+        States {
+            count: create_state("count", |v| v.as_f64().unwrap_or(1.0)),
+            fresh: create_state_with(
+                "fresh",
+                StateValueConfig {
+                    reset_on_copy_node: true,
+                    ..StateValueConfig::new(|v: &Value| v.as_bool() == Some(true))
+                },
+            ),
+            label: create_state("label", string),
+            other_label: create_state("label", string),
+            words: create_state_with(
+                "words",
+                StateValueConfig {
+                    parse: Rc::new(|v| match v.as_str() {
+                        Some(s) if !s.is_empty() => s.split(' ').map(str::to_owned).collect(),
+                        _ => Vec::new(),
+                    }),
+                    unparse: Rc::new(|v| Value::from(v.join(" "))),
+                    is_equal: Rc::new(|a, b| a == b),
+                    reset_on_copy_node: false,
+                },
+            ),
+        }
+    }
+}
+
+/// Runs `$body` with `$config` the state `$name` names, `$to_json` writing
+/// its values as JSON and `$from_json` reading them.
+macro_rules! with_state_config {
+    ($states:expr, $name:expr, |$config:ident, $to_json:ident, $from_json:ident| $body:expr) => {
+        match $name {
+            "count" => {
+                let $config = &$states.count;
+                let $to_json = |v: &f64| Value::from(*v);
+                let $from_json = |v: &Value| v.as_f64();
+                $body
+            }
+            "fresh" => {
+                let $config = &$states.fresh;
+                let $to_json = |v: &bool| Value::from(*v);
+                let $from_json = |v: &Value| v.as_bool();
+                $body
+            }
+            "label" | "otherLabel" => {
+                let $config = if $name == "label" {
+                    &$states.label
+                } else {
+                    &$states.other_label
+                };
+                let $to_json = |v: &String| Value::from(v.as_str());
+                let $from_json = |v: &Value| v.as_str().map(str::to_owned);
+                $body
+            }
+            "words" => {
+                let $config = &$states.words;
+                let $to_json =
+                    |v: &Vec<String>| Value::Array(v.iter().map(|w| w.as_str().into()).collect());
+                let $from_json = |v: &Value| {
+                    v.as_array()?
+                        .iter()
+                        .map(|w| w.as_str().map(str::to_owned))
+                        .collect::<Option<Vec<String>>>()
+                };
+                $body
+            }
+            other => Err(err(format!("unknown state {other}"))),
+        }
+    };
 }
 
 impl Ctx {
@@ -299,7 +396,11 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "dispatch"
             | "logCaretRange"
             | "removeTextFromCaretRange"
-            | "logNormalizeCaret",
+            | "logNormalizeCaret"
+            | "setState"
+            | "updateState"
+            | "logState"
+            | "logStateChange",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -688,6 +789,76 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             ]);
             Ok(())
         }
+        Some("setState") => {
+            let key = action.get("key").and_then(Value::as_str).unwrap_or("");
+            let name = action.get("state").and_then(Value::as_str).unwrap_or("");
+            let value = action.get("value").unwrap_or(&Value::Null);
+            with_state_config!(ctx.states, name, |config, _to_json, from_json| {
+                let value = from_json(value)
+                    .ok_or_else(|| err(format!("{value} is no value of {name}")))?;
+                set_state(&node(key)?, config, value).map(|_| ())
+            })
+        }
+        Some("updateState") => {
+            let key = action.get("key").and_then(Value::as_str).unwrap_or("");
+            let name = action.get("state").and_then(Value::as_str).unwrap_or("");
+            let node = node(key)?;
+            let states = &ctx.states;
+            match (name, action.get("updater").and_then(Value::as_str)) {
+                ("count", Some("count:increment")) => {
+                    set_state_with(&node, &states.count, |v| v + 1.0)
+                }
+                ("count", Some("count:same")) => set_state_with(&node, &states.count, |v| *v),
+                ("label", Some("label:exclaim")) => {
+                    set_state_with(&node, &states.label, |v| format!("{v}!"))
+                }
+                ("words", Some("words:copy")) => set_state_with(&node, &states.words, Vec::clone),
+                ("words", Some("words:push-x")) => set_state_with(&node, &states.words, |v| {
+                    let mut words = v.clone();
+                    words.push("x".to_owned());
+                    words
+                }),
+                (name, updater) => Err(err(format!("unknown updater {updater:?} of {name}"))),
+            }
+            .map(|_| ())
+        }
+        Some("logState") => {
+            let key = action.get("key").and_then(Value::as_str).unwrap_or("");
+            let name = action.get("state").and_then(Value::as_str).unwrap_or("");
+            with_state_config!(ctx.states, name, |config, to_json, _from_json| {
+                let value = get_state(&node(key)?, config)?;
+                ctx.log(vec![
+                    "state".into(),
+                    key.into(),
+                    name.into(),
+                    to_json(&value),
+                ]);
+                Ok(())
+            })
+        }
+        Some("logStateChange") => {
+            let key = action.get("key").and_then(Value::as_str).unwrap_or("");
+            let name = action.get("state").and_then(Value::as_str).unwrap_or("");
+            // The node's version in the committed editor state.
+            let prev_node = editor
+                .get_editor_state()
+                .read(|| get_node_by_key(key).map(|n| n.get_latest()));
+            with_state_config!(ctx.states, name, |config, to_json, _from_json| {
+                let change = match &prev_node {
+                    None => Value::from("new"),
+                    Some(prev_node) => {
+                        match get_state_change(&*node(key)?.get_latest(), &**prev_node, config)? {
+                            None => Value::Null,
+                            Some((value, prev_value)) => {
+                                Value::Array(vec![to_json(&value), to_json(&prev_value)])
+                            }
+                        }
+                    }
+                };
+                ctx.log(vec!["stateChange".into(), key.into(), name.into(), change]);
+                Ok(())
+            })
+        }
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");
             let payload = action.get("payload").cloned().unwrap_or(Value::Null);
@@ -844,6 +1015,7 @@ impl Session {
         let with_link = script.get("link").and_then(Value::as_bool) == Some(true);
         let with_code = script.get("code").and_then(Value::as_bool) == Some(true);
         let with_overflow = script.get("overflow").and_then(Value::as_bool) == Some(true);
+        let with_hashtag = script.get("hashtag").and_then(Value::as_bool) == Some(true);
         let mut nodes = Vec::new();
         if rich_text {
             nodes.extend(lexical::rich_text::rich_text_nodes());
@@ -859,6 +1031,9 @@ impl Session {
         }
         if with_overflow {
             nodes.extend(lexical::overflow::overflow_nodes());
+        }
+        if with_hashtag {
+            nodes.extend(lexical::hashtag::hashtag_nodes());
         }
         let editor = create_editor(CreateEditorArgs { nodes });
         let ctx = Rc::new(Ctx::default());
@@ -896,6 +1071,12 @@ impl Session {
         if with_code {
             let _unregister = lexical::code::register_code(&editor);
             let _unregister = lexical::code::register_code_indentation(&editor, None);
+        }
+        if with_hashtag {
+            let _unregister = lexical::hashtag::register_lexical_hashtag(
+                &editor,
+                lexical::hashtag::HashtagConfig::default(),
+            );
         }
         for name in script
             .get("transforms")

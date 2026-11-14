@@ -113,6 +113,7 @@ pub(crate) fn restore_empty_container_paragraph(
 /// `resetOnCopyNodeFrom`.
 pub fn copy_node(node: &NodeRef) -> NodeRef {
     let mut copy = node.get_latest().clone_node();
+    let state = copy.base_mut().state.take();
     *copy.base_mut() = crate::node::NodeBase::default();
     if let Some(element) = copy.element_mut() {
         element.first = None;
@@ -120,6 +121,12 @@ pub fn copy_node(node: &NodeRef) -> NodeRef {
         element.size = 0;
     }
     let copy = set_node_key(copy);
+    // `afterCloneFrom` with another key, then `LexicalNode`'s
+    // `resetOnCopyNodeFrom`.
+    if let Some(state) = state {
+        let state = crate::node_state::copy_node_state(&state, copy.get_key());
+        mutate(copy.get_key(), |n| n.base_mut().state = Some(state));
+    }
     copy.get_latest().reset_on_copy_node_from(&copy, node);
     copy
 }
@@ -130,9 +137,11 @@ pub(crate) fn set_node_key(mut node: Box<dyn LexicalNode>) -> NodeRef {
     error_on_read_only();
     error_on_infinite_transforms();
     let key = generate_random_key();
+    let editor_state = get_active_editor_state();
     node.base_mut().key = key.clone();
+    node.base_mut().written_in = editor_state.0.id;
     let is_element = node.element().is_some();
-    get_active_editor_state()
+    editor_state
         .0
         .node_map
         .borrow_mut()
@@ -214,6 +223,8 @@ fn unshare(key: &str) {
     if Rc::get_mut(node).is_none() {
         *node = Rc::from(node.clone_node());
     }
+    // This version is the one of this update (JS's writable clone).
+    Rc::get_mut(node).expect("unshared").base_mut().written_in = editor_state.0.id;
 }
 
 /// Changes the fields of a node that [`get_writable`] already made writable

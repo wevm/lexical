@@ -29,6 +29,14 @@ pub(crate) struct EditorStateInner {
     pub(crate) flush_sync: Cell<bool>,
     /// `_parsed`: made by `parseEditorState`, so no transform has run on it.
     pub(crate) parsed: Cell<bool>,
+    /// Tells this state from every other on the thread: a node version
+    /// records the one it was made writable in (`NodeBase::written_in`),
+    /// which is how a NodeState knows its version, as JS knows its object.
+    pub(crate) id: u64,
+}
+
+thread_local! {
+    static NEXT_EDITOR_STATE_ID: Cell<u64> = const { Cell::new(1) };
 }
 
 fn new_editor_state(node_map: NodeMap) -> EditorState {
@@ -38,6 +46,7 @@ fn new_editor_state(node_map: NodeMap) -> EditorState {
         read_only: Cell::new(false),
         flush_sync: Cell::new(false),
         parsed: Cell::new(false),
+        id: NEXT_EDITOR_STATE_ID.with(|n| n.replace(n.get() + 1)),
     }))
 }
 

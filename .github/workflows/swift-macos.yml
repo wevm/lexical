@@ -3,11 +3,17 @@ name: Swift (macOS)
 # The Swift port on macOS and the iOS Simulator, with the Xcode 27 toolchain,
 # and on macOS (with an iOS Simulator build) with Xcode 26.5, the oldest supported.
 # The package supports iOS 26 and macOS 26, so the oldest runtimes run too.
-# Path-filtered because macOS runners are slow to start.
+# macOS runners are slow to start and scarce, so pull requests run less:
+# - only changes to swift/ outside the playground and Markdown start a run
+#   (Linux replays the conformance vectors on every change);
+# - the iOS 26.5 Simulator runs only on main and nightly, where a failure is
+#   fixed forward and blocks the next release (swift/AGENTS.md);
+# - the macOS API-break check runs only when the view modules change.
 
 on:
-  # The release workflow starts these on its version pull request's branch.
   workflow_dispatch:
+  schedule:
+    - cron: '7 4 * * *'
   push:
     branches: [main]
     paths:
@@ -17,12 +23,15 @@ on:
   pull_request:
     paths:
       - 'swift/**'
-      - 'packages/lexical-conformance/**'
+      - '!swift/apps/lexical-playground-swift/**'
+      - '!**/*.md'
       - '.github/workflows/swift-macos.yml'
 
+# A newer commit cancels the run of an older one on a branch and on main, where
+# the newest run covers the commits before it.
 concurrency:
   group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 permissions:
   contents: read
@@ -36,14 +45,28 @@ jobs:
       run:
         working-directory: swift
     steps:
+      # Two commits on a pull request: its merge commit and the base, so the
+      # API-break step can see what the pull request changes.
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+          fetch-depth: ${{ github.event_name == 'pull_request' && 2 || 1 }}
       - run: swift --version
       - name: Build and test (macOS)
         run: swift test
-      # The view modules' API exists only on Apple platforms (Linux checks the rest).
+      # Only the view modules' API is Apple-only (Linux checks the rest), so a
+      # pull request that changes none of them skips the check here.
+      - name: Changes to the view modules
+        id: views
+        if: github.event_name == 'pull_request'
+        run: |
+          changed="$(git diff --name-only HEAD^1 HEAD -- \
+            Sources/LexicalAppKit Sources/LexicalUIKit Sources/LexicalSwiftUI \
+            Package.swift scripts/api-breaks.sh)"
+          echo "${changed:-None.}"
+          echo "changed=$([ -n "$changed" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - name: API breaks since the last release
+        if: github.event_name != 'pull_request' || steps.views.outputs.changed == 'true'
         run: scripts/api-breaks.sh
 
   # The oldest toolchain the package supports: Swift 6.3 (Xcode 26.5), whose
@@ -83,8 +106,8 @@ jobs:
       matrix:
         # The newest runtime and the deployment target's. A runtime the image
         # lacks is downloaded, which takes a full version (the xcode-27 image
-        # has only iOS 27 runtimes).
-        ios: ['27', '26.5']
+        # has only iOS 27 runtimes). Pull requests run only the newest.
+        ios: ${{ fromJSON(github.event_name == 'pull_request' && '["27"]' || '["27", "26.5"]') }}
     defaults:
       run:
         working-directory: swift
@@ -96,6 +119,7 @@ jobs:
         env:
           IOS_VERSION: ${{ matrix.ios }}
         run: |
+          set -o pipefail
           # The newest installed runtime of this version (or of this major
           # version), downloading it when the image has none, and an iPhone
           # on it, created when there is none. A runtime made for one device
@@ -133,7 +157,31 @@ jobs:
           ')"
             device="$(xcrun simctl create "iPhone (iOS $IOS_VERSION)" "$type" "$runtime")"
           fi
-          # The macro expansion tests link swift-syntax for the host; they run
-          # in the macOS job and cannot load in the simulator.
-          xcodebuild test -scheme Lexical-Package -destination "id=$device" -skipPackagePluginValidation -skipMacroValidation \
-            -skip-testing:LexicalMacrosTests
+          # Only the test targets with Apple-specific code: the iOS view and
+          # the core (which has iOS-only input handling), with the TextKit
+          # layer and accessibility they sit on. macOS and Linux run the rest.
+          # The macro expansion tests link swift-syntax for the host and
+          # cannot load in the simulator.
+          # xcodebuild boots the simulator after the build: one booted
+          # during the build slows it about twofold on these runners.
+          # A freshly installed runtime sometimes fails to boot or to launch
+          # the tests ("cannot determine the runtime bundle"), so a run the
+          # simulator broke, with no test recording an issue, runs again on a
+          # shut-down simulator, up to three times; the build is incremental.
+          for attempt in 1 2 3; do
+            status=0
+            xcodebuild test -scheme Lexical-Package -destination "id=$device" \
+              -skipPackagePluginValidation -skipMacroValidation \
+              -only-testing:LexicalUIKitTests -only-testing:LexicalTests \
+              -only-testing:LexicalTextKitTests -only-testing:LexicalA11yTests \
+              2>&1 | tee "$RUNNER_TEMP/test.log" || status=$?
+            [ "$status" -eq 0 ] && exit 0
+            if [ "$attempt" -eq 3 ] ||
+              grep -qE "recorded an issue|' failed \(" "$RUNNER_TEMP/test.log" ||
+              ! grep -qE "Unable to boot device|runtime bundle|iOS Simulator \(null\)|Failed to prepare device|Early unexpected exit|Failed to install or launch the test runner" "$RUNNER_TEMP/test.log"; then
+              exit "$status"
+            fi
+            echo "::warning::The simulator failed the test run (attempt $attempt); running it again"
+            xcrun simctl shutdown "$device" || true
+            sleep 10
+          done

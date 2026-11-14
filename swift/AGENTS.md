@@ -60,6 +60,12 @@ UI changes also run on macOS and the iOS Simulator.
 - Subscribe to the pull request's CI and its comments. No human review is
   required: the author merges once every check is green, and fixes or
   answers comments first. Never merge red.
+- On a pull request, Swift (macOS) runs the macOS job and the iOS 27
+  Simulator, and only for changes to `swift/` outside the playground and
+  Markdown. The iOS 26.5 Simulator runs on main and nightly: after merging,
+  watch main's Swift (macOS) run for your commit, and when iOS 26.5 fails
+  there, open a fix-forward pull request. The next version pull request
+  waits for it.
 - **Squash-merge**, so each change is one commit on main.
 - **Upstream syncs** are the exception: a branch with a real merge commit
   named `Merge upstream vX.Y.Z`, merged with a merge commit (never squashed),
@@ -77,8 +83,11 @@ playground, examples and CI need none. Don't edit `swift/CHANGELOG.md` or
 
 While changesets are pending, the Swift Release workflow keeps a
 `chore(swift): version packages` pull request open, made by
-`swift/scripts/version-packages.sh`, and starts the Swift CI on it. Merging
-it (squash, once green, like any other) is the release: the workflow
+`swift/scripts/version-packages.sh`, and starts the Swift workflow on it.
+Swift (macOS) doesn't run on it: the branch changes only `VERSION`,
+`CHANGELOG.md` and the changesets, so the check is main's Swift (macOS) run
+at the branch's base commit, iOS 26.5 included. Merging it (squash, once its
+Swift run and that main run are green) is the release: the workflow
 publishes the mirror, the tag and the GitHub release from that version's
 `CHANGELOG.md` section. The `swift-release` environment only limits
 deployments to `main`; no one approves them.

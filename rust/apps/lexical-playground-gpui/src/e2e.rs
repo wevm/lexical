@@ -2,7 +2,8 @@
 //! `e2e` feature and run with `LEXICAL_PLAYGROUND_E2E=<file>`, the app
 //! drives its own window once it's up, the way macOS does — text through
 //! the window's input handler (typing and an input method's composition)
-//! and keys through their bindings — checks the document after each step,
+//! and keys through their bindings, undo and redo included — checks the
+//! document after each step,
 //! writes the session to `<file>` as a vector, and exits 0, or 1 with the
 //! step that failed. CI then replays the file in JS Lexical
 //! (`packages/lexical-conformance/src/replay.test.ts`), which compares
@@ -163,6 +164,8 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
     );
     step!("⇧Return", key(Box::new(InsertLineBreak)), expect(2, ""));
     step!("Typing after the break", typed("next"), expect(2, "next"));
+    step!("⌘Z", key(Box::new(Undo)), expect(2, ""));
+    step!("⌘⇧Z", key(Box::new(Redo)), expect(2, "next"));
     step!(
         "The third paragraph is untouched",
         |_: &mut Window, _: &mut App| {},

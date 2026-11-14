@@ -9,7 +9,7 @@
 //!   byte offsets.
 //! - [`Pos`] and [`Document::point_at`] / [`Document::pos_of`]: between a
 //!   position in that text and a Lexical selection point (UTF-16 offsets).
-//! - [`Playground`]: edits (typing, Enter, Backspace, formatting) run as
+//! - [`Playground`]: edits (typing, Enter, Backspace, formatting, undo) run as
 //!   steps of the conformance script language (`ops.ts`), through the same
 //!   interpreter that replays the vectors. Every step and its result are
 //!   kept, so [`Playground::export_case`] writes the session as a
@@ -24,6 +24,8 @@
 use lexical::json::{self, Object, Value};
 use lexical::{NodeRef, get_root};
 use lexical_conformance::scripts::Session;
+use std::rc::Rc;
+use std::time::Instant;
 
 mod surface;
 pub use surface::{DisplayRun, Surface, byte_of_utf16, utf16_of_byte};
@@ -562,10 +564,24 @@ pub struct Outcome {
     pub error: Option<String>,
 }
 
+/// How long typing keeps merging into one undo step, in ms:
+/// `HistoryExtension`'s default delay.
+pub const HISTORY_DELAY: f64 = 300.0;
+
+/// A clock in milliseconds, for history's merging by time.
+pub type Clock = Rc<dyn Fn() -> f64>;
+
 /// A playground editor: a script session, the document it draws, and the
 /// selection.
 pub struct Playground {
     session: Session,
+    /// The session's script without its steps: history and the CAN_UNDO /
+    /// CAN_REDO handlers, which the exported case carries for JS.
+    script: Object,
+    /// Each step's `now`, which history merges typing by.
+    clock: Clock,
+    can_undo: bool,
+    can_redo: bool,
     steps: Vec<Value>,
     results: Vec<Value>,
     document: Document,
@@ -578,13 +594,46 @@ pub struct Playground {
 }
 
 impl Playground {
-    /// A playground whose root starts with `children` (serialized nodes).
+    /// A playground whose root starts with `children` (serialized nodes),
+    /// with undo and redo (`@lexical/history`) on the wall clock.
     pub fn new(children: Vec<Value>) -> Result<Playground, String> {
+        let start = Instant::now();
+        Playground::with_clock(
+            children,
+            Rc::new(move || start.elapsed().as_millis() as f64),
+        )
+    }
+
+    /// [`Playground::new`] on `clock` (ms), which stamps each step's `now`.
+    pub fn with_clock(children: Vec<Value>, clock: Clock) -> Result<Playground, String> {
         let mut script = Object::new();
         script.insert("name", "playground".into());
-        let session = Session::start(&Value::Object(script))?;
+        let mut history = Object::new();
+        history.insert("delay", HISTORY_DELAY.into());
+        script.insert("history", Value::Object(history));
+        // History says whether undo and redo can run; a handler that
+        // doesn't stop the command logs it.
+        let handler = |id: &str, command: &str| {
+            let mut h = Object::new();
+            h.insert("id", id.into());
+            h.insert("command", command.into());
+            h.insert("result", false.into());
+            Value::Object(h)
+        };
+        script.insert(
+            "handlers",
+            Value::Array(vec![
+                handler("canUndo", "CAN_UNDO_COMMAND"),
+                handler("canRedo", "CAN_REDO_COMMAND"),
+            ]),
+        );
+        let session = Session::start(&Value::Object(script.clone()))?;
         let mut playground = Playground {
             session,
+            script,
+            clock,
+            can_undo: false,
+            can_redo: false,
             steps: Vec::new(),
             results: Vec::new(),
             document: Document::default(),
@@ -747,6 +796,40 @@ impl Playground {
         self.edit("formatText", vec![name.into()])
     }
 
+    /// ⌘Z: `UNDO_COMMAND`, which history handles. The app's selection
+    /// reaches the editor first, as a browser's `selectionchange` does.
+    pub fn undo(&mut self) -> Outcome {
+        self.dispatch("UNDO_COMMAND")
+    }
+
+    /// ⌘⇧Z: `REDO_COMMAND`.
+    pub fn redo(&mut self) -> Outcome {
+        self.dispatch("REDO_COMMAND")
+    }
+
+    /// Whether there is something to undo, as history last said
+    /// (`CAN_UNDO_COMMAND`).
+    pub fn can_undo(&self) -> bool {
+        self.can_undo
+    }
+
+    /// Whether there is something to redo (`CAN_REDO_COMMAND`).
+    pub fn can_redo(&self) -> bool {
+        self.can_redo
+    }
+
+    fn dispatch(&mut self, command: &str) -> Outcome {
+        if let Some(select) = self.select_action() {
+            let outcome = self.run_update(vec![select]);
+            if outcome.error.is_some() {
+                return outcome;
+            }
+        }
+        let mut step = Object::new();
+        step.insert("dispatch", command.into());
+        self.run(Value::Object(step))
+    }
+
     /// `$selectAll()`.
     pub fn select_all(&mut self) -> Outcome {
         let mut action = Object::new();
@@ -813,13 +896,23 @@ impl Playground {
         self.update(vec![Value::Object(action)])
     }
 
-    /// Runs one update step: first a `select` action when the app's
-    /// selection isn't the editor's, then `actions`.
+    /// Runs `actions` as one update step. When the app's selection isn't
+    /// the editor's, a step with a `select` action runs first, as a
+    /// browser's `selectionchange` reaches Lexical before the key does, so
+    /// history merges typing after a click as it does in a browser.
     pub fn update(&mut self, actions: Vec<Value>) -> Outcome {
-        let mut all = self.select_action().into_iter().collect::<Vec<_>>();
-        all.extend(actions);
+        if let Some(select) = self.select_action() {
+            let outcome = self.run_update(vec![select]);
+            if outcome.error.is_some() || actions.is_empty() {
+                return outcome;
+            }
+        }
+        self.run_update(actions)
+    }
+
+    fn run_update(&mut self, actions: Vec<Value>) -> Outcome {
         let mut step = Object::new();
-        step.insert("update", Value::Array(all));
+        step.insert("update", Value::Array(actions));
         self.run(Value::Object(step))
     }
 
@@ -843,6 +936,10 @@ impl Playground {
     }
 
     fn run(&mut self, step: Value) -> Outcome {
+        let mut step = step;
+        if let Value::Object(o) = &mut step {
+            o.insert("now", (self.clock)().into());
+        }
         let result = match self.session.run(&step, true) {
             Ok(r) => r,
             Err(e) => {
@@ -857,6 +954,25 @@ impl Playground {
             .editor()
             .read(Document::read)
             .unwrap_or_default();
+        for entry in result
+            .json
+            .get("log")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let entry = entry.as_array().map(Vec::as_slice).unwrap_or_default();
+            if let [kind, id, can] = entry
+                && kind.as_str() == Some("handler")
+                && let Some(can) = can.as_bool()
+            {
+                match id.as_str() {
+                    Some("canUndo") => self.can_undo = can,
+                    Some("canRedo") => self.can_redo = can,
+                    _ => {}
+                }
+            }
+        }
         self.model_selection = result.json.get("selection").cloned().unwrap_or(Value::Null);
         self.selection = self.selection_from_model();
         self.last_error = result.error.map(|e| e.to_string());
@@ -879,7 +995,7 @@ impl Playground {
     /// of each as this editor recorded it. JS Lexical replays it and
     /// compares (`packages/lexical-conformance/src/replay.test.ts`).
     pub fn export_case(&self, name: &str) -> Value {
-        let mut case = Object::new();
+        let mut case = self.script.clone();
         case.insert("name", name.into());
         case.insert("steps", Value::Array(self.steps.clone()));
         case.insert("results", Value::Array(self.results.clone()));

@@ -12,7 +12,9 @@ macOS first; it also builds and renders on Linux.
   - Typing, Return (`insertParagraph`), Shift-Return (`insertLineBreak`),
     Backspace and Delete (with Option for a word, Command for a line), Tab,
     paste (`insertRawText`), ⌘A, ⌘B, ⌘I and ⌘U run as Lexical updates
-    before the field sees them.
+    before the field sees them. ⌘Z and ⌘⇧Z dispatch `UNDO_COMMAND` and
+    `REDO_COMMAND` to `@lexical/history` (the `history` feature), which
+    merges typing within 300 ms into one step, as `HistoryExtension` does.
   - A change the field still makes itself, such as an input method's
     commit or a cut, is replayed into Lexical as the text it replaced.
   - After each edit the mirror is rebuilt from Lexical's state.
@@ -35,7 +37,7 @@ macOS first; it also builds and renders on Linux.
     LEXICAL_REPLAY=/path/to/lexical-playground-session.json pnpm exec vitest run src/replay.test.ts
     ```
 
-Undo, headings, lists, links, code blocks, HTML and Markdown arrive as the
+Headings, lists, links, code blocks, HTML and Markdown arrive as the
 port gets the packages ([DESIGN.md](../../DESIGN.md), milestones).
 
 ## Running it

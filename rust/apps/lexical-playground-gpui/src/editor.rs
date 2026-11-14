@@ -43,6 +43,8 @@ actions!(
         Bold,
         Italic,
         Underline,
+        Undo,
+        Redo,
         Copy,
         Cut,
         Paste,
@@ -88,6 +90,8 @@ pub fn bind_keys(cx: &mut App) {
         KeyBinding::new("cmd-b", Bold, c),
         KeyBinding::new("cmd-i", Italic, c),
         KeyBinding::new("cmd-u", Underline, c),
+        KeyBinding::new("cmd-z", Undo, c),
+        KeyBinding::new("cmd-shift-z", Redo, c),
         KeyBinding::new("cmd-c", Copy, c),
         KeyBinding::new("cmd-x", Cut, c),
         KeyBinding::new("cmd-v", Paste, c),
@@ -590,6 +594,8 @@ impl Render for LexicalEditor {
             .on_action(cx.listener(|this, _: &Underline, _, cx| {
                 this.edit(cx, |p| p.format_text("underline"))
             }))
+            .on_action(cx.listener(|this, _: &Undo, _, cx| this.edit(cx, Playground::undo)))
+            .on_action(cx.listener(|this, _: &Redo, _, cx| this.edit(cx, Playground::redo)))
             .on_action(cx.listener(Self::copy))
             .on_action(cx.listener(Self::cut))
             .on_action(cx.listener(Self::paste))

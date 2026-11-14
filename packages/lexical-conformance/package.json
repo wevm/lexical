@@ -19,6 +19,7 @@
     "@lexical/a11y": "workspace:*",
     "@lexical/clipboard": "workspace:*",
     "@lexical/code-core": "workspace:*",
+    "@lexical/code-prism": "workspace:*",
     "@lexical/devtools-core": "workspace:*",
     "@lexical/extension": "workspace:*",
     "@lexical/fast-check": "workspace:*",

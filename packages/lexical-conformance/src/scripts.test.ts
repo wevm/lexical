@@ -7,10 +7,11 @@
  */
 import type {SerializedLexicalNode} from 'lexical';
 
-import {test} from 'vitest';
+import {expect, test} from 'vitest';
 
 import {
   type Action,
+  type CodeHighlightSpec,
   type ExtensionArg,
   type ExtensionSpec,
   type HandlerSpec,
@@ -2374,6 +2375,298 @@ test('scripts/code', () => {
         ],
       },
     ],
+  );
+});
+
+test('scripts/code-highlight', () => {
+  // @lexical/code-prism's `registerCodeHighlighting` over a tokenizer: the
+  // conformance tokenizer (ops.ts's CONFORMANCE_TOKENIZE, which every
+  // runner implements) or tokens recorded from Prism. After each step the
+  // log ends with each code block's key, language, whether it is
+  // highlighted, and its children's keys, which show what the diff kept.
+  const code = true;
+  const richText = true;
+  const conformance: CodeHighlightSpec = {
+    languages: ['javascript', 'diff'],
+    tokenizer: 'conformance',
+  };
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const scripts: Script[] = [
+    {
+      code,
+      codeHighlight: conformance,
+      // Keys: the block 1, then (after highlighting) "let" 3, " " 4, "x" 5,
+      // " " 6, "=" 7, " " 8, "1" 9.
+      name: 'typing keeps the tokens that did not change',
+      richText,
+      steps: [
+        doc(codeBlock('javascript', ch('let x = 1'))),
+        // In the middle: only the word is replaced.
+        update(select(['5', 1, 'text'])),
+        type('yz'),
+        // A space splits the word's run.
+        type(' '),
+        // At the start: a keyword before.
+        update(select(['3', 0, 'text'])),
+        type('if '),
+        // Removing the space between two words joins them.
+        update(
+          select(['25', 0, 'text'], ['25', 1, 'text']),
+          call('removeText'),
+        ),
+        // A token that is the same once typed into is kept.
+        update(select(['9', 1, 'text'])),
+        type('0'),
+        // Two tokens changed in one update are highlighted once.
+        update(
+          node('19', 'setTextContent', 'return'),
+          node('7', 'setTextContent', '=='),
+        ),
+      ],
+    },
+    {
+      code,
+      codeHighlight: conformance,
+      // Keys: the block 1, "return" 3, " " 4, "a" 5, "+" 6, "b" 7.
+      name: 'a caret keeps its text offset',
+      richText,
+      steps: [
+        doc(codeBlock('javascript', ch('return a+b'))),
+        // Inside a keyword that stops being one.
+        update(select(['3', 3, 'text'])),
+        type('X'),
+        // A caret at the start of a token is at the end of the one before
+        // once the block is highlighted again.
+        update(select(['7', 0, 'text'])),
+        update(node('5', 'setTextContent', 'a b')),
+        // A caret in a token that is kept, after one that changed.
+        update(select(['7', 1, 'text'])),
+        update(node('15', 'setTextContent', 'aa')),
+        // A caret outside the block stays where it is.
+        update(
+          {do: 'append', key: 'root', nodes: [p(t('after'))]},
+          select(['root', 1, 'element']),
+        ),
+        update(node('8', 'setTextContent', 'let')),
+      ],
+    },
+    {
+      code,
+      codeHighlight: conformance,
+      // Keys: the block 1, "let" 3, " " 4, "a" 5, " " 6, "=" 7, " " 8, and
+      // the string's '"' 9, "s" 10, '"' 11.
+      name: 'a range selection collapses to its anchor',
+      richText,
+      steps: [
+        doc(codeBlock('javascript', ch('let a = "s"'))),
+        // Forward, across tokens; the block changes elsewhere.
+        update(select(['3', 1, 'text'], ['10', 1, 'text'])),
+        update(node('7', 'setTextContent', '+=')),
+        // Backward.
+        update(select(['10', 1, 'text'], ['3', 1, 'text'])),
+        update(node('17', 'setTextContent', '==')),
+        // Typing over a range across tokens.
+        update(select(['5', 0, 'text'], ['10', 0, 'text'])),
+        type('b ='),
+        // Nothing changes, so nothing is selected again.
+        update(select(['3', 1, 'text'], ['36', 0, 'text'])),
+        update(node('1', 'markDirty')),
+      ],
+    },
+    {
+      code,
+      codeHighlight: conformance,
+      // Keys: the block 1, then the line break 3, "let" 4, a tab 5, "a" 6,
+      // a line break 7, a tab 8, "b" 9, a line break 10.
+      name: 'line breaks and tabs',
+      richText,
+      steps: [
+        // A caret before a line break becomes an element point.
+        update(
+          {
+            do: 'append',
+            key: 'root',
+            nodes: [codeBlock('javascript', ch('\nlet\ta\n\tb\n'))],
+          },
+          select(['2', 0, 'text']),
+        ),
+        // A caret after a line break is kept as an element point.
+        update(select(['1', 5, 'element'])),
+        update(node('4', 'setTextContent', 'xy')),
+        // Raw text with a tab and line breaks.
+        update(select(['9', 1, 'text']), call('insertRawText', ' c\td\r\ne')),
+        // INSERT_TAB_COMMAND (registerCodeIndentation) inserts a tab.
+        run('INSERT_TAB_COMMAND'),
+        // Enter adds a line: the caret is on the code block.
+        run('INSERT_PARAGRAPH_COMMAND'),
+        type('f'),
+        // A text node with a tab and a line break in it is split.
+        update(select(['1', 0, 'element']), {
+          do: 'insertNodes',
+          nodes: [t('\tg\nh')],
+        }),
+      ],
+    },
+    {
+      code,
+      codeHighlight: conformance,
+      name: 'setLanguage and an unknown language',
+      richText,
+      steps: [
+        doc(codeBlock('javascript', ch('+ a\n b\n!c\n-d\nx'))),
+        // The second language of the tokenizer, with nested tokens.
+        update(node('1', 'setLanguage', 'diff')),
+        // A language the tokenizer doesn't know: plain tokens.
+        update(node('1', 'setLanguage', 'nolang')),
+        // No language: the tokenizer's default.
+        update(node('1', 'setLanguage', null)),
+        update(node('1', 'setLanguage', 'diff')),
+        update(node('1', 'setLanguage', '')),
+        // isSyntaxHighlightSupported follows the language, whatever it is
+        // set to.
+        update(node('1', 'setIsSyntaxHighlightSupported', false)),
+        update(
+          node('1', 'setLanguage', 'nolang'),
+          node('1', 'setIsSyntaxHighlightSupported', true),
+        ),
+      ],
+    },
+    {
+      code,
+      codeHighlight: {...conformance, defaultLanguage: 'diff'},
+      name: 'a block without a language takes defaultLanguage',
+      richText,
+      steps: [
+        doc(codeBlock(null, ch('+a\n b')), codeBlock('javascript', t('c d'))),
+        // A text node appended to a block is highlighted.
+        update({do: 'append', key: '1', nodes: [t('\n-e')]}),
+      ],
+    },
+    {
+      code,
+      codeHighlight: {...conformance, defaultLanguage: null},
+      name: 'defaultLanguage null leaves a block without a language plain',
+      richText,
+      steps: [
+        doc(codeBlock(null, t('let a'), ch('\tb'))),
+        update(node('1', 'setLanguage', 'javascript')),
+        update(node('1', 'setLanguage', null)),
+      ],
+    },
+    {
+      code,
+      codeHighlight: {...conformance, defaultLanguage: 'nolang'},
+      name: 'a defaultLanguage the tokenizer does not know',
+      richText,
+      steps: [doc(codeBlock(null, ch('let a')))],
+    },
+    {
+      code,
+      codeHighlight: conformance,
+      // Keys: the block 1, "let" 3, " " 4, "a" 5, " " 6, "=" 7, " " 8,
+      // "b" 9.
+      name: 'NodeState of the tokens',
+      richText,
+      steps: [
+        doc(codeBlock('javascript', ch('let a = b'))),
+        update(
+          {do: 'setState', key: '3', state: 'count', value: 3},
+          {do: 'setState', key: '5', state: 'label', value: 'x'},
+          {do: 'setState', key: '9', state: 'label', value: 'y'},
+        ),
+        // A token that is the same once typed into keeps its state.
+        update(select(['9', 1, 'text'])),
+        type('c'),
+        // One that is replaced doesn't.
+        update(select(['5', 1, 'text'])),
+        type(' '),
+        // The block becomes a paragraph: its tokens become text nodes with
+        // their state, and only those with equal state merge.
+        update(node('1', 'replace', p(), true)),
+      ],
+    },
+    {
+      code,
+      codeHighlight: conformance,
+      // Keys: the block 1, "let" 3, " " 4, the emoji 5, " " 6, "=" 7, " " 8,
+      // '"' 9, the escape 10, "x" 11, '"' 12.
+      name: 'text outside the BMP',
+      richText,
+      steps: [
+        doc(codeBlock('javascript', ch('let \u{1F600} = "\\\u{1F600}x"'))),
+        update(select(['5', 2, 'text'])),
+        type('\u{1F601}'),
+        update(select(['11', 1, 'text'])),
+        type('\\\u{1F602}'),
+        // The backslash left escapes the closing quote.
+        update(
+          select(['32', 1, 'text'], ['32', 3, 'text']),
+          call('removeText'),
+        ),
+      ],
+    },
+    {
+      code,
+      codeHighlight: conformance,
+      // Keys: the block 1, "let" 3, " " 4, "a" 5.
+      name: 'unregistering',
+      richText,
+      steps: [
+        doc(codeBlock('javascript', ch('let a'))),
+        update(select(['5', 1, 'text'])),
+        {unregisterCodeHighlighting: true},
+        type(' = b'),
+        update({do: 'append', key: '1', nodes: [t('\tc')]}),
+        // Rich text's handler, now that the indent handlers are gone.
+        run('INSERT_TAB_COMMAND'),
+      ],
+    },
+  ];
+  // Prism's own tokens: the script runs once with PrismTokenizer, which
+  // collects what Prism returns, then is recorded replaying those tokens,
+  // which must give the same results.
+  const prism: Omit<Script, 'codeHighlight'> = {
+    code,
+    // Keys: the blocks 1 and 3.
+    name: 'tokens recorded from Prism',
+    richText,
+    steps: [
+      doc(
+        codeBlock(
+          'javascript',
+          ch('const s = "a\\tb"; // hi\nfunction f(x) {\n\treturn x + 1;\n}'),
+        ),
+        codeBlock('diff', ch('+ added\n- removed\n  same\n! changed')),
+      ),
+      update(select(['1', 0, 'element'])),
+      type('let y = 2;\n'),
+      update(select(['3', 0, 'element'])),
+      type('-'),
+    ],
+  };
+  const spec: CodeHighlightSpec = {
+    languages: ['javascript', 'diff'],
+    tokenizer: 'prism',
+  };
+  const fromPrism = runScript({...prism, codeHighlight: spec});
+  const recorded: Script = {
+    ...prism,
+    codeHighlight: {
+      languages: spec.languages,
+      tokenizer: 'recorded',
+      tokens: spec.tokens,
+    },
+  };
+  const replayed = runScript(recorded);
+  expect(replayed.results).toEqual(fromPrism.results);
+  scripts.push(recorded);
+  emit(
+    'code-highlight',
+    "@lexical/code-prism's registerCodeHighlighting over a Tokenizer: the CodeNode, TextNode and CodeHighlightNode transforms (codeNodeTransform, textNodeTransform with $copyNodeState), $updateAndRetainSelection, getDiffRange and isEqual, $mapTokensToLexicalStructure's flattening, the nodesCurrentlyHighlighting guard, defaultLanguage, unknown languages, isSyntaxHighlightSupported and unregistering, with a deterministic tokenizer every runner implements and with tokens recorded from Prism.",
+    scripts,
   );
 });
 

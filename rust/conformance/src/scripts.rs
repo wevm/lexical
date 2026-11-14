@@ -31,7 +31,11 @@
 //! with `extension: true` `@lexical/extension`'s decorators
 //! (`HorizontalRuleNode`, `DecoratorTextNode`), and one with `mark: true`
 //! `@lexical/mark`'s `MarkNode`; the MarkState actions (`addMarkID`...) run
-//! without `MarkStateExtension`, as in `ops.ts`.
+//! without `MarkStateExtension`, as in `ops.ts`. A script with `code: true`
+//! and `codeHighlight` registers `registerCodeHighlighting` in place of
+//! `registerCodeIndentation`, over `ops.ts`'s conformance tokenizer
+//! (`code_highlight`) or tokens it recorded from Prism, and the step
+//! `unregisterCodeHighlighting` unregisters it.
 //!
 //! `setState`, `updateState`, `logState` and `logStateChange` name the
 //! NodeState configs of `ops.ts`'s `STATES` and its `UPDATERS`, made here
@@ -87,6 +91,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
+mod code_highlight;
 mod extensions;
 
 /// What `ops.ts`'s `Context` holds besides the editor.
@@ -783,6 +788,14 @@ fn element(node: NodeRef) -> Result<NodeRef, LexicalError> {
     }
 }
 
+fn code_node(node: NodeRef) -> Result<NodeRef, LexicalError> {
+    if lexical::code::is_code_node(&node) {
+        Ok(node)
+    } else {
+        Err(err(format!("{} is not a code node", node.get_key())))
+    }
+}
+
 fn mark_node(node: NodeRef) -> Result<NodeRef, LexicalError> {
     if mark::is_mark_node(&node) {
         Ok(node)
@@ -1095,6 +1108,10 @@ fn run_node_method(
             mark_node(n)?.set_ids(&ids);
         }
         "setIndent" => element(n)?.set_indent(number(&a(0))?)?,
+        "setIsSyntaxHighlightSupported" => code_node(n)?
+            .set_is_syntax_highlight_supported(a(0).as_bool().ok_or_else(|| err("a boolean"))?),
+        // `null` is `undefined`.
+        "setLanguage" => code_node(n)?.set_language(a(0).as_str()),
         "setTag" => {
             if !is_heading_node(&n) {
                 return Err(err(format!("{} is not a heading", n.get_key())));
@@ -2332,6 +2349,11 @@ pub struct Session {
     unregister_history: Option<Unregister>,
     /// `script.liveRegion`.
     live_region: bool,
+    /// Whether the script has `codeHighlight`.
+    code_highlight: bool,
+    /// What `registerCodeHighlighting` returned, until the step
+    /// `unregisterCodeHighlighting` calls it.
+    unregister_code_highlighting: RefCell<Option<Unregister>>,
 }
 
 impl Drop for Session {
@@ -2519,9 +2541,24 @@ impl Session {
                 );
             }
         }
+        let code_highlight = script.get("codeHighlight");
+        let mut unregister_code_highlighting = None;
         if with_code {
             let _unregister = lexical::code::register_code(&editor);
-            let _unregister = lexical::code::register_code_indentation(&editor, None);
+            match code_highlight {
+                None => {
+                    let _unregister = lexical::code::register_code_indentation(&editor, None);
+                }
+                Some(spec) => {
+                    unregister_code_highlighting = Some(
+                        lexical::code::register_code_highlighting(
+                            &editor,
+                            code_highlight::tokenizer(spec)?,
+                        )
+                        .map_err(|e| e.message().to_owned())?,
+                    );
+                }
+            }
         }
         if with_hashtag {
             let _unregister = lexical::hashtag::register_lexical_hashtag(
@@ -2667,6 +2704,8 @@ impl Session {
             clock,
             unregister_history,
             live_region: flag("liveRegion"),
+            code_highlight: code_highlight.is_some(),
+            unregister_code_highlighting: RefCell::new(unregister_code_highlighting),
         })
     }
 
@@ -2728,6 +2767,14 @@ impl Session {
                         .map(|announcer| announcer.announce(text))
                 },
             )
+        } else if step.get("unregisterCodeHighlighting").is_some() {
+            match self.unregister_code_highlighting.borrow_mut().take() {
+                Some(unregister) => {
+                    unregister();
+                    Ok(())
+                }
+                None => Err(err("no code highlighting to unregister")),
+            }
         } else if let Some(spec) = step.get("typeahead") {
             editor.get_editor_state().read(|| {
                 let (text, text_match) = typeahead_match(spec, editor)?;
@@ -2758,6 +2805,10 @@ impl Session {
         };
         if self.live_region {
             let entry = ctx.live_region_entry();
+            ctx.log.borrow_mut().push(entry);
+        }
+        if self.code_highlight {
+            let entry = code_highlight::code_blocks_entry(editor)?;
             ctx.log.borrow_mut().push(entry);
         }
         let mut json = snapshot_of(editor, ctx, snapshot)?;

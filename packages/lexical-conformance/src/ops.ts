@@ -27,12 +27,21 @@ import {
   setLexicalClipboardDataTransfer,
 } from '@lexical/clipboard';
 import {
+  $isCodeNode,
+  $plainifyCodeContent,
   CodeExtension,
   CodeHighlightNode,
   CodeIndentExtension,
   CodeNode,
+  DEFAULT_CODE_LANGUAGE,
   registerCodeIndentation,
 } from '@lexical/code-core';
+import * as CodePrism from '@lexical/code-prism';
+import {
+  PrismTokenizer,
+  registerCodeHighlighting,
+  type Tokenizer,
+} from '@lexical/code-prism';
 import {
   $defaultIsIdentifiedBlock,
   $getBlockById,
@@ -839,7 +848,44 @@ export type Step = (
    * `['typeahead', text, match, onEntityBoundary]` (`null`s past a `null`).
    */
   | {typeahead: TypeaheadSpec}
+  /**
+   * Calls what `registerCodeHighlighting` returned (`codeHighlight`), which
+   * unregisters the highlighting transforms and the indent handlers.
+   */
+  | {unregisterCodeHighlighting: true}
 ) & {now?: number};
+
+/**
+ * A token of a `Tokenizer` as JSON: a string, or Prism's `Token` with its
+ * `type`, its `content` (a string or tokens) and its `alias` when that is
+ * a string (the highlighter ignores any other).
+ */
+export type TokenJson =
+  | string
+  | {type: string; content: string | TokenJson[]; alias?: string};
+
+/**
+ * The tokenizer of `codeHighlight`. `'conformance'` is CONFORMANCE_TOKENIZE
+ * (every runner implements it). `'recorded'` returns `tokens`, which the
+ * script recorded from Prism (`PrismTokenizer.tokenize`), for each
+ * `[language, code]` it is asked for, and throws on any other. `'prism'`
+ * is `PrismTokenizer`'s `tokenize`, which only JS runs: it adds what it
+ * returns to `tokens`, for a script to record them. The tokenizer has only
+ * `languages`, each of which Prism has loaded, since the loop asks Prism's
+ * `isCodeLanguageLoaded` and the ports ask the tokenizer.
+ */
+export type CodeHighlightSpec = {
+  tokenizer: 'conformance' | 'recorded' | 'prism';
+  /**
+   * The languages the tokenizer has (`isCodeLanguageLoaded`), each one
+   * Prism has loaded; any other is unsupported.
+   */
+  languages: string[];
+  /** `defaultLanguage`; `DEFAULT_CODE_LANGUAGE` when absent. */
+  defaultLanguage?: string | null;
+  /** `[language, code, tokens]`, for `'recorded'`. */
+  tokens?: [string, string, TokenJson[]][];
+};
 
 /** A config of an extension of `extensionDefs`, or overrides of one. */
 export type ExtensionConfig = {[key: string]: Json};
@@ -994,6 +1040,15 @@ export type Script = {
    * `CodeExtension` and exits the block itself.
    */
   code?: boolean;
+  /**
+   * With `code`, `registerCodeHighlighting(editor, tokenizer)`
+   * (@lexical/code-prism) in place of `registerCodeIndentation`: the
+   * highlighting transforms, then the same indent handlers. The step
+   * `unregisterCodeHighlighting` unregisters both. After every step, the
+   * log ends with `['codeBlocks', [[key, language, supported, childKeys]...]]`
+   * (`codeBlocksEntry`).
+   */
+  codeHighlight?: CodeHighlightSpec;
   /**
    * Register `@lexical/overflow`'s `OverflowNode`, as `OverflowExtension`
    * does. It registers nothing else: its `$transform` comes with the class.
@@ -1548,6 +1603,230 @@ function listItem(node: LexicalNode): ListItemNode {
   return node;
 }
 
+function codeNode(node: LexicalNode): CodeNode {
+  if (!$isCodeNode(node)) {
+    throw new Error(`${node.getKey()} is not a code node`);
+  }
+  return node;
+}
+
+/**
+ * The function of `@lexical/code-prism`'s `FacadePrism.ts` that it doesn't
+ * export, which `vitest.config.mts` re-exports from its `index.ts`.
+ */
+type PrismInternals = {
+  INTERNAL_$mapTokensToLexicalStructure: (
+    tokens: (string | TokenJson)[],
+    type?: string,
+  ) => LexicalNode[];
+};
+
+const PRISM_INTERNALS = CodePrism as unknown as PrismInternals;
+
+const CONFORMANCE_KEYWORDS = new Set(['fn', 'if', 'let', 'return']);
+
+function isConformanceSpace(c: string): boolean {
+  return c === ' ' || c === '\t' || c === '\n' || c === '\r';
+}
+
+/** An ASCII letter, digit or `_`, or any code point past ASCII. */
+function isConformanceWord(c: string): boolean {
+  return /^[A-Za-z0-9_]$/.test(c) || c.codePointAt(0)! >= 0x80;
+}
+
+/**
+ * CONFORMANCE_TOKENIZE's grammar of every language but `diff`, over code
+ * points. A run of spaces, tabs, `\n` and `\r` is a string. A run of word
+ * code points is a `keyword` (CONFORMANCE_KEYWORDS) or a `number` (digits
+ * only) with string content, or a `word` whose content is `[run]`. `"`
+ * starts a `string` up to the next `"` or the end, whose content is `'"'`,
+ * the text between escapes, each `\` with the code point after it as an
+ * `escape`, and the closing `'"'`. `#` starts a `comment` up to the end of
+ * the line. Any other code point is a `punctuation`.
+ */
+function conformanceWords(code: string): TokenJson[] {
+  const chars = [...code];
+  const out: TokenJson[] = [];
+  let i = 0;
+  const runOf = (test: (c: string) => boolean): string => {
+    let j = i;
+    while (j < chars.length && test(chars[j])) {
+      j++;
+    }
+    const run = chars.slice(i, j).join('');
+    i = j;
+    return run;
+  };
+  while (i < chars.length) {
+    const c = chars[i];
+    if (isConformanceSpace(c)) {
+      out.push(runOf(isConformanceSpace));
+    } else if (isConformanceWord(c)) {
+      const run = runOf(isConformanceWord);
+      if (CONFORMANCE_KEYWORDS.has(run)) {
+        out.push({content: run, type: 'keyword'});
+      } else if (/^[0-9]+$/.test(run)) {
+        out.push({content: run, type: 'number'});
+      } else {
+        out.push({content: [run], type: 'word'});
+      }
+    } else if (c === '"') {
+      const content: TokenJson[] = ['"'];
+      i++;
+      let run = '';
+      while (i < chars.length && chars[i] !== '"') {
+        if (chars[i] === '\\' && i + 1 < chars.length) {
+          if (run !== '') {
+            content.push(run);
+            run = '';
+          }
+          content.push({content: '\\' + chars[i + 1], type: 'escape'});
+          i += 2;
+        } else {
+          run += chars[i++];
+        }
+      }
+      if (run !== '') {
+        content.push(run);
+      }
+      if (i < chars.length) {
+        content.push('"');
+        i++;
+      }
+      out.push({content, type: 'string'});
+    } else if (c === '#') {
+      out.push({content: runOf(d => d !== '\n'), type: 'comment'});
+    } else {
+      out.push({content: c, type: 'punctuation'});
+      i++;
+    }
+  }
+  return out;
+}
+
+/**
+ * The tokens of `code` in `language` by the conformance tokenizer, which
+ * every runner implements. `diff` is line by line, with `\n` between lines
+ * as a string, as Prism's grammar makes it: a line starting with `+`, `-`
+ * or a space is an `inserted`, `deleted` or `unchanged` token whose
+ * content is a `prefix` token of that code point (with string content,
+ * aliased to the line's type) and the words of the rest; with `!`, a
+ * `changed` token of a `prefix` without an alias and the words of the
+ * rest; and any other line is its words. Every other language is
+ * `conformanceWords`.
+ */
+export function CONFORMANCE_TOKENIZE(
+  code: string,
+  language: string,
+): TokenJson[] {
+  if (language !== 'diff') {
+    return conformanceWords(code);
+  }
+  const types: Record<string, string> = {
+    ' ': 'unchanged',
+    '!': 'changed',
+    '+': 'inserted',
+    '-': 'deleted',
+  };
+  const out: TokenJson[] = [];
+  code.split('\n').forEach((line, i) => {
+    if (i > 0) {
+      out.push('\n');
+    }
+    const type = line === '' ? undefined : types[line[0]];
+    if (type === undefined) {
+      out.push(...conformanceWords(line));
+      return;
+    }
+    const prefix: TokenJson =
+      type === 'changed'
+        ? {content: line[0], type: 'prefix'}
+        : {alias: type, content: line[0], type: 'prefix'};
+    out.push({content: [prefix, ...conformanceWords(line.slice(1))], type});
+  });
+  return out;
+}
+
+/** A Prism token as JSON (`TokenJson`). */
+function prismTokenJson(token: string | PrismToken): TokenJson {
+  if (typeof token === 'string') {
+    return token;
+  }
+  const {content, alias, type} = token;
+  if (typeof content !== 'string' && !Array.isArray(content)) {
+    throw new Error('a Prism token with a token as its content');
+  }
+  return {
+    ...(typeof alias === 'string' ? {alias} : {}),
+    content:
+      typeof content === 'string'
+        ? content
+        : (content as (string | PrismToken)[]).map(prismTokenJson),
+    type,
+  };
+}
+
+type PrismToken = {type: string; content: unknown; alias: unknown};
+
+/**
+ * The `Tokenizer` of a `codeHighlight` spec, whose `$tokenize` is
+ * `PrismTokenizer.$tokenize` with `$getHighlightNodes(codeNode, lang)` in
+ * its general form: `$mapTokensToLexicalStructure` of `this.tokenize` of the
+ * block's text (without the `diff-<language>` grammars of Prism).
+ */
+function scriptTokenizer(spec: CodeHighlightSpec): Tokenizer {
+  const languages = new Set(spec.languages);
+  for (const language of languages) {
+    if (!CodePrism.isCodeLanguageLoaded(language)) {
+      throw new Error(`Prism has no ${language}`);
+    }
+  }
+  const tokenize = (code: string, language: string): TokenJson[] => {
+    if (!languages.has(language)) {
+      throw new Error(`the tokenizer has no ${language}`);
+    }
+    switch (spec.tokenizer) {
+      case 'conformance':
+        return CONFORMANCE_TOKENIZE(code, language);
+      case 'recorded': {
+        const entry = (spec.tokens ?? []).find(
+          ([l, c]) => l === language && c === code,
+        );
+        if (entry === undefined) {
+          throw new Error(`no tokens recorded for ${language}: ${code}`);
+        }
+        return entry[2];
+      }
+      case 'prism': {
+        const tokens = PrismTokenizer.tokenize(code, language).map(token =>
+          prismTokenJson(token as string | PrismToken),
+        );
+        spec.tokens ??= [];
+        if (!spec.tokens.some(([l, c]) => l === language && c === code)) {
+          spec.tokens.push([language, code, tokens]);
+        }
+        return tokens;
+      }
+    }
+  };
+  return {
+    $tokenize(this: Tokenizer, node: CodeNode, language?: string) {
+      const lang = language || this.defaultLanguage;
+      return lang === null
+        ? $plainifyCodeContent(node.getTextContent())
+        : PRISM_INTERNALS.INTERNAL_$mapTokensToLexicalStructure(
+            this.tokenize(node.getTextContent(), lang) as TokenJson[],
+          );
+    },
+    defaultLanguage:
+      spec.defaultLanguage === undefined
+        ? DEFAULT_CODE_LANGUAGE
+        : spec.defaultLanguage,
+    tokenize: (code: string, language?: string) =>
+      tokenize(code, language ?? '') as never,
+  };
+}
+
 /**
  * The node methods a script may call, by name. A method that exists on both
  * text and element nodes (`select`, `setFormat`, `setStyle`) calls the one of
@@ -1641,6 +1920,12 @@ const NODE_METHODS: Record<
   },
   setIDs: (n, args) => markNode(n).setIDs(arg(args, 0) as string[]),
   setIndent: (n, args) => element(n).setIndent(arg(args, 0) as number),
+  // `CodeNode.setIsSyntaxHighlightSupported(isSupported)`.
+  setIsSyntaxHighlightSupported: (n, args) =>
+    codeNode(n).setIsSyntaxHighlightSupported(arg(args, 0) as boolean),
+  // `CodeNode.setLanguage(language)`; `null` is `undefined`.
+  setLanguage: (n, args) =>
+    codeNode(n).setLanguage(optional<string>(arg(args, 0))),
   setMode: (n, args) => text(n).setMode(arg(args, 0) as never),
   setStyle: (n, args) => {
     if ($isTextNode(n)) {
@@ -3146,10 +3431,18 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       });
     }
   }
+  let unregisterCodeHighlighting: (() => void) | undefined;
   if (script.code) {
     // `CodeExtension.register` reads only the editor.
     (CodeExtension.register as (e: LexicalEditor) => () => void)(editor);
-    registerCodeIndentation(editor);
+    if (script.codeHighlight === undefined) {
+      registerCodeIndentation(editor);
+    } else {
+      unregisterCodeHighlighting = registerCodeHighlighting(
+        editor,
+        scriptTokenizer(script.codeHighlight),
+      );
+    }
   }
   if (script.hashtag) {
     registerLexicalHashtag(editor);
@@ -3278,6 +3571,11 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
           editor,
           AriaLiveRegionExtension,
         ).output.announce(step.announce);
+      } else if ('unregisterCodeHighlighting' in step) {
+        if (unregisterCodeHighlighting === undefined) {
+          throw new Error('no code highlighting to unregister');
+        }
+        unregisterCodeHighlighting();
       } else if ('typeahead' in step) {
         const spec = step.typeahead;
         editor.getEditorState().read(() => {
@@ -3312,6 +3610,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     if (script.liveRegion) {
       ctx.log.push(liveRegionEntry(ctx));
     }
+    if (script.codeHighlight !== undefined) {
+      ctx.log.push(codeBlocksEntry(editor));
+    }
     const result = snapshotOf(editor, ctx.log, snapshot);
     if (error) {
       result.error = true;
@@ -3319,6 +3620,27 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     return result;
   };
   return build === undefined ? {editor, run} : {build, editor, run};
+}
+
+/**
+ * `['codeBlocks', [[key, language, isSyntaxHighlightSupported, childKeys]...]]`
+ * of the code blocks among the root's children: what the JSON doesn't show
+ * (`language` is `null` when it is `undefined`), and the keys of the
+ * children, which show which ones the highlighter kept.
+ */
+function codeBlocksEntry(editor: LexicalEditor): Json {
+  return editor.read(() => [
+    'codeBlocks',
+    $getRoot()
+      .getChildren()
+      .filter($isCodeNode)
+      .map(n => [
+        n.getKey(),
+        n.getLanguage() ?? null,
+        n.getIsSyntaxHighlightSupported(),
+        n.getChildrenKeys(),
+      ]),
+  ]);
 }
 
 /** Runs `script` on a new headless editor and records every step. */
@@ -3348,6 +3670,7 @@ function runExtensionStep(
     | {characterLimit: unknown}
     | {tableOfContents: true}
     | {unmount: string}
+    | {unregisterCodeHighlighting: true}
   >,
   ctx: Context,
 ): void {

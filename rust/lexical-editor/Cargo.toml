@@ -56,6 +56,14 @@ autolink = ["link", "dep:regex"]
 # depends on @lexical/extension, @lexical/html and @lexical/utils, for the
 # extensions, the DOM import and the arrow-key handlers, which aren't ported.
 code = []
+# The highlighting loop of @lexical/code-prism (CodeHighlighterPrism.ts:
+# registerCodeHighlighting, registerHighlightingOnly, and with `extension`
+# CodePrismExtension), with the lazy languages of @lexical/code-shiki, over a
+# Tokenizer the app supplies. Upstream it depends on @lexical/code-core,
+# @lexical/extension and prismjs; Prism's grammars (a third-party
+# dependency, as Swift's tree-sitter tokenizer would be) aren't ported, nor
+# is registerCodeGutter, which writes to the DOM.
+code-highlight = ["code"]
 # @lexical/mark: MarkNode, $wrapSelectionInMarkNode, $unwrapMarkNode,
 # $getMarkIDs, and the functions of MarkStateExtension.ts that need no
 # extension. Upstream it depends on @lexical/utils, which it enables as

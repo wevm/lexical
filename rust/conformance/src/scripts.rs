@@ -22,7 +22,10 @@
 //! defaults, and `TOGGLE_LINK_COMMAND` takes `null`, a URL or
 //! `{url, target, rel, title}`. With `autoLink: true` as well, it registers
 //! `registerAutoLink` with `autoLinkUrlMatcher` and `autoLinkEmailMatcher`,
-//! and a change handler that logs `['autoLink', url, prevUrl]`.
+//! and a change handler that logs `['autoLink', url, prevUrl]`. One with
+//! `code: true` registers `@lexical/code-core`'s nodes (`CodeNode`,
+//! `CodeHighlightNode`), `CodeExtension`'s transform and
+//! `registerCodeIndentation`.
 //!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
@@ -838,6 +841,7 @@ impl Session {
         let rich_text = script.get("richText").and_then(Value::as_bool) == Some(true);
         let with_list = script.get("list").and_then(Value::as_bool) == Some(true);
         let with_link = script.get("link").and_then(Value::as_bool) == Some(true);
+        let with_code = script.get("code").and_then(Value::as_bool) == Some(true);
         let mut nodes = Vec::new();
         if rich_text {
             nodes.extend(lexical::rich_text::rich_text_nodes());
@@ -847,6 +851,9 @@ impl Session {
         }
         if with_link {
             nodes.extend(link::link_nodes());
+        }
+        if with_code {
+            nodes.extend(lexical::code::code_nodes());
         }
         let editor = create_editor(CreateEditorArgs { nodes });
         let ctx = Rc::new(Ctx::default());
@@ -880,6 +887,10 @@ impl Session {
                     },
                 );
             }
+        }
+        if with_code {
+            let _unregister = lexical::code::register_code(&editor);
+            let _unregister = lexical::code::register_code_indentation(&editor, None);
         }
         for name in script
             .get("transforms")

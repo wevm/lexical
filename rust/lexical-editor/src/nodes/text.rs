@@ -213,9 +213,10 @@ impl NodeRef {
         self.with_text(|t| to_int32(t.format) & flag != 0)
     }
 
-    /// `setFormat(format)` with a number.
+    /// `setFormat(format)` with a number, which a node class may override
+    /// ([`LexicalNode::set_format`]).
     pub fn set_format(&self, format: f64) {
-        self.set_text_data(|t| t.format = format);
+        self.get_latest().set_format(self, format);
     }
 
     /// `setFormat(type)` with a name, such as `'bold'`.

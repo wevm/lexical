@@ -39,6 +39,11 @@ link = ["utils"]
 # whose regular expressions need the `regex` crate: the one feature with a
 # third-party dependency (rust/DESIGN.md, "Architecture").
 autolink = ["link", "dep:regex"]
+# @lexical/code-core: CodeNode, CodeHighlightNode, FlatStructureUtils and the
+# model parts of CodeExtension and registerCodeIndentation. Upstream it also
+# depends on @lexical/extension, @lexical/html and @lexical/utils, for the
+# extensions, the DOM import and the arrow-key handlers, which aren't ported.
+code = []
 
 [dependencies]
 # Without `perf-literal`, which would add aho-corasick and memchr.

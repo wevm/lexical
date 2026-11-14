@@ -36,6 +36,9 @@ updated with each milestone.
 | Link nodes (the `link` feature) | `packages/lexical-link/src/LexicalLinkNode.ts` (`LinkNode`: `getURL`, `setURL`, `getTarget`, `setTarget`, `getRel`, `setRel`, `getTitle`, `setTitle`, `insertNewAfter`, `canInsertTextBefore`, `canInsertTextAfter`, `canBeEmpty`, `isInline`, `extractWithChild`, `isEmailURI`, `isWebSiteURI`, `shouldMergeAdjacentLink`; `AutoLinkNode`: `getIsUnlinked`, `setIsUnlinked`, its `shouldMergeAdjacentLink`), `$createLinkNode`, `$isLinkNode`, `$createAutoLinkNode`, `$isAutoLinkNode`, `$linkNodeTransform`, `formatUrl`; their generated JSON (`LexicalLinkGeneratedJSON.ts`, with `afterCloneLinkNode` and `afterCloneAutoLinkNode` as `Clone`); `ElementNode.extractWithChild` as a node hook and `isParentOf`; from the core `RangeSelection.extract` and `NodeSelection.extract` | `link`, `node`, `selection_editing` | `serialization/link`, the link cases of `property/documents`, `scripts/link` |
 | `$toggleLink` and `registerLink` (the `link` feature) | `LexicalLinkNode.ts` (`TOGGLE_LINK_COMMAND`, `$toggleLink`, `$withSelectedNodes`, `$getPointNode`, `$splitLinkAtSelection`); `LexicalLinkExtension.ts` `registerLink` (the `LinkNode` transform and the `TOGGLE_LINK_COMMAND` handler, with `validateUrl` and `attributes` from `LinkConfig`) | `link::register_link`, `link::toggle_link` | `scripts/link` |
 | `registerAutoLink` (the `autolink` feature) | `packages/lexical-link/src/LexicalAutoLinkExtension.ts`: `registerAutoLink` (the `TextNode` transform, `$handleLinkCreation`, `handleLinkEdit`, `handleBadNeighbors`, `$createAutoLinkNode_`, `extractMatchingNodes`, `isContentAroundIsValid`, `isPreviousNodeValid`, `isNextNodeValid`, `startsWithTLD`, the separator checks, `getTextNodesToMatch`, `replaceWithChildren`, and the `TOGGLE_LINK_COMMAND` handler that flips `isUnlinked`), `AutoLinkConfig` and its defaults (`changeHandlers`, `excludeParents`, `matchers`, `separatorRegex`), `ChangeHandler`, `LinkMatcher`, `LinkMatcherResult`, `createLinkMatcherWithRegExp`, `autoLinkUrlMatcher` (with its parenthesis balancing) and `autoLinkEmailMatcher`, on the `regex` crate | `link::register_auto_link` | `scripts/autolink`, `entities/autolink-match` |
+| Code nodes (the `code` feature) | `packages/lexical-code-core/src/CodeNode.ts` (`CodeNode`: `getLanguage`, `setLanguage`, `getTheme`, `setTheme`, `getIsSyntaxHighlightSupported`, `setIsSyntaxHighlightSupported`, `insertNewAfter` (the path of an editor without `CodeExtension`), `canIndent`, `collapseAtStart`; `$createCodeNode`, `$isCodeNode`, `DEFAULT_CODE_LANGUAGE`, `getDefaultCodeLanguage`, `$exitCodeNodeOnEnter`), `CodeHighlightNode.ts` (`CodeHighlightNode`: `getHighlightType`, `setHighlightType`, `setFormat` as a no-op, `isParentRequired`, `createParentElementNode`; `$createCodeHighlightNode`, `$isCodeHighlightNode`); their generated JSON (`LexicalCodeCoreGeneratedJSON.ts`, with `afterCloneCodeNode` and `afterCloneCodeHighlightNode` as `Clone`); `TextNode.setFormat` as a node hook; from the core `getTextDirection` and `RTL_REGEX`/`LTR_REGEX` (`LexicalUtils.ts`, `LexicalConstants.ts`) | `code`, `node`, `nodes::text`, `lexical_utils`, `constants` | `serialization/code`, the code cases of `property/documents`, `scripts/code` |
+| `FlatStructureUtils.ts` (the `code` feature) | `$getFirstCodeNodeOfLine`, `$getLastCodeNodeOfLine`, `$getCodeLineDirection`, `$getStartOfCodeInLine` (with `findNextNonBlankInLine`), `$getEndOfCodeInLine`, `$plainifyCodeContent`, `$outdentLeadingSpaces` | `code::flat_structure_utils` | `scripts/code`; a unit test against JS's output for each function |
+| `CodeExtension`'s register and `registerCodeIndentation` (the `code` feature) | `CodeExtension.ts` `register` (the `TabNode` transform), as `register_code`; `CodeIndentation.ts` `registerCodeIndentation`'s handlers of `INSERT_TAB_COMMAND`, `INDENT_CONTENT_COMMAND` and `OUTDENT_CONTENT_COMMAND` (`$isSelectionInCode`, `$getCodeLines`, `$outdentLineAtCaret`, `$handleMultilineIndent`), with `tabSize` | `code::register_code`, `code::register_code_indentation` | `scripts/code` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -102,6 +105,27 @@ touches:
   the text outside the parent either way, and
   `$resolveSelectionPointOnBoundary`, which also reads them, runs only
   after `Selection.modify`.
+- `@lexical/code-core`'s DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
+  `importDOM`, `$convertPreElement` and the other converters,
+  `CodeImportRules`/`CodeImportExtension` and the VS Code paste overlay),
+  which come with `html`, and `registerCodeGutter`, which writes to the
+  DOM; `CodeExtension` and `CodeIndentExtension`, which need the extension
+  API (`register_code` and `register_code_indentation(editor, None)` are
+  what their defaults register); `CodeExtension`'s `KEY_ENTER_COMMAND`
+  handler and `registerCodeIndentation`'s handlers of `KEY_TAB_COMMAND`,
+  the arrow keys (`$handleTab`, `$handleShiftLines`, `escapeWithArrows`),
+  `MOVE_TO_START` and `MOVE_TO_END` (`$handleMoveTo`), which read a
+  `KeyboardEvent` and wait for an input layer. With no extension API,
+  `CodeNode.insertNewAfter` always takes the path JS takes for an editor
+  without `CodeExtension` (exiting the block after two line breaks itself,
+  as `scripts/code` records with `createEditor`), less the deprecation
+  warning. JS's `CodeHighlightNode` constructor keeps a `null` highlight
+  type it is given; nothing but a direct `new` makes one, and Rust has
+  none. Highlighting (`@lexical/code-prism`, `@lexical/code-shiki`) is
+  other packages: no vector needs a tokenizer, since every recorded
+  document carries its `highlightType`s, and `scripts/code` registers no
+  highlighter. Of the 25 `property/documents` cases with code nodes, 4
+  also hold hashtag or overflow nodes and wait on those packages.
 - The slot-aware caret comparisons (`$comparePointCaretNextAcrossSlots`,
   `$getCommonAncestorAcrossSlots`). Without slots, NodeState or the text
   edit log, `$removeTextFromCaretRange` never meets a slot host and carries

@@ -6,6 +6,12 @@
  *
  */
 
+import {
+  CodeExtension,
+  CodeHighlightNode,
+  CodeNode,
+  registerCodeIndentation,
+} from '@lexical/code-core';
 import {namedSignals} from '@lexical/extension';
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
 import {
@@ -210,6 +216,16 @@ export type Script = {
    * `['autoLink', url, prevUrl]`.
    */
   autoLink?: boolean;
+  /**
+   * Register `@lexical/code-core`'s nodes (`CodeNode`, `CodeHighlightNode`),
+   * `CodeExtension`'s `register` (its TabNode transform and KEY_ENTER_COMMAND
+   * handler) and `registerCodeIndentation(editor)`, after the link, as
+   * `CodeIndentExtension` does with its `CodeExtension` dependency (with
+   * their default config). The editor is made with `createEditor`, so
+   * `CodeNode.insertNewAfter` takes its path for an editor without
+   * `CodeExtension` and exits the block itself.
+   */
+  code?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -689,6 +705,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       ...(script.richText ? [HeadingNode, QuoteNode] : []),
       ...(script.list ? [ListNode, ListItemNode] : []),
       ...(script.link ? [LinkNode, AutoLinkNode] : []),
+      ...(script.code ? [CodeNode, CodeHighlightNode] : []),
     ],
     onError: e => {
       throw e;
@@ -718,6 +735,11 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
         matchers: [autoLinkUrlMatcher, autoLinkEmailMatcher],
       });
     }
+  }
+  if (script.code) {
+    // `CodeExtension.register` reads only the editor.
+    (CodeExtension.register as (e: LexicalEditor) => () => void)(editor);
+    registerCodeIndentation(editor);
   }
   for (const name of script.transforms ?? []) {
     const transform = TRANSFORMS[name];

@@ -2,9 +2,10 @@
 //! it leaves for the update cycle.
 
 use crate::caret_tree::detach_node;
+use crate::constants::{LTR, RTL};
 use crate::editor::DirtyType;
 use crate::node::{LexicalNode, NodeRef};
-use crate::nodes::element::is_root_or_shadow_root;
+use crate::nodes::element::{Direction, is_root_or_shadow_root};
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::updates::{
     error_on_infinite_transforms, error_on_read_only, get_active_editor, get_active_editor_state,
@@ -234,4 +235,21 @@ pub(crate) fn mutate<R>(key: &str, f: impl FnOnce(&mut dyn LexicalNode) -> R) ->
 pub(crate) fn with_writable<R>(key: &str, f: impl FnOnce(&mut dyn LexicalNode) -> R) -> R {
     get_writable(key);
     mutate(key, f)
+}
+
+/// `getTextDirection(text)`: the direction of the first strongly
+/// directional UTF-16 code unit in `text` (`RTL_REGEX`, then `LTR_REGEX`:
+/// `^[^LTR]*[RTL]` and `^[^RTL]*[LTR]`), or `None` when there is none.
+pub fn get_text_direction(text: &str) -> Option<Direction> {
+    let is_in =
+        |ranges: &[(u16, u16)], unit: u16| ranges.iter().any(|&(a, b)| a <= unit && unit <= b);
+    text.encode_utf16().find_map(|unit| {
+        if is_in(RTL, unit) {
+            Some(Direction::Rtl)
+        } else if is_in(LTR, unit) {
+            Some(Direction::Ltr)
+        } else {
+            None
+        }
+    })
 }

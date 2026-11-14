@@ -28,6 +28,7 @@ updated with each milestone.
 | Parsing | `parseEditorState`, `$parseSerializedNode` (`LexicalUpdates.ts`) | `updates` | `serialization/core`, `property/documents` |
 | Editor | `createEditor` (node registration), `update`, `read`, `getEditorState`, `setEditorState`, `registerNodeTransform`, `registerUpdateListener`, `registerTextContentListener`, `registerCommand`, `dispatchCommand`, `createCommand` | `editor` | `scripts/*` |
 | History (the `history` feature) | `packages/lexical-history/src/index.ts`: `registerHistory` (with `dateNow`, `onHistoryStateChange` and `maxDepth`), `createEmptyHistoryState`, `createMergeActionGetter`, `getChangeType`, `getDirtyNodes`, `isTextNodeUnchanged`, `areNodesUnchanged`, `getInverseEntry`, `getUndoEntry`, `undo`, `redo`, `clearHistory`; the commands it handles and dispatches from `LexicalCommands.ts` (`UNDO_COMMAND`, `REDO_COMMAND`, `CAN_UNDO_COMMAND`, `CAN_REDO_COMMAND`, `CLEAR_HISTORY_COMMAND`, `CLEAR_EDITOR_COMMAND`) and its tags from `LexicalUpdateTags.ts` | `history`, `commands`, `editor` | `scripts/history`; unit tests for a history shared by two editors (upstream's #8623 test) and `maxDepth` |
+| Rich text nodes (the `rich-text` feature) | `packages/lexical-rich-text/src/index.ts`: `HeadingNode` (`getTag`, `setTag`, `insertNewAfter`, `collapseAtStart`, `extractWithChild`), `QuoteNode` (`insertNewAfter`, `collapseAtStart`, `canMergeWhenEmpty`, the opt-in shadow root), `$createHeadingNode`, `$isHeadingNode`, `$createQuoteNode`, `$isQuoteNode`; their generated JSON (`LexicalRichTextGeneratedJSON.ts`); `ElementNode.collapseAtStart` as a node hook, and `ElementNode`'s own `$transform` (`$normalizeShadowRootChildren`); from `@lexical/selection` and `@lexical/utils` only `$isAtEdgeOfElement`, `$isAtStartOfNode` and `$isAtEndOfNode` | `rich_text`, `selection`, `utils`, `updates` | `scripts/rich-text`, the heading and quote cases of `property/documents` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -62,6 +63,16 @@ touches:
   `register_history` works. `register_history` takes the delay and
   `maxDepth` as values, where JS also takes signals, and `maxDepth` as a
   `usize`.
+- `registerRichText`'s command handlers (Enter, Backspace, formatting and
+  the rest a text surface dispatches), which come next, and the DOM parts of
+  `@lexical/rich-text` (`createDOM`, `exportDOM`, `importDOM`, paste and drag
+  and drop), which come with `html` or have no counterpart.
+  `quoteShadowRootState` is a flat NodeState in JS; with NodeState not
+  ported, `QuoteNode` keeps it in a field that parses and serializes as the
+  flat state does. A shadow root quote's `collapseAtStart` (dissolving into
+  its blocks) is ported but no vector reaches it: headless JS needs the
+  DOM's `Selection.modify` to get there and throws, which `scripts/rich-text`
+  records.
 - Composition, the DOM reconciler, mutation listeners, selection-change
   notifications and `$onUpdate` callbacks (none of which a headless editor
   runs, except `$onUpdate`), and `RootNode.__cachedText`. So `history` passes

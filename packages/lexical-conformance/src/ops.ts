@@ -7,6 +7,7 @@
  */
 
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
+import {HeadingNode, QuoteNode} from '@lexical/rich-text';
 import {
   $caretRangeFromSelection,
   $createNodeSelection,
@@ -139,6 +140,8 @@ export type Script = {
    * registered after the handlers and listeners, on the session's clock.
    */
   history?: {delay: number};
+  /** Register `@lexical/rich-text`'s nodes (`HeadingNode`, `QuoteNode`). */
+  richText?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -579,6 +582,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
   resetRandomKey();
   const editor = createEditor({
     namespace: '',
+    nodes: script.richText ? [HeadingNode, QuoteNode] : [],
     onError: e => {
       throw e;
     },

@@ -14,17 +14,17 @@ use crate::caret::{
     get_text_point_caret, get_text_point_caret_at_end,
 };
 use crate::error::invariant;
-use crate::node::{NodeKey, NodeRef};
-use crate::nodes::element::is_root_or_shadow_root;
-use crate::nodes::text::create_text_node;
-use crate::selection::{
+use crate::lexical_selection::{
     Point, PointType, RangeSelection, SelectionRef, Which, create_range_selection, get_selection,
     set_selection,
 };
-use crate::utils::{
+use crate::lexical_utils::{
     get_node_by_key_or_throw, get_root, is_block, is_shadow_root_node, remove_from_parent,
     restore_empty_container_paragraph,
 };
+use crate::node::{NodeKey, NodeRef};
+use crate::nodes::element::is_root_or_shadow_root;
+use crate::nodes::text::create_text_node;
 use std::collections::HashSet;
 
 /// `$caretFromPoint(point, direction)`: the caret at a selection point.

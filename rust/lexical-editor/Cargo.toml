@@ -19,6 +19,12 @@ publish = false
 # @lexical/history. Upstream it depends on @lexical/utils, which isn't ported;
 # it needs nothing from it.
 history = []
+# @lexical/selection.
+selection = []
+# @lexical/utils.
+utils = ["selection"]
+# @lexical/rich-text: HeadingNode and QuoteNode.
+rich-text = ["selection", "utils"]
 
 [lints]
 workspace = true

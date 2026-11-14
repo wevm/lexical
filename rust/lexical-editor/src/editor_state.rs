@@ -1,12 +1,12 @@
 //! `LexicalEditorState.ts`.
 
 use crate::json::{Object, Value};
+use crate::lexical_selection::SelectionRef;
+use crate::lexical_utils::get_root;
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::nodes::root::RootNode;
-use crate::selection::SelectionRef;
 use crate::serialized_export::{export_node_json, with_compact_export};
 use crate::updates::read_editor_state;
-use crate::utils::get_root;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;

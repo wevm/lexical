@@ -904,3 +904,109 @@ test('scripts/history', () => {
     ],
   );
 });
+
+function h(tag: string, ...children: Node[]): Node {
+  return {...p(...children), tag, type: 'heading'} as Node;
+}
+
+function q(...children: Node[]): Node {
+  return {...p(...children), type: 'quote'} as Node;
+}
+
+test('scripts/rich-text', () => {
+  // `@lexical/rich-text`'s nodes: what Enter (`insertParagraph`) and
+  // Backspace at a block's start (`deleteCharacter`) do in a heading and a
+  // quote, and a quote that is a shadow root.
+  const richText = true;
+  emit(
+    'rich-text',
+    "@lexical/rich-text's HeadingNode and QuoteNode: insertNewAfter, collapseAtStart, the shadow root quote, and their JSON.",
+    [
+      {
+        name: 'Enter at the end, in the middle and at the start of a heading',
+        richText,
+        steps: [
+          doc(
+            {...h('h2', t('Title')), format: 'center', indent: 1} as Node,
+            p(t('body')),
+          ),
+          update(select(['2', 5, 'text']), call('insertParagraph')),
+          update(select(['2', 2, 'text']), call('insertParagraph')),
+          update(select(['2', 0, 'text']), call('insertParagraph')),
+          update(select(['2', 0, 'text']), call('insertText', 'X')),
+        ],
+      },
+      {
+        name: 'Enter in an empty heading and with a selection over it',
+        richText,
+        steps: [
+          doc(h('h3'), h('h4', t('abcdef'))),
+          update(select(['1', 0, 'element']), call('insertParagraph')),
+          update(
+            select(['3', 1, 'text'], ['3', 4, 'text']),
+            call('insertParagraph'),
+          ),
+        ],
+      },
+      {
+        name: 'Backspace at the start of a heading',
+        richText,
+        steps: [
+          doc(p(t('before')), h('h1', t('Title')), h('h2')),
+          // A heading with content stays; the selection merges nothing.
+          update(select(['4', 0, 'text']), call('deleteCharacter', true)),
+          // An empty heading becomes a paragraph.
+          update(select(['5', 0, 'element']), call('deleteCharacter', true)),
+        ],
+      },
+      {
+        name: 'Enter and Backspace in a quote',
+        richText,
+        steps: [
+          doc(p(t('a')), {
+            ...q(t('quoted')),
+            direction: 'rtl',
+            format: 'right',
+          } as Node),
+          update(
+            select(['4', 3, 'text']),
+            {args: ['bold'], do: 'selection', method: 'formatText'},
+            call('insertParagraph'),
+          ),
+          update(select(['4', 0, 'text']), call('deleteCharacter', true)),
+        ],
+      },
+      {
+        name: 'a shadow root quote',
+        richText,
+        steps: [
+          doc(
+            p(t('a')),
+            {...q(p(t('one')), p(t('two'))), shadowRoot: true} as Node,
+            {...q(), shadowRoot: 'yes'} as Node,
+          ),
+          update(select(['5', 0, 'text']), call('insertParagraph')),
+          // Merges the new empty paragraph back.
+          update(select(['5', 0, 'text']), call('deleteCharacter', true)),
+          // At the start of the quote's first block, from a text point and
+          // from the block's element point: headless JS needs the DOM's
+          // Selection.modify to get to the quote's collapseAtStart, and
+          // throws.
+          update(select(['5', 0, 'text']), call('deleteCharacter', true)),
+          update(select(['4', 0, 'element']), call('deleteCharacter', true)),
+          // `shadowRoot: 'yes'` isn't a boolean, so this quote is inline: it
+          // becomes a paragraph.
+          update(select(['8', 0, 'element']), call('deleteCharacter', true)),
+        ],
+      },
+      {
+        name: 'a shadow root quote parsed with inline children',
+        richText,
+        steps: [
+          doc({...q(t('loose'), br(), t('text')), shadowRoot: true} as Node),
+          update(select(['2', 2, 'text']), call('insertText', '!')),
+        ],
+      },
+    ],
+  );
+});

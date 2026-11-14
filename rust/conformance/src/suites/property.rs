@@ -28,7 +28,9 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
     if let Some(package) = parsed_input.get("root").and_then(unported_package) {
         return Ok(Outcome::NotPorted(package));
     }
-    let editor = create_editor(CreateEditorArgs::default());
+    let editor = create_editor(CreateEditorArgs {
+        nodes: lexical::rich_text::rich_text_nodes(),
+    });
     let parsed = editor.parse_editor_state(input);
     if case.get("error").is_some() {
         return match parsed {

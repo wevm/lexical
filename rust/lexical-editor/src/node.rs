@@ -6,15 +6,15 @@ use crate::caret_tree::{
     insert_sibling, select_adjacent_node,
 };
 use crate::error::invariant;
-use crate::nodes::element::{self, ElementData, is_root_or_shadow_root};
-use crate::nodes::root::RootNode;
-use crate::nodes::text::TextData;
-use crate::selection::{
+use crate::lexical_selection::{
     PointType, SelectionRef, Which, get_selection, maybe_move_children_selection_to_parent,
     move_selection_point_to_end, move_selection_point_to_sibling, set_selection,
 };
+use crate::lexical_utils::{get_node_by_key_impl, get_writable, mutate, with_writable};
+use crate::nodes::element::{self, ElementData, is_root_or_shadow_root};
+use crate::nodes::root::RootNode;
+use crate::nodes::text::TextData;
 use crate::updates::{error_on_read_only, get_active_editor_state};
-use crate::utils::{get_node_by_key_impl, get_writable, mutate, with_writable};
 use crate::{LexicalError, json::Object, utf16};
 use std::any::Any;
 use std::fmt;
@@ -115,6 +115,18 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
     ) -> Result<Option<NodeRef>, LexicalError> {
         let _ = (this, selection, restore_selection);
         Ok(None)
+    }
+
+    /// `ElementNode.collapseAtStart(selection)` on the element `this`: what
+    /// a backward deletion at the element's start does instead of merging
+    /// it. `true` means the element handled it. `ElementNode` returns false.
+    fn collapse_at_start(
+        &self,
+        this: &NodeRef,
+        selection: &SelectionRef,
+    ) -> Result<bool, LexicalError> {
+        let _ = (this, selection);
+        Ok(false)
     }
 
     /// `canInsertTextBefore()` (`TextNode` and `ElementNode`): whether text
@@ -385,6 +397,11 @@ impl NodeRef {
     ) -> Result<Option<NodeRef>, LexicalError> {
         self.get_latest()
             .insert_new_after(self, selection, restore_selection)
+    }
+
+    /// `ElementNode.collapseAtStart(selection)`.
+    pub fn collapse_at_start(&self, selection: &SelectionRef) -> Result<bool, LexicalError> {
+        self.get_latest().collapse_at_start(self, selection)
     }
 
     /// `isSelected()` for a node selection. Range selections come with

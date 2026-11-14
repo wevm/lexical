@@ -3,10 +3,10 @@
 //! generated JSON (`LexicalRichTextGeneratedJSON.ts`).
 //!
 //! `registerRichText`'s command handlers ([`register_rich_text`]) that act
-//! on the model, with those of copy, cut and paste, which take the
-//! `DataTransfer` of the platform's clipboard event. The handlers of the
-//! other DOM events (click, arrow keys, Backspace, Delete, Enter, Escape,
-//! Space, Tab and drag and drop) wait for an input layer, and the DOM parts
+//! on the model, its `KEY_ENTER_COMMAND` handler, and those of copy, cut
+//! and paste, which take the `DataTransfer` of the platform's clipboard
+//! event. The handlers of the other DOM events (click, arrow keys,
+//! Backspace, Delete, Escape, Space, Tab and drag and drop) wait for an input layer, and the DOM parts
 //! (`createDOM`, `exportDOM`, `importDOM`) come with `html`. With the
 //! `extension` feature, [`rich_text_extension`] is `RichTextExtension`, and
 //! with `a11y`, `heading_announce_extension` is `HeadingAnnounceExtension`
@@ -19,8 +19,8 @@ use crate::commands::{
     CONTROLLED_TEXT_INSERTION_COMMAND, COPY_COMMAND, CUT_COMMAND, DELETE_CHARACTER_COMMAND,
     DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND,
     INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND,
-    INSERT_TAB_COMMAND, OUTDENT_CONTENT_COMMAND, PASTE_COMMAND, REMOVE_TEXT_COMMAND,
-    SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
+    INSERT_TAB_COMMAND, KEY_ENTER_COMMAND, OUTDENT_CONTENT_COMMAND, PASTE_COMMAND,
+    REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
 };
 use crate::editor::COMMAND_PRIORITY_EDITOR;
 use crate::generated_json::{
@@ -486,6 +486,18 @@ fn on_cut_for_rich_text(
     )
 }
 
+/// `$escapeFormatsForTrigger(selection, 'enter', 'both', config)` with
+/// `DEFAULT_ESCAPE_FORMAT_TRIGGERS`: turns `capitalize`, `lowercase` and
+/// `uppercase` off the pending format. None of them is `onlyAtBoundary`,
+/// so the style is kept.
+fn escape_formats_for_enter(selection: &SelectionRef) {
+    for format in ["capitalize", "lowercase", "uppercase"] {
+        if selection.has_format(format) {
+            selection.toggle_format(format);
+        }
+    }
+}
+
 /// The current selection when it is a range selection.
 fn range_selection() -> Option<SelectionRef> {
     get_selection().filter(SelectionRef::is_range)
@@ -495,7 +507,10 @@ fn range_selection() -> Option<SelectionRef> {
 /// that act on the model, at `COMMAND_PRIORITY_EDITOR`, and returns what
 /// unregisters them.
 ///
-/// JS's `escapeFormatTriggers` (for click and arrow keys) goes with those
+/// `KEY_ENTER_COMMAND` escapes the default `escapeFormatTriggers` and
+/// dispatches `INSERT_PARAGRAPH_COMMAND`, or `INSERT_LINE_BREAK_COMMAND`
+/// with Shift. JS's `escapeFormatTriggers` config (for click and arrow keys, and other
+/// than its default) goes with those
 /// events' handlers, which aren't ported, and `shouldHandlePasteAsFiles`
 /// (`DRAG_DROP_PASTE`) with files, which the port's `DataTransfer` doesn't
 /// carry. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form,
@@ -636,6 +651,36 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
                 };
                 selection.insert_paragraph()?;
                 Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &KEY_ENTER_COMMAND,
+            |event, editor| {
+                let mut selection = get_selection();
+                // A block decorator selected alone as a NodeSelection: Enter
+                // inserts a paragraph after it.
+                if let Some(s) = selection.as_ref().filter(|s| s.is_node()) {
+                    let nodes = s.get_nodes()?;
+                    if let [node] = nodes.as_slice()
+                        && node.is_decorator()
+                        && !node.is_inline()
+                    {
+                        selection = Some(node.select_next(None, None)?);
+                    }
+                }
+                let Some(selection) = selection.filter(SelectionRef::is_range) else {
+                    return Ok(false);
+                };
+                escape_formats_for_enter(&selection);
+                if let Some(event) = event {
+                    // No beforeinput to defer to (JS's iOS and Safari path).
+                    event.prevent_default();
+                    if event.shift_key {
+                        return editor.dispatch_command(&INSERT_LINE_BREAK_COMMAND, false);
+                    }
+                }
+                editor.dispatch_command(&INSERT_PARAGRAPH_COMMAND, ())
             },
             COMMAND_PRIORITY_EDITOR,
         ),

@@ -2,7 +2,8 @@
 //! `packages/lexical-markdown/src`: markdown import
 //! (`$convertFromMarkdownString`), export (`$convertToMarkdownString`,
 //! `$convertSelectionToMarkdownString`), the transformers
-//! (`MarkdownTransformers.ts`).
+//! (`MarkdownTransformers.ts`) and the markdown shortcuts
+//! (`registerMarkdownShortcuts`).
 //!
 //! Upstream's transformers are JS regular expressions, and custom
 //! transformers bring their own; [`RegExp`] is a small JS regular
@@ -17,12 +18,14 @@ mod import_text_match_transformer;
 mod import_text_transformers;
 mod markdown_export;
 mod markdown_import;
+mod markdown_shortcuts;
 mod markdown_transformers;
 mod reg_exp;
 mod reg_exp_tables;
 mod utils;
 
 pub use markdown_import::import_markdown_nodes;
+pub use markdown_shortcuts::register_markdown_shortcuts;
 pub use markdown_transformers::{
     CodeSpanDelimiter, ElementExport, ElementReplace, ElementTransformer, ExportChildren,
     ExportFormat, GetEndIndex, HandleImportAfterStartMatch, MultilineElementTransformer,

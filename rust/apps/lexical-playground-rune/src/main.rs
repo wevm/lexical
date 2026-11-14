@@ -33,6 +33,31 @@ pub struct State {
     pub report: Option<(String, bool)>,
     /// What the last action said (an export's path, an edit's error).
     pub status: Option<String>,
+    /// The caret's blink: see [`State::caret_visible`].
+    pub blink: Blink,
+}
+
+/// How long the caret stays on, then off, as a Mac text field's does.
+const BLINK_PHASE: f64 = 0.5;
+
+/// The caret blinks as a Mac text field's: solid for a phase after any
+/// key, edit or move, then off and on every phase, and hidden while the
+/// window or the field doesn't have the keyboard. Rune's field draws its
+/// caret solid, so the view paints it clear in the off phases.
+pub struct Blink {
+    /// The window's clock (seconds) at the last key, edit or move.
+    since: f64,
+    /// The field's selection then, to see the pointer move the caret.
+    selection: (usize, usize),
+    window_focused: bool,
+    pub on: bool,
+}
+
+impl Blink {
+    fn restart(&mut self, clock: f64) {
+        self.since = clock;
+        self.on = true;
+    }
 }
 
 impl State {
@@ -44,6 +69,12 @@ impl State {
             panel: Panel::Tree,
             report: None,
             status: None,
+            blink: Blink {
+                since: 0.0,
+                selection: (0, 0),
+                window_focused: true,
+                on: true,
+            },
         };
         state.edit.focused = true;
         state.sync();
@@ -197,16 +228,43 @@ pub fn decorations(doc: &Document) -> Vec<rune::Span> {
     spans
 }
 
-pub fn on_key(s: &mut State, ev: &KeyEvent, _: &mut Tx) -> bool {
+pub fn on_key(s: &mut State, ev: &KeyEvent, tx: &mut Tx) -> bool {
+    s.blink.restart(tx.clock());
     s.key(ev)
 }
 
-pub fn on_paste(s: &mut State, content: &ClipboardContent, _: &mut Tx) -> bool {
+pub fn on_paste(s: &mut State, content: &ClipboardContent, tx: &mut Tx) -> bool {
+    s.blink.restart(tx.clock());
     s.paste(content)
 }
 
-pub fn on_change(s: &mut State, _: &mut Tx) {
+pub fn on_change(s: &mut State, tx: &mut Tx) {
+    s.blink.restart(tx.clock());
     s.changed();
+}
+
+pub fn on_window_focus(s: &mut State, focused: bool, tx: &mut Tx) {
+    s.blink.window_focused = focused;
+    s.blink.restart(tx.clock());
+}
+
+/// Every frame: the caret's blink phase, and a wake for the next one.
+fn poll(s: &mut State, clock: f64, tx: &mut Tx) -> bool {
+    let b = &mut s.blink;
+    let selection = (s.edit.anchor, s.edit.focus);
+    if selection != b.selection {
+        b.selection = selection;
+        b.since = clock;
+    }
+    let was = b.on;
+    if b.window_focused && s.edit.focused {
+        let phase = ((clock - b.since).max(0.0) / BLINK_PHASE).floor();
+        b.on = (phase as u64).is_multiple_of(2);
+        tx.wake_at(b.since + (phase + 1.0) * BLINK_PHASE);
+    } else {
+        b.on = false;
+    }
+    b.on != was
 }
 
 /// A session headless snapshots show: typed text, a new paragraph, bold.
@@ -237,6 +295,7 @@ fn main() {
         // Inline code (`Mark::Code`) draws in the mono slot: the system's
         // monospaced face (SF Mono on macOS).
         families: ("Inter", "ui-monospace"),
+        poll: Some(poll),
         ..AppSpec::new(
             "Lexical Playground (Rune)",
             (1100.0, 720.0),

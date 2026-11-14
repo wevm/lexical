@@ -53,8 +53,14 @@ the first build.
 
 On macOS, `cargo run` runs the app as an app: `bundle.sh`, Cargo's runner
 there (`.cargo/config.toml`), makes `Lexical Playground (Rune).app` beside the
-executable and runs the app from inside it, so it shows in the Dock. The
-bundle stays, to open from Finder.
+executable and runs the app from inside it, so it shows in the Dock with its
+icon. The bundle stays, to open from Finder.
+
+The icon, `AppIcon.icon`, is an Icon Composer document, as wevm/zero's
+zbugs-rune has: the Lexical mark of the Swift playground's icon, with the
+Rune mark in the bottom right corner, in light and dark. `bundle.sh`
+compiles it with Xcode's `actool` when it changes. Open it in Icon Composer
+to edit it.
 
 Like every Rune app, it renders headless too:
 `cargo run -- --snap playground.png --size 1100x720 --scene typed` (and

@@ -19,7 +19,8 @@ struct ScriptTests {
     "scripts/listeners", "scripts/caret", "scripts/rich-text", "scripts/rich-text-commands",
     "scripts/plain-text", "scripts/history", "scripts/list", "scripts/link",
     "scripts/autolink", "scripts/code", "scripts/overflow", "scripts/node-state",
-    "scripts/set-blocks-type", "scripts/decorator", "scripts/text", "fuzz/core",
+    "scripts/set-blocks-type", "scripts/decorator", "scripts/text", "scripts/extensions",
+    "fuzz/core",
   ]
 
   static let cases: [Case] = files.flatMap { file in
@@ -31,7 +32,20 @@ struct ScriptTests {
   @Test(arguments: cases)
   func replay(_ vector: Case) throws {
     let expected = vector.script.objectValue?["results"]?.arrayValue ?? []
-    let actual = try runScript(vector.script)
+    let (build, actual) = try runScriptWithBuild(vector.script)
+    // A script with `extensions` records its build: the log, then the
+    // editor's state, selection and text, or the error.
+    let wantBuild = vector.script.objectValue?["build"]
+    #expect((build == nil) == (wantBuild == nil))
+    if let build, let wantBuild {
+      for field in ["log", "selection", "text", "state", "compact", "error"] {
+        let got = build.objectValue?[field]?.stringify()
+        let want = wantBuild.objectValue?[field]?.stringify()
+        if got != want {
+          Issue.record("build \(field) differs\n\(difference(got ?? "nil", want ?? "nil"))")
+        }
+      }
+    }
     #expect(actual.count == expected.count)
     let steps = vector.script.objectValue?["steps"]?.arrayValue ?? []
     // Only the first divergent step is reported: later steps diverge with it.

@@ -169,13 +169,15 @@ private struct ScriptState {
 }
 
 private final class ScriptContext {
-  let editor: Editor
+  /// Set once the editor is made: a script with `extensions` makes it after
+  /// its extensions have started logging.
+  var editor: Editor!
   var log: [JSONValue] = []
   var commands: [String: LexicalCommand<JSONValue>] = [:]
   /// The session's clock (ms): what the history listener reads as `Date.now()`.
   var clock: Double = 0
 
-  init(_ editor: Editor) { self.editor = editor }
+  init(_ editor: Editor? = nil) { self.editor = editor }
 
   // ops.ts's `STATES`, one set per session (JS's are shared by every
   // session, which no session can tell: a node type learns a config in one
@@ -261,26 +263,28 @@ private final class ScriptContext {
   }
 
   /// `editor.registerCommand(command(ctx, name), listener, priority)`.
+  @discardableResult
   func register(
     _ name: String, _ priority: Int, _ listener: @escaping (JSONValue) throws -> Bool
-  ) {
+  ) -> () -> Void {
     switch coreCommands[name] {
     case .void(let command):
-      _ = editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
+      return editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
     case .bool(let command):
-      _ = editor.registerCommand(command, { payload, _ in try listener(.bool(payload)) }, priority)
+      return editor.registerCommand(
+        command, { payload, _ in try listener(.bool(payload)) }, priority)
     case .string(let command):
-      _ = editor.registerCommand(
+      return editor.registerCommand(
         command, { payload, _ in try listener(.string(payload)) }, priority)
     case .formats(let command):
-      _ = editor.registerCommand(
+      return editor.registerCommand(
         command,
         { payload, _ in try listener(.object(JSONObject(payload.map { ($0, .bool($1)) }))) },
         priority)
     case .keyboard(let command):
-      _ = editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
+      return editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
     case .listStart(let command):
-      _ = editor.registerCommand(
+      return editor.registerCommand(
         command,
         { payload, _ in
           try listener(
@@ -290,10 +294,10 @@ private final class ScriptContext {
               ])))
         }, priority)
     case .toggleLink(let command):
-      _ = editor.registerCommand(
+      return editor.registerCommand(
         command, { payload, _ in try listener(toggleLinkJSON(payload)) }, priority)
     case nil:
-      _ = editor.registerCommand(
+      return editor.registerCommand(
         self.command(name), { payload, _ in try listener(payload) }, priority)
     }
   }
@@ -632,7 +636,7 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
 }
 
 private func registerTransform(_ name: String, _ ctx: ScriptContext) throws {
-  let editor = ctx.editor
+  let editor: Editor = ctx.editor
   func log(_ key: NodeKey) {
     ctx.log.append(.array([.string("transform"), .string(name), .string(key)]))
   }
@@ -682,7 +686,52 @@ private func registerTransform(_ name: String, _ ctx: ScriptContext) throws {
 /// `runScript` in ops.ts: runs `script` on a new editor and records every
 /// step.
 func runScript(_ script: JSONValue) throws -> [StepRecord] {
+  try runScriptWithBuild(script).steps
+}
+
+/// `runScript` with what building the editor from the script's `extensions`
+/// recorded (`build`: the log, then the editor's state, selection and text,
+/// or the message it threw, after which there are no steps).
+func runScriptWithBuild(_ script: JSONValue) throws -> (build: JSONValue?, steps: [StepRecord]) {
   resetRandomKey()
+  let ctx = ScriptContext()
+  var built: TestExtensions?
+  var build: JSONValue?
+  if let extensions = script["extensions"]?.arrayValue {
+    for flag in [
+      "richText", "plainText", "list", "link", "code", "overflow", "hashtag", "extension",
+    ]
+    where script[flag]?.boolValue == true {
+      throw ScriptError("extensions and \(flag) don't mix")
+    }
+    let defs = TestExtensions(script["extensionDefs"]?.objectValue ?? JSONObject())
+    defs.log = { [unowned ctx] in ctx.log.append($0) }
+    defs.command = { [unowned ctx] in ctx.command($0) }
+    built = defs
+    do {
+      ctx.editor = try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
+    } catch {
+      let message = (error as? LexicalError)?.message ?? "\(error)"
+      return (.object(JSONObject([("error", .string(message)), ("log", .array(ctx.log))])), [])
+    }
+    let (selection, content) = try ctx.editor.read {
+      (try selectionSnapshot(), try getRoot().getTextContent())
+    }
+    let state = ctx.editor.getEditorState()
+    build = .object(
+      JSONObject([
+        ("log", .array(ctx.log)), ("selection", selection), ("text", .string(content)),
+        ("state", .string(try state.toJSON().stringify())),
+        ("compact", .string(try state.toJSON(true).stringify())),
+      ]))
+  } else {
+    ctx.editor = try makeEditor(script)
+  }
+  return (build, try runSteps(script, ctx, built))
+}
+
+/// `createEditor` with the nodes of the script's package flags.
+private func makeEditor(_ script: JSONValue) throws -> Editor {
   // `richText: true` registers @lexical/rich-text's nodes and
   // `registerRichText`, `list: true` @lexical/list's nodes,
   // `registerList` and `registerCheckList`, and `link: true` @lexical/link's
@@ -713,9 +762,16 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   if script["extension"]?.boolValue == true {
     nodes += [.klass(HorizontalRuleNode.self), .klass(DecoratorTextNode.self)]
   }
-  let editor = try createEditor(
+  return try createEditor(
     CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))
-  let ctx = ScriptContext(editor)
+}
+
+/// Registers the script's packages, transforms, handlers, listeners and
+/// history on `ctx.editor`, then runs and records the steps.
+private func runSteps(
+  _ script: JSONValue, _ ctx: ScriptContext, _ extensions: TestExtensions?
+) throws -> [StepRecord] {
+  let editor: Editor = ctx.editor
   if script["richText"]?.boolValue == true {
     _ = registerRichText(editor)
   }
@@ -823,10 +879,11 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
               try runAction(action, ctx)
             }
           }, EditorUpdateOptions(tag: tags, discrete: true))
-      } else {
-        let name = try step["dispatch"]?.stringValue.orThrow() ?? ""
+      } else if let name = step["dispatch"]?.stringValue {
         let handled = try ctx.dispatch(name, step["payload"] ?? .null)
         ctx.log.append(.array([.string("dispatched"), .string(name), .bool(handled)]))
+      } else {
+        try extensions.orThrow().runStep(step, editor)
       }
     } catch {
       failed = true

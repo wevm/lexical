@@ -27,6 +27,7 @@
     "@lexical/html": "workspace:*",
     "@lexical/link": "workspace:*",
     "@lexical/list": "workspace:*",
+    "@lexical/mark": "workspace:*",
     "@lexical/markdown": "workspace:*",
     "@lexical/overflow": "workspace:*",
     "@lexical/plain-text": "workspace:*",

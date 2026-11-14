@@ -6,6 +6,7 @@ import LexicalHashtag
 import LexicalHistory
 import LexicalLink
 import LexicalList
+import LexicalMark
 import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
@@ -322,6 +323,15 @@ private func element(_ node: LexicalNode) throws -> ElementNode {
   return element
 }
 
+private func markNode(_ node: LexicalNode) throws -> MarkNode {
+  guard let mark = node as? MarkNode else {
+    throw ScriptError("\(node.getKey()) is not a mark node")
+  }
+  return mark
+}
+
+private func strings(_ values: [String]) -> JSONValue { .array(values.map { .string($0) }) }
+
 private func parse(_ nodes: JSONValue) throws -> [LexicalNode] {
   try (nodes.arrayValue ?? []).map { value in
     guard let object = value.objectValue else { throw ScriptError("not a serialized node") }
@@ -439,8 +449,34 @@ private func runNodeMethod(
     try parse(.array([a0])).first.orThrow()
   }
   switch method {
+  case "addID": try markNode(n).addID(a0.stringValue.orThrow())
   case "append": try element(n).append(contentsOf: parse(a0))
   case "clear": try element(n).clear()
+  case "deleteID": try markNode(n).deleteID(a0.stringValue.orThrow())
+  case "excludeFromCopy":
+    let destination = try a0.stringValue.orThrow()
+    ctx.log.append(
+      .array([
+        .string("excludeFromCopy"), .string(n.getKey()), .string(destination),
+        .bool(try element(n).excludeFromCopy(destination)),
+      ]))
+  case "extractWithChild":
+    let child = try a0.stringValue.orThrow()
+    let destination = try a1.stringValue.orThrow()
+    let extracted = try element(n).extractWithChild(node(child), anySelection(), destination)
+    ctx.log.append(
+      .array([
+        .string("extractWithChild"), .string(n.getKey()), .string(child), .string(destination),
+        .bool(extracted),
+      ]))
+  case "getIDs":
+    ctx.log.append(
+      .array([.string("getIDs"), .string(n.getKey()), strings(try markNode(n).getIDs())]))
+  case "hasID":
+    let id = try a0.stringValue.orThrow()
+    ctx.log.append(
+      .array([.string("hasID"), .string(n.getKey()), .string(id), .bool(try markNode(n).hasID(id))])
+    )
   case "insertAfter": _ = try n.insertAfter(one(), restoreSelection: a1.boolValue ?? true)
   case "insertBefore": _ = try n.insertBefore(one(), restoreSelection: a1.boolValue ?? true)
   case "markDirty": try n.markDirty()
@@ -470,6 +506,8 @@ private func runNodeMethod(
     } else {
       try element(n).setFormat(a0.stringValue.orThrow())
     }
+  case "setIDs":
+    try markNode(n).setIDs((a0.arrayValue.orThrow()).map { try $0.stringValue.orThrow() })
   case "setIndent": try element(n).setIndent(a0.int.orThrow())
   case "setMode": try text(n).setMode(a0.stringValue.orThrow())
   case "setStyle":
@@ -626,6 +664,44 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
         .string("textIntersection"), .number(Double(characters)),
         found.map { .array([.string($0.node.getKey()), .number(Double($0.offset))]) } ?? .null,
       ]))
+  case "wrapSelectionInMarkNode":
+    try wrapSelectionInMarkNode(
+      rangeSelection(), action["isBackward"]?.boolValue ?? false,
+      action["id"]?.stringValue.orThrow() ?? "")
+  case "unwrapMarkNode":
+    try unwrapMarkNode(markNode(node(action["key"]?.stringValue.orThrow() ?? "")))
+  case "logMarkIDs":
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    let offset = try action["offset"]?.int.orThrow() ?? 0
+    let ids = try getMarkIDs(text(node(key)), offset)
+    ctx.log.append(
+      .array([.string("markIDs"), .string(key), .int(offset), ids.map(strings) ?? .null]))
+  case "addMarkID":
+    let id = try action["id"]?.stringValue.orThrow() ?? ""
+    let nodes = try addMarkID(id, anySelection())
+    ctx.log.append(
+      .array([.string("addMarkID"), .string(id), .array(nodes.map { .string($0.getKey()) })]))
+  case "removeMarkID":
+    let id = try action["id"]?.stringValue.orThrow() ?? ""
+    if action["inSelection"]?.boolValue == true {
+      try removeMarkID(id, anySelection())
+    } else {
+      try removeMarkID(id)
+    }
+  case "logNodeMarkIDs":
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    ctx.log.append(
+      .array([.string("nodeMarkIDs"), .string(key), strings(try getNodeMarkIDs(node(key)))]))
+  case "logMarkIDsAtSelection":
+    let mode = action["mode"]?.stringValue
+    let selection: (any BaseSelection)? = try getSelection()
+    let ids = try getMarkIDsAtSelection(selection, mode == "all" ? .all : .any)
+    ctx.log.append(
+      .array([.string("markIDsAtSelection"), mode.map { .string($0) } ?? .null, strings(ids)]))
+  case "migrateMarkNodesToMarkState":
+    let target = try action["key"]?.stringValue.map { try node($0) }
+    let count = try migrateMarkNodesToMarkState(target)
+    ctx.log.append(.array([.string("migrateMarkNodesToMarkState"), .int(count)]))
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)
@@ -699,7 +775,7 @@ func runScriptWithBuild(_ script: JSONValue) throws -> (build: JSONValue?, steps
   var build: JSONValue?
   if let extensions = script["extensions"]?.arrayValue {
     for flag in [
-      "richText", "plainText", "list", "link", "code", "overflow", "hashtag", "extension",
+      "richText", "plainText", "list", "link", "code", "overflow", "hashtag", "extension", "mark",
     ]
     where script[flag]?.boolValue == true {
       throw ScriptError("extensions and \(flag) don't mix")
@@ -739,8 +815,9 @@ private func makeEditor(_ script: JSONValue) throws -> Editor {
   // @lexical/code-core's nodes, `CodeExtension`'s TabNode transform and
   // `registerCodeIndentation`, `overflow: true` @lexical/overflow's
   // `OverflowNode`, `hashtag: true` @lexical/hashtag's `HashtagNode` and
-  // `registerLexicalHashtag`, and `extension: true` @lexical/extension's
-  // `HorizontalRuleNode` and `DecoratorTextNode`, as ops.ts does.
+  // `registerLexicalHashtag`, `extension: true` @lexical/extension's
+  // `HorizontalRuleNode` and `DecoratorTextNode`, and `mark: true`
+  // @lexical/mark's `MarkNode`, as ops.ts does.
   var nodes: [LexicalNodeConfig] =
     script["richText"]?.boolValue == true
     ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
@@ -761,6 +838,9 @@ private func makeEditor(_ script: JSONValue) throws -> Editor {
   }
   if script["extension"]?.boolValue == true {
     nodes += [.klass(HorizontalRuleNode.self), .klass(DecoratorTextNode.self)]
+  }
+  if script["mark"]?.boolValue == true {
+    nodes += [.klass(MarkNode.self)]
   }
   return try createEditor(
     CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))

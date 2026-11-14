@@ -75,6 +75,8 @@ mod lexical_utils;
 pub mod link;
 #[cfg(feature = "list")]
 pub mod list;
+#[cfg(feature = "mark")]
+pub mod mark;
 #[cfg(feature = "extension")]
 mod merge_register;
 mod node;

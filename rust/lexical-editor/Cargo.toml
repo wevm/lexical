@@ -44,6 +44,13 @@ autolink = ["link", "dep:regex"]
 # depends on @lexical/extension, @lexical/html and @lexical/utils, for the
 # extensions, the DOM import and the arrow-key handlers, which aren't ported.
 code = []
+# @lexical/mark: MarkNode, $wrapSelectionInMarkNode, $unwrapMarkNode,
+# $getMarkIDs, and the functions of MarkStateExtension.ts that need no
+# extension. Upstream it depends on @lexical/utils, which it enables as
+# upstream does (nothing ported uses it yet), and on @lexical/extension and
+# @lexical/html, for MarkExtension, MarkStateExtension and the DOM, which
+# aren't ported.
+mark = ["utils"]
 # @lexical/overflow: OverflowNode.
 overflow = []
 # @lexical/text: registerLexicalTextEntity, the transforms that make text

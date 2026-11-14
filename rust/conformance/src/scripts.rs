@@ -12,11 +12,12 @@ use crate::case::{Case, Outcome, same};
 use lexical::json::{Object, Value};
 use lexical::{
     COMMAND_PRIORITY_EDITOR, CaretDirection, CreateEditorArgs, Direction, Editor, LexicalCommand,
-    LexicalError, NodeRef, PointCaret, PointType, RangeSelection, SliceMode, TextOffset,
-    TextPointCaretSlice, UpdateOptions, Which, caret_range_from_selection, create_command,
-    create_editor, create_range_selection, get_caret_range, get_child_caret, get_node_by_key,
-    get_root, get_selection, get_sibling_caret, get_text_point_caret, normalize_caret,
-    parse_serialized_node, remove_text_from_caret_range, reset_random_key, set_selection,
+    LexicalError, NodeRef, PointCaret, PointType, RangeSelection, SelectionRef, SliceMode,
+    TextOffset, TextPointCaretSlice, UpdateOptions, Which, caret_range_from_selection,
+    create_command, create_editor, create_node_selection, create_range_selection, get_caret_range,
+    get_child_caret, get_node_by_key, get_root, get_selection, get_sibling_caret,
+    get_text_point_caret, insert_nodes, normalize_caret, parse_serialized_node,
+    remove_text_from_caret_range, reset_random_key, select_all, set_selection,
     set_selection_from_caret_range, utf16,
 };
 use std::cell::RefCell;
@@ -58,9 +59,7 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "removeTextFromCaretRange"
             | "logNormalizeCaret",
         ) => None,
-        Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => {
-            Some("lexical (selection editing)")
-        }
+        Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
     }
 }
@@ -154,6 +153,42 @@ fn point_type(v: &Value) -> Result<PointType, LexicalError> {
 }
 
 /// `$sel()`: the range selection.
+/// `SELECTION_METHODS[method](args)` in ops.ts.
+fn run_selection_method(method: &str, args: Option<&Value>) -> Result<(), LexicalError> {
+    let a = |i| arg(args, i);
+    let range = || {
+        get_selection()
+            .filter(SelectionRef::is_range)
+            .ok_or_else(|| err("not a range selection"))
+    };
+    let any = || get_selection().ok_or_else(|| err("no selection"));
+    match method {
+        "deleteCharacter" => range()?.delete_character(flag(&a(0), false))?,
+        "deleteLine" => range()?.delete_line(flag(&a(0), false))?,
+        "deleteWord" => range()?.delete_word(flag(&a(0), false))?,
+        "formatText" => range()?.format_text(
+            &string(&a(0))?,
+            match a(1) {
+                Value::Null => None,
+                v => Some(number(&v)?),
+            },
+        )?,
+        "insertLineBreak" => range()?.insert_line_break(flag(&a(0), false))?,
+        "insertNodes" => any()?.insert_nodes(parse(&a(0))?)?,
+        "insertParagraph" => {
+            range()?.insert_paragraph()?;
+        }
+        "insertRawText" => any()?.insert_raw_text(&string(&a(0))?)?,
+        "insertText" => any()?.insert_text(&string(&a(0))?)?,
+        "removeText" => range()?.remove_text()?,
+        "setFormat" => range()?.set_format(number(&a(0))?),
+        "setStyle" => range()?.set_style(&string(&a(0))?),
+        "toggleFormat" => range()?.toggle_format(&string(&a(0))?),
+        _ => return Err(err(format!("unknown selection method {method}"))),
+    }
+    Ok(())
+}
+
 fn sel() -> Result<RangeSelection, LexicalError> {
     get_selection()
         .and_then(|s| s.range())
@@ -335,6 +370,25 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             set_selection(Some(selection));
             Ok(())
         }
+        Some("selectNodes") => {
+            let selection = create_node_selection();
+            for key in action
+                .get("keys")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                selection.add(&string(key)?);
+            }
+            set_selection(Some(selection));
+            Ok(())
+        }
+        Some("selectAll") => select_all().map(|_| ()),
+        Some("insertNodes") => insert_nodes(parse(action.get("nodes").unwrap_or(&Value::Null))?),
+        Some("selection") => run_selection_method(
+            action.get("method").and_then(Value::as_str).unwrap_or(""),
+            action.get("args"),
+        ),
         Some("clearSelection") => {
             set_selection(None);
             Ok(())

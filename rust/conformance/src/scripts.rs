@@ -1082,7 +1082,10 @@ impl Session {
         if with_extension {
             nodes.extend(lexical::extension::extension_nodes());
         }
-        let editor = create_editor(CreateEditorArgs { nodes });
+        let editor = create_editor(CreateEditorArgs {
+            nodes,
+            ..Default::default()
+        });
         let ctx = Rc::new(Ctx::default());
         if rich_text {
             let _unregister = lexical::rich_text::register_rich_text(&editor);

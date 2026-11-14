@@ -33,6 +33,16 @@ pub fn all() -> Vec<Suite> {
             check: html::check_entity,
         },
         Suite {
+            file: "html/export",
+            variant: None,
+            check: html::check_export,
+        },
+        Suite {
+            file: "html/import",
+            variant: None,
+            check: html::check_import,
+        },
+        Suite {
             file: "html/parse",
             variant: None,
             check: html::check_parse,

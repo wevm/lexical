@@ -47,6 +47,8 @@ updated with each milestone.
 | `registerLexicalTextEntity` (the `text` feature) | `packages/lexical-text/src/registerLexicalTextEntity.ts`: `EntityMatch`, `registerLexicalTextEntity` (the `TextNode` transform and `$reverseNodeTransform`, `$replaceWithSimpleText`, `$wasTurnedIntoText`, `getFirstMatchAfter`, `isNextTextEntity`, `isTextAfterOutsideSource`, `isEntityAfter`, `$checkNextSibling`, `$moveSelectionIntoEntity`, `$wouldMerge`, `MAX_MATCHES_PASSED`, `MAX_TURNED_INTO_TEXT`, the per-update `markedInUpdate` and `turnedIntoTextInUpdate`); from the core `INTERNAL_getActiveEditorState` | `text`, `updates` | `entities/hashtag-documents`, `entities/hashtag-typing` |
 | `$setBlocksType` (the `selection` feature) | `packages/lexical-selection/src/range-selection.ts` (`$setBlocksType`, with its default `$afterCreateElement`, `$copyBlockFormatIndent`, and `$isPointAtBlockEdge`), through `LexicalNode.replace` and `ListItemNode.replace` | `selection` | `scripts/set-blocks-type`, the block-decorator case of `scripts/decorator` |
 | The DOM (the `html` feature) | what a browser or jsdom gives JS: `Node` (`nodeType`, `nodeName`, `parentNode`, `childNodes`, siblings, `textContent`, `insertBefore`, `appendChild`, `append`, `prepend`, `removeChild`, `replaceChild`, `remove`, `replaceWith`, `replaceChildren`, `contains`, `cloneNode`), `Element` (attributes in order, `id`, `dir`, `className`, `classList`, `style`, `innerHTML`, `outerHTML`, `getElementsByTagName`), `Text`, `Comment`, `DocumentFragment`, `Document` (`createElement` and the other factories, `head`, `body`), `DOMTokenList`, `CSSStyleDeclaration` (`setProperty`, `getPropertyValue`, `getPropertyPriority`, `removeProperty`, `cssText`, `item`) with jsdom's normalization, `DOMParser.parseFromString`, the HTML fragment serialization algorithm; ported from the Swift port's `DOM/` | `dom` | `html/parse`, `html/entities`, `css/properties`, `css/values` |
+| Core DOM hooks (the `html` feature) | `LexicalNode.createDOM`, `exportDOM` and the static `importDOM` as node hooks (`create_dom`, `export_dom`, `import_dom`), `ElementNode.exportDOM` (indent as `padding-inline-start` and `data-lexical-indent`, `dir`); `DOMExportOutput`, `DOMConversionOutput`, `DOMChildConversion`, `DOMConversion`, `DOMConversionFn`, `DOMConversionMap`; `createEditor`'s `theme` and `html` (`export` overrides, `import` conversions), `editor._config`, `initializeConversionCache`; `DEFAULT_EDITOR_DOM_CONFIG` (`$createDOM`, `$exportDOM`, `$extractWithChild`, `$shouldExclude`, `$shouldInclude`); `LexicalNode.isSelected`; `TextNode` (`createDOM` with `getElementOuterTag`, `getElementInnerTag`, `$createTextInnerDOM` and `setTextThemeClassNames`; `exportDOM`; `importDOM` with `$convertTextDOMNode`, `findParentPreDOMNode`, `findTextInLine`, `convertSpanElement`, `convertBringAttentionToElement`, `convertTextFormatElement`, `applyTextFormatFromStyle`), `TabNode.createDOM`, `LineBreakNode` (`createDOM`, `importDOM`), `ParagraphNode` (`createDOM`, `exportDOM`, `importDOM` with `$convertParagraphElement`, `extractWithChild`), `ArtificialNode__DO_NOT_USE`; from `LexicalUtils.ts` `isInlineDomNode`, `isBlockDomNode`, `getCachedClassNameArray`, `removeEmptyDOMAttribute`, `setNodeIndentFromDOM`, `$setDirectionFromDOM`, `$setFormatFromDOM`, `isOnlyChildInBlockNode`, `isLastChildInBlockNode`; `utils/classNames.ts` | `lexical_dom`, `node`, `nodes::*`, `editor` | `html/export`, `html/import` |
+| `@lexical/html` (the `html` feature) | `packages/lexical-html/src/index.ts`: `$generateHtmlFromNodes`, `$generateDOMFromNodes`, `$generateDOMFromRoot`, `$appendNodeToHTML` (`$appendNodesToHTML` with `$appendTerminatingLineBreak`, and `@lexical/selection`'s `$sliceSelectedTextNodeContent` for a selection), `$generateNodesFromDOM` (`IGNORE_TAGS`, `getConversionFunction`, `$createNodesFromDOM`, `wrapContinuousInlines`, `$unwrapArtificialNodes`, `isDomNodeBetweenTwoInlineNodes`) | `html` | `html/export`, `html/import` |
 | Inline CSS text | `utils/setDOMStyle.ts` (`getStyleObjectFromCSS`, with JS's property order; with the `html` feature `setDOMStyleObject` and `setDOMStyleFromCSS`) | `set_dom_style` | through `css/values`; unit tests against JS's output |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
@@ -133,9 +135,9 @@ touches:
   DOM. What `NodeStructureExtension` does for links where it enforces node
   structure (lifting blocks, merging equal adjacent links, which
   `$linkNodeTransform` then leaves to it) isn't ported, so the transform
-  always does both. `extractWithChild` is a node hook that nothing calls
-  yet: its caller is `@lexical/html`'s copy. `HeadingNode`'s override is
-  ported; `ParagraphNode`'s, which reads the selection, comes with `html`. In a headless editor,
+  always does both. `extractWithChild` is a node hook that `@lexical/html`'s
+  export calls (the `html` feature). `HeadingNode`'s override is
+  ported, and so is `ParagraphNode`'s, which reads the selection. In a headless editor,
   `LinkNode.canInsertTextBefore` and `canInsertTextAfter` change nothing a
   vector can see: `insertText` at the edge of an inline parent's text puts
   the text outside the parent either way, and
@@ -234,6 +236,16 @@ touches:
   its blocks) is ported but no vector reaches it: headless JS needs the
   DOM's `Selection.modify` to get there and throws, which `scripts/rich-text`
   records.
+- Of `@lexical/html` and the core's DOM side (the `html` feature): the
+  `DOMImportExtension` and `DOMRenderExtension` pipelines (import rules,
+  `CoreImportRules`, selectors, the render context and render config
+  overrides), `BlockIdHTMLExtension`, and `$inlineStylesFromStyleSheets`,
+  which needs a CSS parser and a selector engine (Swift's leans on its
+  import-rule selectors); `$generateNodesFromDOM` leaves `<style>` rules
+  alone, where JS would copy their declarations onto the elements they
+  match. No vector has a `<style>`. Also `updateDOM`, `getDOMSlot` and the
+  rest of what only the reconciler calls, and `$setTextContent`'s
+  composition suffix (nothing composes headless).
 - Composition, the DOM reconciler, mutation listeners, selection-change
   notifications and `$onUpdate` callbacks (none of which a headless editor
   runs, except `$onUpdate`), and `RootNode.__cachedText`. So `history` passes

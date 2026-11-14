@@ -302,6 +302,7 @@ mod tests {
         reset_random_key();
         let editor = create_editor(CreateEditorArgs {
             nodes: code_nodes(),
+            ..Default::default()
         });
         editor
             .update(

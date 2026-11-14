@@ -38,6 +38,7 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
             lexical::hashtag::hashtag_nodes(),
         ]
         .concat(),
+        ..Default::default()
     });
     let parsed = editor.parse_editor_state(input);
     if case.get("error").is_some() {

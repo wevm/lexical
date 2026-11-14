@@ -435,3 +435,34 @@ pub fn splice(
     }
     Ok(())
 }
+
+/// `ElementNode.exportDOM(editor)`: `LexicalNode`'s export, with the
+/// indent (as `padding-inline-start` in steps of 40px and
+/// `data-lexical-indent`) and the direction on an element.
+#[cfg(feature = "html")]
+pub fn export_dom(
+    node: &dyn LexicalNode,
+    this: &NodeRef,
+    editor: &crate::Editor,
+) -> Result<crate::lexical_dom::DomExportOutput, LexicalError> {
+    let output = crate::lexical_dom::export_dom_base(node, this, editor)?;
+    if let Some(element) = output.element.as_ref().filter(|e| e.is_element()) {
+        let data = node.element().expect("an element");
+        let indent = data.get_indent();
+        if indent > 0.0 {
+            element.style().set_property(
+                "padding-inline-start",
+                &format!("{}px", crate::json::number_to_string(indent * 40.0)),
+                "",
+            );
+            element.set_attribute(
+                "data-lexical-indent",
+                &crate::json::number_to_string(indent),
+            );
+        }
+        if let Some(direction) = data.get_direction() {
+            element.set_attribute("dir", direction.as_str());
+        }
+    }
+    Ok(output)
+}

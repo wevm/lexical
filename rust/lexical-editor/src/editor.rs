@@ -8,8 +8,8 @@ use crate::lexical_utils::set_node_key;
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::node_state::{RequiredNodeStateConfig, SharedNodeState, create_shared_node_state};
 use crate::nodes::{
-    line_break::LineBreakNode, paragraph::ParagraphNode, root::RootNode, tab::TabNode,
-    text::TextNode,
+    artificial::ArtificialNode, line_break::LineBreakNode, paragraph::ParagraphNode,
+    root::RootNode, tab::TabNode, text::TextNode,
 };
 use crate::ordered::{OrderedMap, OrderedSet};
 use crate::selection_deletion::SelectionMovement;
@@ -32,6 +32,14 @@ pub struct NodeClass {
     pub(crate) import_json: fn(&Object) -> Result<NodeRef, LexicalError>,
     /// The `stateConfigs` of the class's `$config`.
     pub(crate) state_configs: fn() -> Vec<RequiredNodeStateConfig>,
+    /// The class's own static `importDOM` (`None` when it inherits one).
+    #[cfg(feature = "html")]
+    pub(crate) import_dom: fn() -> Option<crate::lexical_dom::DomConversionMap>,
+}
+
+#[cfg(feature = "html")]
+fn import_dom_of<T: LexicalNode + Default>() -> Option<crate::lexical_dom::DomConversionMap> {
+    T::default().import_dom()
 }
 
 fn state_configs_of<T: LexicalNode + Default>() -> Vec<RequiredNodeStateConfig> {
@@ -54,6 +62,8 @@ impl NodeClass {
             node_type: T::default().get_type(),
             import_json: import_default::<T>,
             state_configs: state_configs_of::<T>,
+            #[cfg(feature = "html")]
+            import_dom: import_dom_of::<T>,
         }
     }
 
@@ -66,6 +76,8 @@ impl NodeClass {
             node_type,
             import_json,
             state_configs: Vec::new,
+            #[cfg(feature = "html")]
+            import_dom: || None,
         }
     }
 
@@ -100,10 +112,26 @@ pub const COMPOSITION_START_TAG: &str = "composition-start";
 /// method composition.
 pub const COMPOSITION_END_TAG: &str = "composition-end";
 
-/// `CreateEditorArgs`: the node classes to register besides the core ones.
+/// `CreateEditorArgs`: the node classes to register besides the core ones,
+/// the theme, and (with the `html` feature) the HTML import and export
+/// overrides.
 #[derive(Clone, Default)]
 pub struct CreateEditorArgs {
     pub nodes: Vec<NodeClass>,
+    /// `theme`: class names by node kind (`EditorThemeClasses`), as JSON:
+    /// a string or an array of strings, or (for `text`) an object of them
+    /// by format.
+    pub theme: Object,
+    /// `html`: export overrides by node type and extra import conversions.
+    #[cfg(feature = "html")]
+    pub html: crate::lexical_dom::HtmlConfig,
+}
+
+/// `EditorConfig` (`editor._config`): what `createDOM` reads.
+#[derive(Clone, Debug, Default)]
+pub struct EditorConfig {
+    /// `theme`.
+    pub theme: Object,
 }
 
 /// `EditorUpdateOptions`. `onUpdate` and `event` come with their users.
@@ -266,10 +294,19 @@ pub(crate) struct EditorInner {
     next_id: Cell<u64>,
     /// Stands in for the DOM's `Selection.modify` (no JS field).
     selection_movement: RefCell<Option<Rc<dyn SelectionMovement>>>,
+    /// `_config`.
+    config: EditorConfig,
+    /// `_htmlConversions`: the import conversions by lower-case DOM node
+    /// name, in registration order.
+    #[cfg(feature = "html")]
+    pub(crate) html_conversions: HashMap<String, Vec<crate::lexical_dom::DomImporter>>,
+    /// The `exportDOM` overrides of `html.export`, by node type.
+    #[cfg(feature = "html")]
+    pub(crate) html_export: HashMap<&'static str, crate::lexical_dom::ExportOverride>,
 }
 
 /// `createEditor(config)`: registers the core nodes (root, text, line
-/// break, tab, paragraph) and `args.nodes`.
+/// break, tab, paragraph, artificial) and `args.nodes`.
 pub fn create_editor(args: CreateEditorArgs) -> Editor {
     let core = [
         NodeClass::with_import_json("root", RootNode::import_json),
@@ -277,10 +314,14 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         NodeClass::of::<LineBreakNode>(),
         NodeClass::of::<TabNode>(),
         NodeClass::of::<ParagraphNode>(),
+        NodeClass::of::<ArtificialNode>(),
     ];
-    let nodes: HashMap<&'static str, NodeClass> = core
+    let ordered: Vec<NodeClass> = core.into_iter().chain(args.nodes).collect();
+    #[cfg(feature = "html")]
+    let html_conversions =
+        crate::lexical_dom::initialize_conversion_cache(&ordered, &args.html.import);
+    let nodes: HashMap<&'static str, NodeClass> = ordered
         .into_iter()
-        .chain(args.nodes)
         .map(|class| (class.node_type, class))
         .collect();
     let shared_node_states = nodes
@@ -307,10 +348,20 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         commands: RefCell::new(HashMap::new()),
         next_id: Cell::new(1),
         selection_movement: RefCell::new(None),
+        config: EditorConfig { theme: args.theme },
+        #[cfg(feature = "html")]
+        html_conversions,
+        #[cfg(feature = "html")]
+        html_export: args.html.export.into_iter().collect(),
     }))
 }
 
 impl Editor {
+    /// `editor._config`.
+    pub fn config(&self) -> &EditorConfig {
+        &self.0.config
+    }
+
     pub(crate) fn registered_nodes(&self) -> &HashMap<&'static str, NodeClass> {
         &self.0.nodes
     }

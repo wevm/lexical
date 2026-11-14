@@ -349,6 +349,49 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         element::should_serialize_text_styles(self.as_node())
     }
 
+    /// `createDOM(config, editor)` (the `html` feature): the element the
+    /// node renders as. `LexicalNode` throws, and `TextNode` renders its
+    /// text; every other node that renders overrides it.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        this: &NodeRef,
+        config: &crate::EditorConfig,
+        editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, LexicalError> {
+        let _ = (this, editor);
+        if self.text().is_some() {
+            return crate::nodes::text::create_dom(self.as_node(), config);
+        }
+        Err(LexicalError::new("createDOM: base method not extended"))
+    }
+
+    /// `exportDOM(editor)` (the `html` feature): the DOM the node exports
+    /// to HTML. `LexicalNode` exports the element `$createDOM` makes, which
+    /// `ElementNode` gives the indent and direction and `TextNode` its
+    /// formats.
+    #[cfg(feature = "html")]
+    fn export_dom(
+        &self,
+        this: &NodeRef,
+        editor: &crate::Editor,
+    ) -> Result<crate::lexical_dom::DomExportOutput, LexicalError> {
+        if self.element().is_some() {
+            element::export_dom(self.as_node(), this, editor)
+        } else if self.text().is_some() {
+            crate::nodes::text::export_dom(self.as_node(), this, editor)
+        } else {
+            crate::lexical_dom::export_dom_base(self.as_node(), this, editor)
+        }
+    }
+
+    /// The class's static `importDOM()` (the `html` feature): the
+    /// conversions it offers by DOM node name, or `None`.
+    #[cfg(feature = "html")]
+    fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {
+        None
+    }
+
     /// `exportJSON(compact)`: the node's own properties, with an empty
     /// `children` array for an element (the export walk fills it).
     fn export_json(&self, compact: bool) -> Object;
@@ -657,6 +700,54 @@ impl NodeRef {
     /// `getNodes`.
     fn is_selected_by_node_selection(&self, selection: &SelectionRef) -> bool {
         selection.with_node(|n| n.has(&self.key)).unwrap_or(false)
+    }
+
+    /// `isSelected(selection)`: whether the node is among the selection's
+    /// nodes (`selection`, or the current one), but for an inline decorator
+    /// a non-collapsed element selection only ends after.
+    pub fn is_selected(&self, selection: Option<&SelectionRef>) -> Result<bool, LexicalError> {
+        let current;
+        let target = match selection {
+            Some(selection) => selection,
+            None => match get_selection() {
+                Some(selection) => {
+                    current = selection;
+                    &current
+                }
+                None => return Ok(false),
+            },
+        };
+        let is_selected = target.get_nodes()?.iter().any(|n| n == self);
+        if !is_selected || self.is_text() {
+            return Ok(is_selected);
+        }
+        let Some(range) = target.range() else {
+            return Ok(is_selected);
+        };
+        if range.anchor.point_type == PointType::Element
+            && range.focus.point_type == PointType::Element
+        {
+            if range.is_collapsed() {
+                return Ok(false);
+            }
+            if let Some(parent) = self.get_parent()
+                && self.is_decorator()
+                && self.is_inline()
+            {
+                let first = if target.is_backward()? {
+                    &range.focus
+                } else {
+                    &range.anchor
+                };
+                if parent.get_key() == first.key
+                    && first.offset == parent.get_children_size()
+                    && parent.get_last_child().as_ref() == Some(self)
+                {
+                    return Ok(false);
+                }
+            }
+        }
+        Ok(is_selected)
     }
 
     /// `markDirty()`: marks the node dirty, so transforms run on it.

@@ -101,6 +101,7 @@ pub use selection::{
     NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
     create_node_selection, create_range_selection, get_selection, set_selection,
 };
+pub use selection_deletion::{SelectionAlter, SelectionGranularity, SelectionMovement};
 pub use selection_insert_nodes::{insert_nodes, select_all};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
 pub use updates::parse_serialized_node;

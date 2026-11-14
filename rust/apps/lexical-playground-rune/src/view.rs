@@ -2,7 +2,7 @@
 //! tree, its JSON, and parity with JS Lexical.
 
 use crate::{Panel, State, decorations, on_change, on_key, on_paste, on_window_focus};
-use lexical_playground_core::{Playground, example, replay_vectors};
+use lexical_playground_core::{Playground, example, format_flag, replay_vectors};
 use rune::{Color, Cx, El, ScrollSpec, TextStyle, col, row, text, text_input};
 use rune_kit::{Button, ButtonVariant, Kit, SegmentedControl};
 use std::sync::OnceLock;
@@ -28,6 +28,23 @@ const FORMATS: [(&str, &str); 8] = [
     ("superscript", "x²"),
 ];
 
+/// The block menu, as the JS playground's `BlockFormatDropDown`: each
+/// button is a `blockType` and its label.
+const BLOCKS: [(&str, &str); 8] = [
+    ("paragraph", "Normal"),
+    ("h1", "H1"),
+    ("h2", "H2"),
+    ("h3", "H3"),
+    ("quote", "Quote"),
+    ("bullet", "• List"),
+    ("number", "1. List"),
+    ("check", "☑ List"),
+];
+
+/// The URL a new link gets, as the JS playground's link button inserts
+/// `https://` for the user to edit.
+const NEW_LINK_URL: &str = "https://";
+
 pub fn view(s: &State, cx: &mut Cx<State>) -> El {
     let k = kit(cx.system_dark());
     col()
@@ -36,6 +53,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .fill(k.c.page)
         .on_window_focus(on_window_focus)
         .child(toolbar(s, k, cx.chrome_insets().leading))
+        .child(block_bar(s, k))
         .child(
             row()
                 .w_full()
@@ -58,8 +76,9 @@ fn toolbar(s: &State, k: &Kit, leading: f32) -> El {
         .pl(if leading > 0.0 { leading + 12.0 } else { 10.0 })
         .fill(k.c.bg_base);
     bar = bar.child(text("Lexical").font(k.ty.body_medium).color(k.c.text_base));
+    let format = s.playground.format_at(s.shown_selection());
     for (name, label) in FORMATS {
-        let on = s.playground.has_format(name);
+        let on = format & format_flag(name) != 0;
         bar = bar.child(
             Button::new(label)
                 .variant(if on {
@@ -93,6 +112,89 @@ fn toolbar(s: &State, k: &Kit, leading: f32) -> El {
             .build(k)
             .key("reset"),
     )
+}
+
+fn toggle(label: &str, on: bool, help: String) -> Button {
+    Button::new(label)
+        .variant(if on {
+            ButtonVariant::Contrast
+        } else {
+            ButtonVariant::Ghost
+        })
+        .help(help)
+}
+
+/// The second row: the block menu, the link button, indent and outdent,
+/// and a check item's box.
+fn block_bar(s: &State, k: &Kit) -> El {
+    let p = &s.playground;
+    let sel = s.shown_selection();
+    let current = p.block_type_at(sel);
+    let mut bar = row().w_full().gap(6.0).px(10.0).pb(10.0).fill(k.c.bg_base);
+    for (block_type, label) in BLOCKS {
+        bar = bar.child(
+            toggle(label, current == block_type, format!("Format as {label}"))
+                .on_press(move |s: &mut State| s.toolbar_edit(|p| p.set_block_type(block_type)))
+                .build(k)
+                .key(format!("block-{block_type}")),
+        );
+    }
+    let link = p.link_at(sel).map(str::to_owned);
+    bar = bar.child(
+        toggle(
+            "Link",
+            link.is_some(),
+            match &link {
+                Some(url) => format!("Remove the link to {url}"),
+                None => "Insert a link".to_owned(),
+            },
+        )
+        .on_press(move |s: &mut State| {
+            let remove = s.playground.link_at(s.shown_selection()).is_some();
+            s.toolbar_edit(|p| p.toggle_link((!remove).then_some(NEW_LINK_URL)))
+        })
+        .build(k)
+        .key("link"),
+    );
+    bar = bar
+        .child(
+            Button::new("Outdent")
+                .variant(ButtonVariant::Ghost)
+                .on_press(|s: &mut State| s.toolbar_edit(|p| p.indent(true)))
+                .build(k)
+                .key("outdent"),
+        )
+        .child(
+            Button::new("Indent")
+                .variant(ButtonVariant::Ghost)
+                .on_press(|s: &mut State| s.toolbar_edit(|p| p.indent(false)))
+                .build(k)
+                .key("indent"),
+        );
+    let block = sel.anchor.block;
+    if let Some(list) = p.document().blocks.get(block).and_then(|b| b.list.as_ref())
+        && list.list_type == "check"
+    {
+        bar = bar.child(
+            toggle(
+                if list.checked { "☑ Done" } else { "☐ Done" },
+                list.checked,
+                "Check or uncheck this item".to_owned(),
+            )
+            .on_press(move |s: &mut State| s.toolbar_edit(|p| p.toggle_checked(block)))
+            .build(k)
+            .key("check-item"),
+        );
+    }
+    if let Some(url) = link {
+        bar = bar.child(
+            text(url)
+                .font(k.ty.small)
+                .color(k.c.text_muted)
+                .key("link-url"),
+        );
+    }
+    bar
 }
 
 fn editor(s: &State, k: &Kit) -> El {

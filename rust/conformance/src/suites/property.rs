@@ -8,6 +8,7 @@ use lexical::history::{HistoryConfigOverrides, history_extension};
 use lexical::json::{self, Object, Value};
 use lexical::link::link_extension;
 use lexical::list::{check_list_extension, list_extension};
+use lexical::markdown::transformers;
 use lexical::rich_text::{
     HeadingTagType, create_heading_node, create_quote_node, rich_text_extension,
 };
@@ -37,8 +38,9 @@ fn unported_package(node: &Value) -> Option<&'static str> {
 
 /// `property/documents.json`: a random document parses (or fails to, when
 /// JS's did) to the same state, written in both forms, a second parse of
-/// each form gives what JS's gave, and the text content is the same. The
-/// Markdown and HTML JS recorded are checked once those packages are ported.
+/// each form gives what JS's gave, and the text content and the markdown
+/// export are the same. The HTML JS recorded is checked once `@lexical/html`
+/// is ported.
 pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let input = case.str("input")?;
     let parsed_input = json::parse(input).map_err(|e| format!("input: {e}"))?;
@@ -122,6 +124,16 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
         .read(|| get_root().get_text_content())
         .map_err(|e| format!("reading the text: {e}"))?;
     same("text", text.as_str(), case.str("text")?)?;
+
+    // `$convertToMarkdownString(TRANSFORMERS)`, null when it threw.
+    let markdown = editor
+        .read(|| lexical::markdown::convert_to_markdown_string(&transformers(), None, false))
+        .map_err(|e| format!("reading the markdown: {e}"))?;
+    match (case.field("markdown")?.as_str(), markdown) {
+        (Some(want), Ok(got)) => same("markdown", got.as_str(), want)?,
+        (None, Err(_)) => {}
+        (want, got) => return Err(format!("markdown: Rust {got:?}, JS {want:?}")),
+    }
     Ok(Outcome::Pass)
 }
 

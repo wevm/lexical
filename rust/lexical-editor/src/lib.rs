@@ -86,6 +86,8 @@ pub mod link;
 pub mod list;
 #[cfg(feature = "mark")]
 pub mod mark;
+#[cfg(feature = "markdown")]
+pub mod markdown;
 #[cfg(feature = "menu")]
 pub mod menu;
 mod merge_register;

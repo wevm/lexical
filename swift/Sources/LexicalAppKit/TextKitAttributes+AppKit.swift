@@ -41,37 +41,58 @@
     }
   }
 
+  /// One face of a font family: its PostScript name, width trait, CSS
+  /// weight and slant.
+  private struct FontFace {
+    var name: String
+    var width: CGFloat
+    var weight: Int
+    var italic: Bool
+  }
+
+  /// Each family's faces, by lowercased name, read once: reading a face's
+  /// traits means creating it.
+  @MainActor
+  private var familyFaces: [String: [FontFace]] = [:]
+
   /// The face of `family` that CSS font matching picks (CSS Fonts 4,
   /// §5.2): of the faces nearest the normal width (narrower first), those
   /// of the slant if there are any, and of those the weight. A weight
   /// between 400 and 500 tries heavier faces up to 500, then lighter ones,
   /// then heavier; below 400 lighter first; above 500 heavier first.
+  @MainActor
   private func namedFont(family: String, weight: Int, italic: Bool, size: CGFloat) -> NSFont? {
-    let faces = (NSFontManager.shared.availableMembers(ofFontFamily: family) ?? []).compactMap {
-      ($0.first as? String).flatMap { NSFont(name: $0, size: size) }
-    }
-    func trait(_ font: NSFont, _ key: NSFontDescriptor.TraitKey) -> CGFloat {
-      let traits = font.fontDescriptor.object(forKey: .traits) as? [NSFontDescriptor.TraitKey: Any]
-      return traits?[key] as? CGFloat ?? 0
-    }
-    func widthRank(_ font: NSFont) -> (Int, CGFloat) {
-      let width = trait(font, .width)
-      return (width > 0 ? 1 : 0, abs(width))
-    }
+    let key = family.lowercased()
+    let faces =
+      familyFaces[key]
+      ?? (NSFontManager.shared.availableMembers(ofFontFamily: family) ?? []).compactMap {
+        member -> FontFace? in
+        guard let name = member.first as? String, let font = NSFont(name: name, size: 12) else {
+          return nil
+        }
+        let descriptor = font.fontDescriptor
+        let traits = descriptor.object(forKey: .traits) as? [NSFontDescriptor.TraitKey: Any]
+        return FontFace(
+          name: name, width: traits?[.width] as? CGFloat ?? 0,
+          weight: cssFontWeight(traits?[.weight] as? CGFloat ?? 0),
+          italic: descriptor.symbolicTraits.contains(.italic))
+      }
+    familyFaces[key] = faces
+    func widthRank(_ face: FontFace) -> (Int, CGFloat) { (face.width > 0 ? 1 : 0, abs(face.width)) }
     guard let width = faces.map(widthRank).min(by: <) else { return nil }
     let ofWidth = faces.filter { widthRank($0) == width }
-    let ofSlant = ofWidth.filter { $0.fontDescriptor.symbolicTraits.contains(.italic) == italic }
-    func weightRank(_ font: NSFont) -> (Int, Int) {
-      let face = cssFontWeight(trait(font, .weight))
+    let ofSlant = ofWidth.filter { $0.italic == italic }
+    func weightRank(_ face: FontFace) -> (Int, Int) {
       let group =
         switch weight {
-        case 400...500: face < weight ? 1 : face <= 500 ? 0 : 2
-        case ..<400: face <= weight ? 0 : 1
-        default: face >= weight ? 0 : 1
+        case 400...500: face.weight < weight ? 1 : face.weight <= 500 ? 0 : 2
+        case ..<400: face.weight <= weight ? 0 : 1
+        default: face.weight >= weight ? 0 : 1
         }
-      return (group, abs(face - weight))
+      return (group, abs(face.weight - weight))
     }
     return (ofSlant.isEmpty ? ofWidth : ofSlant).min { weightRank($0) < weightRank($1) }
+      .flatMap { NSFont(name: $0.name, size: size) }
   }
 
   /// An `NSFont.Weight` as the nearest CSS weight.

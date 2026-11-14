@@ -5,9 +5,10 @@
 // `css/values` vectors: hex and functional colors become `rgb()`/`rgba()`,
 // numbers lose their redundant digits, a bare `0` length becomes `0px`,
 // keywords are lowercased, `calc()` of a product is evaluated, commas are
-// spaced and single-quoted strings are requoted. Values outside that are
-// kept as written, with their whitespace collapsed; jsdom also rejects
-// values it cannot parse, which this does not.
+// spaced and single-quoted strings are requoted. A CSS-wide keyword is
+// lowercased for every property, and a shadow of nothing but identifiers is
+// rejected. Values outside that are kept as written, with their whitespace
+// collapsed; jsdom also rejects values it cannot parse, which this does not.
 
 /// Bits of `cssPropertyTraitsByName`.
 struct CSSPropertyTraits: OptionSet {
@@ -63,6 +64,26 @@ func normalizeCSSValue(_ name: String, _ value: String) -> String? {
   }
   guard let raw = cssPropertyTraitsByName[name] else { return nil }
   let traits = CSSPropertyTraits(rawValue: raw)
+  let trimmed = jsTrim(value)
+  // A CSS-wide keyword is the whole value, in lower case, whatever the
+  // property keeps of other identifiers.
+  let lowered = asciiLowercased(trimmed)
+  if cssWideKeywords.contains(lowered) { return lowered }
+  if traits.contains(.verbatim) {
+    // The verbatim properties are the shadows: jsdom keeps a shadow as
+    // written, but reads `none` as a keyword and rejects a value of
+    // nothing but other identifiers, which no shadow is.
+    if lowered == "none" { return "none" }
+    let onlyIdentifiers = tokenizeCSSValue(trimmed).allSatisfy { token in
+      switch token {
+      case .comma: return true
+      case .word(let word):
+        guard let first = word.first else { return false }
+        return (first.isLetter || first == "_") && !word.contains("(")
+      }
+    }
+    if onlyIdentifiers { return nil }
+  }
   var out = ""
   var needsSpace = false
   for token in tokenizeCSSValue(value) {
@@ -77,6 +98,18 @@ func normalizeCSSValue(_ name: String, _ value: String) -> String? {
     }
   }
   return out.isEmpty ? nil : out
+}
+
+/// The keywords every property accepts.
+private let cssWideKeywords: Set<String> = [
+  "initial", "inherit", "unset", "revert", "revert-layer",
+]
+
+/// `string` with A to Z in lower case, as CSS matches keywords.
+private func asciiLowercased(_ string: String) -> String {
+  String(
+    String.UnicodeScalarView(
+      string.unicodeScalars.map { ("A"..."Z").contains($0) ? Unicode.Scalar($0.value + 32)! : $0 }))
 }
 
 private enum CSSToken {

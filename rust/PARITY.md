@@ -27,6 +27,7 @@ updated with each milestone.
 | Editor state | `LexicalEditorState.ts` (`toJSON`, `read`, `isEmpty`, `_parsed`) | `editor_state` | `serialization/core` |
 | Parsing | `parseEditorState`, `$parseSerializedNode` (`LexicalUpdates.ts`) | `updates` | `serialization/core`, `property/documents` |
 | Editor | `createEditor` (node registration), `update`, `read`, `getEditorState`, `setEditorState`, `registerNodeTransform`, `registerUpdateListener`, `registerTextContentListener`, `registerCommand`, `dispatchCommand`, `createCommand` | `editor` | `scripts/*` |
+| History (the `history` feature) | `packages/lexical-history/src/index.ts`: `registerHistory` (with `dateNow`, `onHistoryStateChange` and `maxDepth`), `createEmptyHistoryState`, `createMergeActionGetter`, `getChangeType`, `getDirtyNodes`, `isTextNodeUnchanged`, `areNodesUnchanged`, `getInverseEntry`, `getUndoEntry`, `undo`, `redo`, `clearHistory`; the commands it handles and dispatches from `LexicalCommands.ts` (`UNDO_COMMAND`, `REDO_COMMAND`, `CAN_UNDO_COMMAND`, `CAN_REDO_COMMAND`, `CLEAR_HISTORY_COMMAND`, `CLEAR_EDITOR_COMMAND`) and its tags from `LexicalUpdateTags.ts` | `history`, `commands`, `editor` | `scripts/history`; unit tests for a history shared by two editors (upstream's #8623 test) and `maxDepth` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -56,9 +57,16 @@ touches:
   `$getCommonAncestorAcrossSlots`). Without slots, NodeState or the text
   edit log, `$removeTextFromCaretRange` never meets a slot host and carries
   no NodeState or deletion records.
+- `HistoryExtension` and `SharedHistoryExtension` (`@lexical/history`), which
+  need the extension API. Sharing one `HistoryState` between editors through
+  `register_history` works. `register_history` takes the delay and
+  `maxDepth` as values, where JS also takes signals, and `maxDepth` as a
+  `usize`.
 - Composition, the DOM reconciler, mutation listeners, selection-change
   notifications and `$onUpdate` callbacks (none of which a headless editor
-  runs, except `$onUpdate`), and `RootNode.__cachedText`.
+  runs, except `$onUpdate`), and `RootNode.__cachedText`. So `history` passes
+  `false` where JS passes `editor.isComposing()`, as a headless JS editor
+  does; the `composition-start` and `composition-end` tags work as in JS.
 
 ## Documented exceptions
 

@@ -13,6 +13,7 @@ import {
   registerCodeIndentation,
 } from '@lexical/code-core';
 import {namedSignals} from '@lexical/extension';
+import {HashtagNode, registerLexicalHashtag} from '@lexical/hashtag';
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
 import {
   autoLinkEmailMatcher,
@@ -49,6 +50,8 @@ import {
   $getRoot,
   $getSelection,
   $getSiblingCaret,
+  $getState,
+  $getStateChange,
   $getTextPointCaret,
   $insertNodes,
   $isElementNode,
@@ -61,7 +64,9 @@ import {
   $selectAll,
   $setSelection,
   $setSelectionFromCaretRange,
+  $setState,
   type AnyLexicalCommand,
+  type AnyStateConfig,
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,
   type CaretDirection,
@@ -71,6 +76,7 @@ import {
   CONTROLLED_TEXT_INSERTION_COMMAND,
   createCommand,
   createEditor,
+  createState,
   DELETE_CHARACTER_COMMAND,
   DELETE_LINE_COMMAND,
   DELETE_WORD_COMMAND,
@@ -147,6 +153,18 @@ export type Action =
   | {do: 'removeTextFromCaretRange'}
   /** Logs `$normalizeCaret(caret)`. */
   | {do: 'logNormalizeCaret'; caret: CaretSpec}
+  /** `$setState(node, STATES[state], value)`. */
+  | {do: 'setState'; key: string; state: string; value: Json}
+  /** `$setState(node, STATES[state], UPDATERS[updater])`. */
+  | {do: 'updateState'; key: string; state: string; updater: string}
+  /** Logs `['state', key, state, $getState(node, STATES[state])]`. */
+  | {do: 'logState'; key: string; state: string}
+  /**
+   * Logs `['stateChange', key, state, change]`: `$getStateChange` of the
+   * node's latest version against its version in the committed editor state,
+   * or `'new'` when that state has no node with the key.
+   */
+  | {do: 'logStateChange'; key: string; state: string}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /**
@@ -232,6 +250,12 @@ export type Script = {
    * does. It registers nothing else: its `$transform` comes with the class.
    */
   overflow?: boolean;
+  /**
+   * Register `@lexical/hashtag`'s `HashtagNode` and
+   * `registerLexicalHashtag(editor)`, after the code, as `HashtagExtension`
+   * does (with its default config).
+   */
+  hashtag?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -485,6 +509,62 @@ const NODE_METHODS: Record<
   toggleUnmergeable: n => text(n).toggleUnmergeable(),
 };
 
+/**
+ * The NodeState configs a script names in `setState`, `updateState`,
+ * `logState` and `logStateChange`. Every session shares them, as an app
+ * shares its module-scope configs between editors.
+ */
+const STATES: Record<string, AnyStateConfig> = {
+  // A number, 1 by default.
+  count: createState('count', {
+    parse: v => (typeof v === 'number' ? v : 1),
+  }),
+  // A flag that a copy of its node ($copyNode) does not keep.
+  fresh: createState('fresh', {
+    parse: v => v === true,
+    resetOnCopyNode: true,
+  }),
+  // A string, '' by default.
+  label: createState('label', {
+    parse: v => (typeof v === 'string' ? v : ''),
+  }),
+  // Another config with the key of `label`, which collides with it on a
+  // node type that uses `label`.
+  otherLabel: createState('label', {
+    parse: v => (typeof v === 'string' ? v : ''),
+  }),
+  // An array of words, written as one string and compared by its words.
+  words: createState('words', {
+    isEqual: (a: readonly string[], b: readonly string[]) =>
+      a.length === b.length && a.every((word, i) => word === b[i]),
+    parse: (v): readonly string[] =>
+      typeof v === 'string' && v !== '' ? v.split(' ') : [],
+    unparse: v => v.join(' '),
+  }),
+};
+
+/** The updater functions a script names in `updateState`. */
+const UPDATERS: Record<string, (value: never) => unknown> = {
+  // A new number.
+  'count:increment': (v: number) => v + 1,
+  // The same number, so the node is not written.
+  'count:same': (v: number) => v,
+  // A new string.
+  'label:exclaim': (v: string) => `${v}!`,
+  // A new array with the same words, equal by `isEqual`.
+  'words:copy': (v: readonly string[]) => [...v],
+  // A new array with one more word.
+  'words:push-x': (v: readonly string[]) => [...v, 'x'],
+};
+
+function stateConfig(name: string): AnyStateConfig {
+  const config = STATES[name];
+  if (config === undefined) {
+    throw new Error(`unknown state ${name}`);
+  }
+  return config;
+}
+
 function $runAction(action: Action, ctx: Context): void {
   switch (action.do) {
     case 'append':
@@ -566,6 +646,46 @@ function $runAction(action: Action, ctx: Context): void {
         caretSnapshot($normalizeCaret($caret(action.caret))),
       ]);
       return;
+    case 'setState':
+      $setState($node(action.key), stateConfig(action.state), action.value);
+      return;
+    case 'updateState': {
+      const updater = UPDATERS[action.updater];
+      if (updater === undefined) {
+        throw new Error(`unknown updater ${action.updater}`);
+      }
+      // Each updater takes the value of the config it is named after.
+      $setState(
+        $node(action.key),
+        stateConfig(action.state),
+        updater as (prevValue: unknown) => unknown,
+      );
+      return;
+    }
+    case 'logState':
+      ctx.log.push([
+        'state',
+        action.key,
+        action.state,
+        $getState($node(action.key), stateConfig(action.state)) as Json,
+      ]);
+      return;
+    case 'logStateChange': {
+      const prevNode = ctx.editor.getEditorState()._nodeMap.get(action.key);
+      ctx.log.push([
+        'stateChange',
+        action.key,
+        action.state,
+        prevNode === undefined
+          ? 'new'
+          : ($getStateChange(
+              $node(action.key),
+              prevNode,
+              stateConfig(action.state),
+            ) as Json),
+      ]);
+      return;
+    }
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -713,6 +833,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       ...(script.link ? [LinkNode, AutoLinkNode] : []),
       ...(script.code ? [CodeNode, CodeHighlightNode] : []),
       ...(script.overflow ? [OverflowNode] : []),
+      ...(script.hashtag ? [HashtagNode] : []),
     ],
     onError: e => {
       throw e;
@@ -747,6 +868,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     // `CodeExtension.register` reads only the editor.
     (CodeExtension.register as (e: LexicalEditor) => () => void)(editor);
     registerCodeIndentation(editor);
+  }
+  if (script.hashtag) {
+    registerLexicalHashtag(editor);
   }
   for (const name of script.transforms ?? []) {
     const transform = TRANSFORMS[name];

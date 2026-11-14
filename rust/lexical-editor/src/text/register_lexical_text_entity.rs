@@ -1,19 +1,19 @@
 //! `registerLexicalTextEntity.ts`: `registerLexicalTextEntity` and the
 //! `EntityMatch` its matcher returns.
 //!
-//! NodeState isn't ported (rust/PARITY.md), so what upstream does only to
-//! carry it between text and entities is left out: `$carryNodeState`, the
-//! NodeState half of `$wouldMerge` (`haveEquivalentNodeState`), and the
-//! bookkeeping that only decides whether to carry it (`splitOffInUpdate`,
-//! `demotedInUpdate`, `$isInsertedText` and the offsets they take). Nor is
-//! the text edit log, so `INTERNAL_$recordTextMove` just runs its callback
-//! and `INTERNAL_$recordTextRetype` is not called.
+//! The NodeState half of `$wouldMerge` (`haveEquivalentNodeState`, with
+//! `readStateValue`) is left out: only a token or segmented entity kept as
+//! one takes that path, which an entity `createNode` makes in normal mode,
+//! such as a hashtag, never is, so no vector reaches it (rust/PARITY.md).
+//! The text edit log isn't ported, so `INTERNAL_$recordTextMove` just runs
+//! its callback and `INTERNAL_$recordTextRetype` is not called.
 
 use crate::editor::EditorInner;
 use crate::editor_state::EditorStateInner;
 use crate::error::invariant;
 use crate::lexical_selection::{PointType, SelectionRef, Which, get_selection};
 use crate::node::{NodeKey, NodeRef};
+use crate::node_state::{NodeStateRef, get_writable_node_state, is_default, unparse};
 use crate::nodes::text::create_text_node;
 use crate::updates::internal_get_active_editor_state;
 use crate::{Editor, EditorState, LexicalError, Unregister, utf16};
@@ -78,29 +78,115 @@ fn move_selection_into_entity(
     Ok(())
 }
 
-/// What upstream keeps in a `WeakMap` by pending editor state: the value
-/// for the state of the update running. One state is pending at a time, so
-/// it holds the one for the last state asked about, and starts again with
-/// another.
-struct InUpdate<T>(RefCell<Option<(Weak<EditorStateInner>, T)>>);
+/// What upstream keeps in a `WeakMap` by pending editor state: a value per
+/// editor state still alive.
+struct InUpdate<T>(RefCell<Vec<(Weak<EditorStateInner>, T)>>);
 
 impl<T: Default> InUpdate<T> {
     fn new() -> Self {
-        Self(RefCell::new(None))
+        Self(RefCell::new(Vec::new()))
     }
 
     fn with<R>(&self, editor_state: &EditorState, f: impl FnOnce(&mut T) -> R) -> R {
-        let mut slot = self.0.borrow_mut();
-        let current = slot.as_ref().is_some_and(|(state, _)| {
-            state
-                .upgrade()
-                .is_some_and(|state| Rc::ptr_eq(&state, &editor_state.0))
+        let mut entries = self.0.borrow_mut();
+        entries.retain(|(state, _)| state.strong_count() > 0);
+        let at = entries
+            .iter()
+            .position(|(state, _)| std::ptr::eq(state.as_ptr(), Rc::as_ptr(&editor_state.0)));
+        let at = at.unwrap_or_else(|| {
+            entries.push((Rc::downgrade(&editor_state.0), T::default()));
+            entries.len() - 1
         });
-        if !current {
-            *slot = Some((Rc::downgrade(&editor_state.0), T::default()));
-        }
-        f(&mut slot.as_mut().expect("just set").1)
+        f(&mut entries[at].1)
     }
+}
+
+thread_local! {
+    // The keys of the text nodes that `$reverseNodeTransform` split off the
+    // end of an entity (and of their pieces), by pending editor state, shared
+    // by every registration on the editor. `splitText` gives such a piece a
+    // copy of the entity's NodeState, but its text was inserted after the
+    // entity (typed or pasted), so that NodeState is not its own, and no
+    // entity made from it (of this registration or another) takes it.
+    static SPLIT_OFF_IN_UPDATE: InUpdate<HashSet<NodeKey>> = InUpdate::new();
+
+    // The keys of the parents of the entities turned into text, by pending
+    // editor state, shared by every registration on the editor (see
+    // `$isInsertedText`).
+    static DEMOTED_IN_UPDATE: InUpdate<HashSet<NodeKey>> = InUpdate::new();
+}
+
+/// The NodeState of the latest version of `node`.
+fn state_of(node: &NodeRef) -> Option<NodeStateRef> {
+    node.get_latest().base().state.clone()
+}
+
+/// `$carryNodeState(from, to)`: gives `to`, the text node that takes the
+/// place of `from` with the same characters (an entity made plain text, or
+/// plain text made an entity), the NodeState of `from`, as `splitText`
+/// gives it to its pieces. A key that `to` already holds keeps its value
+/// (when the text is made an entity: state that `createNode` gave it).
+fn carry_node_state(from: &NodeRef, to: &NodeRef) -> Result<(), LexicalError> {
+    let Some(from_state) = state_of(from) else {
+        return Ok(());
+    };
+    if from_state.borrow().size == 0 {
+        return Ok(());
+    }
+    let mut held = HashSet::new();
+    if let Some(to_state) = state_of(to) {
+        let to_state = to_state.borrow();
+        for (key, _) in to_state.unknown_state.iter().flat_map(|u| u.iter()) {
+            held.insert(key.to_owned());
+        }
+        for (config, _) in to_state.known_entries() {
+            held.insert(config.key().to_owned());
+        }
+    }
+    let (known, unknown) = {
+        let from_state = from_state.borrow();
+        (from_state.known_entries(), from_state.unknown_state.clone())
+    };
+    let mut state: Option<NodeStateRef> = None;
+    let mut writable_state = || -> Result<NodeStateRef, LexicalError> {
+        if state.is_none() {
+            state = Some(get_writable_node_state(to)?);
+        }
+        Ok(state.clone().expect("just set"))
+    };
+    for (config, value) in known {
+        let key = config.key().to_owned();
+        if !held.insert(key.clone()) {
+            continue;
+        }
+        if is_default(&config, &value) {
+            continue;
+        }
+        let writable = writable_state()?;
+        let mut writable = writable.borrow_mut();
+        let own = writable
+            .shared_node_state
+            .shared_config_map
+            .borrow()
+            .get(&key)
+            .cloned();
+        if own.is_none_or(|own| own.is(&config)) {
+            // The same value (comment ids compare by identity)
+            writable.update_from_known(&config, value);
+        } else {
+            // The type of `to` has another config for this key: parse with it
+            let json = Rc::new(unparse(&config, &value));
+            writable.update_from_unknown(&key, json);
+        }
+    }
+    for (key, value) in unknown.iter().flat_map(|u| u.iter()) {
+        if !held.contains(key) {
+            writable_state()?
+                .borrow_mut()
+                .update_from_unknown(key, value.clone());
+        }
+    }
+    Ok(())
 }
 
 /// The matcher a registration finds entities with.
@@ -140,13 +226,70 @@ impl TextEntity {
         node.get_type() == self.target_type
     }
 
+    /// `$demotedParents(editor)`: runs `f` with the keys of the parents of
+    /// the entities turned into text in the pending editor state.
+    fn demoted_parents<R>(&self, f: impl FnOnce(&mut HashSet<NodeKey>) -> R) -> R {
+        let editor_state = self.update_state();
+        DEMOTED_IN_UPDATE.with(|demoted| demoted.with(&editor_state, f))
+    }
+
+    /// `$splitOff(editor)`: runs `f` with the keys of the text split off
+    /// entities in the pending editor state.
+    fn split_off<R>(&self, f: impl FnOnce(&mut HashSet<NodeKey>) -> R) -> R {
+        let editor_state = self.update_state();
+        SPLIT_OFF_IN_UPDATE.with(|split_off| split_off.with(&editor_state, f))
+    }
+
+    /// `$isInsertedText(editor, node, text, start, end)`: whether the
+    /// characters `[start, end)` of `node`, whose text is `text`, were
+    /// inserted into it in this update, at its start or its end, with no
+    /// entity turned into text in its parent in this update (whose text may
+    /// have merged into it): it existed in the committed state, and they are
+    /// outside the text it shares with its committed version at its start
+    /// and its end. Such characters have a copy of the node's NodeState, not
+    /// NodeState of their own, so an entity made of them does not take it.
+    fn is_inserted_text(&self, node: &NodeRef, text: &str, start: usize, end: usize) -> bool {
+        let editor = Editor(self.editor.upgrade().expect("the editor"));
+        let prev_text = {
+            let editor_state = editor.get_editor_state();
+            let node_map = editor_state.0.node_map.borrow();
+            match node_map.get(node.get_key()).and_then(|prev| prev.text()) {
+                Some(prev) => prev.get_text().to_owned(),
+                None => return false,
+            }
+        };
+        if let Some(parent) = node.get_parent()
+            && self.demoted_parents(|demoted| demoted.contains(parent.get_key()))
+        {
+            return false;
+        }
+        let prev_text: Vec<u16> = prev_text.encode_utf16().collect();
+        let text: Vec<u16> = text.encode_utf16().collect();
+        let max = prev_text.len().min(text.len());
+        let mut prefix = 0;
+        while prefix < max && prev_text[prefix] == text[prefix] {
+            prefix += 1;
+        }
+        let mut suffix = 0;
+        while suffix < max - prefix
+            && prev_text[prev_text.len() - 1 - suffix] == text[text.len() - 1 - suffix]
+        {
+            suffix += 1;
+        }
+        start >= prefix && end <= text.len() - suffix && end > start
+    }
+
     /// `$replaceWithSimpleText(node)`.
     fn replace_with_simple_text(&self, node: &NodeRef) -> Result<(), LexicalError> {
+        if let Some(parent) = node.get_parent() {
+            self.demoted_parents(|demoted| demoted.insert(parent.get_key().to_owned()));
+        }
         let data = node.text_data();
         let text_node = create_text_node(&node.get_text_content());
         text_node.set_format(data.format);
         text_node.set_style(&data.style);
         text_node.set_detail(data.detail)?;
+        carry_node_state(node, &text_node)?;
         node.replace(&text_node, false)?;
         Ok(())
     }
@@ -297,9 +440,13 @@ impl TextEntity {
         if !node.is_simple_text() {
             return Ok(());
         }
+        // Text split off the end of an entity in this update: its pieces do not
+        // give their NodeState to the entities made from them
+        let split_off = self.split_off(|split_off| split_off.contains(node.get_key()));
 
         let mut prev_sibling = node.get_previous_sibling();
         let mut text = node.get_text_content();
+        let node_text = text.clone();
         let mut current_node = node.clone();
         // The first match of the previous text node's text and this node's.
         let mut first_match: Option<EntityMatch> = None;
@@ -476,6 +623,17 @@ impl TextEntity {
                 continue;
             }
 
+            // The offsets of the match in the text the node had (`current_node`
+            // is what is left of its end)
+            let base = utf16::len(&node_text) - current_node.get_text_content_size();
+            let (match_start, match_end) = if found.start == 0 {
+                (base, base + found.end)
+            } else {
+                (
+                    base + found.start + prev_match_length_to_skip,
+                    base + found.end + prev_match_length_to_skip,
+                )
+            };
             let (node_to_replace, rest) = if found.start == 0 {
                 let mut parts = current_node.split_text(&[found.end as i64])?.into_iter();
                 (parts.next(), parts.next())
@@ -489,6 +647,9 @@ impl TextEntity {
                 parts.next();
                 (parts.next(), parts.next())
             };
+            if split_off && let Some(rest) = &rest {
+                self.split_off(|split_off| split_off.insert(rest.get_key().to_owned()));
+            }
 
             invariant!(
                 node_to_replace.is_some(),
@@ -502,6 +663,10 @@ impl TextEntity {
             replacement_node.set_format(data.format);
             replacement_node.set_style(&data.style);
             replacement_node.set_detail(data.detail)?;
+            if !split_off && !self.is_inserted_text(node, &node_text, match_start, match_end) {
+                // The NodeState of the text becomes the entity's
+                carry_node_state(&node_to_replace, &replacement_node)?;
+            }
             node_to_replace.replace(&replacement_node, false)?;
 
             let Some(rest) = rest else {
@@ -524,7 +689,9 @@ impl TextEntity {
 
         if utf16::len(&text) > found.end {
             // This will split out the rest of the text as simple text
-            node.split_text(&[found.end as i64])?;
+            if let Some(rest) = node.split_text(&[found.end as i64])?.get(1) {
+                self.split_off(|split_off| split_off.insert(rest.get_key().to_owned()));
+            }
 
             return Ok(());
         }

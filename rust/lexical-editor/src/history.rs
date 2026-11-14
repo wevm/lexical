@@ -23,6 +23,7 @@ use crate::editor::{
 use crate::json::Value;
 use crate::lexical_selection::{PointType, RangeSelection};
 use crate::node::{LexicalNode, NodeKey, NodeRef};
+use crate::node_state::export_json_with_state;
 use crate::nodes::root::RootNode;
 use crate::ordered::OrderedSet;
 use crate::{Editor, EditorState, LexicalError, utf16};
@@ -201,7 +202,7 @@ fn get_node(editor_state: &EditorState, key: &str) -> Option<Rc<dyn LexicalNode>
 
 /// `JSON.stringify(node.exportJSON())`, read in `editor_state`.
 fn export_json_text(editor_state: &EditorState, node: &Rc<dyn LexicalNode>) -> String {
-    editor_state.read(|| Value::Object(node.export_json(false)).to_string())
+    editor_state.read(|| Value::Object(export_json_with_state(&**node, false)).to_string())
 }
 
 /// `isTextNodeUnchanged(key, prevEditorState, nextEditorState)`.
@@ -253,7 +254,11 @@ fn serialize_node(node: &Rc<dyn LexicalNode>) -> String {
     } else {
         Value::Null
     };
-    Value::Array(vec![Value::Object(node.export_json(false)), children_keys]).to_string()
+    Value::Array(vec![
+        Value::Object(export_json_with_state(&**node, false)),
+        children_keys,
+    ])
+    .to_string()
 }
 
 /// `areNodesUnchanged(keys, prevEditorState, nextEditorState)`.

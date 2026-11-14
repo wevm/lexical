@@ -108,7 +108,8 @@ private func carryNodeState(_ from: TextNode, _ to: TextNode) throws {
   }
   if let unknown = fromState.unknownState {
     for key in unknown.keys where !held.contains(key) {
-      try writableState().updateFromUnknown(key, unknown[key])
+      try writableState().updateFromUnknown(
+        key, unknown[key], identity: fromState.unknownIdentities[key])
     }
   }
 }
@@ -130,9 +131,8 @@ private func readStateValue(_ state: NodeState?, _ stateConfig: AnyStateConfig) 
 
 /// Whether `a` and `b` hold equivalent NodeState, by the rule that decides
 /// whether two text nodes merge: known values compared with their
-/// `StateConfig.isEqual`, values not read yet compared as they are (JS
-/// compares those by identity, which for JSON primitives is by value;
-/// Swift compares JSON objects and arrays by value too).
+/// `StateConfig.isEqual`, values not read yet compared by identity, as JS
+/// does (`unknownValuesAreIdentical`).
 private func haveEquivalentNodeState(_ a: TextNode, _ b: TextNode) throws -> Bool {
   let stateA = try a.getLatest().__state
   let stateB = try b.getLatest().__state
@@ -157,14 +157,12 @@ private func haveEquivalentNodeState(_ a: TextNode, _ b: TextNode) throws -> Boo
   }
   func hasUnequalUnknown(_ source: NodeState?, _ other: NodeState?) -> Bool {
     guard let unknown = source?.unknownState else { return false }
-    let otherUnknown = other?.unknownState
     for key in unknown.keys {
       if keys.contains(key) {
         continue
       }
       keys.insert(key)
-      let otherValue: JSONValue?? = otherUnknown.flatMap { $0.has(key) ? .some($0[key]) : nil }
-      if otherValue == nil || otherValue! != unknown[key] {
+      if !unknownValuesAreIdentical(source, other, key) {
         return true
       }
     }

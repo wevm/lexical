@@ -3,15 +3,16 @@
 //!
 //! A headless editor never composes, so `$getCompositionKey()` is always
 //! `null` and `isComposing()` always false: the composition branches are
-//! left out, each noted where JS has it. Without the text edit log or
-//! NodeState, `$recordDeleted`, `$recordTextInserted` and `$carryNodeState`
-//! do nothing.
+//! left out, each noted where JS has it. Without the text edit log,
+//! `$recordDeleted` and `$recordTextInserted` do nothing; `$carryNodeState`
+//! gives a segmented node's replacement its NodeState as in JS.
 
 use crate::LexicalError;
 use crate::caret::{CaretDirection, get_sibling_caret};
 use crate::error::invariant;
 use crate::lexical_selection::{PointType, SelectionRef, Which, get_selection, set_selection};
 use crate::node::NodeRef;
+use crate::node_state::carry_node_state;
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::nodes::paragraph::{ParagraphNode, create_paragraph_node};
 use crate::nodes::tab::TabNode;
@@ -126,7 +127,8 @@ fn insert_text(selection: &SelectionRef, text: &str) -> Result<(), LexicalError>
             replacement.set_format(format);
             replacement.set_style(&style);
             replacement.set_detail(anchor_data.get_detail())?;
-            // `$carryNodeState`: NodeState is not ported.
+            // The characters keep their NodeState (comment ids, for example)
+            carry_node_state(&anchor_node, &replacement)?;
             let is_current_selection = get_selection().is_some_and(|s| s.ptr_eq(selection));
             anchor_node.replace(&replacement, false)?;
             // replace() installs a clone of the active selection, so this

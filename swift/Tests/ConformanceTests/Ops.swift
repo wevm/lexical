@@ -1,6 +1,7 @@
 import Foundation
 import Lexical
 import LexicalHistory
+import LexicalList
 import LexicalPlainText
 import LexicalRichText
 
@@ -49,6 +50,8 @@ private enum CoreCommand {
   /// `SELECT_ALL_COMMAND`, whose keyboard event no handler reads; ops.ts
   /// dispatches it with `null`.
   case keyboard(LexicalCommand<KeyboardEvent>)
+  /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
+  case listStart(LexicalCommand<UpdateListStartPayload>)
 }
 
 private let coreCommands: [String: CoreCommand] = [
@@ -72,7 +75,20 @@ private let coreCommands: [String: CoreCommand] = [
   "SELECT_ALL_COMMAND": .keyboard(SELECT_ALL_COMMAND),
   "SET_TEXT_FORMAT_COMMAND": .formats(SET_TEXT_FORMAT_COMMAND),
   "UNDO_COMMAND": .void(UNDO_COMMAND),
+  // `PACKAGE_COMMANDS` in ops.ts: the list commands.
+  "INSERT_CHECK_LIST_COMMAND": .void(INSERT_CHECK_LIST_COMMAND),
+  "INSERT_ORDERED_LIST_COMMAND": .void(INSERT_ORDERED_LIST_COMMAND),
+  "INSERT_UNORDERED_LIST_COMMAND": .void(INSERT_UNORDERED_LIST_COMMAND),
+  "REMOVE_LIST_COMMAND": .void(REMOVE_LIST_COMMAND),
+  "UPDATE_LIST_START_COMMAND": .listStart(UPDATE_LIST_START_COMMAND),
 ]
+
+/// `UPDATE_LIST_START_COMMAND`'s payload as the script writes it.
+private func listStart(_ payload: JSONValue) throws -> UpdateListStartPayload {
+  try UpdateListStartPayload(
+    listNodeKey: payload["listNodeKey"]?.stringValue.orThrow() ?? "",
+    newStart: payload["newStart"]?.int.orThrow() ?? 1)
+}
 
 /// `SET_TEXT_FORMAT_COMMAND`'s payload as the script writes it.
 private func formats(_ payload: JSONValue) throws -> [(TextFormatType, Bool)] {
@@ -111,6 +127,8 @@ private final class ScriptContext {
     case .keyboard(let command):
       guard payload == .null else { throw ScriptError("\(name) takes no payload") }
       return try editor.dispatchCommand(command, KeyboardEvent())
+    case .listStart(let command):
+      return try editor.dispatchCommand(command, try listStart(payload))
     case nil:
       return try editor.dispatchCommand(self.command(name), payload)
     }
@@ -135,6 +153,16 @@ private final class ScriptContext {
         priority)
     case .keyboard(let command):
       _ = editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
+    case .listStart(let command):
+      _ = editor.registerCommand(
+        command,
+        { payload, _ in
+          try listener(
+            .object(
+              JSONObject([
+                ("listNodeKey", .string(payload.listNodeKey)), ("newStart", .int(payload.newStart)),
+              ])))
+        }, priority)
     case nil:
       _ = editor.registerCommand(
         self.command(name), { payload, _ in try listener(payload) }, priority)
@@ -322,6 +350,11 @@ private func runNodeMethod(
   case "splitText":
     let parts = try text(n).splitText(offsets: (args.arrayValue ?? []).compactMap(\.int))
     ctx.log.append(.array([.string("splitText"), .array(parts.map { $0.getKey() })]))
+  case "toggleChecked":
+    guard let item = n as? ListItemNode else {
+      throw ScriptError("\(n.getKey()) is not a list item")
+    }
+    _ = try item.toggleChecked()
   case "toggleDirectionless": try text(n).toggleDirectionless()
   case "toggleFormat": try text(n).toggleFormat(a0.stringValue.orThrow())
   case "toggleUnmergeable": try text(n).toggleUnmergeable()
@@ -451,10 +484,14 @@ private func registerTransform(_ name: String, _ ctx: ScriptContext) throws {
 func runScript(_ script: JSONValue) throws -> [StepRecord] {
   resetRandomKey()
   // `richText: true` registers @lexical/rich-text's nodes and
-  // `registerRichText`, as ops.ts does.
-  let nodes: [LexicalNodeConfig] =
+  // `registerRichText`, and `list: true` @lexical/list's nodes,
+  // `registerList` and `registerCheckList`, as ops.ts does.
+  var nodes: [LexicalNodeConfig] =
     script["richText"]?.boolValue == true
     ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
+  if script["list"]?.boolValue == true {
+    nodes += [.klass(ListNode.self), .klass(ListItemNode.self)]
+  }
   let editor = try createEditor(
     CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))
   let ctx = ScriptContext(editor)
@@ -463,6 +500,10 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   }
   if script["plainText"]?.boolValue == true {
     _ = registerPlainText(editor)
+  }
+  if script["list"]?.boolValue == true {
+    _ = try registerList(editor)
+    _ = try registerCheckList(editor)
   }
   for name in script["transforms"]?.arrayValue ?? [] {
     try registerTransform(name.stringValue.orThrow(), ctx)

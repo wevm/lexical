@@ -12,8 +12,12 @@
 //! exports them, and any other name is a command the script makes.
 //!
 //! A script with `richText: true` registers `@lexical/rich-text`'s nodes
-//! (`HeadingNode`, `QuoteNode`) and `registerRichText`'s handlers, and one
-//! with `plainText: true` registers `registerPlainText`'s.
+//! (`HeadingNode`, `QuoteNode`) and `registerRichText`'s handlers, one
+//! with `plainText: true` registers `registerPlainText`'s, and one with
+//! `list: true` registers `@lexical/list`'s nodes (`ListNode`,
+//! `ListItemNode`), `registerList` and `registerCheckList`. `dispatch` and
+//! handlers name the list commands as `@lexical/list` exports them
+//! (`PACKAGE_COMMANDS`).
 //!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
@@ -21,6 +25,7 @@
 use crate::case::{Case, Outcome, same};
 use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
+use lexical::list;
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
     COMMAND_PRIORITY_EDITOR, CONTROLLED_TEXT_INSERTION_COMMAND, CaretDirection, CreateEditorArgs,
@@ -53,7 +58,8 @@ impl Ctx {
     }
 
     /// `command(ctx, name)`: one of Lexical's own commands
-    /// (`CORE_COMMANDS`), or one command per other name.
+    /// (`CORE_COMMANDS`), a list command (`PACKAGE_COMMANDS`), or one
+    /// command per other name.
     fn command(&self, name: &str) -> ScriptCommand {
         match name {
             "CAN_REDO_COMMAND" => ScriptCommand::Bool(CAN_REDO_COMMAND),
@@ -78,6 +84,15 @@ impl Ctx {
             "SELECT_ALL_COMMAND" => ScriptCommand::Void(SELECT_ALL_COMMAND),
             "SET_TEXT_FORMAT_COMMAND" => ScriptCommand::Formats(SET_TEXT_FORMAT_COMMAND),
             "UNDO_COMMAND" => ScriptCommand::Void(UNDO_COMMAND),
+            "INSERT_CHECK_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_CHECK_LIST_COMMAND),
+            "INSERT_ORDERED_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_ORDERED_LIST_COMMAND),
+            "INSERT_UNORDERED_LIST_COMMAND" => {
+                ScriptCommand::Void(list::INSERT_UNORDERED_LIST_COMMAND)
+            }
+            "REMOVE_LIST_COMMAND" => ScriptCommand::Void(list::REMOVE_LIST_COMMAND),
+            "UPDATE_LIST_START_COMMAND" => {
+                ScriptCommand::ListStart(list::UPDATE_LIST_START_COMMAND)
+            }
             _ => ScriptCommand::Json(
                 self.commands
                     .borrow_mut()
@@ -97,7 +112,17 @@ enum ScriptCommand {
     Bool(LexicalCommand<bool>),
     Str(LexicalCommand<String>),
     Formats(LexicalCommand<Vec<(String, bool)>>),
+    /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
+    ListStart(LexicalCommand<list::UpdateListStartPayload>),
     Json(LexicalCommand<Value>),
+}
+
+/// `UPDATE_LIST_START_COMMAND`'s payload, `{listNodeKey, newStart}`.
+fn list_start_of(payload: &Value) -> Option<list::UpdateListStartPayload> {
+    Some(list::UpdateListStartPayload {
+        list_node_key: payload.get("listNodeKey")?.as_str()?.to_owned(),
+        new_start: payload.get("newStart")?.as_f64()?,
+    })
 }
 
 /// `SET_TEXT_FORMAT_COMMAND`'s payload, an object of booleans, in key order.
@@ -126,6 +151,12 @@ impl ScriptCommand {
             ScriptCommand::Formats(command) if formats_of(&payload).is_some() => {
                 editor.dispatch_command(command, formats_of(&payload).unwrap_or_default())
             }
+            ScriptCommand::ListStart(command) => match list_start_of(&payload) {
+                Some(payload) => editor.dispatch_command(command, payload),
+                None => Err(err(format!(
+                    "{payload} is not a payload this command takes"
+                ))),
+            },
             ScriptCommand::Json(command) => editor.dispatch_command(command, payload),
             _ => Err(err(format!(
                 "{payload} is not a payload this command takes"
@@ -165,6 +196,16 @@ impl ScriptCommand {
                         formats.insert(name.as_str(), (*value).into());
                     }
                     listener(&formats.into(), editor)
+                },
+                priority,
+            ),
+            ScriptCommand::ListStart(command) => editor.register_command(
+                command,
+                move |payload, editor| {
+                    let mut json = Object::new();
+                    json.insert("listNodeKey", payload.list_node_key.as_str().into());
+                    json.insert("newStart", payload.new_start.into());
+                    listener(&json.into(), editor)
                 },
                 priority,
             ),
@@ -226,6 +267,14 @@ fn element(node: NodeRef) -> Result<NodeRef, LexicalError> {
         Ok(node)
     } else {
         Err(err(format!("{} is not an element", node.get_key())))
+    }
+}
+
+fn list_item(node: NodeRef) -> Result<NodeRef, LexicalError> {
+    if list::is_list_item_node(&node) {
+        Ok(node)
+    } else {
+        Err(err(format!("{} is not a list item", node.get_key())))
     }
 }
 
@@ -432,7 +481,7 @@ fn run_node_method(
             v => n.set_format(number(&v)?),
         },
         "setFormat" => element(n)?.set_element_format(a(0).as_str().unwrap_or("")),
-        "setIndent" => element(n)?.set_indent(number(&a(0))?),
+        "setIndent" => element(n)?.set_indent(number(&a(0))?)?,
         "setMode" => text(n)?.set_mode(&string(&a(0))?)?,
         "setStyle" if n.is_text() => n.set_style(&string(&a(0))?),
         "setStyle" => element(n)?.set_element_style(a(0).as_str().unwrap_or("")),
@@ -464,6 +513,7 @@ fn run_node_method(
                 Value::Array(parts.iter().map(|p| p.get_key().into()).collect()),
             ]);
         }
+        "toggleChecked" => list_item(n)?.toggle_checked(),
         "toggleDirectionless" => text(n)?.toggle_directionless(),
         "toggleFormat" => text(n)?.toggle_format(&string(&a(0))?),
         "toggleUnmergeable" => text(n)?.toggle_unmergeable(),
@@ -716,19 +766,25 @@ impl Session {
     pub fn start(script: &Value) -> Result<Session, String> {
         reset_random_key();
         let rich_text = script.get("richText").and_then(Value::as_bool) == Some(true);
-        let editor = create_editor(CreateEditorArgs {
-            nodes: if rich_text {
-                lexical::rich_text::rich_text_nodes()
-            } else {
-                Vec::new()
-            },
-        });
+        let with_list = script.get("list").and_then(Value::as_bool) == Some(true);
+        let mut nodes = Vec::new();
+        if rich_text {
+            nodes.extend(lexical::rich_text::rich_text_nodes());
+        }
+        if with_list {
+            nodes.extend(list::list_nodes());
+        }
+        let editor = create_editor(CreateEditorArgs { nodes });
         let ctx = Rc::new(Ctx::default());
         if rich_text {
             let _unregister = lexical::rich_text::register_rich_text(&editor);
         }
         if script.get("plainText").and_then(Value::as_bool) == Some(true) {
             let _unregister = lexical::plain_text::register_plain_text(&editor);
+        }
+        if with_list {
+            let _unregister = list::register_list(&editor, list::RegisterListOptions::default());
+            let _unregister = list::register_check_list(&editor);
         }
         for name in script
             .get("transforms")

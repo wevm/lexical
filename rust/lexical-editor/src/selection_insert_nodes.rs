@@ -380,7 +380,7 @@ fn is_clone_not_needed(node: &NodeRef) -> bool {
 /// `$isBlockContainer(node)`: the root or a shadow root. A block element
 /// whose class declares `children: 'block'` counts too in an editor that
 /// enforces node structure, once that is ported.
-fn is_block_container(node: &NodeRef) -> bool {
+pub(crate) fn is_block_container(node: &NodeRef) -> bool {
     node.is_element() && is_root_or_shadow_root(&*node.get_latest())
 }
 

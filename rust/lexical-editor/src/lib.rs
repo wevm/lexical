@@ -57,11 +57,16 @@ mod generated_json;
 #[cfg(feature = "history")]
 pub mod history;
 pub mod json;
+mod lexical_selection;
+mod lexical_utils;
 mod node;
 pub mod nodes;
 mod normalization;
 mod ordered;
-mod selection;
+#[cfg(feature = "rich-text")]
+pub mod rich_text;
+#[cfg(feature = "selection")]
+pub mod selection;
 mod selection_deletion;
 mod selection_editing;
 mod selection_format;
@@ -70,7 +75,8 @@ mod selection_insert_text;
 mod serialized_export;
 mod updates;
 pub mod utf16;
-mod utils;
+#[cfg(feature = "utils")]
+pub mod utils;
 
 pub use caret::{
     CaretDirection, CaretKind, CaretRange, ChildCaret, CommonAncestorResult, NodeCaret, PointCaret,
@@ -89,8 +95,12 @@ pub use caret_utils::{
     set_selection_from_caret_range, update_range_selection_from_caret_range,
 };
 pub use commands::{
-    CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND, REDO_COMMAND,
-    UNDO_COMMAND,
+    CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
+    CONTROLLED_TEXT_INSERTION_COMMAND, DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND,
+    DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
+    INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND,
+    OUTDENT_CONTENT_COMMAND, REDO_COMMAND, REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND,
+    SET_TEXT_FORMAT_COMMAND, UNDO_COMMAND,
 };
 pub use editor::{
     COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
@@ -101,19 +111,19 @@ pub use editor::{
 };
 pub use editor_state::EditorState;
 pub use error::LexicalError;
+pub use lexical_selection::{
+    NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
+    create_node_selection, create_range_selection, get_selection, set_selection,
+};
+pub use lexical_utils::{get_node_by_key, get_root, reset_random_key};
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};
 pub use nodes::element::{Direction, ElementData};
 pub use nodes::paragraph::create_paragraph_node;
 pub use nodes::text::{TextData, create_text_node, toggle_text_format_type};
-pub use selection::{
-    NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
-    create_node_selection, create_range_selection, get_selection, set_selection,
-};
 pub use selection_deletion::{SelectionAlter, SelectionGranularity, SelectionMovement};
 pub use selection_insert_nodes::{insert_nodes, select_all};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
 pub use updates::parse_serialized_node;
-pub use utils::{get_node_by_key, get_root, reset_random_key};
 
 /// The upstream Lexical release this port conforms to. The conformance
 /// vectors (`meta.json`) name the same one, so an upstream sync can't move

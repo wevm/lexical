@@ -4,6 +4,7 @@
 use crate::editor_state::{clone_editor_state, create_empty_editor_state};
 use crate::error::invariant;
 use crate::json::{self, Object, Value};
+use crate::lexical_utils::set_node_key;
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::nodes::{
     line_break::LineBreakNode, paragraph::ParagraphNode, root::RootNode, tab::TabNode,
@@ -15,7 +16,6 @@ use crate::updates::{
     begin_update, commit_pending_updates, parse_editor_state, read_editor_state,
     trigger_command_listeners, update_editor_sync,
 };
-use crate::utils::set_node_key;
 use crate::{EditorState, LexicalError};
 use std::any::Any;
 use std::cell::{Cell, RefCell};

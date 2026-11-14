@@ -55,6 +55,16 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/rich-text",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/rich-text-commands",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "fuzz/core",
             variant: None,
             check: crate::scripts::check,
@@ -71,8 +81,7 @@ pub fn all() -> Vec<Suite> {
 /// its directory under `packages/`, for cases that need one not ported yet.
 pub fn package_of(node_type: &str) -> Option<&'static str> {
     Some(match node_type {
-        "root" | "paragraph" | "text" | "linebreak" | "tab" => return None,
-        "heading" | "quote" => "lexical-rich-text",
+        "root" | "paragraph" | "text" | "linebreak" | "tab" | "heading" | "quote" => return None,
         "list" | "listitem" => "lexical-list",
         "link" | "autolink" => "lexical-link",
         "code" | "code-highlight" => "lexical-code-core",

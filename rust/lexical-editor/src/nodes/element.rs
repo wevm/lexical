@@ -4,14 +4,14 @@
 use crate::caret_tree::{detach_node, detach_sibling_range, insert_node_between};
 use crate::constants::{DOUBLE_LINE_BREAK, ELEMENT_TYPE_TO_FORMAT, lookup, name_of};
 use crate::error::invariant;
-use crate::node::{LexicalNode, NodeKey, NodeRef};
-use crate::nodes::root::RootNode;
-use crate::selection::{
+use crate::lexical_selection::{
     Point, PointType, SelectionRef, Which, get_selection, internal_make_range_selection,
     move_selection_point_to_sibling,
 };
+use crate::lexical_utils::{get_writable, mutate, with_writable};
+use crate::node::{LexicalNode, NodeKey, NodeRef};
+use crate::nodes::root::RootNode;
 use crate::updates::error_on_read_only;
-use crate::utils::{get_writable, mutate, with_writable};
 use crate::{LexicalError, utf16};
 use std::collections::HashSet;
 

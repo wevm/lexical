@@ -32,3 +32,74 @@ pub const CAN_REDO_COMMAND: LexicalCommand<bool> =
 /// `HistoryExtension`'s `canUndo` signal, which isn't ported yet.
 pub const CAN_UNDO_COMMAND: LexicalCommand<bool> =
     LexicalCommand::constant(u64::MAX - 5, "CAN_UNDO_COMMAND");
+
+/// `DELETE_CHARACTER_COMMAND`: dispatched to delete a character; the
+/// payload is `true` for a backward deletion (Backspace) and `false` for a
+/// forward one (Delete).
+pub const DELETE_CHARACTER_COMMAND: LexicalCommand<bool> =
+    LexicalCommand::constant(u64::MAX - 6, "DELETE_CHARACTER_COMMAND");
+
+/// `INSERT_LINE_BREAK_COMMAND`: dispatched to insert a line break. With
+/// `false` the caret moves to the new line (Shift+Enter); with `true` it
+/// stays (Ctrl+O on macOS).
+pub const INSERT_LINE_BREAK_COMMAND: LexicalCommand<bool> =
+    LexicalCommand::constant(u64::MAX - 7, "INSERT_LINE_BREAK_COMMAND");
+
+/// `INSERT_PARAGRAPH_COMMAND`: dispatched to insert a new paragraph
+/// (Enter).
+pub const INSERT_PARAGRAPH_COMMAND: LexicalCommand<()> =
+    LexicalCommand::constant(u64::MAX - 8, "INSERT_PARAGRAPH_COMMAND");
+
+/// `CONTROLLED_TEXT_INSERTION_COMMAND`: dispatched to insert text. JS also
+/// takes the `beforeinput` event; without a DOM only the string form is
+/// here.
+pub const CONTROLLED_TEXT_INSERTION_COMMAND: LexicalCommand<String> =
+    LexicalCommand::constant(u64::MAX - 9, "CONTROLLED_TEXT_INSERTION_COMMAND");
+
+/// `REMOVE_TEXT_COMMAND`: dispatched to remove the selected text. JS's
+/// payload is the input event or `null`, which no handler reads.
+pub const REMOVE_TEXT_COMMAND: LexicalCommand<()> =
+    LexicalCommand::constant(u64::MAX - 10, "REMOVE_TEXT_COMMAND");
+
+/// `DELETE_WORD_COMMAND`: dispatched to delete a word; the payload is
+/// `true` for a backward deletion (Opt+Delete on macOS).
+pub const DELETE_WORD_COMMAND: LexicalCommand<bool> =
+    LexicalCommand::constant(u64::MAX - 11, "DELETE_WORD_COMMAND");
+
+/// `DELETE_LINE_COMMAND`: dispatched to delete a line; the payload is
+/// `true` for a backward deletion (Cmd+Delete on macOS).
+pub const DELETE_LINE_COMMAND: LexicalCommand<bool> =
+    LexicalCommand::constant(u64::MAX - 12, "DELETE_LINE_COMMAND");
+
+/// `FORMAT_TEXT_COMMAND`: dispatched to toggle a text format (`"bold"`,
+/// `"italic"`, ...) on the selection.
+pub const FORMAT_TEXT_COMMAND: LexicalCommand<String> =
+    LexicalCommand::constant(u64::MAX - 13, "FORMAT_TEXT_COMMAND");
+
+/// `SET_TEXT_FORMAT_COMMAND`: dispatched to set (`true`) or clear (`false`)
+/// text formats on the selection. JS's payload is an object; its keys'
+/// order is the order here.
+pub const SET_TEXT_FORMAT_COMMAND: LexicalCommand<Vec<(String, bool)>> =
+    LexicalCommand::constant(u64::MAX - 14, "SET_TEXT_FORMAT_COMMAND");
+
+/// `INSERT_TAB_COMMAND`: dispatched to insert a tab.
+pub const INSERT_TAB_COMMAND: LexicalCommand<()> =
+    LexicalCommand::constant(u64::MAX - 15, "INSERT_TAB_COMMAND");
+
+/// `INDENT_CONTENT_COMMAND`: dispatched to indent the selected content.
+pub const INDENT_CONTENT_COMMAND: LexicalCommand<()> =
+    LexicalCommand::constant(u64::MAX - 16, "INDENT_CONTENT_COMMAND");
+
+/// `OUTDENT_CONTENT_COMMAND`: dispatched to outdent the selected content.
+pub const OUTDENT_CONTENT_COMMAND: LexicalCommand<()> =
+    LexicalCommand::constant(u64::MAX - 17, "OUTDENT_CONTENT_COMMAND");
+
+/// `FORMAT_ELEMENT_COMMAND`: dispatched to set the alignment (`"left"`,
+/// `"center"`, ...) of the selected blocks.
+pub const FORMAT_ELEMENT_COMMAND: LexicalCommand<String> =
+    LexicalCommand::constant(u64::MAX - 18, "FORMAT_ELEMENT_COMMAND");
+
+/// `SELECT_ALL_COMMAND`: dispatched to select all content. JS's payload is
+/// the keyboard event, which no handler reads.
+pub const SELECT_ALL_COMMAND: LexicalCommand<()> =
+    LexicalCommand::constant(u64::MAX - 19, "SELECT_ALL_COMMAND");

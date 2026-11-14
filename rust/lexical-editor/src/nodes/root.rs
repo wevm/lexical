@@ -5,9 +5,10 @@ use crate::generated_json::{
     export_compact_element_node, export_element_node, update_element_node,
 };
 use crate::json::Object;
+use crate::lexical_selection::SelectionRef;
+use crate::lexical_utils::get_root;
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
-use crate::utils::get_root;
 
 /// The root of every editor state, under the key `"root"`.
 ///
@@ -65,5 +66,8 @@ impl LexicalNode for RootNode {
     }
     fn update_from_json(&mut self, json: &Object) {
         update_element_node(&mut self.element, json);
+    }
+    fn collapse_at_start(&self, _: &NodeRef, _: &SelectionRef) -> Result<bool, LexicalError> {
+        Ok(true)
     }
 }

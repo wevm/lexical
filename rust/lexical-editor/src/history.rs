@@ -21,10 +21,10 @@ use crate::editor::{
     UpdateListenerPayload,
 };
 use crate::json::Value;
+use crate::lexical_selection::{PointType, RangeSelection};
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::nodes::root::RootNode;
 use crate::ordered::OrderedSet;
-use crate::selection::{PointType, RangeSelection};
 use crate::{Editor, EditorState, LexicalError, utf16};
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};

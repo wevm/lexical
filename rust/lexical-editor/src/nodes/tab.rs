@@ -8,7 +8,7 @@ use crate::nodes::text::TextData;
 
 /// `$createTabNode()`.
 pub fn create_tab_node() -> NodeRef {
-    crate::utils::set_node_key(Box::new(TabNode::default()))
+    crate::lexical_utils::set_node_key(Box::new(TabNode::default()))
 }
 
 /// A text node that always holds one `\t` and never merges.

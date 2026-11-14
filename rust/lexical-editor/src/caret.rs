@@ -15,10 +15,10 @@
 
 use crate::LexicalError;
 use crate::error::invariant;
+use crate::lexical_utils::get_root;
 use crate::node::{NodeKey, NodeRef};
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::utf16;
-use crate::utils::get_root;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -317,7 +317,7 @@ impl PointCaret {
         // to insert and the nodes to remove
         let mut remove_caret = caret.get_adjacent_caret();
         while let Some(rc) = remove_caret.filter(|_| nodes_to_remove.len() < delete_count) {
-            crate::utils::get_writable(rc.origin.get_key());
+            crate::lexical_utils::get_writable(rc.origin.get_key());
             if !nodes_to_remove.contains(&rc.origin) {
                 nodes_to_remove.push(rc.origin.clone());
             }

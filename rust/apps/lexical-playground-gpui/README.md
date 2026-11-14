@@ -14,7 +14,9 @@ zbugs-gpui is. macOS.
   - Typed and committed text runs `insertText`; Return `insertParagraph`;
     Shift-Return `insertLineBreak`; Backspace and Delete delete by grapheme,
     Option by word and Command by line; paste runs `insertRawText`; ⌘A, ⌘B,
-    ⌘I and ⌘U select all and format.
+    ⌘I and ⌘U select all and format. ⌘Z and ⌘⇧Z dispatch `UNDO_COMMAND`
+    and `REDO_COMMAND` to `@lexical/history` (the `history` feature), which
+    merges typing within 300 ms into one step, as `HistoryExtension` does.
   - An input method's composition is drawn underlined and kept out of
     Lexical until it commits, as a browser keeps it out of the editor
     state.
@@ -40,7 +42,7 @@ zbugs-gpui is. macOS.
     LEXICAL_REPLAY=/path/to/lexical-playground-session.json pnpm exec vitest run src/replay.test.ts
     ```
 
-Undo, headings, lists, links, code blocks, HTML and Markdown arrive as the
+Headings, lists, links, code blocks, HTML and Markdown arrive as the
 port gets the packages ([DESIGN.md](../../DESIGN.md), milestones).
 
 ## Running it
@@ -69,7 +71,7 @@ to edit it.
 
 Built with the `e2e` feature, the app drives its own window once it's up:
 it types, formats, composes with an input method, types an emoji and
-deletes it, and adds a paragraph and a line break, through the input
+deletes it, adds a paragraph and a line break, and undoes and redoes, through the input
 handler and the key bindings, checking the document after each step. It
 writes the session to `$LEXICAL_PLAYGROUND_E2E` and exits 0, or 1 with the
 step that failed. CI (`.github/workflows/rust-playground.yml`) then replays

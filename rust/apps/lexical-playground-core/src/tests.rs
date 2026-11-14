@@ -79,6 +79,47 @@ fn typing_enter_and_formatting_edit_the_document() {
 }
 
 #[test]
+fn undo_takes_back_typing_merged_by_time_and_redo_brings_it_back() {
+    use std::cell::Cell;
+    use std::rc::Rc;
+    let now = Rc::new(Cell::new(0.0));
+    let clock = now.clone();
+    let mut p = Playground::with_clock(example(), Rc::new(move || clock.get())).unwrap();
+    let second = |p: &Playground| p.document().blocks[1].text.clone();
+    let original = second(&p);
+    assert!(!p.can_undo());
+    p.set_selection(Some(Sel::caret(Pos { block: 1, byte: 0 })));
+    // "ab" within the delay is one undo step; "c" after it, another.
+    for (t, ch) in [(1000.0, "a"), (1100.0, "b"), (2000.0, "c")] {
+        now.set(t);
+        assert_eq!(p.insert_text(ch).error, None);
+    }
+    assert_eq!(second(&p), format!("abc{original}"));
+    assert!(p.can_undo());
+    now.set(2100.0);
+    assert_eq!(p.undo().error, None);
+    assert_eq!(second(&p), format!("ab{original}"));
+    assert_eq!(p.selection(), Some(Sel::caret(Pos { block: 1, byte: 2 })));
+    assert_eq!(p.undo().error, None);
+    assert_eq!(second(&p), original);
+    assert!(!p.can_undo());
+    assert!(p.can_redo());
+    assert_eq!(p.redo().error, None);
+    assert_eq!(second(&p), format!("ab{original}"));
+    // A new edit drops the redo.
+    now.set(3000.0);
+    assert_eq!(p.insert_text("x").error, None);
+    assert!(!p.can_redo());
+    let case = p.export_case("undo");
+    assert!(case.get("history").is_some());
+    assert!(
+        case.get("steps").and_then(Value::as_array).unwrap()[1]
+            .get("now")
+            .is_some()
+    );
+}
+
+#[test]
 fn a_change_the_field_made_replays_as_a_lexical_edit() {
     let mut p = playground();
     let old = p.document().text();

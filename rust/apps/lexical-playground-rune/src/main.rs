@@ -140,9 +140,11 @@ impl State {
                 'i' => self.edit_with(|p| p.format_text("italic")),
                 'u' => self.edit_with(|p| p.format_text("underline")),
                 'a' => self.edit_with(Playground::select_all),
-                // Undo comes with @lexical/history; until then the field's
-                // own undo would edit behind Lexical's back.
-                'z' | 'y' => {}
+                // Lexical's history, not the field's own undo, which would
+                // edit behind Lexical's back.
+                'z' | 'Z' if m.shift => self.edit_with(Playground::redo),
+                'z' => self.edit_with(Playground::undo),
+                'y' => {}
                 _ => return false,
             },
             _ => return false,

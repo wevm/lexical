@@ -256,11 +256,14 @@ These are reversible choices made while porting, under Q7 and Q27.
   package is ported.
 - **Selection movement without layout.** JS moves a selection by a
   character, word or line through `Selection.modify`, after
-  `$modifySelectionAroundDecoratorsAndBlocks`. Headless, and in JS under
-  jsdom, only that first step runs, and the port does the same until the
-  TextKit views supply the layout step. `TestLinkNode` in the tests copies
-  LinkNode's core-facing overrides (`canInsertTextBefore/After`,
-  `insertNewAfter`, `extractWithChild`).
+  `$modifySelectionAroundDecoratorsAndBlocks`; the TextKit views supply
+  that layout step as `Editor.selectionMovement`. Without one the port
+  follows JS without the DOM's: an editor with no root element has no
+  window, so the step throws ("window object not found"), as headless JS
+  does; one with a root element (the tests' `TestRootElement`) stops after
+  the first step, as JS under jsdom does, whose selection has no `modify`.
+  `TestLinkNode` in the tests copies LinkNode's core-facing overrides
+  (`canInsertTextBefore/After`, `insertNewAfter`, `extractWithChild`).
 - **Duck-typed JS checks become protocols.** `'__language' in node` (a code
   block, in `insertNodes`) is `CodeLanguageNode`, and
   `__isInlineFormattable` is `InlineFormattableNode`, which `TextNode`

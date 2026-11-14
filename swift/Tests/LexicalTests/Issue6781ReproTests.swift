@@ -15,7 +15,7 @@ private func rangeSelection() throws -> RangeSelection {
       "lexical/src/__tests__/unit/Issue6781Repro.test.ts::Backspacing an empty block updates the pending format (#6781) > merging into the previous block adopts that block text format and style"
     ))
   func mergeAdoptsPreviousFormat() throws {
-    let editor = try createTestEditor()
+    let editor = try createMountedTestEditor()
     try editor.update(discrete: true) {
       let text = try createTextNode("hello").setFormat(IS_BOLD).setStyle("color: red")
       let paragraph = try createParagraphNode().append(text)
@@ -51,7 +51,7 @@ private func rangeSelection() throws -> RangeSelection {
       "lexical/src/__tests__/unit/Issue6781Repro.test.ts::Backspacing an empty block updates the pending format (#6781) > backspacing inside a block leaves the pending format alone"
     ))
   func backspaceInsideKeepsPendingFormat() throws {
-    let editor = try createTestEditor()
+    let editor = try createMountedTestEditor()
     try editor.update(discrete: true) {
       let text = try createTextNode("hello").setFormat(IS_BOLD).setStyle("color: red")
       try getRoot().clear().append(try createParagraphNode().append(text))

@@ -168,10 +168,22 @@ enum PropertyRunner {
     return record
   }
 
+  /// The DOM selection of the jsdom window `sequenceEditor` gives its
+  /// editor in property.ts: it has no `modify`, so a move within text goes
+  /// nowhere and the deletion commands resolve in the model.
+  private final class SelectionWithoutModify: SelectionMovement, Sendable {
+    func landedPoint(
+      from point: Point, isBackward: Bool, granularity: SelectionGranularity
+    ) -> (NodeKey, Int, PointType)? { nil }
+  }
+
+  /// `Editor.selectionMovement` is weak; this keeps the movement alive.
+  private static let selectionWithoutModify = SelectionWithoutModify()
+
   /// `sequenceEditor` in property.ts.
   static func sequenceEditor() throws -> Editor {
     resetRandomKey()
-    return try buildEditorFromExtensions(
+    let editor = try buildEditorFromExtensions(
       defineExtension(
         name: "[root]",
         dependencies: [
@@ -180,6 +192,10 @@ enum PropertyRunner {
         ],
         nodes: { [.klass(AutoLinkNode.self), .klass(OverflowNode.self)] },
         editorConfig: InitialEditorConfig(namespace: "", onError: { error, _ in throw error })))
+    // property.ts sets the jsdom window (`editor._window`) with no root
+    // element; without it a headless editor's deletions throw.
+    editor.selectionMovement = selectionWithoutModify
+    return editor
   }
 
   /// `runSequence` in property.ts, from the concrete steps the vector

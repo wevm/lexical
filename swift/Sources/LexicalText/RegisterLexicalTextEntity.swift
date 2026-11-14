@@ -267,6 +267,12 @@ private func isInsertedText(
 /// nodes of `targetNode` (made by `createNode`, such as a `HashtagNode`)
 /// and entities that no longer match back into text. Returns the two
 /// unregister functions, for `mergeRegister`.
+///
+/// The transforms run only on text that changes. When what `getMatch`
+/// finds changes (the people a mention can name, loaded later), unregister
+/// and register again, as in JS: registering marks every text node and
+/// entity dirty in one `HISTORY_MERGE_TAG` update, so all of them are
+/// matched again without adding a history entry.
 public func registerLexicalTextEntity<T: TextNode>(
   _ editor: Editor, _ getMatch: @escaping (String) -> EntityMatch?, _ targetNode: T.Type,
   _ createNode: @escaping (TextNode) throws -> T

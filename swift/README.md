@@ -83,6 +83,31 @@ Offsets in selections and points are UTF-16 code units, as in JS and
 `JSParity` article; `Examples/LexicalDemo` and `apps/lexical-playground-swift`
 are complete apps.
 
+### Concurrency
+
+An `Editor` is bound to the thread that creates it, and only the view
+modules are `@MainActor`, so a headless editor can run on any thread. Its
+listeners run on that thread and aren't `@MainActor` themselves. In an app,
+build the editor on the main actor and give the app's module default main
+actor isolation (the default for new Xcode 26 app targets; in SwiftPM,
+`swiftSettings: [.defaultIsolation(MainActor.self)]`). Listeners written
+anywhere in it, including in an extension defined as a global `let`, can then
+use main-actor state without `MainActor.assumeIsolated`.
+
+### Observing the views
+
+`LexicalUITextView` is its own `UITextViewDelegate`, and both views turn
+native input into Lexical commands instead of editing their own text. Observe
+the editor instead, with the commands and listeners a Lexical web app uses:
+
+| Instead of | Use |
+| --- | --- |
+| `textViewDidBeginEditing` | `FOCUS_COMMAND` |
+| `textViewDidEndEditing` | `BLUR_COMMAND` |
+| `textViewDidChangeSelection` | `SELECTION_CHANGE_COMMAND` |
+| `textViewDidChange` | `registerUpdateListener`, `registerTextContentListener` |
+| `shouldChangeTextIn`, Return | `CONTROLLED_TEXT_INSERTION_COMMAND`, `KEY_ENTER_COMMAND`, `BEFORE_INPUT_COMMAND` |
+
 ## Code highlighting
 
 `LexicalCodeCore`'s `CodeHighlighterExtension` highlights code blocks with

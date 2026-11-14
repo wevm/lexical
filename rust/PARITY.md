@@ -14,11 +14,16 @@ updated with each milestone.
 | Export form | `LexicalSerializedExport.ts` | `serialized_export` | `serialization/core` |
 | Generated JSON of the core nodes | `LexicalGeneratedJSON.ts` | `generated_json` | `serialization/core`, `property/documents` |
 | Core nodes | `nodes/LexicalRootNode.ts`, `LexicalParagraphNode.ts`, `LexicalTextNode.ts`, `LexicalTabNode.ts`, `LexicalLineBreakNode.ts`, `LexicalElementNode.ts` (fields, `getTextContent`, `shouldSerializeTextStyles`) | `nodes::*` | `serialization/core`, `property/documents` |
-| Node references and `getWritable` | `LexicalNode.ts` (`getLatest`, `getParent`, siblings, children) | `node`, `utils` | through the nodes |
-| Appending children | `ElementNode.splice` (insertion only), `RootNode.splice`, `caret/LexicalCaretTree.ts` | `caret_tree` | through parsing |
-| Editor state | `LexicalEditorState.ts` (`toJSON`, `read`, `isEmpty`) | `editor_state` | `serialization/core` |
-| Parsing | `parseEditorState`, `$parseSerializedNodeImpl` (`LexicalUpdates.ts`) | `updates` | `serialization/core`, `property/documents` |
-| Editor | `createEditor` (node registration), `getEditorState`, `read` | `editor` | |
+| Node methods | `LexicalNode.ts` (`getLatest`, `getWritable`, `isAttached`, `getIndexWithinParent`, `remove`/`$removeNode`, `replace`, `insertBefore`, `insertAfter`, `select*`, `markDirty`) | `node`, `utils` | `scripts/updates`, `scripts/transforms` |
+| Element methods | `LexicalElementNode.ts` (`splice` with selection repair, `append`, `clear`, `select`, children and descendants, the setters), `RootNode.splice` and its other overrides | `nodes::element`, `node` | `scripts/updates` |
+| Text methods | `LexicalTextNode.ts` (`splitText`, `mergeWithSibling`, `spliceText`, `setTextContent`, `select`, the format, detail, mode and style setters and toggles), `toggleTextFormatType`, `TabNode`'s overrides | `nodes::text` | `scripts/updates`, `scripts/listeners`, `scripts/transforms` |
+| Tree surgery | `caret/LexicalCaretTree.ts` (`$insertNodeBetween`, `$detachNode`, `$detachSiblingRange`, `$detachNodeWithSelection`, `$insertSibling`, `$selectAdjacentNode`) | `caret_tree` | `scripts/updates` |
+| Selection model | `LexicalSelection.ts`: points, `RangeSelection` and `NodeSelection` fields, `$getSelection`, `$setSelection`, `$createRangeSelection`, and the helpers node methods use to keep a selection valid | `selection` | `scripts/updates` |
+| Update cycle | `LexicalUpdates.ts` (`$beginUpdate`, nested and queued updates, `$applyAllTransforms`, `$commitPendingUpdates`, `$discardPendingUpdate`, listeners, `triggerCommandListeners`, `updateEditorSync`), `LexicalNormalization.ts` (`$normalizeTextNode`), `LexicalGC.ts` (nodes) | `updates`, `normalization`, `gc` | `scripts/updates`, `scripts/listeners`, `scripts/transforms`, `scripts/commands` |
+| Editor state | `LexicalEditorState.ts` (`toJSON`, `read`, `isEmpty`, `_parsed`) | `editor_state` | `serialization/core` |
+| Parsing | `parseEditorState`, `$parseSerializedNode` (`LexicalUpdates.ts`) | `updates` | `serialization/core`, `property/documents` |
+| Editor | `createEditor` (node registration), `update`, `read`, `getEditorState`, `setEditorState`, `registerNodeTransform`, `registerUpdateListener`, `registerTextContentListener`, `registerCommand`, `dispatchCommand`, `createCommand` | `editor` | `scripts/*` |
+| UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
 ## Not ported yet
@@ -28,10 +33,16 @@ touches:
 
 - **NodeState** (`"$"`) and **slots** (`"$slots"`): a document that carries
   either fails to parse with an error naming it, rather than losing them.
-- `editor.update`, the commit, normalization (JS's `setEditorState` merges
-  adjacent simple text nodes; the runner compares text content, which that
-  doesn't change), selection, transforms, commands and listeners.
-- `RootNode.__cachedText`, which only the DOM reconciler fills.
+- `RangeSelection` editing (`insertText`, `insertParagraph`,
+  `deleteCharacter`, `formatText`, ...), `$selectAll`, `$insertNodes`, and
+  ordering points on different nodes (`isBefore`, which needs carets): a
+  case that reaches these fails with an error naming the caret port rather
+  than guessing. `scripts/selection` and `scripts/caret` cases, and the one
+  case each of `scripts/listeners` and `scripts/transforms` that types
+  text, are counted as waiting on them.
+- Composition, the DOM reconciler, mutation listeners, selection-change
+  notifications and `$onUpdate` callbacks (none of which a headless editor
+  runs, except `$onUpdate`), and `RootNode.__cachedText`.
 
 ## Documented exceptions
 

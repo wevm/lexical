@@ -79,3 +79,42 @@ fn doctored_vectors_fail() {
         report.markdown()
     );
 }
+
+/// The script suites compare what listeners saw after each step: in a copy
+/// of `scripts/listeners.json` where one dirty element's flag and the tags
+/// of the failed update's notification differ from what JS recorded, those
+/// two cases fail, and only those.
+#[test]
+fn doctored_scripts_fail() {
+    let Some(vectors) = vectors_or_skip() else {
+        return;
+    };
+    let text = std::fs::read_to_string(vectors.join("scripts/listeners.json")).unwrap();
+    let flag = ("[\"1\",false]", "[\"1\",true]");
+    let tags = ("[\"update\",[],[],[]]", "[\"update\",[],[],[\"tag\"]]");
+    for (from, _) in [flag, tags] {
+        assert!(text.contains(from), "no {from} to doctor");
+    }
+    let doctored = text.replacen(flag.0, flag.1, 1).replacen(tags.0, tags.1, 1);
+
+    let dir = std::env::temp_dir().join(format!(
+        "lexical-conformance-doctored-scripts-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(dir.join("scripts")).unwrap();
+    std::fs::write(dir.join("scripts/listeners.json"), doctored).unwrap();
+    let report = lexical_conformance::run_in(&dir, Some("scripts/listeners"));
+    std::fs::remove_dir_all(&dir).unwrap();
+    let report = report.unwrap();
+    let f = report
+        .files
+        .iter()
+        .find(|f| f.file == "scripts/listeners")
+        .unwrap();
+    assert_eq!(
+        (f.failed, f.failures.len()),
+        (2, 2),
+        "{}",
+        report.markdown()
+    );
+}

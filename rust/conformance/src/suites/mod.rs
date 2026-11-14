@@ -3,6 +3,7 @@
 
 mod meta;
 mod property;
+mod scripts;
 mod serialization;
 
 use crate::Suite;
@@ -18,6 +19,36 @@ pub fn all() -> Vec<Suite> {
             file: "serialization/core",
             variant: None,
             check: serialization::check,
+        },
+        Suite {
+            file: "scripts/updates",
+            variant: None,
+            check: scripts::check,
+        },
+        Suite {
+            file: "scripts/transforms",
+            variant: None,
+            check: scripts::check,
+        },
+        Suite {
+            file: "scripts/listeners",
+            variant: None,
+            check: scripts::check,
+        },
+        Suite {
+            file: "scripts/commands",
+            variant: None,
+            check: scripts::check,
+        },
+        Suite {
+            file: "scripts/selection",
+            variant: None,
+            check: scripts::check,
+        },
+        Suite {
+            file: "scripts/caret",
+            variant: None,
+            check: scripts::check,
         },
         Suite {
             file: "property/documents",

@@ -79,6 +79,48 @@
       _ = window
     }
 
+    /// The view is the root from `init`, before it is in a window, so a
+    /// focus asked for then (`AutoFocusExtension`, an early `editor.focus()`)
+    /// is taken once it lands in one, as a contenteditable is focused when it
+    /// mounts. A `blur()` before then cancels it.
+    @Test func takesAFocusAskedForBeforeItIsInAWindow() throws {
+      let frame = CGRect(x: 0, y: 0, width: 390, height: 600)
+      func view(_ more: [any AnyLexicalExtensionArgument] = []) throws -> LexicalUITextView {
+        LexicalUITextView(
+          editor: try buildEditorFromExtensions(
+            defineExtension(name: "test", dependencies: [RichTextExtension] + more)),
+          frame: frame)
+      }
+      /// Attaches `view` once the editor has committed what is pending, as
+      /// when the view lands in a window on a later turn of the run loop.
+      func attach(_ view: LexicalUITextView) -> UIWindow {
+        drainMicrotasks()
+        #expect(!view.hasFocus)
+        let window = UIWindow(frame: frame)
+        window.makeKeyAndVisible()
+        window.addSubview(view)
+        return window
+      }
+      let autoFocused = try view([AutoFocusExtension])
+      let autoFocusedWindow = attach(autoFocused)
+      #expect(autoFocused.hasFocus)
+      autoFocused.removeFromSuperview()
+
+      let focused = try view()
+      try focused.editor.focus()
+      let focusedWindow = attach(focused)
+      #expect(focused.hasFocus)
+      #expect(try focused.editor.read { try getSelection() } != nil)
+      focused.removeFromSuperview()
+
+      let blurred = try view()
+      blurred.focus()
+      blurred.blur()
+      let blurredWindow = attach(blurred)
+      #expect(!blurred.hasFocus)
+      _ = (autoFocusedWindow, focusedWindow, blurredWindow)
+    }
+
     @Test func typesDeletesAndEnters() throws {
       let (view, window) = try makeView()
       view.insertText("Hello")

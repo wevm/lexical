@@ -34,6 +34,10 @@
     private var removeListeners: [() -> Void] = []
     /// Set while a drag that started here is dropped back here.
     private var isDropFromSelf = false
+    /// Set when the focus is asked for before the view is in a window: the
+    /// view is the root from `init`, while a contenteditable is the root
+    /// once it is in the document. It takes the focus when it lands in one.
+    private var focusesInWindow = false
     let decorators = DecoratorAttachments()
     /// Set while a shifted key the text view handles is pressed.
     private var isExtendingSelection = false
@@ -1041,6 +1045,14 @@
 
     // MARK: Focus
 
+    public override func viewDidMoveToWindow() {
+      super.viewDidMoveToWindow()
+      if window != nil, focusesInWindow {
+        focusesInWindow = false
+        focus()
+      }
+    }
+
     public override func becomeFirstResponder() -> Bool {
       guard super.becomeFirstResponder() else { return false }
       perform {
@@ -1215,10 +1227,15 @@
     public var hasFocus: Bool { window?.firstResponder === self }
 
     public func focus() {
-      window?.makeFirstResponder(self)
+      guard let window else {
+        focusesInWindow = true
+        return
+      }
+      window.makeFirstResponder(self)
     }
 
     public func blur() {
+      focusesInWindow = false
       if hasFocus { window?.makeFirstResponder(nil) }
     }
 

@@ -51,6 +51,11 @@ pub fn all() -> Vec<Suite> {
             check: html::check_import_nodes,
         },
         Suite {
+            file: "html/import-extension",
+            variant: None,
+            check: html::check_import_extension,
+        },
+        Suite {
             file: "html/parse",
             variant: None,
             check: html::check_parse,

@@ -108,13 +108,28 @@ impl CssStyleDeclaration {
             .join(" ")
     }
 
+    /// A declaration with the properties of a style rule's block, as
+    /// jsdom's CSSOM gives a rule's `style`: as [`from_css_text`], but
+    /// property names match in any case.
+    ///
+    /// [`from_css_text`]: CssStyleDeclaration::from_css_text
+    pub fn from_rule_text(css: &str) -> Self {
+        let mut declaration = Self::new();
+        declaration.parse_declarations(css, false);
+        declaration
+    }
+
     /// Replaces the declarations with those in `css`.
     pub fn parse(&mut self, css: &str) {
+        self.parse_declarations(css, true);
+    }
+
+    fn parse_declarations(&mut self, css: &str, keep_case: bool) {
         self.entries.clear();
         for (name, raw_value) in parse_css_declarations(&preprocess_css(css)) {
             let (value, important) = split_important(&raw_value);
             self.write(
-                canonical_name(&name, true),
+                canonical_name(&name, keep_case),
                 &value,
                 if important { "important" } else { "" }.to_owned(),
             );

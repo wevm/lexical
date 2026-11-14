@@ -132,10 +132,11 @@ nonisolated(unsafe) public let HorizontalRuleImportRules = [HorizontalRuleRule]
 /// override the element's own. Only for a document.
 ///
 /// JS reads the document's CSSOM. Swift parses each `<style>` sheet's
-/// style rules (at-rules are skipped) and matches their selectors with
-/// `parseSelector`'s subset; a rule whose selector is outside it
-/// (combinators, pseudo-classes) is skipped, as JS skips a selector
-/// `querySelectorAll` rejects.
+/// rules with `parseStyleSheet` (at-rules are skipped) and matches their
+/// selectors with `querySelectorAll`; a selector it rejects is skipped, as
+/// JS skips one `querySelectorAll` throws on. Selectors outside its subset
+/// (pseudo-classes, namespaces, escapes) are skipped too, and shorthand
+/// properties are copied without the longhands a browser expands them into.
 public func inlineStylesFromStyleSheets(
   _ dom: DOMNode, _ ctx: DOMPreprocessContext, _ next: () throws -> Void
 ) throws {
@@ -145,29 +146,16 @@ public func inlineStylesFromStyleSheets(
 
 func inlineStylesFromStyleSheetsDOM(_ dom: DOMNode) {
   guard let doc = dom as? DOMDocument, let root = doc.documentElement else { return }
-  let elements = root.descendantElements()
-  let styles = elements.filter { $0.localName == "style" }
+  let styles = ([root] + root.descendantElements()).filter { $0.localName == "style" }
   if styles.isEmpty { return }
   var originalInlineStyles: [ObjectIdentifier: Set<String>] = [:]
-  func originalProps(_ el: DOMElement) -> Set<String> {
-    if let props = originalInlineStyles[ObjectIdentifier(el)] { return props }
-    let props = Set(el.style.propertyNames)
-    originalInlineStyles[ObjectIdentifier(el)] = props
-    return props
-  }
-  // A scratch element parses declarations as `CSSStyleDeclaration` does.
-  let scratch = doc.createElement("div")
   for style in styles {
-    for rule in parseStyleRules(style.textContent) {
-      guard let selector = try? parseSelector(rule.selector) else { continue }
-      scratch.setAttribute("style", rule.declarations)
-      let declaration = scratch.style
-      let predicate = selector.predicate
+    for case .style(let selectorText, let declaration) in parseStyleSheet(style.textContent) {
+      guard let elements = try? doc.querySelectorAll(selectorText) else { continue }
       for el in elements {
-        var captures: ImportCaptures = [:]
-        if !selector.tags.isEmpty && !selector.tags.contains(el.nodeName) { continue }
-        guard predicate(el, &captures) else { continue }
-        let original = originalProps(el)
+        let original =
+          originalInlineStyles[ObjectIdentifier(el)] ?? Set(el.style.propertyNames)
+        originalInlineStyles[ObjectIdentifier(el)] = original
         for prop in declaration.propertyNames where !original.contains(prop) {
           el.style.setProperty(
             prop, declaration.getPropertyValue(prop), declaration.getPropertyPriority(prop))
@@ -175,38 +163,4 @@ func inlineStylesFromStyleSheetsDOM(_ dom: DOMNode) {
       }
     }
   }
-}
-
-/// The style rules of a style sheet, as selector text and declaration
-/// text. Drops comments and the `<!--`/`-->` tokens, and skips at-rules.
-private func parseStyleRules(_ css: String) -> [(selector: String, declarations: String)] {
-  var text = css.replacing(/\/\*[\s\S]*?\*\//, with: "")
-  text = text.replacing("<!--", with: " ").replacing("-->", with: " ")
-  var rules: [(String, String)] = []
-  var chars = Substring(text)
-  while let open = chars.firstIndex(of: "{") {
-    let prelude = jsTrim(String(chars[..<open]))
-    // Find the matching close brace.
-    var depth = 0
-    var close = open
-    var i = open
-    while i < chars.endIndex {
-      if chars[i] == "{" { depth += 1 }
-      if chars[i] == "}" {
-        depth -= 1
-        if depth == 0 {
-          close = i
-          break
-        }
-      }
-      i = chars.index(after: i)
-    }
-    if depth != 0 { close = chars.endIndex }
-    let body = chars[chars.index(after: open)..<close]
-    if !prelude.hasPrefix("@") {
-      rules.append((prelude, String(body)))
-    }
-    chars = close < chars.endIndex ? chars[chars.index(after: close)...] : ""
-  }
-  return rules
 }

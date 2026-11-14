@@ -4,10 +4,13 @@
 //! `importDOM` and the editor's `html` config. The DOM is
 //! [`crate::dom`]; parse HTML into it with [`crate::dom::parse_from_string`].
 //!
-//! From `packages/lexical-html/src/index.ts`. Not ported: the
-//! `DOMImportExtension` and `DOMRenderExtension` pipelines and their rules,
-//! the render context, and `$inlineStylesFromStyleSheets`, which needs a CSS
-//! selector engine (rust/PARITY.md).
+//! From `packages/lexical-html/src/index.ts`. [`import`] has
+//! `$inlineStylesFromStyleSheets`, and with the `extension` feature too the
+//! `DOMImportExtension` pipeline.
+
+pub mod import;
+#[cfg(feature = "extension")]
+pub(crate) mod internal;
 
 use crate::dom::DomNode;
 use crate::lexical_dom::{
@@ -20,6 +23,7 @@ use crate::nodes::artificial::{create_artificial_node, is_artificial_node};
 use crate::nodes::line_break::create_line_break_node;
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::{Editor, LexicalError, get_root};
+use import::inline_styles_from_style_sheets_dom;
 use std::rc::Rc;
 
 /// `IGNORE_TAGS`.
@@ -33,6 +37,7 @@ pub fn generate_nodes_from_dom(
     editor: &Editor,
     dom: &DomNode,
 ) -> Result<Vec<NodeRef>, LexicalError> {
+    inline_styles_from_style_sheets_dom(dom);
     let elements = if dom.is_document() {
         dom.body().map(|b| b.child_nodes()).unwrap_or_default()
     } else {

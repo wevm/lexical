@@ -14,22 +14,28 @@
 //! - [`parse_from_string`]: `DOMParser`, a WHATWG tokenizer and tree
 //!   builder pinned against jsdom's by the `html/parse` and `html/entities`
 //!   vectors.
+//! - [`parse_style_sheet`]: a `<style>` element's rules, and
+//!   [`DomNode::query_selector_all`] for the selectors they use.
 //! - [`get_document`]: the one `document` of the thread, as JS has one
 //!   global `document`.
 
 mod css_properties;
 mod css_style_declaration;
+mod css_style_sheet;
 mod css_values;
 mod html_entities;
 mod html_parser;
 mod html_serializer;
 mod node;
+mod selectors;
 
 pub use css_style_declaration::{CssStyle, CssStyleDeclaration};
+pub use css_style_sheet::{CssRule, parse_style_sheet};
 pub use css_values::{CssPropertyTraits, css_property_names, css_property_traits};
 pub use html_parser::{is_legacy_entity_name, named_entity, named_entity_count, parse_from_string};
 pub use html_serializer::is_void_html_element;
 pub use node::{DomNode, DomNodeType, DomTokenList};
+pub use selectors::SelectorError;
 
 thread_local! {
     static DOCUMENT: DomNode = DomNode::new_document();

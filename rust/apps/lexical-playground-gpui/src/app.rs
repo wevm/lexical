@@ -5,7 +5,7 @@ use crate::editor::{EditorEvent, LexicalEditor};
 use gpui_kit::component::button::*;
 use gpui_kit::component::*;
 use gpui_kit::*;
-use lexical_playground_core::{Playground, example, replay_vectors};
+use lexical_playground_core::{Playground, example, format_flag, replay_vectors};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Panel {
@@ -24,6 +24,23 @@ const FORMATS: [(&str, &str); 8] = [
     ("subscript", "x₂"),
     ("superscript", "x²"),
 ];
+
+/// The block menu, as the JS playground's `BlockFormatDropDown`: each
+/// button is a `blockType` and its label (the same as the Rune app's).
+const BLOCKS: [(&str, &str); 8] = [
+    ("paragraph", "Normal"),
+    ("h1", "H1"),
+    ("h2", "H2"),
+    ("h3", "H3"),
+    ("quote", "Quote"),
+    ("bullet", "• List"),
+    ("number", "1. List"),
+    ("check", "☑ List"),
+];
+
+/// The URL a new link gets, as the JS playground's link button inserts
+/// `https://` for the user to edit.
+const NEW_LINK_URL: &str = "https://";
 
 pub struct PlaygroundApp {
     editor: Entity<LexicalEditor>,
@@ -82,7 +99,10 @@ impl PlaygroundApp {
     }
 
     fn toolbar(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let playground = &self.editor.read(cx).surface.playground;
+        let surface = &self.editor.read(cx).surface;
+        // The surface's selection, which a click or an arrow key moves
+        // before Lexical hears of it at the next edit.
+        let format = surface.playground.format_at(surface.shown_selection());
         let mut bar = h_flex()
             .w_full()
             .gap_1()
@@ -97,7 +117,7 @@ impl PlaygroundApp {
                     .child("Lexical"),
             );
         for (name, label) in FORMATS {
-            let on = playground.has_format(name);
+            let on = format & format_flag(name) != 0;
             let button = Button::new(SharedString::from(format!("format-{name}")))
                 .small()
                 .label(label)
@@ -139,6 +159,106 @@ impl PlaygroundApp {
                     cx.notify();
                 })),
         )
+    }
+
+    /// The second row: the block menu, the link button, outdent and indent,
+    /// and a check item's box.
+    fn block_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let surface = &self.editor.read(cx).surface;
+        let sel = surface.shown_selection();
+        let playground = &surface.playground;
+        let current = playground.block_type_at(sel).to_owned();
+        let link = playground.link_at(sel).map(str::to_owned);
+        let check = playground
+            .document()
+            .blocks
+            .get(sel.anchor.block)
+            .and_then(|b| b.list.as_ref())
+            .filter(|l| l.list_type == "check")
+            .map(|l| l.checked);
+        let block = sel.anchor.block;
+        let toggle = |id: String, label: &str, on: bool| {
+            let button = Button::new(SharedString::from(id))
+                .small()
+                .label(label.to_owned())
+                .selected(on);
+            if on { button.primary() } else { button.ghost() }
+        };
+        let mut bar = h_flex()
+            .w_full()
+            .gap_1()
+            .px_3()
+            .py_2()
+            .border_b_1()
+            .border_color(cx.theme().border);
+        for (block_type, label) in BLOCKS {
+            bar = bar.child(
+                toggle(format!("block-{block_type}"), label, current == block_type)
+                    .tooltip(format!("Format as {label}"))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.toolbar_edit(window, cx, |p| p.set_block_type(block_type))
+                    })),
+            );
+        }
+        bar = bar
+            .child(
+                toggle("link".into(), "Link", link.is_some())
+                    .tooltip(match &link {
+                        Some(url) => format!("Remove the link to {url}"),
+                        None => "Insert a link".to_owned(),
+                    })
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        let surface = &this.editor.read(cx).surface;
+                        let remove = surface
+                            .playground
+                            .link_at(surface.shown_selection())
+                            .is_some();
+                        this.toolbar_edit(window, cx, |p| {
+                            p.toggle_link((!remove).then_some(NEW_LINK_URL))
+                        })
+                    })),
+            )
+            .child(
+                Button::new("outdent")
+                    .small()
+                    .ghost()
+                    .label("Outdent")
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.toolbar_edit(window, cx, |p| p.indent(true))
+                    })),
+            )
+            .child(
+                Button::new("indent")
+                    .small()
+                    .ghost()
+                    .label("Indent")
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.toolbar_edit(window, cx, |p| p.indent(false))
+                    })),
+            );
+        if let Some(checked) = check {
+            bar = bar.child(
+                toggle(
+                    "check-item".into(),
+                    if checked { "☑ Done" } else { "☐ Done" },
+                    checked,
+                )
+                .tooltip("Check or uncheck this item")
+                .on_click(cx.listener(move |this, _, window, cx| {
+                    this.toolbar_edit(window, cx, |p| p.toggle_checked(block))
+                })),
+            );
+        }
+        if let Some(url) = link {
+            bar = bar.child(
+                div()
+                    .ml_2()
+                    .text_xs()
+                    .text_color(cx.theme().muted_foreground)
+                    .child(url),
+            );
+        }
+        bar
     }
 
     fn panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -303,6 +423,7 @@ impl Render for PlaygroundApp {
             .bg(cx.theme().background)
             .text_color(cx.theme().foreground)
             .child(self.toolbar(cx))
+            .child(self.block_bar(cx))
             .child(
                 h_flex()
                     .flex_1()

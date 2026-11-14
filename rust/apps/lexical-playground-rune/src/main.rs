@@ -88,13 +88,19 @@ impl State {
         self.edit.focused = focused;
     }
 
-    /// Hands the field's selection to the editor, before an edit.
-    fn take_selection(&mut self) {
+    /// The field's selection, which the toolbar shows: a click or an
+    /// arrow key moves it before Lexical hears of it at the next edit.
+    pub fn shown_selection(&self) -> Sel {
         let doc = self.playground.document();
-        let sel = Sel {
+        Sel {
             anchor: doc.pos_at(self.edit.anchor),
             focus: doc.pos_at(self.edit.focus),
-        };
+        }
+    }
+
+    /// Hands the field's selection to the editor, before an edit.
+    fn take_selection(&mut self) {
+        let sel = self.shown_selection();
         self.playground.set_selection(Some(sel));
     }
 
@@ -134,7 +140,7 @@ impl State {
                     self.edit_with(|p| p.delete_character(backward));
                 }
             }
-            Key::Tab if !m.shift => self.edit_with(|p| p.insert_raw_text("\t")),
+            Key::Tab => self.edit_with(|p| p.tab(m.shift)),
             Key::Command(c) => match c {
                 'b' => self.edit_with(|p| p.format_text("bold")),
                 'i' => self.edit_with(|p| p.format_text("italic")),
@@ -171,14 +177,23 @@ impl State {
 }
 
 /// The field's model for `doc`: its text, a mark per format the field
-/// draws, and its line breaks as soft breaks.
+/// draws, its links, a Rune block per line, and its line breaks as soft
+/// breaks.
 pub fn mirror(doc: &Document, selection: Option<Sel>) -> TextEdit {
     let mut marks = Vec::new();
+    let mut blocks = Vec::new();
     let mut offset = 0;
     for block in &doc.blocks {
+        let checked = block
+            .list
+            .as_ref()
+            .is_some_and(|l| l.list_type == "check" && l.checked);
         for run in &block.runs {
             if run.kind == RunKind::Text {
                 let range = offset + run.start..offset + run.end();
+                if range.is_empty() {
+                    continue;
+                }
                 for (name, mark) in [
                     ("bold", Mark::Bold),
                     ("italic", Mark::Italic),
@@ -186,30 +201,79 @@ pub fn mirror(doc: &Document, selection: Option<Sel>) -> TextEdit {
                     ("strikethrough", Mark::Strike),
                     ("code", Mark::Code),
                 ] {
-                    if run.has_format(name) && !range.is_empty() {
+                    // A checked item is struck through, as the JS
+                    // playground's `.PlaygroundEditorTheme__listItemChecked`.
+                    if run.has_format(name) || (checked && mark == Mark::Strike) {
                         marks.push(MarkRange::new(range.clone(), mark));
                     }
                 }
+                if let Some(url) = &run.link {
+                    marks.push(MarkRange::new(range, Mark::Link(url.clone())));
+                }
             }
         }
+        let lines = 1 + block
+            .runs
+            .iter()
+            .filter(|r| r.kind == RunKind::LineBreak)
+            .count();
+        blocks.extend(std::iter::repeat_n(rune_block(block), lines));
         offset += block.text.len() + 1;
     }
-    let text = doc.text();
-    let lines = text.matches('\n').count() + 1;
-    let mut edit = TextEdit::from_parts(text, marks, vec![Block::Paragraph; lines])
-        .with_soft_breaks(doc.soft_breaks());
+    let mut edit =
+        TextEdit::from_parts(doc.text(), marks, blocks).with_soft_breaks(doc.soft_breaks());
     let sel = selection.unwrap_or(Sel::caret(Pos::default()));
     edit.set_selection(doc.offset_of(sel.anchor), doc.offset_of(sel.focus));
     edit
 }
 
-/// Highlight, subscript and superscript, which the field has no marks for,
-/// drawn over it. `dark` is the window's appearance: highlight is a marker
+/// How the field draws `block`: a list item as a bullet or a number at its
+/// list's depth (a check item as a bullet; its box is the toolbar's Check
+/// button), a quote with the field's quote bar. Headings are paragraphs
+/// with larger text (see [`decorations`]).
+fn rune_block(block: &lexical_playground_core::Block) -> Block {
+    if let Some(list) = &block.list {
+        let level = list.depth.min(usize::from(rune::MAX_LIST_LEVEL)) as u8;
+        return match list.list_type.as_str() {
+            "number" => Block::Numbered(level),
+            _ => Block::Bullet(level),
+        };
+    }
+    match block.kind.as_str() {
+        "quote" => Block::Quote,
+        "code" => Block::Code,
+        _ => Block::Paragraph,
+    }
+}
+
+/// A heading's text size and weight, as the JS playground's theme
+/// (`h1` 24px ... `h6`, in the field's 16-point body).
+fn heading_style(tag: &str) -> Option<(f32, f32)> {
+    Some(match tag {
+        "h1" => (26.0, 700.0),
+        "h2" => (21.0, 700.0),
+        "h3" => (18.0, 650.0),
+        "h4" => (16.0, 650.0),
+        "h5" => (14.0, 650.0),
+        "h6" => (13.0, 650.0),
+        _ => return None,
+    })
+}
+
+/// Headings, highlight, subscript and superscript, which the field has no
+/// marks or blocks for, drawn over it. `dark` is the window's appearance: highlight is a marker
 /// yellow behind dark text and a deep amber behind light text.
 pub fn decorations(doc: &Document, dark: bool) -> Vec<rune::Span> {
     let mut spans = Vec::new();
     let mut offset = 0;
     for block in &doc.blocks {
+        if let Some((size, weight)) = block.tag.as_deref().and_then(heading_style)
+            && !block.text.is_empty()
+        {
+            let mut span = rune::Span::new(offset, offset + block.text.len()).weight(weight);
+            span.size = Some(size);
+            spans.push(span);
+        }
         for run in &block.runs {
             let (start, end) = (offset + run.start, offset + run.end());
             if run.kind != RunKind::Text || start == end {

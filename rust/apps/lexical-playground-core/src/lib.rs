@@ -44,6 +44,11 @@ pub struct Run {
     pub style: String,
     /// The run's start in its block's text, in bytes.
     pub start: usize,
+    /// The index, among the block's children, of the child the run is or
+    /// is inside (a link holds several runs).
+    pub child: usize,
+    /// The URL of the link the run is in.
+    pub link: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -69,19 +74,61 @@ impl Run {
     }
 }
 
-/// A child of the root: a paragraph, or later a heading, quote, list ...
+/// A block the app draws as a line of text: an element that holds inline
+/// content (a paragraph, a heading, a quote, a list item). Lists, and list
+/// items that only hold a nested list, aren't drawn themselves; their
+/// items are.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Block {
     pub key: String,
-    /// The node's type (`"paragraph"`, `"heading"`, ...).
+    /// The node's type (`"paragraph"`, `"heading"`, `"quote"`,
+    /// `"listitem"`).
     pub kind: String,
     /// A heading's `tag` (`"h1"` ...), from its JSON.
     pub tag: Option<String>,
     /// The element format (`"left"`, `"center"`, ...; `""` for none).
     pub align: String,
+    /// The element's `indent`.
+    pub indent: usize,
+    /// For a list item, its list.
+    pub list: Option<ListInfo>,
+    /// The elements from the root down to the block, each with the index of
+    /// the child the path goes through: `[("root", 2), ("5", 0)]` for the
+    /// first item of the list that is the root's third child.
+    pub path: Vec<(String, usize)>,
     pub runs: Vec<Run>,
     /// The runs' text, joined.
     pub text: String,
+}
+
+/// A list item's list, as the app draws its marker.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ListInfo {
+    /// `"bullet"`, `"number"` or `"check"`.
+    pub list_type: String,
+    /// How deeply the list is nested; 0 for a top-level list.
+    pub depth: usize,
+    /// The item's `value`: its number in a numbered list.
+    pub value: u32,
+    /// A check item's `checked`.
+    pub checked: bool,
+}
+
+impl Block {
+    /// What the toolbar's block menu says the block is: `"paragraph"`,
+    /// `"h1"` ... `"h6"`, `"quote"`, or a list item's list type
+    /// (`"bullet"`, `"number"`, `"check"`), as the JS playground's
+    /// `blockType`.
+    pub fn block_type(&self) -> &str {
+        if let Some(list) = &self.list {
+            return &list.list_type;
+        }
+        match (self.kind.as_str(), &self.tag) {
+            ("heading", Some(tag)) => tag,
+            ("quote", _) => "quote",
+            _ => "paragraph",
+        }
+    }
 }
 
 /// A position in the document: a block and a byte offset in its text.
@@ -161,13 +208,19 @@ impl Point {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Document {
     pub blocks: Vec<Block>,
+    /// The elements that hold blocks but aren't drawn themselves (lists,
+    /// and list items that only hold a nested list), by key, as the tree
+    /// view names them: `"list bullet"`, `"listitem"`.
+    pub containers: Vec<(String, String)>,
 }
 
 impl Document {
     /// Reads the current editor state. Call it in a read of the editor.
     fn read() -> Document {
-        let blocks = get_root().get_children().iter().map(read_block).collect();
-        Document { blocks }
+        let mut blocks = Vec::new();
+        let mut containers = Vec::new();
+        read_blocks(&get_root(), &mut vec![], None, &mut blocks, &mut containers);
+        Document { blocks, containers }
     }
 
     /// The last position.
@@ -208,27 +261,62 @@ impl Document {
         }
         Point {
             key: block.key.clone(),
-            offset: block.runs.iter().filter(|r| r.start < byte).count(),
+            offset: block
+                .runs
+                .iter()
+                .filter(|r| r.start < byte)
+                .map(|r| r.child + 1)
+                .max()
+                .unwrap_or(0),
             text: false,
         }
     }
 
+    /// The format and style a browser's `selectionchange` gives `sel`
+    /// (`onSelectionChange` in LexicalEvents.ts): a caret at a text point
+    /// takes that text node's format and style; a range takes the format
+    /// every text node it covers has (none when it covers no text), and
+    /// keeps its style. `None` for a caret at an element point, whose
+    /// format the editor keeps.
+    pub fn selection_change_format(&self, sel: Sel) -> Option<(u32, Option<String>)> {
+        if sel.is_collapsed() {
+            let point = self.point_at(sel.anchor);
+            if !point.text {
+                return None;
+            }
+            let run = self.blocks[sel.anchor.block]
+                .runs
+                .iter()
+                .find(|r| r.key == point.key)?;
+            return Some((run.format, Some(run.style.clone())));
+        }
+        let (start, end) = sel.ordered();
+        let mut combined = None;
+        for (i, block) in self.blocks.iter().enumerate() {
+            if i < start.block || i > end.block {
+                continue;
+            }
+            for run in block.runs.iter().filter(|r| r.is_text()) {
+                // Text the range covers some of: a node it only touches at
+                // its edge is left out, as JS leaves out an empty boundary.
+                let from = if i == start.block { start.byte } else { 0 };
+                let to = if i == end.block { end.byte } else { usize::MAX };
+                if run.start < to && run.end() > from && !run.text.is_empty() {
+                    combined = Some(combined.unwrap_or(u32::MAX) & run.format);
+                }
+            }
+        }
+        Some((combined.unwrap_or(0), None))
+    }
+
     /// The position of a selection point, if its node is drawn.
     pub fn pos_of(&self, point: &Point) -> Option<Pos> {
-        if point.key == "root" {
-            return Some(match self.blocks.get(point.offset) {
-                Some(_) => Pos {
-                    block: point.offset,
-                    byte: 0,
-                },
-                None => self.end(),
-            });
-        }
         for (i, block) in self.blocks.iter().enumerate() {
             if block.key == point.key {
                 let byte = block
                     .runs
-                    .get(point.offset)
+                    .iter()
+                    .find(|r| r.child >= point.offset)
                     .map_or(block.text.len(), |r| r.start);
                 return Some(Pos { block: i, byte });
             }
@@ -241,7 +329,31 @@ impl Document {
                 return Some(Pos { block: i, byte });
             }
         }
-        None
+        // An element point in an element that isn't drawn (the root, a
+        // list): the start of the first block at or after its child
+        // `offset`, or the end of its last block.
+        let under = |b: &Block| {
+            b.path
+                .iter()
+                .find(|(key, _)| *key == point.key)
+                .map(|p| p.1)
+        };
+        let mut last = None;
+        for (i, block) in self.blocks.iter().enumerate() {
+            if let Some(child) = under(block) {
+                if child >= point.offset {
+                    return Some(Pos { block: i, byte: 0 });
+                }
+                last = Some(i);
+            }
+        }
+        if let Some(i) = last {
+            return Some(Pos {
+                block: i,
+                byte: self.blocks[i].text.len(),
+            });
+        }
+        (point.key == "root").then(|| self.end())
     }
 
     /// The document as one string: the blocks' text joined with `\n`, as
@@ -308,25 +420,50 @@ impl Document {
             "capitalize",
         ];
         let mut out = String::from("(root) root\n");
+        let mut shown = 0;
         for block in &self.blocks {
+            // The undrawn elements on the block's path, the first time a
+            // block under them comes.
+            for (depth, (key, _)) in block.path.iter().enumerate().skip(1) {
+                if let Some(i) = self.containers.iter().position(|(k, _)| k == key)
+                    && i >= shown
+                {
+                    let pad = "  ".repeat(depth);
+                    out.push_str(&format!("{pad}({key}) {}\n", self.containers[i].1));
+                    shown = i + 1;
+                }
+            }
             let tag = block
                 .tag
                 .as_deref()
                 .map(|t| format!(" {t}"))
                 .unwrap_or_default();
-            out.push_str(&format!("  ({}) {}{tag}\n", block.key, block.kind));
+            let pad = "  ".repeat(block.path.len());
+            let list = block
+                .list
+                .as_ref()
+                .map(|l| match l.list_type.as_str() {
+                    "check" => format!(" check {}", if l.checked { "☑" } else { "☐" }),
+                    "number" => format!(" number {}", l.value),
+                    other => format!(" {other}"),
+                })
+                .unwrap_or_default();
+            out.push_str(&format!("{pad}({}) {}{tag}{list}\n", block.key, block.kind));
             for run in &block.runs {
                 let name = match run.kind {
                     RunKind::Text => "text",
                     RunKind::Tab => "tab",
                     RunKind::LineBreak => "linebreak",
                 };
-                out.push_str(&format!("    ({}) {name}", run.key));
+                out.push_str(&format!("{pad}  ({}) {name}", run.key));
                 if run.kind == RunKind::Text {
                     out.push_str(&format!(" {:?}", run.text));
                 }
                 for format in FORMATS.iter().filter(|f| run.has_format(f)) {
                     out.push_str(&format!(" {format}"));
+                }
+                if let Some(url) = &run.link {
+                    out.push_str(&format!(" link {url}"));
                 }
                 out.push('\n');
             }
@@ -423,50 +560,151 @@ impl Document {
     }
 }
 
-fn read_block(node: &NodeRef) -> Block {
+/// Whether `node` is drawn as a block: an element that isn't inline and
+/// holds no blocks (an empty one too).
+fn is_drawn_block(node: &NodeRef) -> bool {
+    node.is_element()
+        && !node.is_inline()
+        && !node.is_root()
+        && node
+            .get_children()
+            .iter()
+            .all(|c| c.is_inline() || !c.is_element())
+        && node.get_type() != "list"
+}
+
+/// Appends the blocks under `node`, whose path from the root is `path`;
+/// `list` is the list `node` is an item of.
+fn read_blocks(
+    node: &NodeRef,
+    path: &mut Vec<(String, usize)>,
+    list: Option<&ListInfo>,
+    out: &mut Vec<Block>,
+    containers: &mut Vec<(String, String)>,
+) {
+    let key = if node.is_root() {
+        "root".to_owned()
+    } else {
+        node.get_key().to_owned()
+    };
+    let json = node.export_json(false);
+    // A list sets what its items are; a list in an item nests one deeper.
+    let list_here = (node.get_type() == "list").then(|| ListInfo {
+        list_type: json
+            .get("listType")
+            .and_then(Value::as_str)
+            .unwrap_or("bullet")
+            .to_owned(),
+        depth: list.map_or(0, |l| l.depth + 1),
+        value: 0,
+        checked: false,
+    });
+    for (i, child) in node.get_children().iter().enumerate() {
+        path.push((key.clone(), i));
+        let list = list_here.as_ref().or(list);
+        let item = (child.get_type() == "listitem").then(|| {
+            let json = child.export_json(false);
+            let mut info = list.cloned().unwrap_or(ListInfo {
+                list_type: "bullet".into(),
+                depth: 0,
+                value: 0,
+                checked: false,
+            });
+            info.value = json.get("value").and_then(Value::as_f64).unwrap_or(1.0) as u32;
+            info.checked = json.get("checked").and_then(Value::as_bool) == Some(true);
+            info
+        });
+        if is_drawn_block(child) {
+            out.push(read_block(child, path.clone(), item));
+        } else if child.is_element() && !child.is_inline() {
+            let mut name = child.get_type().to_owned();
+            if let Some(list_type) = child
+                .export_json(false)
+                .get("listType")
+                .and_then(Value::as_str)
+            {
+                name = format!("{name} {list_type}");
+            }
+            containers.push((child.get_key().to_owned(), name));
+            read_blocks(child, path, list, out, containers);
+        }
+        path.pop();
+    }
+}
+
+fn read_block(node: &NodeRef, path: Vec<(String, usize)>, list: Option<ListInfo>) -> Block {
     let json = node.export_json(false);
     let str_field = |name: &str| json.get(name).and_then(Value::as_str).map(str::to_owned);
     let mut text = String::new();
     let mut runs = Vec::new();
-    for child in node.get_children() {
-        let (kind, run_text, format, style) = match child.get_type() {
-            "linebreak" => (RunKind::LineBreak, "\n".to_owned(), 0, String::new()),
-            _ if child.is_text() => {
-                let data = child.text_data();
-                let kind = if child.get_type() == "tab" {
-                    RunKind::Tab
-                } else {
-                    RunKind::Text
-                };
-                (
-                    kind,
-                    data.get_text().to_owned(),
-                    data.get_format() as u32,
-                    data.get_style().to_owned(),
-                )
-            }
-            // Inline elements (links) and decorators come with their
-            // packages; their text stands in for them until then.
-            _ => (RunKind::Text, child.get_text_content(), 0, String::new()),
-        };
-        runs.push(Run {
-            key: child.get_key().to_owned(),
-            kind,
-            start: text.len(),
-            text: run_text.clone(),
-            format,
-            style,
-        });
-        text.push_str(&run_text);
+    for (i, child) in node.get_children().iter().enumerate() {
+        read_runs(child, i, None, &mut text, &mut runs);
     }
     Block {
         key: node.get_key().to_owned(),
         kind: node.get_type().to_owned(),
         tag: str_field("tag"),
         align: str_field("format").unwrap_or_default(),
+        indent: json.get("indent").and_then(Value::as_f64).unwrap_or(0.0) as usize,
+        list,
+        path,
         runs,
         text,
     }
+}
+
+/// Appends the runs of `node`, the block's child `child`, inside the link
+/// `link` if any: a link's runs are its text's.
+fn read_runs(
+    node: &NodeRef,
+    child: usize,
+    link: Option<&str>,
+    text: &mut String,
+    runs: &mut Vec<Run>,
+) {
+    let (kind, run_text, format, style) = match node.get_type() {
+        "linebreak" => (RunKind::LineBreak, "\n".to_owned(), 0, String::new()),
+        "link" | "autolink" => {
+            let json = node.export_json(false);
+            let url = json
+                .get("url")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_owned();
+            for inner in node.get_children() {
+                read_runs(&inner, child, Some(&url), text, runs);
+            }
+            return;
+        }
+        _ if node.is_text() => {
+            let data = node.text_data();
+            let kind = if node.get_type() == "tab" {
+                RunKind::Tab
+            } else {
+                RunKind::Text
+            };
+            (
+                kind,
+                data.get_text().to_owned(),
+                data.get_format() as u32,
+                data.get_style().to_owned(),
+            )
+        }
+        // Other inline elements and decorators come with their packages;
+        // their text stands in for them until then.
+        _ => (RunKind::Text, node.get_text_content(), 0, String::new()),
+    };
+    runs.push(Run {
+        key: node.get_key().to_owned(),
+        kind,
+        start: text.len(),
+        text: run_text.clone(),
+        format,
+        style,
+        child,
+        link: link.map(str::to_owned),
+    });
+    text.push_str(&run_text);
 }
 
 /// The flag of a text format (`"bold"` → 1), as `TEXT_TYPE_TO_FORMAT`.
@@ -608,6 +846,12 @@ impl Playground {
     pub fn with_clock(children: Vec<Value>, clock: Clock) -> Result<Playground, String> {
         let mut script = Object::new();
         script.insert("name", "playground".into());
+        // `RichTextExtension`, `ListExtension`, `CheckListExtension` and
+        // `LinkExtension`: what the JS playground's editor has for these
+        // blocks and links.
+        for flag in ["richText", "list", "link"] {
+            script.insert(flag, true.into());
+        }
         let mut history = Object::new();
         history.insert("delay", HISTORY_DELAY.into());
         script.insert("history", Value::Object(history));
@@ -684,8 +928,27 @@ impl Playground {
         self.last_error.as_deref()
     }
 
-    /// The selection's pending format (what typed text gets).
+    /// The selection's pending format (what typed text gets), as the
+    /// toolbar shows it: see [`Playground::format_at`].
     pub fn selection_format(&self) -> u32 {
+        self.selection
+            .map_or_else(|| self.model_format(), |sel| self.format_at(sel))
+    }
+
+    /// The format the toolbar shows at `sel`: the editor's selection's
+    /// when `sel` is it, and otherwise the one the next edit's select step
+    /// gives it (see [`Document::selection_change_format`]), so the toolbar
+    /// follows a click or an arrow key before the editor hears of it.
+    pub fn format_at(&self, sel: Sel) -> u32 {
+        if self.selection_from_model() != Some(sel)
+            && let Some((format, _)) = self.document.selection_change_format(sel)
+        {
+            return format;
+        }
+        self.model_format()
+    }
+
+    fn model_format(&self) -> u32 {
         self.model_selection
             .as_array()
             .filter(|a| a.first().and_then(Value::as_str) == Some("range"))
@@ -727,12 +990,15 @@ impl Playground {
         self.edit("insertRawText", vec![text.into()])
     }
 
+    /// Enter: `INSERT_PARAGRAPH_COMMAND`, as rich text's `KEY_ENTER_COMMAND`
+    /// handler dispatches it, so a list item's handler runs.
     pub fn insert_paragraph(&mut self) -> Outcome {
-        self.edit("insertParagraph", vec![])
+        self.dispatch("INSERT_PARAGRAPH_COMMAND", None)
     }
 
+    /// Shift-Enter: `INSERT_LINE_BREAK_COMMAND`.
     pub fn insert_line_break(&mut self) -> Outcome {
-        self.edit("insertLineBreak", vec![])
+        self.dispatch("INSERT_LINE_BREAK_COMMAND", Some(false.into()))
     }
 
     /// Backspace (`backward`) or Delete: `deleteCharacter`, `deleteWord` or
@@ -793,18 +1059,122 @@ impl Playground {
     /// `formatText(name)`: toggles a format on the selected text, or on the
     /// pending format at a caret.
     pub fn format_text(&mut self, name: &str) -> Outcome {
-        self.edit("formatText", vec![name.into()])
+        self.dispatch("FORMAT_TEXT_COMMAND", Some(name.into()))
+    }
+
+    /// The block menu: `$setBlocksType` with a paragraph, a heading
+    /// (`"h1"` ... `"h6"`) or a quote, or a list (`"bullet"`, `"number"`,
+    /// `"check"`) through its command. Choosing a list the selection is
+    /// already in makes it paragraphs again, as the JS playground's toolbar
+    /// does.
+    pub fn set_block_type(&mut self, block_type: &str) -> Outcome {
+        let command = match block_type {
+            "bullet" => "INSERT_UNORDERED_LIST_COMMAND",
+            "number" => "INSERT_ORDERED_LIST_COMMAND",
+            "check" => "INSERT_CHECK_LIST_COMMAND",
+            _ => {
+                let mut action = Object::new();
+                action.insert("do", "setBlocksType".into());
+                action.insert("block", block_type.into());
+                return self.update(vec![Value::Object(action)]);
+            }
+        };
+        if self.block_type() == block_type {
+            return self.set_block_type("paragraph");
+        }
+        self.dispatch(command, None)
+    }
+
+    /// The selection's block type (its anchor's block), for the toolbar.
+    pub fn block_type(&self) -> &str {
+        self.selection
+            .map_or("paragraph", |sel| self.block_type_at(sel))
+    }
+
+    /// The block type of `sel`'s anchor's block.
+    pub fn block_type_at(&self, sel: Sel) -> &str {
+        self.document
+            .blocks
+            .get(sel.anchor.block)
+            .map_or("paragraph", Block::block_type)
+    }
+
+    /// `INDENT_CONTENT_COMMAND` (`outdent`: `OUTDENT_CONTENT_COMMAND`).
+    pub fn indent(&mut self, outdent: bool) -> Outcome {
+        let command = if outdent {
+            "OUTDENT_CONTENT_COMMAND"
+        } else {
+            "INDENT_CONTENT_COMMAND"
+        };
+        self.dispatch(command, None)
+    }
+
+    /// Tab and Shift-Tab, as the JS playground's TabIndentationPlugin
+    /// (`$indentOverTab`): Shift-Tab outdents, and Tab indents when the
+    /// selection starts at its block's start or spans blocks, and inserts
+    /// a tab otherwise.
+    pub fn tab(&mut self, shift: bool) -> Outcome {
+        if shift {
+            return self.indent(true);
+        }
+        let indents = self.selection.is_some_and(|s| {
+            let (first, last) = s.ordered();
+            first.byte == 0 || first.block != last.block
+        });
+        if indents {
+            self.indent(false)
+        } else {
+            self.insert_raw_text("\t")
+        }
+    }
+
+    /// The URL of the link at the selection's focus, if it is in one.
+    pub fn link(&self) -> Option<&str> {
+        self.link_at(self.selection?)
+    }
+
+    /// The URL of the link at `sel`'s focus, if it is in one.
+    pub fn link_at(&self, sel: Sel) -> Option<&str> {
+        let block = self.document.blocks.get(sel.focus.block)?;
+        let byte = sel.focus.byte;
+        block
+            .runs
+            .iter()
+            .find(|r| r.start < byte && byte <= r.end() || (r.start == byte && byte == 0))
+            .and_then(|r| r.link.as_deref())
+    }
+
+    /// The link button: `TOGGLE_LINK_COMMAND` with `url`, or with `null`
+    /// to remove the link the selection is in.
+    pub fn toggle_link(&mut self, url: Option<&str>) -> Outcome {
+        self.dispatch(
+            "TOGGLE_LINK_COMMAND",
+            Some(url.map_or(Value::Null, Value::from)),
+        )
+    }
+
+    /// Checks or unchecks the check item drawn as `block`
+    /// (`ListItemNode.toggleChecked`), as clicking its box does.
+    pub fn toggle_checked(&mut self, block: usize) -> Outcome {
+        let Some(key) = self.document.blocks.get(block).map(|b| b.key.clone()) else {
+            return Outcome::default();
+        };
+        let mut action = Object::new();
+        action.insert("do", "node".into());
+        action.insert("key", key.into());
+        action.insert("method", "toggleChecked".into());
+        self.update(vec![Value::Object(action)])
     }
 
     /// ⌘Z: `UNDO_COMMAND`, which history handles. The app's selection
     /// reaches the editor first, as a browser's `selectionchange` does.
     pub fn undo(&mut self) -> Outcome {
-        self.dispatch("UNDO_COMMAND")
+        self.dispatch("UNDO_COMMAND", None)
     }
 
     /// ⌘⇧Z: `REDO_COMMAND`.
     pub fn redo(&mut self) -> Outcome {
-        self.dispatch("REDO_COMMAND")
+        self.dispatch("REDO_COMMAND", None)
     }
 
     /// Whether there is something to undo, as history last said
@@ -818,15 +1188,20 @@ impl Playground {
         self.can_redo
     }
 
-    fn dispatch(&mut self, command: &str) -> Outcome {
+    /// Dispatches `command` outside an update, as a key handler does, after
+    /// the app's selection reaches the editor.
+    fn dispatch(&mut self, command: &str, payload: Option<Value>) -> Outcome {
         if let Some(select) = self.select_action() {
-            let outcome = self.run_update(vec![select]);
+            let outcome = self.run_update(select);
             if outcome.error.is_some() {
                 return outcome;
             }
         }
         let mut step = Object::new();
         step.insert("dispatch", command.into());
+        if let Some(payload) = payload {
+            step.insert("payload", payload);
+        }
         self.run(Value::Object(step))
     }
 
@@ -902,7 +1277,7 @@ impl Playground {
     /// history merges typing after a click as it does in a browser.
     pub fn update(&mut self, actions: Vec<Value>) -> Outcome {
         if let Some(select) = self.select_action() {
-            let outcome = self.run_update(vec![select]);
+            let outcome = self.run_update(select);
             if outcome.error.is_some() || actions.is_empty() {
                 return outcome;
             }
@@ -926,7 +1301,13 @@ impl Playground {
     /// the selection would take that node's format, and the next ⌘B, which
     /// toggles the selection's format (in JS as here), would set bold again
     /// instead of clearing it.
-    fn select_action(&self) -> Option<Value> {
+    ///
+    /// The step also gives the selection the format (and a caret the
+    /// style) that a browser's `selectionchange` does
+    /// (`onSelectionChange` in LexicalEvents.ts): a caret in text takes its
+    /// text node's, and a range the format all its text shares, so the
+    /// toolbar shows bold in bold text and typing there stays bold.
+    fn select_action(&self) -> Option<Vec<Value>> {
         let sel = self.selection?;
         if self.selection_from_model() == Some(sel) {
             return None;
@@ -937,7 +1318,21 @@ impl Playground {
         action.insert("do", "select".into());
         action.insert("anchor", anchor);
         action.insert("focus", focus);
-        Some(Value::Object(action))
+        let mut actions = vec![Value::Object(action)];
+        let selection_method = |method: &str, arg: Value| {
+            let mut action = Object::new();
+            action.insert("do", "selection".into());
+            action.insert("method", method.into());
+            action.insert("args", Value::Array(vec![arg]));
+            Value::Object(action)
+        };
+        if let Some((format, style)) = self.document.selection_change_format(sel) {
+            actions.push(selection_method("setFormat", f64::from(format).into()));
+            if let Some(style) = style {
+                actions.push(selection_method("setStyle", style.into()));
+            }
+        }
+        Some(actions)
     }
 
     fn run(&mut self, step: Value) -> Outcome {
@@ -1111,7 +1506,80 @@ pub fn example() -> Vec<Value> {
             "Type, delete, press Enter, or select text and make it bold.",
             0.0,
         )]),
+        element(
+            "heading",
+            &[("tag", "h2".into())],
+            vec![text("Blocks and links", 0.0)],
+        ),
+        list(
+            "bullet",
+            vec![
+                vec![text(
+                    "Headings, quotes and lists come from the toolbar.",
+                    0.0,
+                )],
+                vec![
+                    text("Links too, like ", 0.0),
+                    element(
+                        "link",
+                        &[("url", "https://lexical.dev".into())],
+                        vec![text("lexical.dev", 0.0)],
+                    ),
+                    text(".", 0.0),
+                ],
+            ],
+        ),
+        list(
+            "check",
+            vec![
+                vec![text("Undo with ⌘Z", 0.0)],
+                vec![text("Click a box to check it", 0.0)],
+            ],
+        ),
+        element(
+            "quote",
+            &[],
+            vec![text("Lexical is an extensible text editor framework.", 0.0)],
+        ),
     ]
+}
+
+/// A serialized element of `kind` with `fields` and `children`.
+fn element(kind: &str, fields: &[(&str, Value)], children: Vec<Value>) -> Value {
+    let mut o = Object::new();
+    o.insert("type", kind.into());
+    for (name, value) in fields {
+        o.insert(*name, value.clone());
+    }
+    o.insert("children", Value::Array(children));
+    Value::Object(o)
+}
+
+/// A serialized list of `list_type` whose items hold `items`.
+fn list(list_type: &str, items: Vec<Vec<Value>>) -> Value {
+    let items = items
+        .into_iter()
+        .enumerate()
+        .map(|(i, children)| {
+            let mut fields = vec![("value", ((i + 1) as f64).into())];
+            if list_type == "check" {
+                fields.push(("checked", (i == 0).into()));
+            }
+            element("listitem", &fields, children)
+        })
+        .collect();
+    element(
+        "list",
+        &[
+            ("listType", list_type.into()),
+            ("start", 1.0.into()),
+            (
+                "tag",
+                if list_type == "number" { "ol" } else { "ul" }.into(),
+            ),
+        ],
+        items,
+    )
 }
 
 #[cfg(test)]

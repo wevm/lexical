@@ -23,6 +23,22 @@ macOS first; it also builds and renders on Linux.
 - **The toolbar.** Bold, italic, underline, strikethrough, code, highlight,
   subscript and superscript follow the selection's format, as in the web
   playground. Select all, and Reset.
+- **The block row.** Normal, H1-H3 and Quote run `$setBlocksType`; the
+  bullet, numbered and check list buttons dispatch the list commands (the
+  list the caret is already in turns back into paragraphs, as in the web
+  playground's block menu). Link toggles a link to `https://` on the
+  selection, or removes the one at the caret (`TOGGLE_LINK_COMMAND`).
+  Outdent and Indent dispatch `OUTDENT_CONTENT_COMMAND` and
+  `INDENT_CONTENT_COMMAND`, as do Shift-Tab and Tab at a block's start
+  (`$indentOverTab`; elsewhere Tab inserts a tab). In a check item, a
+  button checks or unchecks it (`toggleChecked`). The toolbar follows the
+  selection the editor shows, so a click shows the format and block there
+  before the next edit, with the format a browser's `selectionchange` gives
+  it.
+- **Blocks.** List items draw as the field's bullets and numbers at their
+  depth (a check item as a bullet, struck through when checked), a quote
+  with the field's bar, headings larger and bolder, and links as the
+  field's links.
 - **The side panel.**
   - **Tree:** the node tree with keys.
   - **JSON:** the editor state's JSON.
@@ -37,7 +53,7 @@ macOS first; it also builds and renders on Linux.
     LEXICAL_REPLAY=/path/to/lexical-playground-session.json pnpm exec vitest run src/replay.test.ts
     ```
 
-Headings, lists, links, code blocks, HTML and Markdown arrive as the
+Code blocks, hashtags, HTML and Markdown arrive as the
 port gets the packages ([DESIGN.md](../../DESIGN.md), milestones).
 
 ## Running it

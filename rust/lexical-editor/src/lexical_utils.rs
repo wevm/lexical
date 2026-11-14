@@ -107,6 +107,22 @@ pub(crate) fn restore_empty_container_paragraph(
     Ok(Some(paragraph))
 }
 
+/// `$copyNode(node)`: a copy of the node with a new key and all its
+/// properties, but no parent, siblings or children, after
+/// `resetOnCopyNodeFrom`.
+pub fn copy_node(node: &NodeRef) -> NodeRef {
+    let mut copy = node.get_latest().clone_node();
+    *copy.base_mut() = crate::node::NodeBase::default();
+    if let Some(element) = copy.element_mut() {
+        element.first = None;
+        element.last = None;
+        element.size = 0;
+    }
+    let copy = set_node_key(copy);
+    copy.get_latest().reset_on_copy_node_from(&copy, node);
+    copy
+}
+
 /// `$setNodeKey(node, null)`: gives a new node a key, puts it in the active
 /// editor state and marks it dirty.
 pub(crate) fn set_node_key(mut node: Box<dyn LexicalNode>) -> NodeRef {

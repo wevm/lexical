@@ -27,6 +27,10 @@ utils = ["selection"]
 rich-text = ["selection", "utils"]
 # @lexical/plain-text: registerPlainText's model command handlers.
 plain-text = []
+# @lexical/list: ListNode, ListItemNode, registerList and the model parts of
+# registerCheckList. Upstream it also depends on @lexical/extension and
+# @lexical/html, for ListExtension and the DOM import, which aren't ported.
+list = ["utils"]
 
 [lints]
 workspace = true

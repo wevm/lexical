@@ -7,6 +7,18 @@
  */
 
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
+import {
+  $isListItemNode,
+  INSERT_CHECK_LIST_COMMAND,
+  INSERT_ORDERED_LIST_COMMAND,
+  INSERT_UNORDERED_LIST_COMMAND,
+  ListItemNode,
+  ListNode,
+  registerCheckList,
+  registerList,
+  REMOVE_LIST_COMMAND,
+  UPDATE_LIST_START_COMMAND,
+} from '@lexical/list';
 import {registerPlainText} from '@lexical/plain-text';
 import {HeadingNode, QuoteNode, registerRichText} from '@lexical/rich-text';
 import {
@@ -121,8 +133,9 @@ export type Action =
 
 /**
  * A command handler: logs, runs its actions, then returns `result`. Like
- * `dispatch`, `command` names one of Lexical's own commands (CORE_COMMANDS)
- * or a command the script makes.
+ * `dispatch`, `command` names one of Lexical's own commands (CORE_COMMANDS),
+ * a command of a package the script registers (PACKAGE_COMMANDS), or a
+ * command the script makes.
  */
 export type HandlerSpec = {
   id: string;
@@ -163,6 +176,13 @@ export type Script = {
   richText?: boolean;
   /** `registerPlainText(editor)`, where it registers `registerRichText`. */
   plainText?: boolean;
+  /**
+   * Register `@lexical/list`'s nodes (`ListNode`, `ListItemNode`),
+   * `registerList(editor)` and `registerCheckList(editor)`, after rich and
+   * plain text, as `CheckListExtension` does with its `ListExtension`
+   * dependency (with their default options).
+   */
+  list?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -313,6 +333,13 @@ function element(node: LexicalNode): ElementNode {
   return node;
 }
 
+function listItem(node: LexicalNode): ListItemNode {
+  if (!$isListItemNode(node)) {
+    throw new Error(`${node.getKey()} is not a list item`);
+  }
+  return node;
+}
+
 /**
  * The node methods a script may call, by name. A method that exists on both
  * text and element nodes (`select`, `setFormat`, `setStyle`) calls the one of
@@ -403,6 +430,7 @@ const NODE_METHODS: Record<
     const parts = text(n).splitText(...((args ?? []) as number[]));
     ctx.log.push(['splitText', parts.map(p => p.getKey())]);
   },
+  toggleChecked: n => listItem(n).toggleChecked(),
   toggleDirectionless: n => text(n).toggleDirectionless(),
   toggleFormat: (n, args) => text(n).toggleFormat(arg(args, 0) as never),
   toggleUnmergeable: n => text(n).toggleUnmergeable(),
@@ -529,10 +557,22 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['UNDO_COMMAND', UNDO_COMMAND],
 ]);
 
+/**
+ * The commands of the packages a script registers (`list`), named as their
+ * package exports them.
+ */
+const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
+  ['INSERT_CHECK_LIST_COMMAND', INSERT_CHECK_LIST_COMMAND],
+  ['INSERT_ORDERED_LIST_COMMAND', INSERT_ORDERED_LIST_COMMAND],
+  ['INSERT_UNORDERED_LIST_COMMAND', INSERT_UNORDERED_LIST_COMMAND],
+  ['REMOVE_LIST_COMMAND', REMOVE_LIST_COMMAND],
+  ['UPDATE_LIST_START_COMMAND', UPDATE_LIST_START_COMMAND],
+]);
+
 function command(ctx: Context, name: string): LexicalCommand<Json> {
-  const core = CORE_COMMANDS.get(name);
-  if (core !== undefined) {
-    return core;
+  const known = CORE_COMMANDS.get(name) ?? PACKAGE_COMMANDS.get(name);
+  if (known !== undefined) {
+    return known;
   }
   let cmd = ctx.commands.get(name);
   if (cmd === undefined) {
@@ -617,7 +657,10 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
   resetRandomKey();
   const editor = createEditor({
     namespace: '',
-    nodes: script.richText ? [HeadingNode, QuoteNode] : [],
+    nodes: [
+      ...(script.richText ? [HeadingNode, QuoteNode] : []),
+      ...(script.list ? [ListNode, ListItemNode] : []),
+    ],
     onError: e => {
       throw e;
     },
@@ -628,6 +671,10 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
   }
   if (script.plainText) {
     registerPlainText(editor);
+  }
+  if (script.list) {
+    registerList(editor);
+    registerCheckList(editor);
   }
   for (const name of script.transforms ?? []) {
     const transform = TRANSFORMS[name];

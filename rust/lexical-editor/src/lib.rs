@@ -59,6 +59,8 @@ pub mod history;
 pub mod json;
 mod lexical_selection;
 mod lexical_utils;
+#[cfg(feature = "list")]
+pub mod list;
 mod node;
 pub mod nodes;
 mod normalization;
@@ -90,11 +92,13 @@ pub use caret::{
     make_stepwise_iterator,
 };
 pub use caret_utils::{
-    SliceMode, caret_from_point, caret_range_from_selection,
+    SliceMode, SplitAtPointCaretNextOptions, caret_from_point, caret_range_from_selection,
     get_adjacent_sibling_or_parent_sibling_caret, get_caret_range_in_direction,
-    get_child_caret_at_index, get_text_point_caret_slice_for_node, is_extendable_text_point_caret,
-    normalize_caret, remove_text_from_caret_range, rewind_sibling_caret, set_point_from_caret,
-    set_selection_from_caret_range, update_range_selection_from_caret_range,
+    get_child_caret_at_index, get_text_point_caret_slice_for_node,
+    insert_node_to_nearest_root_at_caret, is_extendable_text_point_caret, normalize_caret,
+    remove_text_from_caret_range, rewind_sibling_caret, set_point_from_caret,
+    set_selection_from_caret_range, split_at_point_caret_next, split_text_point_caret,
+    update_range_selection_from_caret_range,
 };
 pub use commands::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
@@ -117,7 +121,7 @@ pub use lexical_selection::{
     NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
     create_node_selection, create_range_selection, get_selection, set_selection,
 };
-pub use lexical_utils::{get_node_by_key, get_root, reset_random_key};
+pub use lexical_utils::{copy_node, get_node_by_key, get_root, reset_random_key};
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};
 pub use nodes::element::{Direction, ElementData};
 pub use nodes::paragraph::create_paragraph_node;

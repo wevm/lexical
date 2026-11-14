@@ -135,6 +135,84 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         Ok(false)
     }
 
+    /// `ElementNode.append(...nodesToAppend)` on the element `this`: inserts
+    /// `nodes` after its last child, through [`splice`](Self::splice).
+    fn append(&self, this: &NodeRef, nodes: &[NodeRef]) -> Result<(), LexicalError> {
+        this.splice(this.get_children_size(), 0, nodes)
+    }
+
+    /// `ElementNode.splice(start, deleteCount, nodesToInsert)` on the
+    /// element `this`; the default is `ElementNode`'s
+    /// ([`element::splice`]).
+    fn splice(
+        &self,
+        this: &NodeRef,
+        start: usize,
+        delete_count: usize,
+        nodes_to_insert: &[NodeRef],
+    ) -> Result<(), LexicalError> {
+        element::splice(this, start, delete_count, nodes_to_insert)
+    }
+
+    /// `replace(replaceWith, includeChildren)` on `this`; the default is
+    /// `LexicalNode`'s (`node::replace`).
+    fn replace(
+        &self,
+        this: &NodeRef,
+        replace_with: &NodeRef,
+        include_children: bool,
+    ) -> Result<NodeRef, LexicalError> {
+        replace(this, replace_with, include_children)
+    }
+
+    /// `insertAfter(nodeToInsert, restoreSelection)` on `this`; the default
+    /// is `LexicalNode`'s (`node::insert_after`).
+    fn insert_after(
+        &self,
+        this: &NodeRef,
+        node_to_insert: &NodeRef,
+        restore_selection: bool,
+    ) -> Result<NodeRef, LexicalError> {
+        insert_after(this, node_to_insert, restore_selection)
+    }
+
+    /// `remove(preserveEmptyParent)` on `this`; the default is
+    /// `LexicalNode`'s (`node::remove`).
+    fn remove(&self, this: &NodeRef, preserve_empty_parent: bool) -> Result<(), LexicalError> {
+        remove(this, preserve_empty_parent)
+    }
+
+    /// `ElementNode.getIndent()` on the element `this`: its `__indent`.
+    fn get_indent(&self, this: &NodeRef) -> Result<f64, LexicalError> {
+        let _ = this;
+        Ok(self.element().map_or(0.0, |e| e.indent))
+    }
+
+    /// `ElementNode.setIndent(indentLevel)` on the element `this`: sets its
+    /// `__indent`.
+    fn set_indent(&self, this: &NodeRef, indent: f64) -> Result<(), LexicalError> {
+        with_writable(this.get_key(), |n| {
+            n.element_mut().expect("an element").indent = indent
+        });
+        Ok(())
+    }
+
+    /// The `$transform` of the node's `$config`, which the editor runs on a
+    /// dirty node before the transforms registered for its type (and before
+    /// `ElementNode`'s own, which comes later in the class chain). None by
+    /// default.
+    fn transform(&self, this: &NodeRef) -> Result<(), LexicalError> {
+        let _ = this;
+        Ok(())
+    }
+
+    /// `resetOnCopyNodeFrom(originalNode)` on `this`, the copy `$copyNode`
+    /// just made of `original`. `LexicalNode`'s resets NodeState, which
+    /// isn't ported, so the default does nothing.
+    fn reset_on_copy_node_from(&self, this: &NodeRef, original: &NodeRef) {
+        let _ = (this, original);
+    }
+
     /// `canInsertTextBefore()` (`TextNode` and `ElementNode`): whether text
     /// typed at the node's start goes into it.
     fn can_insert_text_before(&self) -> bool {
@@ -428,8 +506,7 @@ impl NodeRef {
 
     /// `remove(preserveEmptyParent)`.
     pub fn remove(&self, preserve_empty_parent: bool) -> Result<(), LexicalError> {
-        invariant!(!self.is_root(), "remove: cannot be called on root nodes");
-        remove_node(self, true, preserve_empty_parent)
+        self.get_latest().remove(self, preserve_empty_parent)
     }
 
     /// `replace(replaceWith, includeChildren)`: puts `replace_with` where
@@ -439,71 +516,8 @@ impl NodeRef {
         replace_with: &NodeRef,
         include_children: bool,
     ) -> Result<NodeRef, LexicalError> {
-        invariant!(!self.is_root(), "replace: cannot be called on root nodes");
-        error_on_read_only();
-        let selection = get_selection().map(|s| s.clone_selection());
-        error_on_insert_text_node_on_root(self, replace_with)?;
-        let to_replace_key = self.key.clone();
-        get_writable(replace_with.get_key());
-        let parent = self.get_parent_or_throw()?;
-        get_writable(parent.get_key());
-        let size = parent.get_children_size();
-        let replace_with_old_parent = replace_with.get_parent();
-        let range = selection.as_ref().filter(|s| s.is_range());
-        detach_node_with_selection(replace_with, range)?;
-        let prev_sibling = self.get_previous_sibling();
-        let next_sibling = self.get_next_sibling();
-        remove_node(self, false, true)?;
-        if let Some(p) = &prev_sibling {
-            get_writable(p.get_key());
-        }
-        if let Some(n) = &next_sibling {
-            get_writable(n.get_key());
-        }
-        insert_node_between(
-            parent.get_key(),
-            replace_with.get_key(),
-            prev_sibling.as_ref().map(NodeRef::get_key),
-            next_sibling.as_ref().map(NodeRef::get_key),
-        );
-        // When replace_with was already a child of the same parent, two
-        // children became one.
-        let size = if replace_with_old_parent.as_ref() == Some(&parent) {
-            size - 1
-        } else {
-            size
-        };
-        mutate(parent.get_key(), |p| {
-            p.element_mut().expect("a parent is an element").size = size
-        });
-        let mut prev_size_before_children_transfer = 0;
-        if include_children {
-            invariant!(
-                self.is_element() && replace_with.is_element(),
-                "includeChildren should only be true for ElementNodes"
-            );
-            prev_size_before_children_transfer = replace_with.get_children_size();
-            replace_with.splice(prev_size_before_children_transfer, 0, &self.get_children())?;
-        }
-        if let Some(selection) = range {
-            set_selection(Some(selection.clone()));
-            for which in [Which::Anchor, Which::Focus] {
-                let point = selection.point(which).expect("a range selection");
-                if point.key == to_replace_key {
-                    if include_children && point.point_type == PointType::Element {
-                        selection.point_set(
-                            which,
-                            replace_with.get_key(),
-                            prev_size_before_children_transfer + point.offset,
-                            PointType::Element,
-                        )?;
-                    } else {
-                        move_selection_point_to_end(selection, which, replace_with)?;
-                    }
-                }
-            }
-        }
-        Ok(replace_with.clone())
+        self.get_latest()
+            .replace(self, replace_with, include_children)
     }
 
     /// `insertAfter(nodeToInsert, restoreSelection)`.
@@ -512,11 +526,42 @@ impl NodeRef {
         node_to_insert: &NodeRef,
         restore_selection: bool,
     ) -> Result<NodeRef, LexicalError> {
-        invariant!(
-            !self.is_root(),
-            "insertAfter: cannot be called on root nodes"
-        );
-        insert_sibling(self, true, node_to_insert, restore_selection)
+        self.get_latest()
+            .insert_after(self, node_to_insert, restore_selection)
+    }
+
+    /// `ElementNode.getIndent()`.
+    pub fn get_indent(&self) -> Result<f64, LexicalError> {
+        self.get_latest().get_indent(self)
+    }
+
+    /// `ElementNode.setIndent(indentLevel)`.
+    pub fn set_indent(&self, indent: f64) -> Result<(), LexicalError> {
+        self.get_latest().set_indent(self, indent)
+    }
+
+    /// `getPreviousSiblings()`: the siblings before this node, in document
+    /// order.
+    pub fn get_previous_siblings(&self) -> Vec<NodeRef> {
+        let mut siblings = Vec::new();
+        let mut node = self.get_previous_sibling();
+        while let Some(n) = node {
+            node = n.get_previous_sibling();
+            siblings.push(n);
+        }
+        siblings.reverse();
+        siblings
+    }
+
+    /// `getNextSiblings()`: the siblings after this node, in document order.
+    pub fn get_next_siblings(&self) -> Vec<NodeRef> {
+        let mut siblings = Vec::new();
+        let mut node = self.get_next_sibling();
+        while let Some(n) = node {
+            node = n.get_next_sibling();
+            siblings.push(n);
+        }
+        siblings
     }
 
     /// `insertBefore(nodeToInsert, restoreSelection)`.
@@ -597,6 +642,101 @@ impl NodeRef {
     ) -> Result<SelectionRef, LexicalError> {
         select_adjacent_node(self, true, anchor_offset, focus_offset)
     }
+}
+
+/// `LexicalNode.remove(preserveEmptyParent)`, which nodes that override it
+/// call as `super.remove`.
+pub(crate) fn remove(this: &NodeRef, preserve_empty_parent: bool) -> Result<(), LexicalError> {
+    invariant!(!this.is_root(), "remove: cannot be called on root nodes");
+    remove_node(this, true, preserve_empty_parent)
+}
+
+/// `LexicalNode.replace(replaceWith, includeChildren)`, which nodes that
+/// override it call as `super.replace`.
+pub(crate) fn replace(
+    this: &NodeRef,
+    replace_with: &NodeRef,
+    include_children: bool,
+) -> Result<NodeRef, LexicalError> {
+    invariant!(!this.is_root(), "replace: cannot be called on root nodes");
+    error_on_read_only();
+    let selection = get_selection().map(|s| s.clone_selection());
+    error_on_insert_text_node_on_root(this, replace_with)?;
+    let to_replace_key = this.get_key().to_owned();
+    get_writable(replace_with.get_key());
+    let parent = this.get_parent_or_throw()?;
+    get_writable(parent.get_key());
+    let size = parent.get_children_size();
+    let replace_with_old_parent = replace_with.get_parent();
+    let range = selection.as_ref().filter(|s| s.is_range());
+    detach_node_with_selection(replace_with, range)?;
+    let prev_sibling = this.get_previous_sibling();
+    let next_sibling = this.get_next_sibling();
+    remove_node(this, false, true)?;
+    if let Some(p) = &prev_sibling {
+        get_writable(p.get_key());
+    }
+    if let Some(n) = &next_sibling {
+        get_writable(n.get_key());
+    }
+    insert_node_between(
+        parent.get_key(),
+        replace_with.get_key(),
+        prev_sibling.as_ref().map(NodeRef::get_key),
+        next_sibling.as_ref().map(NodeRef::get_key),
+    );
+    // When replace_with was already a child of the same parent, two
+    // children became one.
+    let size = if replace_with_old_parent.as_ref() == Some(&parent) {
+        size - 1
+    } else {
+        size
+    };
+    mutate(parent.get_key(), |p| {
+        p.element_mut().expect("a parent is an element").size = size
+    });
+    let mut prev_size_before_children_transfer = 0;
+    if include_children {
+        invariant!(
+            this.is_element() && replace_with.is_element(),
+            "includeChildren should only be true for ElementNodes"
+        );
+        prev_size_before_children_transfer = replace_with.get_children_size();
+        replace_with.splice(prev_size_before_children_transfer, 0, &this.get_children())?;
+    }
+    if let Some(selection) = range {
+        set_selection(Some(selection.clone()));
+        for which in [Which::Anchor, Which::Focus] {
+            let point = selection.point(which).expect("a range selection");
+            if point.key == to_replace_key {
+                if include_children && point.point_type == PointType::Element {
+                    selection.point_set(
+                        which,
+                        replace_with.get_key(),
+                        prev_size_before_children_transfer + point.offset,
+                        PointType::Element,
+                    )?;
+                } else {
+                    move_selection_point_to_end(selection, which, replace_with)?;
+                }
+            }
+        }
+    }
+    Ok(replace_with.clone())
+}
+
+/// `LexicalNode.insertAfter(nodeToInsert, restoreSelection)`, which nodes
+/// that override it call as `super.insertAfter`.
+pub(crate) fn insert_after(
+    this: &NodeRef,
+    node_to_insert: &NodeRef,
+    restore_selection: bool,
+) -> Result<NodeRef, LexicalError> {
+    invariant!(
+        !this.is_root(),
+        "insertAfter: cannot be called on root nodes"
+    );
+    insert_sibling(this, true, node_to_insert, restore_selection)
 }
 
 /// `$removeNode(nodeToRemove, restoreSelection, preserveEmptyParent)`.

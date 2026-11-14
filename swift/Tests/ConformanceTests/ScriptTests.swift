@@ -17,7 +17,7 @@ struct ScriptTests {
   static let files = [
     "scripts/updates", "scripts/selection", "scripts/transforms", "scripts/commands",
     "scripts/listeners", "scripts/caret", "scripts/rich-text", "scripts/rich-text-commands",
-    "scripts/plain-text", "scripts/history",
+    "scripts/plain-text", "scripts/history", "scripts/list",
     "fuzz/core",
   ]
 

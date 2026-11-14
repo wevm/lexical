@@ -271,7 +271,7 @@ impl NodeRef {
 
     /// `append(...nodesToAppend)`.
     pub fn append(&self, nodes: &[NodeRef]) -> Result<(), LexicalError> {
-        self.splice(self.get_children_size(), 0, nodes)
+        self.get_latest().append(self, nodes)
     }
 
     /// `setDirection(direction)`.
@@ -301,131 +301,138 @@ impl NodeRef {
         self.set_element(|e| e.text_style = style.to_owned());
     }
 
-    /// `setIndent(indentLevel)`.
-    pub fn set_indent(&self, indent: f64) {
-        self.set_element(|e| e.indent = indent);
-    }
-
     /// `splice(start, deleteCount, nodesToInsert)`: removes `delete_count`
     /// children from `start` and inserts `nodes` there (moving any that are
     /// in the tree already), repairing the selection when children are
-    /// removed. The root takes only elements (`RootNode.splice`).
+    /// removed.
     pub fn splice(
         &self,
         start: usize,
         delete_count: usize,
         nodes_to_insert: &[NodeRef],
     ) -> Result<(), LexicalError> {
-        if self.is_root() {
-            for node in nodes_to_insert {
-                // DecoratorNode is allowed too, once it is ported.
-                invariant!(
-                    node.is_element(),
-                    "rootNode.splice: Only element or decorator nodes can be inserted to the root node"
-                );
-            }
-        }
-        let old_size = self.get_children_size();
-        get_writable(self.get_key());
-        invariant!(
-            start + delete_count <= old_size,
-            "ElementNode.splice: start + deleteCount > oldSize ({start} + {delete_count} > {old_size})"
-        );
-        let self_key = self.get_key();
-        let mut nodes_to_insert_keys: Vec<String> = Vec::new();
-        let mut nodes_to_remove_keys = Vec::new();
-        let mut node_after_range = self.get_child_at_index(start + delete_count);
-        let mut node_before_range = None;
-        let mut new_size = (old_size - delete_count + nodes_to_insert.len()) as isize;
-
-        if start != 0 {
-            if start == old_size {
-                node_before_range = self.get_last_child();
-            } else if let Some(node) = self.get_child_at_index(start) {
-                node_before_range = node.get_previous_sibling();
-            }
-        }
-
-        if delete_count > 0 {
-            let first = match &node_before_range {
-                None => self.get_first_child(),
-                Some(before) => before.get_next_sibling(),
-            };
-            nodes_to_remove_keys =
-                detach_sibling_range(self, first, delete_count, node_before_range.as_ref())?;
-        }
-
-        // The writable insertion tail.
-        let mut writable_prev_node = match &node_before_range {
-            Some(before) if !nodes_to_insert.is_empty() => {
-                get_writable(before.get_key());
-                Some(before.clone())
-            }
-            _ => None,
-        };
-        for node_to_insert in nodes_to_insert {
-            if writable_prev_node.as_ref() == Some(node_to_insert) {
-                node_before_range = node_to_insert.get_previous_sibling();
-                writable_prev_node = node_before_range.clone();
-                if let Some(prev) = &writable_prev_node {
-                    get_writable(prev.get_key());
-                }
-            }
-            if node_after_range.as_ref() == Some(node_to_insert) {
-                node_after_range = node_to_insert.get_next_sibling();
-            }
-            get_writable(node_to_insert.get_key());
-            if node_to_insert.get_parent().as_ref() == Some(self) {
-                new_size -= 1;
-            }
-            detach_node(node_to_insert);
-            if let Some(after) = &node_after_range {
-                get_writable(after.get_key());
-            }
-            insert_node_between(
-                self_key,
-                node_to_insert.get_key(),
-                writable_prev_node.as_ref().map(NodeRef::get_key),
-                node_after_range.as_ref().map(NodeRef::get_key),
-            );
-            invariant!(
-                node_to_insert.get_key() != self_key,
-                "append: attempting to append self"
-            );
-            nodes_to_insert_keys.push(node_to_insert.get_key().to_owned());
-            writable_prev_node = Some(node_to_insert.clone());
-        }
-
-        let new_size = usize::try_from(new_size).expect("size >= 0");
-        mutate(self_key, |n| {
-            n.element_mut().expect("an element").size = new_size
-        });
-
-        // Removing children moves the selection out of them, and removes an
-        // element that can't be empty.
-        if !nodes_to_remove_keys.is_empty()
-            && let Some(selection) = get_selection().filter(SelectionRef::is_range)
-        {
-            let removed: HashSet<&str> = nodes_to_remove_keys.iter().map(String::as_str).collect();
-            let inserted: HashSet<&str> = nodes_to_insert_keys.iter().map(String::as_str).collect();
-            for which in [Which::Anchor, Which::Focus] {
-                let point = selection.point(which).expect("a range selection");
-                if is_point_removed(&point, &removed, &inserted)? {
-                    move_selection_point_to_sibling(
-                        &selection,
-                        which,
-                        &point.get_node()?,
-                        self,
-                        node_before_range.as_ref(),
-                        node_after_range.as_ref(),
-                    )?;
-                }
-            }
-            if new_size == 0 && !self.can_be_empty() && !is_root_or_shadow_root(&*self.get_latest())
-            {
-                self.remove(false)?;
-            }
-        }
-        Ok(())
+        self.get_latest()
+            .splice(self, start, delete_count, nodes_to_insert)
     }
+}
+
+/// `ElementNode.splice(start, deleteCount, nodesToInsert)`, which nodes that
+/// override it call as `super.splice`. The root takes only elements
+/// (`RootNode.splice`).
+pub fn splice(
+    this: &NodeRef,
+    start: usize,
+    delete_count: usize,
+    nodes_to_insert: &[NodeRef],
+) -> Result<(), LexicalError> {
+    if this.is_root() {
+        for node in nodes_to_insert {
+            // DecoratorNode is allowed too, once it is ported.
+            invariant!(
+                node.is_element(),
+                "rootNode.splice: Only element or decorator nodes can be inserted to the root node"
+            );
+        }
+    }
+    let old_size = this.get_children_size();
+    get_writable(this.get_key());
+    invariant!(
+        start + delete_count <= old_size,
+        "ElementNode.splice: start + deleteCount > oldSize ({start} + {delete_count} > {old_size})"
+    );
+    let self_key = this.get_key();
+    let mut nodes_to_insert_keys: Vec<String> = Vec::new();
+    let mut nodes_to_remove_keys = Vec::new();
+    let mut node_after_range = this.get_child_at_index(start + delete_count);
+    let mut node_before_range = None;
+    let mut new_size = (old_size - delete_count + nodes_to_insert.len()) as isize;
+
+    if start != 0 {
+        if start == old_size {
+            node_before_range = this.get_last_child();
+        } else if let Some(node) = this.get_child_at_index(start) {
+            node_before_range = node.get_previous_sibling();
+        }
+    }
+
+    if delete_count > 0 {
+        let first = match &node_before_range {
+            None => this.get_first_child(),
+            Some(before) => before.get_next_sibling(),
+        };
+        nodes_to_remove_keys =
+            detach_sibling_range(this, first, delete_count, node_before_range.as_ref())?;
+    }
+
+    // The writable insertion tail.
+    let mut writable_prev_node = match &node_before_range {
+        Some(before) if !nodes_to_insert.is_empty() => {
+            get_writable(before.get_key());
+            Some(before.clone())
+        }
+        _ => None,
+    };
+    for node_to_insert in nodes_to_insert {
+        if writable_prev_node.as_ref() == Some(node_to_insert) {
+            node_before_range = node_to_insert.get_previous_sibling();
+            writable_prev_node = node_before_range.clone();
+            if let Some(prev) = &writable_prev_node {
+                get_writable(prev.get_key());
+            }
+        }
+        if node_after_range.as_ref() == Some(node_to_insert) {
+            node_after_range = node_to_insert.get_next_sibling();
+        }
+        get_writable(node_to_insert.get_key());
+        if node_to_insert.get_parent().as_ref() == Some(this) {
+            new_size -= 1;
+        }
+        detach_node(node_to_insert);
+        if let Some(after) = &node_after_range {
+            get_writable(after.get_key());
+        }
+        insert_node_between(
+            self_key,
+            node_to_insert.get_key(),
+            writable_prev_node.as_ref().map(NodeRef::get_key),
+            node_after_range.as_ref().map(NodeRef::get_key),
+        );
+        invariant!(
+            node_to_insert.get_key() != self_key,
+            "append: attempting to append this"
+        );
+        nodes_to_insert_keys.push(node_to_insert.get_key().to_owned());
+        writable_prev_node = Some(node_to_insert.clone());
+    }
+
+    let new_size = usize::try_from(new_size).expect("size >= 0");
+    mutate(self_key, |n| {
+        n.element_mut().expect("an element").size = new_size
+    });
+
+    // Removing children moves the selection out of them, and removes an
+    // element that can't be empty.
+    if !nodes_to_remove_keys.is_empty()
+        && let Some(selection) = get_selection().filter(SelectionRef::is_range)
+    {
+        let removed: HashSet<&str> = nodes_to_remove_keys.iter().map(String::as_str).collect();
+        let inserted: HashSet<&str> = nodes_to_insert_keys.iter().map(String::as_str).collect();
+        for which in [Which::Anchor, Which::Focus] {
+            let point = selection.point(which).expect("a range selection");
+            if is_point_removed(&point, &removed, &inserted)? {
+                move_selection_point_to_sibling(
+                    &selection,
+                    which,
+                    &point.get_node()?,
+                    this,
+                    node_before_range.as_ref(),
+                    node_after_range.as_ref(),
+                )?;
+            }
+        }
+        if new_size == 0 && !this.can_be_empty() && !is_root_or_shadow_root(&*this.get_latest()) {
+            this.remove(false)?;
+        }
+    }
+    Ok(())
 }

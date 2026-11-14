@@ -19,12 +19,14 @@ use crate::lexical_selection::{
     set_selection,
 };
 use crate::lexical_utils::{
-    get_node_by_key_or_throw, get_root, is_block, is_shadow_root_node, remove_from_parent,
-    restore_empty_container_paragraph,
+    copy_node, get_node_by_key_or_throw, get_root, is_block, is_shadow_root_node,
+    remove_from_parent, restore_empty_container_paragraph,
 };
 use crate::node::{NodeKey, NodeRef};
 use crate::nodes::element::is_root_or_shadow_root;
+use crate::nodes::paragraph::create_paragraph_node;
 use crate::nodes::text::create_text_node;
+use crate::selection_insert_nodes::is_block_container;
 use std::collections::HashSet;
 
 /// `$caretFromPoint(point, direction)`: the caret at a selection point.
@@ -566,4 +568,182 @@ pub fn get_text_point_caret_slice_for_node<'a>(
         .iter()
         .flatten()
         .find(|slice| slice.caret.origin() == node)
+}
+
+/// `$splitTextPointCaret(textPointCaret)`: splits the text at the caret, and
+/// returns the sibling caret between the two halves (or beside the text, at
+/// either end).
+pub fn split_text_point_caret(text_point_caret: &PointCaret) -> Result<NodeCaret, LexicalError> {
+    let origin = text_point_caret.origin();
+    let direction = text_point_caret.direction();
+    let offset = text_point_caret.offset().expect("a text point caret");
+    if offset == get_text_node_offset(origin, TextOffset::End(direction), false)? {
+        return Ok(text_point_caret.get_sibling_caret());
+    } else if offset
+        == get_text_node_offset(origin, TextOffset::End(flip_direction(direction)), false)?
+    {
+        return rewind_sibling_caret(&text_point_caret.get_sibling_caret());
+    }
+    let parts = origin.split_text(&[offset as i64])?;
+    let text_node = parts.first().filter(|n| n.is_text()).ok_or_else(|| {
+        LexicalError::new("$splitTextPointCaret: splitText must return at least one TextNode")
+    })?;
+    get_caret_in_direction(
+        &get_sibling_caret(text_node, CaretDirection::Next),
+        direction,
+    )
+}
+
+/// `SplitAtPointCaretNextOptions`. `$copyElementNode` and
+/// `$splitTextPointCaretNext` are always their defaults (`$copyNode` and
+/// [`split_text_point_caret`]).
+#[derive(Clone, Copy)]
+pub struct SplitAtPointCaretNextOptions {
+    /// If the parent matches `root_mode` a split will not occur (default
+    /// `'shadowRoot'`).
+    pub root_mode: RootMode,
+    /// `$shouldSplit(node, edge)`, with `edge` `"first"` or `"last"`: whether
+    /// to create an empty split of an element that can be empty (default
+    /// always).
+    pub should_split: fn(&NodeRef, &'static str) -> bool,
+    /// If the destination would create an empty split on both sides, then
+    /// remove it instead of splitting (default `false`).
+    pub remove_empty_destination: bool,
+}
+
+impl Default for SplitAtPointCaretNextOptions {
+    fn default() -> Self {
+        Self {
+            root_mode: RootMode::ShadowRoot,
+            should_split: |_, _| true,
+            remove_empty_destination: false,
+        }
+    }
+}
+
+/// `$getAdjacentNodes(initialCaret)`: the nodes after the caret, in its
+/// direction.
+fn get_adjacent_nodes(initial_caret: &NodeCaret) -> Vec<NodeRef> {
+    let next = initial_caret.direction() == CaretDirection::Next;
+    let mut siblings = Vec::new();
+    let mut node = initial_caret.get_node_at_caret();
+    while let Some(n) = node {
+        node = if next {
+            n.get_next_sibling()
+        } else {
+            n.get_previous_sibling()
+        };
+        siblings.push(n);
+    }
+    siblings
+}
+
+/// `$splitAtPointCaretNext(pointCaret, options)`: splits the node at the
+/// caret once, and returns the caret where it split, or `None` where it
+/// can't.
+pub fn split_at_point_caret_next(
+    point_caret: &PointCaret,
+    options: &SplitAtPointCaretNextOptions,
+) -> Result<Option<NodeCaret>, LexicalError> {
+    if point_caret.is_text_point_caret() {
+        return split_text_point_caret(point_caret).map(Some);
+    }
+    let parent_caret = point_caret.get_parent_caret(options.root_mode);
+    if let Some(parent_caret) = &parent_caret {
+        let origin = parent_caret.origin();
+        if point_caret.is_child_caret() {
+            let before_parent_caret = rewind_sibling_caret(parent_caret)?;
+            if options.remove_empty_destination && origin.is_empty() {
+                origin.remove(false)?;
+                return Ok(Some(before_parent_caret));
+            }
+            if !(origin.can_be_empty() && (options.should_split)(origin, "first")) {
+                return Ok(Some(before_parent_caret));
+            }
+        }
+        let siblings = get_adjacent_nodes(point_caret);
+        if !siblings.is_empty()
+            || (!options.remove_empty_destination
+                && origin.can_be_empty()
+                && (options.should_split)(origin, "last"))
+        {
+            // Split and insert the siblings into the new tree
+            let copy = copy_node(origin);
+            copy.splice(0, 0, &siblings)?;
+            parent_caret.insert(&copy)?;
+        }
+    }
+    Ok(parent_caret)
+}
+
+/// `$insertNodeToNearestRootAtCaret(node, caret, options)`: inserts `node`
+/// at the caret, splitting its ancestors up to the nearest block container
+/// (the root or a shadow root, with the default `root_mode`), and returns
+/// the caret after it.
+pub fn insert_node_to_nearest_root_at_caret(
+    node: &NodeRef,
+    caret: &PointCaret,
+    options: &SplitAtPointCaretNextOptions,
+) -> Result<NodeCaret, LexicalError> {
+    let mut insert_caret = get_caret_in_direction(caret, CaretDirection::Next)?;
+    // Normalize boundary cases for TextPointCaret
+    if let Some(offset) = insert_caret.offset() {
+        let origin = insert_caret.origin().clone();
+        if offset == 0 {
+            insert_caret = get_sibling_caret(&origin, CaretDirection::Previous).get_flipped()?;
+        } else if offset == origin.get_text_content_size() {
+            insert_caret = get_sibling_caret(&origin, CaretDirection::Next);
+        }
+    }
+    // Make sure we have a distinct node as the origin
+    if insert_caret.origin() == node {
+        invariant!(
+            insert_caret.is_sibling_caret(),
+            "$insertNodeToNearestRootAtCaret node {} of type {} can not be inserted into itself",
+            node.get_key(),
+            node.get_type()
+        );
+        insert_caret = rewind_sibling_caret(&insert_caret)?;
+    }
+    // Handle split boundary conditions where node is being inserted adjacent
+    // to itself
+    if insert_caret.get_node_at_caret().as_ref() == Some(node)
+        || insert_caret.get_flipped()?.get_node_at_caret().as_ref() == Some(node)
+    {
+        node.remove(true)?;
+    }
+    let stops_at_containers = options.root_mode == RootMode::ShadowRoot;
+    let mut next_caret = Some(insert_caret.clone());
+    while let Some(caret) = next_caret {
+        insert_caret = caret;
+        // A declared block container (see $isBlockContainer) is not split:
+        // the node goes in among its blocks, as in a shadow root.
+        let container = if insert_caret.is_child_caret() {
+            Some(insert_caret.origin().clone())
+        } else {
+            insert_caret.origin().get_parent()
+        };
+        if stops_at_containers
+            && !insert_caret.is_text_point_caret()
+            && container.as_ref().is_some_and(is_block_container)
+        {
+            break;
+        }
+        next_caret = split_at_point_caret_next(&insert_caret, options)?;
+    }
+    invariant!(
+        !insert_caret.is_text_point_caret(),
+        "$insertNodeToNearestRootAtCaret: An unattached TextNode can not be split"
+    );
+    if node.is_inline() {
+        let paragraph = create_paragraph_node();
+        paragraph.append(std::slice::from_ref(node))?;
+        insert_caret.insert(&paragraph)?;
+    } else {
+        insert_caret.insert(node)?;
+    }
+    get_caret_in_direction(
+        &get_sibling_caret(node, CaretDirection::Next),
+        caret.direction(),
+    )
 }

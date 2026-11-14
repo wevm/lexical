@@ -119,7 +119,12 @@ fn apply_transforms(
     node: &NodeRef,
     cache: &mut HashMap<&'static str, Vec<Transform>>,
 ) -> Result<(), LexicalError> {
-    // `ElementNode`'s own `$transform`, first in every element's set.
+    // The class's own `$transform` (`getTransformSetFromKlass` walks the
+    // class chain from the node's class up), then `ElementNode`'s.
+    node.get_latest().transform(node)?;
+    if !node.is_attached() {
+        return Ok(());
+    }
     if node.is_element() {
         normalize_shadow_root_children(node)?;
         if !node.is_attached() {

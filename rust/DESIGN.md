@@ -74,7 +74,7 @@ depends on as the upstream package depends on them:
 | `file`      | `@lexical/file`        |                            |
 | `clipboard` | `@lexical/clipboard`   | `selection`, `utils` (`html` for HTML copy and paste) |
 | `mark`      | `@lexical/mark`        | `utils`                    |
-| `devtools`  | `@lexical/devtools-core`'s tree view |              |
+| `devtools`  | `@lexical/devtools-core`'s `generateContent` | (upstream lists `html`, `link`, `mark` and `table`; its link branch is built with `link`, and its HTML form, mark and table branches aren't ported) |
 
 Each module is `lexical_editor::<package>` (`lexical_editor::rich_text`).
 Names may change as packages land; this table is updated with them.
@@ -200,11 +200,10 @@ thread.
 | M3 | The commands `property/sequences` dispatches | `property/sequences` | done (all 81 cases match JS): the suite builds `sequenceEditor`'s editor without `buildEditorFromExtensions`, from what each of its extensions registers, in the builder's order, with `InitialStateExtension`'s paragraph; the commands M2 ported needed two fixes, `NormalizeInlineElementsExtension`'s transform (`register_normalize_inline_elements`, removing empty links) and `$extendSelectionForDeletion` and `modify` stopping where the window gives no DOM selection (`SelectionMovement::has_dom_selection`) |
 | M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | in progress ([HTML thread](https://ampcode.com/threads/T-506c8fa1-4309-40f1-9810-732b311eaeab)) |
 | M5 | `markdown`, and Markdown shortcuts in both playgrounds | `markdown/import-export`, `property/documents` (Markdown) | in progress ([Markdown thread](https://ampcode.com/threads/T-01a1daf1-150e-709b-aaed-996443a64459)) |
-| M6 | The rest of Swift's feature set: the extension API's bundled extensions (`ClearEditor`, `InitialState`, `EditorState`, `TabIndentation`, `NodeStructure`, `SelectBlock` and the others Swift has), clipboard (JSON copy and paste first, HTML once M4 lands), the rest of `selection` and `utils` (style helpers, `$wrapNodes`, `$splitNode`, `$dfs`...), `mark`, `file`, the devtools tree view, `text`'s root helpers, `a11y`'s announcements, code highlighting (Swift uses tree-sitter where JS uses Prism), the character limit, the menu, auto-embed, decorator block and table of contents logic, the remaining built-in commands, slots, node schemas and editable mode | `file/*`, `devtools/tree`, and new JS vectors for the rest | in progress (this thread's owner: the [Rust port thread](https://ampcode.com/threads/T-16d45229-bfa8-417a-a091-d3e3888d830d), which also owns M1's extension API and the merges) |
+| M6 | The rest of Swift's feature set: the extension API's bundled extensions (`ClearEditor`, `InitialState`, `EditorState`, `TabIndentation`, `NodeStructure`, `SelectBlock` and the others Swift has), clipboard (JSON copy and paste first, HTML once M4 lands), the rest of `selection` and `utils` (style helpers, `$wrapNodes`, `$splitNode`, `$dfs`...), `mark`, `file`, the devtools tree view, `text`'s root helpers, `a11y`'s announcements, code highlighting (Swift uses tree-sitter where JS uses Prism), the character limit, the menu, auto-embed, decorator block and table of contents logic, the remaining built-in commands, slots, node schemas and editable mode | `file/*`, `devtools/tree`, and new JS vectors for the rest | in progress (this thread's owner: the [Rust port thread](https://ampcode.com/threads/T-16d45229-bfa8-417a-a091-d3e3888d830d), which also owns M1's extension API and the merges): `file`, the devtools tree view and `text`'s root helpers are done (`file/*`, `devtools/tree` and `scripts/text` pass) |
 | M7 | Releases: the mirror, changesets, a name tmm settles | | |
 
-The `devtools/tree` vectors come with whichever milestone a tool needs
-them. The `scenarios/*` vectors, recorded from a real browser, need a text
+The `scenarios/*` vectors, recorded from a real browser, need a text
 layout behind `Selection.modify`; the playgrounds' binding replays them once
 rich-text is in.
 

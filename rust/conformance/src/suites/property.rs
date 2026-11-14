@@ -48,6 +48,7 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
             lexical::hashtag::hashtag_nodes(),
         ]
         .concat(),
+        ..CreateEditorArgs::default()
     });
     let parsed = editor.parse_editor_state(input);
     if case.get("error").is_some() {
@@ -177,6 +178,7 @@ fn sequence_editor() -> (Editor, Unregister) {
             lexical::overflow::overflow_nodes(),
         ]
         .concat(),
+        ..CreateEditorArgs::default()
     });
     // Registered for the editor's life; dropping an unregister function
     // doesn't call it.

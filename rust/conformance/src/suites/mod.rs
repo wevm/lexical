@@ -1,7 +1,9 @@
 //! One suite per vector file the port replays. A file with no suite is
 //! reported as not implemented.
 
+mod devtools;
 mod entities;
+mod file;
 mod meta;
 mod property;
 mod serialization;
@@ -14,6 +16,21 @@ pub fn all() -> Vec<Suite> {
             file: "meta",
             variant: None,
             check: meta::check,
+        },
+        Suite {
+            file: "devtools/tree",
+            variant: None,
+            check: devtools::check_tree,
+        },
+        Suite {
+            file: "file/export",
+            variant: None,
+            check: file::check_export,
+        },
+        Suite {
+            file: "file/import",
+            variant: None,
+            check: file::check_import,
         },
         Suite {
             file: "entities/autolink-match",
@@ -147,6 +164,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "scripts/set-blocks-type",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/text",
             variant: None,
             check: crate::scripts::check,
         },

@@ -4,7 +4,7 @@
 use crate::editor_state::{clone_editor_state, create_empty_editor_state};
 use crate::error::invariant;
 use crate::json::{self, Object, Value};
-use crate::lexical_utils::set_node_key;
+use crate::lexical_utils::{create_uid, set_node_key};
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::node_state::{RequiredNodeStateConfig, SharedNodeState, create_shared_node_state};
 use crate::nodes::{
@@ -115,10 +115,12 @@ pub const COMPOSITION_START_TAG: &str = "composition-start";
 /// method composition.
 pub const COMPOSITION_END_TAG: &str = "composition-end";
 
-/// `CreateEditorArgs`: the node classes to register besides the core ones.
+/// `CreateEditorArgs`: the node classes to register besides the core ones,
+/// and the editor's `namespace` (a random one, `createUID()`, when empty).
 #[derive(Clone, Default)]
 pub struct CreateEditorArgs {
     pub nodes: Vec<NodeClass>,
+    pub namespace: String,
 }
 
 /// `EditorUpdateOptions`. `onUpdate` and `event` come with their users.
@@ -281,11 +283,21 @@ pub(crate) struct EditorInner {
     next_id: Cell<u64>,
     /// Stands in for the DOM's `Selection.modify` (no JS field).
     selection_movement: RefCell<Option<Rc<dyn SelectionMovement>>>,
+    /// `_config.namespace`.
+    namespace: String,
+    /// `_editable`.
+    editable: Cell<bool>,
 }
 
 /// `createEditor(config)`: registers the core nodes (root, text, line
 /// break, tab, paragraph) and `args.nodes`.
 pub fn create_editor(args: CreateEditorArgs) -> Editor {
+    // `config.namespace || createUID()` (an editor has no parent here).
+    let namespace = if args.namespace.is_empty() {
+        create_uid()
+    } else {
+        args.namespace
+    };
     let core = [
         NodeClass::with_import_json("root", RootNode::import_json),
         NodeClass::of::<TextNode>(),
@@ -322,10 +334,33 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         commands: RefCell::new(HashMap::new()),
         next_id: Cell::new(1),
         selection_movement: RefCell::new(None),
+        namespace,
+        editable: Cell::new(true),
     }))
 }
 
 impl Editor {
+    /// `LexicalEditor.version`: the port's own, as Swift's is
+    /// `lexical-swift@<upstream>`, for the upstream release in
+    /// [`UPSTREAM_VERSION`](crate::UPSTREAM_VERSION).
+    pub const VERSION: &'static str = "lexical-rust@0.53.0";
+
+    /// `_config.namespace`: the namespace the editor was created with.
+    pub fn get_namespace(&self) -> &str {
+        &self.0.namespace
+    }
+
+    /// `isEditable()`.
+    pub fn is_editable(&self) -> bool {
+        self.0.editable.get()
+    }
+
+    /// `setEditable(editable)`. Editable listeners
+    /// (`registerEditableListener`) aren't ported, so nothing is notified.
+    pub fn set_editable(&self, editable: bool) {
+        self.0.editable.set(editable);
+    }
+
     pub(crate) fn registered_nodes(&self) -> &HashMap<&'static str, NodeClass> {
         &self.0.nodes
     }

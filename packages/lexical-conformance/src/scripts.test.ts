@@ -3401,3 +3401,123 @@ test('scripts/decorator', () => {
     ],
   );
 });
+
+test('scripts/text', () => {
+  // @lexical/text's root helpers, read inside an update: $rootTextContent,
+  // $isRootTextContentEmpty (with and without trimming, composing or not)
+  // and its curried form, $canShowPlaceholder and its curried form, and
+  // $findTextIntersectionFromCharacters at offsets across the text nodes.
+  // Keys: the root's descendants get 1, 2, 3… in document order.
+  const rootText: Action = {do: 'logRootTextContent'};
+  const empty = (isComposing: boolean, trim?: boolean): Action =>
+    trim === undefined
+      ? {do: 'logRootTextContentEmpty', isComposing}
+      : {do: 'logRootTextContentEmpty', isComposing, trim};
+  const placeholder = (isComposing: boolean): Action => ({
+    do: 'logCanShowPlaceholder',
+    isComposing,
+  });
+  const intersection = (characters: number): Action => ({
+    characters,
+    do: 'logTextIntersection',
+  });
+  const probe = (...characters: number[]): Step =>
+    update(
+      rootText,
+      empty(false),
+      empty(false, true),
+      empty(false, false),
+      empty(true),
+      empty(true, false),
+      placeholder(false),
+      placeholder(true),
+      ...characters.map(intersection),
+    );
+  const clear = node('root', 'clear');
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const dt = (): Node => ({type: 'decorator-text', version: 1}) as Node;
+  emit(
+    'text',
+    "@lexical/text's root helpers: $rootTextContent, $isRootTextContentEmpty and $isRootTextContentEmptyCurry (trimmed with JS's String#trim or not, composing or not), $canShowPlaceholder and $canShowPlaceholderCurry, and $findTextIntersectionFromCharacters, on documents of text, whitespace, breaks, tabs, nested and empty blocks, headings and decorators.",
+    [
+      {
+        name: 'an empty root, then an empty paragraph',
+        steps: [probe(0), doc(p()), probe(0)],
+      },
+      {
+        name: 'text in a paragraph',
+        steps: [doc(p(t('ab'), t('cd', {format: 1}))), probe(0, 1, 2, 3, 4, 5)],
+      },
+      {
+        name: 'whitespace that String#trim removes',
+        steps: [doc(p(t(' \u00a0\ufeff\u2028\u3000'))), probe(0, 4, 5)],
+      },
+      {
+        name: 'whitespace that String#trim keeps',
+        steps: [doc(p(t('\u0085\u200b'))), probe(0, 1, 2)],
+      },
+      {
+        name: 'text outside the BMP',
+        steps: [doc(p(t('\ud83d\ude00a'))), probe(0, 1, 2, 3)],
+      },
+      {
+        name: 'two paragraphs',
+        steps: [doc(p(t('ab')), p(t('cd'))), probe(0, 1, 2, 3, 4)],
+      },
+      {
+        name: 'two empty paragraphs',
+        steps: [doc(p(), p()), probe(0)],
+      },
+      {
+        name: 'an indented paragraph',
+        steps: [doc({...p(), indent: 1} as Node), probe(0)],
+      },
+      {
+        name: 'a line break',
+        steps: [doc(p(br())), probe(0)],
+      },
+      {
+        name: 'a tab',
+        steps: [doc(p(tab())), probe(0, 1)],
+      },
+      {
+        name: 'a heading and a quote',
+        richText: true,
+        steps: [
+          doc(h('h1')),
+          probe(0),
+          update(node('1', 'append', [t('x')])),
+          probe(0, 1),
+          update(clear),
+          doc(q(t('ab')), p(t('c'))),
+          probe(0, 1, 2, 3),
+        ],
+      },
+      {
+        list: true,
+        name: 'nested lists',
+        steps: [
+          doc(
+            list('bullet', li(t('a')), li(list('bullet', li(t('b'))))),
+            p(t('c')),
+          ),
+          probe(0, 1, 2, 3),
+        ],
+      },
+      {
+        extension: true,
+        name: 'decorators',
+        steps: [
+          doc(p(dt())),
+          probe(0),
+          update(clear),
+          doc(hr()),
+          probe(0),
+          update(clear),
+          doc(p(dt(), t('ab'))),
+          probe(0, 1, 2),
+        ],
+      },
+    ],
+  );
+});

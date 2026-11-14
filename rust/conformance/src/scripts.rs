@@ -42,6 +42,7 @@
 
 use crate::case::{Case, Outcome, same};
 use lexical::clipboard;
+use lexical::extension as ext;
 use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
 use lexical::link;
@@ -93,6 +94,8 @@ struct Ctx {
     clock: Rc<Cell<f64>>,
     /// The editor states `saveEditorState` kept, by name.
     saved: RefCell<HashMap<String, EditorState>>,
+    /// The block handles `logBlockHandles` kept, by name.
+    handles: RefCell<HashMap<String, Vec<(String, String)>>>,
 }
 
 /// `ops.ts`'s `STATES`, one set per session (JS's are shared by every
@@ -488,7 +491,20 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "saveEditorState"
             | "restoreEditorState"
             | "escape"
-            | "logBlockFullySelected",
+            | "logBlockFullySelected"
+            | "setSlot"
+            | "removeSlot"
+            | "logSlots"
+            | "logSelectionSlotFrame"
+            | "logDfsWithSlots"
+            | "logNodesExist"
+            | "setBlockId"
+            | "logBlockIds"
+            | "logBlockById"
+            | "logIdentified"
+            | "logBlockHandles"
+            | "logBlockHandle"
+            | "resolveBlockHandle",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -916,6 +932,191 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             } else {
                 select_all().map(drop)
             }
+        }
+        Some("setSlot") => {
+            let host = node(action.str("key").map_err(err)?)?;
+            let value = match action.get("valueKey").and_then(Value::as_str) {
+                Some(key) => node(key)?,
+                None => parse(&Value::Array(vec![
+                    action.get("node").cloned().unwrap_or(Value::Undefined),
+                ]))?
+                .remove(0),
+            };
+            lexical::set_slot(&host, action.str("name").map_err(err)?, &value)?;
+            Ok(())
+        }
+        Some("removeSlot") => {
+            let host = node(action.str("key").map_err(err)?)?;
+            lexical::remove_slot(&host, action.str("name").map_err(err)?)?;
+            Ok(())
+        }
+        Some("logSlots") => {
+            let key = action.str("key").map_err(err)?;
+            let n = node(key)?;
+            let key_of = |n: Option<NodeRef>| n.map_or(Value::Null, |n| n.get_key().into());
+            ctx.log(vec![
+                "slots".into(),
+                key.into(),
+                strings(&lexical::get_slot_names(&n)),
+                key_of(lexical::get_slot_host(&n)),
+                lexical::get_slot_name_within_host(&n).map_or(Value::Null, Value::from),
+                key_of(lexical::get_slot_frame(&n)),
+            ]);
+            Ok(())
+        }
+        Some("logSelectionSlotFrame") => {
+            let frame = lexical::get_selection_slot_frame(get_selection().as_ref())?;
+            ctx.log(vec![
+                "selectionSlotFrame".into(),
+                frame.map_or(Value::Null, |f| f.get_key().into()),
+            ]);
+            Ok(())
+        }
+        Some("logDfsWithSlots") => {
+            let at = |name: &str| {
+                action
+                    .get(name)
+                    .and_then(Value::as_str)
+                    .map(node)
+                    .transpose()
+            };
+            let (start, end) = (at("start")?, at("end")?);
+            let reverse = flag(action.get("reverse").unwrap_or(&Value::Null), false);
+            let nodes = if reverse {
+                lexical::utils::reverse_dfs_with_slots(start.as_ref(), end.as_ref())
+            } else {
+                lexical::utils::dfs_with_slots(start.as_ref(), end.as_ref())
+            };
+            ctx.log(vec![
+                "dfsWithSlots".into(),
+                reverse.into(),
+                Value::Array(
+                    nodes
+                        .into_iter()
+                        .map(|d| {
+                            Value::Array(vec![d.node.get_key().into(), (d.depth as f64).into()])
+                        })
+                        .collect(),
+                ),
+            ]);
+            Ok(())
+        }
+        Some("logNodesExist") => {
+            let keys = action
+                .get("keys")
+                .and_then(Value::as_array)
+                .ok_or_else(|| err("keys"))?;
+            let mut exist = Vec::new();
+            for key in keys {
+                let key = key.as_str().ok_or_else(|| err("a key"))?;
+                exist.push(Value::Array(vec![
+                    key.into(),
+                    lexical::get_node_by_key(key).is_some().into(),
+                ]));
+            }
+            ctx.log(vec!["nodesExist".into(), Value::Array(exist)]);
+            Ok(())
+        }
+        Some("setBlockId") => {
+            let key = action.get("key").and_then(Value::as_str).unwrap_or("");
+            let id = action.get("id").and_then(Value::as_str).map(str::to_owned);
+            set_state(&node(key)?, &ext::block_id_state(), id).map(|_| ())
+        }
+        Some("logBlockIds") => {
+            let keys = action
+                .get("keys")
+                .and_then(Value::as_array)
+                .ok_or_else(|| err("keys"))?;
+            let mut ids = Vec::new();
+            for key in keys {
+                let key = key.as_str().ok_or_else(|| err("a key"))?;
+                let id = ext::get_block_id(&node(key)?)?;
+                ids.push(Value::Array(vec![
+                    key.into(),
+                    id.map_or(Value::Null, Value::from),
+                ]));
+            }
+            ctx.log(vec!["blockIds".into(), Value::Array(ids)]);
+            Ok(())
+        }
+        Some("logBlockById") => {
+            let id = action.get("id").and_then(Value::as_str).unwrap_or("");
+            let found = ext::get_block_by_id(id)?;
+            ctx.log(vec![
+                "blockById".into(),
+                id.into(),
+                found.map_or(Value::Null, |n| n.get_key().into()),
+            ]);
+            Ok(())
+        }
+        Some("logIdentified") => {
+            let key = action.get("key").and_then(Value::as_str).unwrap_or("");
+            let target = node(key)?;
+            let output = ext::get_extension_output(&ext::block_id_extension())?
+                .ok_or_else(|| err("BlockIdExtension has no output"))?;
+            ctx.log(vec![
+                "identified".into(),
+                key.into(),
+                (output.is_identified_block.0)(&target).into(),
+                ext::default_is_identified_block(&target).into(),
+                ext::is_root_child_block(&target).into(),
+            ]);
+            Ok(())
+        }
+        Some("logBlockHandles") => {
+            let handles = ext::get_block_handles()?;
+            if let Some(name) = action.get("name").and_then(Value::as_str) {
+                ctx.handles
+                    .borrow_mut()
+                    .insert(name.to_owned(), handles.clone());
+            }
+            let entries = handles
+                .into_iter()
+                .map(|(id, handle)| Value::Array(vec![id.into(), handle.into()]))
+                .collect();
+            ctx.log(vec!["blockHandles".into(), Value::Array(entries)]);
+            Ok(())
+        }
+        Some("logBlockHandle") => {
+            let key = action.get("key").and_then(Value::as_str).unwrap_or("");
+            let handle = ext::get_block_handle(&node(key)?)?;
+            ctx.log(vec![
+                "blockHandle".into(),
+                key.into(),
+                handle.map_or(Value::Null, Value::from),
+            ]);
+            Ok(())
+        }
+        Some("resolveBlockHandle") => {
+            let handle = action.get("handle").and_then(Value::as_str).unwrap_or("");
+            let options = match action.get("read").and_then(Value::as_str) {
+                Some(name) => Some(ext::BlockHandleOptions {
+                    read: Some(
+                        ctx.handles
+                            .borrow()
+                            .get(name)
+                            .cloned()
+                            .ok_or_else(|| err(format!("no handles kept as {name}")))?,
+                    ),
+                }),
+                None => None,
+            };
+            let result = ext::resolve_block_handle(handle, options.as_ref())?;
+            let detail = match &result {
+                ext::BlockHandleResult::Found { node } => node.get_key().into(),
+                ext::BlockHandleResult::Ambiguous { candidates, .. } => {
+                    Value::Array(candidates.iter().map(|c| c.as_str().into()).collect())
+                }
+                ext::BlockHandleResult::Invalid { reason, .. } => reason.as_str().into(),
+                ext::BlockHandleResult::NotFound { .. } => Value::Null,
+            };
+            ctx.log(vec![
+                "resolved".into(),
+                handle.into(),
+                result.status().into(),
+                detail,
+            ]);
+            Ok(())
         }
         Some("logSelectionText") => {
             let selection = get_selection().ok_or_else(|| err("no selection"))?;

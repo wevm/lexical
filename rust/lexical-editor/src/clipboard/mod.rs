@@ -289,8 +289,9 @@ fn update_selection_on_insert(selection: &SelectionRef) -> Result<(), LexicalErr
 /// (selected, or taken by a child, `extractWithChild`) and not excluded
 /// (`excludeFromCopy("clone")`), with the selected text of a text node at
 /// the selection's edge; otherwise its children's JSON. Returns whether it
-/// is included. (Slots aren't ported, so there are none to copy. JS's
-/// `editor` argument is unused, and left out.)
+/// is included. An included host carries its slots whole (`$slots`), as
+/// a range never selects part of one. (JS's `editor` argument is unused,
+/// and left out.)
 fn append_nodes_to_json(
     selection: Option<&SelectionRef>,
     current_node: &NodeRef,
@@ -359,6 +360,34 @@ fn append_nodes_to_json(
         }
     }
     if should_include && !should_exclude {
+        let slot_names = crate::slot::get_slot_names(current_node);
+        if !slot_names.is_empty() {
+            let mut serialized_slots = Object::new();
+            for name in slot_names {
+                let Some(slot_node) = crate::slot::get_slot(current_node, &name) else {
+                    return Err(LexicalError::new(format!(
+                        "LexicalNode: Node {} has slot \"{name}\" but it resolved to no node during export.",
+                        current_node.get_type()
+                    )));
+                };
+                let mut slot_array = Vec::new();
+                append_nodes_to_json(None, &slot_node, &mut slot_array)?;
+                // A whole-slot export must give exactly the slot value node.
+                if slot_array.len() != 1
+                    || (slot_node.is_element() && slot_node.exclude_from_copy("clone"))
+                {
+                    return Err(LexicalError::new(format!(
+                        "LexicalNode: slot \"{name}\" on {} did not serialize to exactly the slot value node (got {} nodes); a slot value must not be excluded from copy.",
+                        current_node.get_type(),
+                        slot_array.len()
+                    )));
+                }
+                serialized_slots.insert(&name, Value::Object(slot_array.remove(0)));
+            }
+            serialized_node.insert("$slots", Value::Object(serialized_slots));
+        }
+    }
+    if should_include && !should_exclude {
         if serialized_node.contains_key("children") {
             serialized_node.insert(
                 "children",
@@ -375,14 +404,18 @@ fn append_nodes_to_json(
 
 /// `$generateJSONFromSelectedNodes(editor, selection)`: the Lexical JSON
 /// of the nodes inside `selection` (of every node for `None`), with the
-/// editor's namespace. (Slots aren't ported, so the walk always starts at
-/// the root, the frame of every selection.)
+/// editor's namespace. The walk starts at the selection's slot frame, the
+/// root outside slots: a selection in a slot never holds its host.
 pub fn generate_json_from_selected_nodes(
     editor: &Editor,
     selection: Option<&SelectionRef>,
 ) -> Result<SerializedSelectedNodes, LexicalError> {
     let mut nodes = Vec::new();
-    for top_level_node in get_root().get_children() {
+    let slot_frame = crate::slot::get_selection_slot_frame(selection)?;
+    let walk_root = slot_frame
+        .filter(NodeRef::is_element)
+        .unwrap_or_else(get_root);
+    for top_level_node in walk_root.get_children() {
         append_nodes_to_json(selection, &top_level_node, &mut nodes)?;
     }
     Ok(SerializedSelectedNodes {

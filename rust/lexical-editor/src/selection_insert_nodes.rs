@@ -2,9 +2,9 @@
 //! `insertRawText` from `LexicalSelection.ts`, for both selection kinds,
 //! with `$insertNodes`, `$generateNodesFromRawText` and `$selectAll`.
 //!
-//! Slots, `CodeNode` and declared node structure (`NodeStructureExtension`)
-//! are not ported, so the branches for a slot value, a code block and a
-//! declared block container do nothing here.
+//! `CodeNode` and declared node structure (`NodeStructureExtension`) are
+//! not ported here, so the branches for a code block and a declared block
+//! container do nothing.
 
 use crate::LexicalError;
 use crate::caret::CaretDirection;
@@ -67,8 +67,14 @@ impl SelectionRef {
         }
         let (_, index) = remove_text_and_split_block(self, false)?;
         let block = find_matching_parent(&anchor_of(self).get_node()?, is_block);
-        // A block that is a slot value has no room for a sibling paragraph,
-        // once slots are ported.
+        // A block that is a slot value has no room for a sibling paragraph:
+        // a no-op, as Enter in a single-line input.
+        if block
+            .as_ref()
+            .is_some_and(|b| crate::slot::get_slot_host_key(b).is_some())
+        {
+            return Ok(None);
+        }
         let Some(block) = block.filter(NodeRef::is_element) else {
             return Err(LexicalError::new(
                 "Expected ancestor to be a block ElementNode",
@@ -126,8 +132,12 @@ fn node_selection_insert_nodes(
     selection: &SelectionRef,
     nodes: &[NodeRef],
 ) -> Result<(), LexicalError> {
-    // Slotted nodes would be skipped here, once slots are ported.
-    let selected_nodes = selection.get_nodes()?;
+    // Slotted nodes are fixed parts of their host: skip them.
+    let selected_nodes: Vec<NodeRef> = selection
+        .get_nodes()?
+        .into_iter()
+        .filter(|n| crate::slot::get_slot_host_key(n).is_none())
+        .collect();
     let Some(last_selected_node) = selected_nodes.last() else {
         return Ok(());
     };
@@ -161,10 +171,41 @@ fn range_selection_insert_nodes(
     if !is_collapsed(selection) {
         selection.remove_text()?;
     }
-    // An anchor on a slot value root redirects into the slot's subtree, once
-    // slots are ported.
     let anchor = anchor_of(selection);
     let anchor_node = anchor.get_node()?;
+    // An anchor on a container slot value (a shadow root) redirects into
+    // the slot's subtree, at its first child.
+    if anchor.point_type == PointType::Element
+        && anchor_node.is_element()
+        && anchor_node.get_latest().is_shadow_root()
+        && crate::slot::get_slot_host_key(&anchor_node).is_some()
+    {
+        // An empty container has no child to redirect into: seed a
+        // paragraph first.
+        let mut first_child = match anchor_node.get_first_child() {
+            Some(child) => Some(child),
+            None => {
+                anchor_node.append(&[create_paragraph_node()])?;
+                anchor_node.get_first_child()
+            }
+        };
+        // A first child that is not an element would bring the caret back
+        // here: seed a paragraph before it.
+        if let Some(child) = first_child.clone().filter(|c| !c.is_element()) {
+            let seed = create_paragraph_node();
+            child.insert_before(&seed, true)?;
+            first_child = Some(seed);
+        }
+        if let Some(first_child) = first_child {
+            first_child.select_start()?;
+            let Some(redirected) = get_selection().filter(SelectionRef::is_range) else {
+                return Err(LexicalError::new(
+                    "Expected RangeSelection after redirecting into slot subtree",
+                ));
+            };
+            return range_selection_insert_nodes(&redirected, nodes);
+        }
+    }
 
     // The anchor is an element point directly on a block container: splice
     // the nodes in at the anchor offset, inline runs wrapped in a block.
@@ -243,12 +284,13 @@ fn range_selection_insert_nodes(
         ));
     };
 
-    // CASE 3b: the block cannot receive block siblings (a block inside an
-    // inline-only element, #8724; a slot value too, once slots are ported).
-    // Flatten the incoming content.
+    // CASE 3b: the block cannot receive block siblings (a slot value, whose
+    // virtual root holds one block, or a block inside an inline-only
+    // element, #8724). Flatten the incoming content.
     if found_block.is_element()
-        && !found_block.is_parent_required()
-        && !is_block_container(&found_block.get_parent_or_throw()?)
+        && (crate::slot::get_slot_host_key(&found_block).is_some()
+            || (!found_block.is_parent_required()
+                && !is_block_container(&found_block.get_parent_or_throw()?)))
     {
         let (_, index) = remove_text_and_split_block(selection, false)?;
         let inline_nodes = extract_inline_from_blocks(nodes);
@@ -514,8 +556,8 @@ fn remove_text_and_split_block(
     let anchor = anchor_of(&selection_);
     let mut node = anchor.get_node()?;
     let mut offset = anchor.offset;
-    // The walk stops at a slot value too, once slots are ported.
-    while !is_block(&node) {
+    // A slotted node is the root of its scope: the walk stops there too.
+    while !is_block(&node) && crate::slot::get_slot_host_key(&node).is_none() {
         let prev_node = node.clone();
         (node, offset) = split_node_at_point(&node, offset, stop_at_unsplittable_node)?;
         if prev_node == node {
@@ -711,8 +753,8 @@ pub fn insert_nodes(nodes: Vec<NodeRef>) -> Result<(), LexicalError> {
 
 /// `$selectAll(selection)`: for a range selection, moves its points to the
 /// start and end of the root or shadow root that holds its anchor, down to
-/// text where they can be, and returns it (a slot value scopes it in JS;
-/// slots aren't ported); for a node selection, [`select_all`], which is
+/// text where they can be, and returns it (in a slot, the contents of the
+/// slot value); for a node selection, [`select_all`], which is
 /// `$selectAll()`.
 pub fn select_all_in(selection: &SelectionRef) -> Result<SelectionRef, LexicalError> {
     let Some(anchor) = selection.point(Which::Anchor) else {
@@ -730,6 +772,21 @@ pub fn select_all_in(selection: &SelectionRef) -> Result<SelectionRef, LexicalEr
         // root above the anchor.
         let mut node = anchor_node.clone();
         loop {
+            // `getTopLevelElement` stops at a slot value, whose parent is
+            // `null`: the selection is scoped to its contents.
+            if crate::slot::get_slot_host_key(&node).is_some() {
+                if node.is_element() {
+                    selection.point_set(Which::Anchor, node.get_key(), 0, PointType::Element)?;
+                    selection.point_set(
+                        Which::Focus,
+                        node.get_key(),
+                        node.get_children_size(),
+                        PointType::Element,
+                    )?;
+                    normalize_selection_for_select_all(selection, &node)?;
+                }
+                return Ok(selection.clone());
+            }
             let Some(parent) = node.get_parent() else {
                 return Err(LexicalError::new(format!(
                     "Expected node {} to have a top parent element.",

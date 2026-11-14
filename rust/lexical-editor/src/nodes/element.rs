@@ -89,12 +89,12 @@ pub(crate) fn is_root_or_shadow_root(node: &dyn LexicalNode) -> bool {
     node.is::<RootNode>() || (node.element().is_some() && node.is_shadow_root())
 }
 
-/// `ElementNode.getTextContent()`. Slots, read first in JS, come with their
-/// port.
+/// `ElementNode.getTextContent()`: the slots' text first, then the
+/// children's.
 pub fn get_text_content(node: &dyn LexicalNode) -> String {
     let children = NodeRef::new(node.get_key()).get_children();
     let length = children.len();
-    let mut text_content = String::new();
+    let mut text_content = crate::slot::get_slots_text_content(node);
     for (i, child) in children.iter().enumerate() {
         let child = child.get_latest();
         text_content.push_str(&child.get_text_content());
@@ -164,9 +164,33 @@ impl NodeRef {
         self.with_element(Clone::clone)
     }
 
-    /// `isEmpty()`.
+    /// `isEmpty()`: no children and no slots (a host that holds content in
+    /// its slots only is not empty).
     pub fn is_empty(&self) -> bool {
         self.get_children_size() == 0
+            && crate::slot::slots_field(&*self.get_latest()).is_none_or(|s| s.len() == 0)
+    }
+
+    /// `getAllTextNodes()`: the text nodes of the slots, then the children's.
+    pub fn get_all_text_nodes(&self) -> Vec<NodeRef> {
+        let mut text_nodes = Vec::new();
+        for name in crate::slot::get_slot_names(self) {
+            if let Some(slot) = crate::slot::get_slot(self, &name)
+                && slot.is_element()
+            {
+                text_nodes.extend(slot.get_all_text_nodes());
+            }
+        }
+        let mut child = self.get_first_child();
+        while let Some(c) = child {
+            if c.is_text() {
+                text_nodes.push(c.clone());
+            } else if c.is_element() {
+                text_nodes.extend(c.get_all_text_nodes());
+            }
+            child = c.get_next_sibling();
+        }
+        text_nodes
     }
 
     /// `getChildAtIndex(index)`.
@@ -226,7 +250,7 @@ impl NodeRef {
     pub(crate) fn get_element_text_content_size(&self) -> usize {
         let children = self.get_children();
         let length = children.len();
-        let mut size = 0;
+        let mut size = crate::slot::get_slots_text_content_size(&*self.get_latest());
         for (i, child) in children.iter().enumerate() {
             size += child.get_text_content_size();
             if child.is_element() && i != length - 1 && !child.is_inline() {
@@ -359,6 +383,9 @@ pub fn splice(
         start + delete_count <= old_size,
         "ElementNode.splice: start + deleteCount > oldSize ({start} + {delete_count} > {old_size})"
     );
+    for node_to_insert in nodes_to_insert {
+        crate::slot::error_on_slot_cycle_child(this, node_to_insert)?;
+    }
     let self_key = this.get_key();
     let mut nodes_to_insert_keys: Vec<String> = Vec::new();
     let mut nodes_to_remove_keys = Vec::new();
@@ -406,7 +433,7 @@ pub fn splice(
         if node_to_insert.get_parent().as_ref() == Some(this) {
             new_size -= 1;
         }
-        detach_node(node_to_insert);
+        detach_node(node_to_insert)?;
         if let Some(after) = &node_after_range {
             get_writable(after.get_key());
         }

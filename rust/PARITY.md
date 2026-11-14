@@ -62,6 +62,8 @@ updated with each milestone.
 | Copy, cut and paste handlers (the `rich-text` and `plain-text` features) | `registerRichText`'s `COPY_COMMAND` (`copyToClipboard` with an event, `$copyToClipboardEvent`), `CUT_COMMAND` (`onCutForRichText`, with `INTERNAL_$expandSelectionToWholeDocument`) and `PASTE_COMMAND` (`onPasteForRichText`) handlers; `registerPlainText`'s (`onCopyForPlainText`, `onCutForPlainText`, `onPasteForPlainText`), with JS's `paste` and `cut` tags | `rich_text`, `plain_text`, `clipboard` | unit tests (no vector: headless JS has no `ClipboardEvent`) |
 | The rest of `@lexical/selection`'s model (the `selection` feature) | `packages/lexical-selection/src/lexical-node.ts` (`$sliceSelectedTextNodeContent`, its `'clone'` mode only, `$isAtNodeEnd`, `$trimTextContentFromAnchor`, `$addNodeStyle` as the deprecated no-op it is, `$patchStyleText` with values, `null` and functions of the previous value, `$forEachSelectedTextNode`, `$ensureForwardRangeSelection`), `range-selection.ts` (`$wrapNodes` with `$wrapNodesImpl`, `$shouldOverrideDefaultCharacterSelection`, `$isParentElementRTL`, `$moveCaretSelection`, `$moveCharacter`, `$getSelectionStyleValueForProperty`), `utils.ts` (`getCSSFromStyleObject`, `getStyleObjectFromRawCSS`), and its re-exports of `getStyleObjectFromCSS`, `$cloneWithProperties` and `$selectAll` (with a selection to scope it, `select_all_in`); from the core `getStyleObjectFromCSS` (`StyleObject`, in a JS object's key order), `$cloneWithProperties`, `$splitNode`, `ElementNode.getDescendantByIndex`, `TextNode.canHaveFormat` | `selection`, `set_dom_style`, `lexical_utils`, `selection_insert_nodes` | `scripts/selection-utils` |
 | `@lexical/utils`'s model (the `utils` feature) | `packages/lexical-utils/src/index.ts`: `DFSNode`, `$dfs`, `$reverseDfs`, `$dfsIterator`, `$reverseDfsIterator` (Rust iterators), `$getAdjacentCaret`, `$getNextSiblingOrParentSibling`, `$getDepth`, `$getNextRightPreorderNode`, `$getNearestNodeOfType`, `$getNearestBlockElementAncestorOrThrow`, `registerNestedElementResolver` (by node type), `$restoreEditorState`, `$insertNodeToNearestRoot`, `$insertNodeIntoLeaf`, `$wrapNodeInElement`, `$filter`, `$handleIndentAndOutdent`, `$insertFirst`, `$unwrapAndFilterDescendants`, `$descendantsMatching`, `$firstToLastIterator`, `$lastToFirstIterator`, `$unwrapNode`, `StateConfigWrapper`, `makeStateWrapper`, `$onEscapeUp`, `$onEscapeDown`, `$isAtStartOfNode`, `$isAtEndOfNode`; its re-exports of `$findMatchingParent`, `$getAdjacentSiblingOrParentSiblingCaret`, `$insertNodeToNearestRootAtCaret`, `$isBlockFullySelected`, `$isRootOrShadowRoot`, `$splitNode` and `mergeRegister` (no longer behind the `extension` feature) | `utils`, `lexical_utils`, `caret_utils`, `selection_deletion`, `merge_register` | `scripts/selection-utils` |
+| Slots | `LexicalSlot.ts` (`$isSlotHost`, `$isSlotChild`, `$getSlotHost`, `$getSlotNameWithinHost`, `$getSlotFrame`, `$getSelectionSlotFrame`, `$getSlotNames` in canonical order, `$getSlot`, `getDeclaredSlots` as `LexicalNode::declared_slots`, `$setSlot` with its refusals and moves, `$removeSlot`, the cycle check, `_slotsUsed`); their call sites in `LexicalNode.ts` (`__slotHost` and `__slots` on elements and decorators, `remove`, `replace`, `isAttached`, `getTextContent` and its size, `selectNext`/`selectPrevious` through the host), `LexicalElementNode.ts` (`isEmpty`, `getAllTextNodes`, text content with slots first), `LexicalEditorState.ts` and `LexicalUpdates.ts` (`"$slots"` in both JSON forms, written after `children`, and parsed through `$setSlot`), `LexicalGC.ts` (a removed host's slot subtrees), `LexicalSelection.ts` (`$clampRangeSelectionToSlotFrame` in `$setSelection` and at commit, `$getPointSlotFrame`, insertion and deletion stopping at a slot boundary, `$selectAll` scoped to the slot frame), `caret/LexicalCaret.ts` (`$filterByMode` stopping at slotted nodes, `$getCommonAncestorAcrossSlots`, `$comparePointCaretNextAcrossSlots`), `caret/LexicalCaretTree.ts`, `caret/LexicalCaretUtils.ts`; in the packages, `SELECT_ALL_COMMAND`'s scoping (`rich-text`, `plain-text`), `$setBlocksType` and `$wrapNodes` skipping slot values, `SelectBlockExtension`'s slot frames, `@lexical/clipboard`'s copy of a host's `$slots` from the selection's slot frame, `@lexical/mark`'s `$forEachSlot` walks, and `@lexical/utils`' `$dfsWithSlots`, `$reverseDfsWithSlots`, their iterators and `$getDepth` across hosts | `slot`, `node`, `nodes::element`, `editor_state`, `updates`, `gc`, `lexical_selection`, `selection_deletion`, `selection_insert_nodes`, `caret`, `caret_tree`, `caret_utils`, `rich_text`, `plain_text`, `selection`, `extension`, `clipboard`, `mark`, `utils` | `scripts/slots`, the named slots case of `serialization/core` |
+| `BlockIdExtension` (the `extension` feature) | `packages/lexical-extension/src/BlockIdExtension.ts`: `blockIdState`, `$getBlockId`, `$getBlockById`, `$getBlockHandle`, `$getBlockHandles`, `$resolveBlockHandle` with `BlockHandleOptions.read`, `BlockHandleResult`, `$isRootChildBlock`, `$defaultIsIdentifiedBlock` (with `LexicalNode::declares_inline_children` for a class whose `$config` declares `children: 'inline'`), `generateBlockId`, `BlockIdConfig` (`disabled`, `$isIdentifiedBlock`, `generateId`, `repairTransforms`), `BlockIdOutput`, and the extension: the index, the transforms of every registered class and the root transform (`$assignBlockIds`: lineage by children and by position, slots included, uniqueness, provisional ids across transform passes), the update listener (`$syncIndex`, `$nameUnnamed`), the repair update, document order (`$compareDocumentOrder`), the handle views; `internal/positionalBlockId.ts` (SHA-256, `canonicalJSON`, `$canonicalDocument`, `$documentKey`, `derivePositionalId`, `deriveDuplicateId`); `internal/blockHandles.ts` (`MIN_BLOCK_HANDLE_LENGTH`, `handleKey`, `buildHandleTable`, `handleInTable`, `idsWithPrefix`); from the core `$hasUpdateTag` and `COLLABORATION_TAG` | `extension::block_id_extension`, `extension::positional_block_id`, `extension::block_handles`, `editor` | `scripts/block-id`; a unit test of SHA-256 against FIPS 180-4's digests |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -70,8 +72,11 @@ updated with each milestone.
 Everything else; [DESIGN.md](DESIGN.md) has the order. Within what M0
 touches:
 
-- **Slots** (`"$slots"`): a document that carries them fails to parse with
-  an error naming them, rather than losing them.
+- Of slots: the `'deletion'` mode of `$setPointAtSlotBoundary`, where JS
+  lets `Selection.modify` carry a deletion into another slot frame and
+  pulls it back to the boundary; a headless editor's `SelectionMovement`
+  moves within text only, as Swift's does. `LexicalMutations.ts`' and the
+  reconciler's slot handling are DOM-only.
 - Of `DecoratorNode`: `editor._decorators`, `getDecorators()` and
   `registerDecoratorListener`, which only JS's DOM reconciler fills (it
   calls `decorate` for each decorator it renders; a headless JS editor
@@ -83,7 +88,7 @@ touches:
   one) have no model counterpart. `isSelected()`, with its rule for an
   inline decorator at the end of its parent, is ported (for the tree view,
   the `devtools` feature, and `@lexical/clipboard`'s copy), though no vector reaches that rule;
-  `getTopLevelElement` is not, nor are slots on decorators (`__slotHost`, `__slots`). `@lexical/extension`'s
+  `getTopLevelElement` is not. `@lexical/extension`'s
   `HorizontalRuleExtension` (`INSERT_HORIZONTAL_RULE_COMMAND`, clicks, the
   selected class) isn't ported (see the extension API below), and
   `applyFormatFromStyle` reads CSS.
@@ -112,14 +117,21 @@ touches:
   `_parentEditor`, theme and editable listeners, none of which a Rust
   editor has; `NodeStructureExtension` needs the core's
   `INTERNAL_registerNodeStructure` and the structure hooks, which aren't
-  ported; `BlockIdExtension` needs slots and `$getSlot`/`$getSlotNames`
-  for its walk, which aren't ported either. `PreventSelectAllExtension`'s
+  ported, so `BlockIdExtension`'s peer dependency on it never resolves.
+  Of `BlockIdExtension`: `generateBlockId` hashes a counter and the clock
+  with the standard library's randomly keyed `RandomState` where JS uses
+  `crypto.getRandomValues` (no dependencies: it is unpredictable but not
+  a cryptographic generator, and the config takes a `generate_id` of an
+  app's own); the `__DEV__` warning for a repair update that left blocks
+  without a unique id; and `frozenLookup`'s per-state cache, which only
+  saves repeated lookups and changes no result. `$getBlockHandles()`
+  returns its `Map`'s entries in order, and `BlockHandleOptions.read`
+  takes them so. `PreventSelectAllExtension`'s
   `register` is a capturing `keydown` listener on the root element, so
   only its config and signal are ported; `TabIndentationExtension`'s
   `KEY_TAB_COMMAND` handler reads a `KeyboardEvent`, which the core
   doesn't have yet (the code marks where it goes); `SelectBlockExtension`'s
-  `cascadeSelection` is kept but has no parent editor to select, and its
-  slot frames aren't ported. Of the packages' extensions, the DOM, click,
+  `cascadeSelection` is kept but has no parent editor to select. Of the packages' extensions, the DOM, click,
   focus and announce ones (`ClickableLinkExtension`,
   `AutoLinkAnnounceExtension`, `DragonExtension`,
   `NormalizeTripleClickSelectionExtension`, `CheckListExtension`'s
@@ -182,8 +194,7 @@ touches:
   committed value can't change in place here);
   `objectKlassEquals` (JS constructors, which a node type string stands for
   here); `$isEditorIsNestedEditor` (an editor has no parent editor yet);
-  `$dfsWithSlots` and its iterator forms (slots aren't ported); and
-  `trimTextContentFromAnchor`, JS's deprecated other name for
+  and `trimTextContentFromAnchor`, JS's deprecated other name for
   `$trimTextContentFromAnchor`.
 - `@lexical/list`'s DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
   `importDOM`, the theme class names, `ListImportExtension`/`ListImportRules`
@@ -195,8 +206,9 @@ touches:
   `@lexical/list` does where `NodeStructureExtension` enforces node
   structure (`INTERNAL_$afterStructureMerge`, `INTERNAL_$afterStructureSplit`,
   `INTERNAL_$liftsFromStructure`, `$pointsAround`, `$keptTops`,
-  `$listTarget`, the `onlyChild` seam merge) and for lists in named slots,
-  as neither is ported. `ListNode` reads its tag off its list type rather
+  `$listTarget`, the `onlyChild` seam merge), as it isn't ported, and
+  `$insertList`'s skipping of a named slot's value, which no vector covers
+  yet. `ListNode` reads its tag off its list type rather
   than keeping `__tag` apart: JS sets both together everywhere. Backspace
   at the start of a document's first item, with nothing before it, needs
   `Selection.modify` in headless JS, which throws, as `scripts/list`
@@ -258,8 +270,7 @@ touches:
   the segment matching, composition, the `CONTROLLED_TEXT_INSERTION_COMMAND`
   and `PASTE_COMMAND` recorders). Rendering (`$decorateMarkIDs`,
   `isMarkIDShown` and its rerender, `exportIDsToHTML`) and the HTML import
-  rule (`data-lexical-mark-ids`) come with `html` and the DOM. Slots aren't
-  ported, so `$forEachSlot` is not: the functions do not look into slots.
+  rule (`data-lexical-mark-ids`) come with `html` and the DOM.
   JS's `markIds` state is an `arraySetValue`; the port has no schema
   builders yet, so its config is a `StateValueConfig` with the same parse,
   JSON and equality, and the canonical form `$setState` gives a set-valued
@@ -311,24 +322,20 @@ touches:
   mark and table branches (`$isMarkNode`, `$isTableSelection`,
   `printTableSelection`), as `@lexical/mark` and `@lexical/table` aren't
   ported (a tree view holding their nodes would be `NotPorted` in the
-  runner; no `devtools/tree` case holds one); slots (`$getSlotNames`,
-  `$getSlot`, `$resolveSlotContext`, `$slotValueMetaSuffix`), which the
-  core doesn't have; the `compositionKey` line, as a headless editor never
+  runner; no `devtools/tree` case holds one); the printing of slots
+  (`$resolveSlotContext`, `$slotValueMetaSuffix`), which Swift has but no
+  `devtools/tree` vector holds a slot to check; the `compositionKey` line, as a headless editor never
   composes; and the React parts, `TreeView.tsx` and
   `useLexicalCommandsLog.ts` (a log of commands is the caller's, as
   `LexicalCommandLogEntry`s with the payload already printed). The editable
   listeners `setEditable` triggers in JS (`registerEditableListener`)
   aren't ported. `obfuscateText`'s `*` and the `^` widths count UTF-16
   code units, as JS does; no vector obfuscates.
-- In `$setBlocksType`, the skipping of a block that is a named slot's value
-  (`$getSlotHost(prevNode) !== null`), as slots aren't ported. Its branch for a
+- In `$setBlocksType`, the branch for a
   declared block container (`$isBlockContainer`) is ported but unreachable
   until `NodeStructureExtension`'s declared containers are: without them,
   only the root and shadow roots are containers, and neither is a block.
-- The slot-aware caret comparisons (`$comparePointCaretNextAcrossSlots`,
-  `$getCommonAncestorAcrossSlots`). Without slots or the text edit log,
-  `$removeTextFromCaretRange` never meets a slot host and records no
-  deletions.
+- The text edit log: `$removeTextFromCaretRange` records no deletions.
 - Of `@lexical/history`: `register_history` takes the delay and
   `maxDepth` as values, where JS also takes signals (`HistoryExtension`
   passes its signals to the same code), and `maxDepth` as a `usize`.
@@ -340,8 +347,7 @@ touches:
   for a paste of files, which the port's `DataTransfer` doesn't carry; so
   `RichTextExtension`'s config, `RichTextConfig`, which only those read,
   isn't ported);
-  `CONTROLLED_TEXT_INSERTION_COMMAND`'s `beforeinput` form; and
-  `SELECT_ALL_COMMAND`'s scoping to a slot (slots aren't ported). The DOM
+  and `CONTROLLED_TEXT_INSERTION_COMMAND`'s `beforeinput` form. The DOM
   parts of `@lexical/rich-text` (`createDOM`, `exportDOM`, `importDOM`)
   come with `html`.
 - `registerPlainText`'s handlers of DOM events (the arrow keys, Backspace,
@@ -384,9 +390,7 @@ touches:
     Swift, writes the selection, since without a DOM the platform only
     sends the editor's own copy. No vector records the handlers, as
     headless JS can't run them; unit tests cover them.
-  - Slots: `$getSelectionSlotFrame` and a host's `$slots` in the copy
-    (slots aren't ported, so the walk starts at the root), and
-    `INTERNAL_$withExportMemo`, a cache that changes no output.
+  - `INTERNAL_$withExportMemo`, a cache that changes no output.
   - `$sliceSelectedTextNodeContent`'s `'self'` mode, which writes a node's
     text without `getWritable`; every ported caller passes `'clone'`.
   - `DataTransfer`'s files, `clearData`, `dropEffect` and `effectAllowed`,

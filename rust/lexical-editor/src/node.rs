@@ -31,7 +31,10 @@ pub type NodeKey = String;
 
 /// The fields every node has: its key, its links to its parent and
 /// siblings (`__key`, `__parent`, `__prev`, `__next`) and its NodeState
-/// (`__state`), which a clone shares until one of them writes it.
+/// (`__state`), which a clone shares until one of them writes it; and, used
+/// by elements and decorators only, the slot fields JS's `ElementNode` and
+/// `DecoratorNode` add (`__slotHost`, `__slots`). A clone keeps them, as
+/// their `afterCloneFrom` does for the same key; `$copyNode` drops them.
 #[derive(Clone, Debug, Default)]
 pub struct NodeBase {
     pub(crate) key: NodeKey,
@@ -39,6 +42,12 @@ pub struct NodeBase {
     pub(crate) prev: Option<NodeKey>,
     pub(crate) next: Option<NodeKey>,
     pub(crate) state: Option<NodeStateRef>,
+    /// `__slotHost` (an element or a decorator): the host whose named slot
+    /// holds this node, which then has no parent.
+    pub(crate) slot_host: Option<NodeKey>,
+    /// `__slots` (an element or a decorator): its named slots, shared by its
+    /// versions until one writes them.
+    pub(crate) slots: Option<Rc<crate::slot::SlotMap>>,
     /// The id of the editor state this version was made writable (or
     /// created) in: with the key, which version of the node this is.
     pub(crate) written_in: u64,
@@ -302,6 +311,20 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         Ok(false)
     }
 
+    /// The `slots` of the node's `$config()` (`getDeclaredSlots`): the
+    /// canonical order of its named slots, before the names it doesn't
+    /// declare. None by default.
+    fn declared_slots(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    /// Whether the `children` the class declares in its `$config()`
+    /// (`getDeclaredNodeStructure(klass).children`) is `'inline'` or a list
+    /// that includes `'inline'`: a block that holds text. False by default.
+    fn declares_inline_children(&self) -> bool {
+        false
+    }
+
     /// `TextNode.isTextEntity()`: whether `registerLexicalTextEntity` (the
     /// `text` feature) treats the text node as an entity. False by default.
     fn is_text_entity(&self) -> bool {
@@ -351,7 +374,8 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         if self.element().is_some() {
             return element::get_text_content(self.as_node());
         }
-        String::new()
+        // `LexicalNode.getTextContent()`: a decorator host's slots.
+        crate::slot::get_slots_text_content(self.as_node())
     }
 
     /// `ElementNode.shouldSerializeTextStyles()`.
@@ -546,7 +570,8 @@ impl NodeRef {
         })
     }
 
-    /// `isAttached()`: whether the node's parents lead to the root.
+    /// `isAttached()`: whether the node's parents (and slot hosts) lead to
+    /// the root.
     pub fn is_attached(&self) -> bool {
         let editor_state = get_active_editor_state();
         let node_map = editor_state.0.node_map.borrow();
@@ -555,7 +580,13 @@ impl NodeRef {
             if key == "root" {
                 return true;
             }
-            match node_map.get(key).and_then(|n| n.base().parent.as_deref()) {
+            // A slotted node has no parent; its slot host leads on.
+            match node_map.get(key).and_then(|n| {
+                n.base()
+                    .parent
+                    .as_deref()
+                    .or_else(|| crate::slot::slot_host_key_field(&**n).map(String::as_str))
+            }) {
                 Some(parent) => key = parent,
                 None => return false,
             }
@@ -908,9 +939,18 @@ pub(crate) fn replace(
     let selection = get_selection().map(|s| s.clone_selection());
     error_on_insert_text_node_on_root(this, replace_with)?;
     let to_replace_key = this.get_key().to_owned();
+    if let Some(slot_host) = crate::slot::get_slot_host(this) {
+        return Err(LexicalError::new(format!(
+            "replace: node {to_replace_key} (type {}) is slotted into host {} (type {}); a slot value cannot be replaced through the tree API. Use $setSlot on its host to assign a replacement.",
+            this.get_type(),
+            slot_host.get_key(),
+            slot_host.get_type()
+        )));
+    }
     get_writable(replace_with.get_key());
     let parent = this.get_parent_or_throw()?;
     get_writable(parent.get_key());
+    crate::slot::error_on_slot_cycle_child(&parent, replace_with)?;
     let size = parent.get_children_size();
     let replace_with_old_parent = replace_with.get_parent();
     let range = selection.as_ref().filter(|s| s.is_range());
@@ -993,6 +1033,12 @@ pub(crate) fn remove_node(
     error_on_read_only();
     let key = node_to_remove.get_key().to_owned();
     let Some(parent) = node_to_remove.get_parent() else {
+        let slot_host_key = crate::slot::get_slot_host_key(node_to_remove);
+        invariant!(
+            slot_host_key.is_none(),
+            "$removeNode: node {key} is slotted into host {}; use removeSlot on the host instead of remove().",
+            slot_host_key.unwrap_or_default()
+        );
         return Ok(());
     };
     let selection = maybe_move_children_selection_to_parent(node_to_remove)?;

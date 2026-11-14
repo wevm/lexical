@@ -24,7 +24,17 @@ import {
   registerCodeIndentation,
 } from '@lexical/code-core';
 import {
+  $defaultIsIdentifiedBlock,
+  $getBlockById,
+  $getBlockHandle,
+  $getBlockHandles,
+  $getBlockId,
+  $getExtensionOutput,
+  $isRootChildBlock,
+  $resolveBlockHandle,
   batch,
+  BlockIdExtension,
+  blockIdState,
   buildEditorFromExtensions,
   ClearEditorExtension,
   computed,
@@ -132,6 +142,7 @@ import {
 import {
   $descendantsMatching,
   $dfs,
+  $dfsWithSlots,
   $firstToLastIterator,
   $getDepth,
   $getNearestBlockElementAncestorOrThrow,
@@ -146,6 +157,7 @@ import {
   $onEscapeUp,
   $restoreEditorState,
   $reverseDfs,
+  $reverseDfsWithSlots,
   $splitNode,
   $unwrapAndFilterDescendants,
   $unwrapNode,
@@ -164,7 +176,12 @@ import {
   $getNodeByKey,
   $getRoot,
   $getSelection,
+  $getSelectionSlotFrame,
   $getSiblingCaret,
+  $getSlotFrame,
+  $getSlotHost,
+  $getSlotNames,
+  $getSlotNameWithinHost,
   $getState,
   $getStateChange,
   $getTextPointCaret,
@@ -172,13 +189,16 @@ import {
   $isElementNode,
   $isNodeSelection,
   $isRangeSelection,
+  $isSlotHost,
   $isTextNode,
   $normalizeCaret,
   $parseSerializedNode,
+  $removeSlot,
   $removeTextFromCaretRange,
   $selectAll,
   $setSelection,
   $setSelectionFromCaretRange,
+  $setSlot,
   $setState,
   type AnyLexicalCommand,
   type AnyLexicalExtension,
@@ -521,6 +541,80 @@ export type Action =
    * `$isBlockFullySelected(node, $getSelection())`.
    */
   | {do: 'logBlockFullySelected'; key: string}
+  /**
+   * `$setSlot(host, name, value)` of the node `key` (an element or a
+   * decorator), where `value` is the parsed `node`, or the existing node
+   * `valueKey` (which moves).
+   */
+  | {
+      do: 'setSlot';
+      key: string;
+      name: string;
+      node?: SerializedLexicalNode;
+      valueKey?: string;
+    }
+  /** `$removeSlot(host, name)` of the node `key`. */
+  | {do: 'removeSlot'; key: string; name: string}
+  /**
+   * Logs `['slots', key, names, host, nameWithinHost, frame]`:
+   * `$getSlotNames(node)`, and the keys of `$getSlotHost(node)` and
+   * `$getSlotFrame(node)` and `$getSlotNameWithinHost(node)`, `null` when
+   * there is none.
+   */
+  | {do: 'logSlots'; key: string}
+  /**
+   * Logs `['selectionSlotFrame', key]`: the key of
+   * `$getSelectionSlotFrame($getSelection())`, or `null`.
+   */
+  | {do: 'logSelectionSlotFrame'}
+  /**
+   * Logs `['dfsWithSlots', reverse, [[key, depth]...]]`:
+   * `$dfsWithSlots(start, end)`, or `$reverseDfsWithSlots(start, end)` with
+   * `reverse` (@lexical/utils), where an absent key is `undefined`.
+   */
+  | {do: 'logDfsWithSlots'; start?: string; end?: string; reverse?: boolean}
+  /**
+   * Logs `['nodesExist', [[key, exists]...]]`: whether `$getNodeByKey(key)`
+   * finds each node, which shows what the last commit collected.
+   */
+  | {do: 'logNodesExist'; keys: string[]}
+  /**
+   * `$setState(node, blockIdState, id)` of the node `key` (@lexical/extension),
+   * with `null` as `undefined`: the value is stored as it is, so an invalid
+   * id reads as none.
+   */
+  | {do: 'setBlockId'; key: string; id: string | null}
+  /**
+   * Logs `['blockIds', [[key, id]...]]`: `$getBlockId` of each node, for the
+   * keys given.
+   */
+  | {do: 'logBlockIds'; keys: string[]}
+  /**
+   * Logs `['blockById', id, key]`: the key of `$getBlockById(id)`, or
+   * `null`.
+   */
+  | {do: 'logBlockById'; id: string}
+  /**
+   * Logs `['identified', key, configured, default, rootChild]`: whether the
+   * node `key` is identified by `$getExtensionOutput(BlockIdExtension)`'s
+   * `$isIdentifiedBlock`, by `$defaultIsIdentifiedBlock` and by
+   * `$isRootChildBlock`.
+   */
+  | {do: 'logIdentified'; key: string}
+  /**
+   * Logs `['blockHandles', [[id, handle]...]]`: `$getBlockHandles()`, in its
+   * order; with `name`, also keeps it as `name` for `resolveBlockHandle`.
+   */
+  | {do: 'logBlockHandles'; name?: string}
+  /** Logs `['blockHandle', key, handle]`: `$getBlockHandle(node)`. */
+  | {do: 'logBlockHandle'; key: string}
+  /**
+   * Logs `['resolved', handle, status, detail]` for
+   * `$resolveBlockHandle(handle, {read})`, where `read` is the handles
+   * `logBlockHandles` kept as `read`: `detail` is the found node's key, the
+   * ambiguous candidates, the invalid reason, or `null` when not found.
+   */
+  | {do: 'resolveBlockHandle'; handle: string; read?: string}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /** The blocks the `$create` of an action makes. */
@@ -819,6 +913,8 @@ type Context = {
   clipboard: ScriptDataTransfer | null;
   /** The editor states `saveEditorState` kept, by name. */
   saved: Map<string, EditorState>;
+  /** The block handles `logBlockHandles` kept, by name. */
+  handles: Map<string, Map<string, string>>;
 };
 
 /**
@@ -1789,6 +1885,138 @@ function $runAction(action: Action, ctx: Context): void {
         $isBlockFullySelected(element($node(action.key)), $sel()),
       ]);
       return;
+    case 'setSlot': {
+      const host = $node(action.key);
+      if (!$isSlotHost(host)) {
+        throw new Error(`${action.key} is not a slot host`);
+      }
+      const value =
+        action.valueKey !== undefined
+          ? $node(action.valueKey)
+          : $parse([action.node as SerializedLexicalNode])[0];
+      $setSlot(host, action.name, value);
+      return;
+    }
+    case 'removeSlot': {
+      const host = $node(action.key);
+      if (!$isSlotHost(host)) {
+        throw new Error(`${action.key} is not a slot host`);
+      }
+      $removeSlot(host, action.name);
+      return;
+    }
+    case 'logSlots': {
+      const n = $node(action.key);
+      const host = $getSlotHost(n);
+      const frame = $getSlotFrame(n);
+      ctx.log.push([
+        'slots',
+        action.key,
+        $getSlotNames(n),
+        host === null ? null : host.getKey(),
+        $getSlotNameWithinHost(n),
+        frame === null ? null : frame.getKey(),
+      ]);
+      return;
+    }
+    case 'logSelectionSlotFrame': {
+      const frame = $getSelectionSlotFrame($getSelection());
+      ctx.log.push([
+        'selectionSlotFrame',
+        frame === null ? null : frame.getKey(),
+      ]);
+      return;
+    }
+    case 'logDfsWithSlots': {
+      const start =
+        action.start === undefined ? undefined : $node(action.start);
+      const end = action.end === undefined ? undefined : $node(action.end);
+      const nodes = action.reverse
+        ? $reverseDfsWithSlots(start, end)
+        : $dfsWithSlots(start, end);
+      ctx.log.push([
+        'dfsWithSlots',
+        action.reverse ?? false,
+        nodes.map(({depth, node: n}) => [n.getKey(), depth]),
+      ]);
+      return;
+    }
+    case 'logNodesExist':
+      ctx.log.push([
+        'nodesExist',
+        action.keys.map(key => [key, $getNodeByKey(key) !== null]),
+      ]);
+      return;
+    case 'setBlockId':
+      $setState($node(action.key), blockIdState, action.id ?? undefined);
+      return;
+    case 'logBlockIds':
+      ctx.log.push([
+        'blockIds',
+        action.keys.map(key => [key, $getBlockId($node(key))]),
+      ]);
+      return;
+    case 'logBlockById': {
+      const found = $getBlockById(action.id);
+      ctx.log.push([
+        'blockById',
+        action.id,
+        found === null ? null : found.getKey(),
+      ]);
+      return;
+    }
+    case 'logIdentified': {
+      const target = $node(action.key);
+      ctx.log.push([
+        'identified',
+        action.key,
+        $getExtensionOutput(BlockIdExtension).$isIdentifiedBlock(target),
+        $defaultIsIdentifiedBlock(target),
+        $isRootChildBlock(target),
+      ]);
+      return;
+    }
+    case 'logBlockHandles': {
+      const handles = $getBlockHandles();
+      if (action.name !== undefined) {
+        ctx.handles.set(action.name, handles);
+      }
+      ctx.log.push(['blockHandles', [...handles]]);
+      return;
+    }
+    case 'logBlockHandle':
+      ctx.log.push([
+        'blockHandle',
+        action.key,
+        $getBlockHandle($node(action.key)),
+      ]);
+      return;
+    case 'resolveBlockHandle': {
+      let read: Map<string, string> | undefined;
+      if (action.read !== undefined) {
+        read = ctx.handles.get(action.read);
+        if (read === undefined) {
+          throw new Error(`no handles kept as ${action.read}`);
+        }
+      }
+      const result = $resolveBlockHandle(
+        action.handle,
+        read === undefined ? undefined : {read},
+      );
+      ctx.log.push([
+        'resolved',
+        action.handle,
+        result.status,
+        result.status === 'found'
+          ? result.node.getKey()
+          : result.status === 'ambiguous'
+            ? [...result.candidates]
+            : result.status === 'invalid'
+              ? result.reason
+              : null,
+      ]);
+      return;
+    }
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -1960,6 +2188,7 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['DecoratorTextExtension', DecoratorTextExtension],
   ['EditorStateExtension', EditorStateExtension],
   ['AutoLinkExtension', AutoLinkExtension],
+  ['BlockIdExtension', BlockIdExtension],
   ['CheckListExtension', CheckListExtension],
   ['CodeExtension', CodeExtension],
   ['CodeIndentExtension', CodeIndentExtension],
@@ -1990,7 +2219,10 @@ export const PREFILLED_HISTORY_STATE =
  * ['log']` logs `['autoLink', url, prevUrl]`; `$canIndent: 'never'`
  * (TabIndentationExtension) indents nothing; `createInitialHistoryState:
  * 'prefilled'` (HistoryExtension) starts with PREFILLED_HISTORY_STATE on the
- * undo stack.
+ * undo stack. BlockIdExtension's `generateId: 'counter'` returns `id1`,
+ * `id2`..., `'stutter'` returns each of those twice in a row, and
+ * `'invalid'` always `not valid`; its `$isIdentifiedBlock: 'rootChild'` is
+ * `$isRootChildBlock`.
  */
 function configPreset(ctx: Context, field: string, name: string): unknown {
   switch (`${field}:${name}`) {
@@ -2006,6 +2238,18 @@ function configPreset(ctx: Context, field: string, name: string): unknown {
       };
     case '$canIndent:never':
       return () => false;
+    case 'generateId:counter': {
+      let n = 0;
+      return () => `id${++n}`;
+    }
+    case 'generateId:stutter': {
+      let n = 0;
+      return () => `id${(n++ >> 1) + 1}`;
+    }
+    case 'generateId:invalid':
+      return () => 'not valid';
+    case '$isIdentifiedBlock:rootChild':
+      return $isRootChildBlock;
     case 'createInitialHistoryState:prefilled':
       return (editor: LexicalEditor): HistoryState => ({
         current: null,
@@ -2320,6 +2564,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     defs: script.extensionDefs ?? {},
     editor: undefined as never,
     extensions: new Map(),
+    handles: new Map(),
     log: [],
     saved: new Map(),
   };

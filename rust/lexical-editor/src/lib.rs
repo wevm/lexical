@@ -101,6 +101,7 @@ mod selection_insert_nodes;
 mod selection_insert_text;
 mod serialized_export;
 mod set_dom_style;
+mod slot;
 #[cfg(feature = "text")]
 pub mod text;
 mod updates;
@@ -109,13 +110,14 @@ pub mod utf16;
 pub mod utils;
 
 pub use caret::{
-    CaretDirection, CaretKind, CaretRange, ChildCaret, CommonAncestorResult, NodeCaret, PointCaret,
-    RootMode, SiblingCaret, TextOffset, TextPointCaret, TextPointCaretSlice,
-    compare_point_caret_next, extend_caret_to_range, flip_direction, get_adjacent_child_caret,
-    get_caret_in_direction, get_caret_range, get_child_caret, get_child_caret_or_self,
-    get_collapsed_caret_range, get_common_ancestor, get_common_ancestor_result_branch_order,
-    get_sibling_caret, get_text_node_offset, get_text_point_caret, get_text_point_caret_slice,
-    make_stepwise_iterator,
+    CaretDirection, CaretKind, CaretRange, ChildCaret, CommonAncestorAcrossSlotsResult,
+    CommonAncestorResult, NodeCaret, PointCaret, RootMode, SiblingCaret, TextOffset,
+    TextPointCaret, TextPointCaretSlice, compare_point_caret_next,
+    compare_point_caret_next_across_slots, extend_caret_to_range, flip_direction,
+    get_adjacent_child_caret, get_caret_in_direction, get_caret_range, get_child_caret,
+    get_child_caret_or_self, get_collapsed_caret_range, get_common_ancestor,
+    get_common_ancestor_across_slots, get_common_ancestor_result_branch_order, get_sibling_caret,
+    get_text_node_offset, get_text_point_caret, get_text_point_caret_slice, make_stepwise_iterator,
 };
 pub use caret_utils::{
     SliceMode, SplitAtPointCaretNextOptions, caret_from_point, caret_range_from_selection,
@@ -136,11 +138,11 @@ pub use commands::{
     SELECTION_INSERT_CLIPBOARD_NODES_COMMAND, SET_TEXT_FORMAT_COMMAND, UNDO_COMMAND,
 };
 pub use editor::{
-    COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
+    COLLABORATION_TAG, COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
     COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, COMPOSITION_END_TAG, COMPOSITION_START_TAG,
     CUT_TAG, CreateEditorArgs, Editor, HISTORIC_TAG, HISTORY_MERGE_TAG, HISTORY_PUSH_TAG,
     LexicalCommand, NodeClass, PASTE_TAG, Transform, Unregister, UpdateListenerPayload,
-    UpdateOptions, create_command, create_editor,
+    UpdateOptions, create_command, create_editor, has_update_tag,
 };
 pub use editor_state::EditorState;
 pub use error::LexicalError;
@@ -156,7 +158,8 @@ pub use extension_core::{
 };
 pub use lexical_selection::{
     NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
-    create_node_selection, create_range_selection, get_selection, set_selection,
+    clamp_range_selection_to_slot_frame, create_node_selection, create_range_selection,
+    get_point_slot_frame, get_selection, is_same_frame, set_selection,
 };
 pub use lexical_utils::{
     clone_with_properties, copy_node, get_node_by_key, get_root, get_text_direction,
@@ -178,6 +181,10 @@ pub use selection_deletion::{
 pub use selection_insert_nodes::{insert_nodes, select_all, select_all_in};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
 pub use set_dom_style::{StyleObject, get_style_object_from_css};
+pub use slot::{
+    get_declared_slots, get_selection_slot_frame, get_slot, get_slot_frame, get_slot_host,
+    get_slot_name_within_host, get_slot_names, is_slot_child, is_slot_host, remove_slot, set_slot,
+};
 pub use updates::parse_serialized_node;
 
 /// The upstream Lexical release this port conforms to. The conformance

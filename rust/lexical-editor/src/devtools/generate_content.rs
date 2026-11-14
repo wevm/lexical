@@ -2,8 +2,9 @@
 //!
 //! Not ported: the `exportDOM` form, which needs `@lexical/html`; mark and
 //! table nodes and table selections (`@lexical/mark`, `@lexical/table`); and
-//! slots (`$getSlotNames`, `$resolveSlotContext`, `$slotValueMetaSuffix`),
-//! which the core doesn't have, so a tree prints no slot entries. A headless
+//! the printing of slots (`$resolveSlotContext`, `$slotValueMetaSuffix`),
+//! which no `devtools/tree` vector checks yet, so a tree prints no slot
+//! entries. A headless
 //! editor never composes, so no `compositionKey` line is printed.
 
 use crate::constants::{IS_DIRECTIONLESS, TEXT_TYPE_TO_FORMAT, lookup};

@@ -33,6 +33,7 @@ import {
   $createTabNode,
   $createTextNode,
   $getRoot,
+  $setSlot,
   $setState,
   createState,
 } from 'lexical';
@@ -79,6 +80,22 @@ test('serialization/core', () => {
           .setDirection('rtl')
           .append($createTextNode('שלום')),
       );
+    },
+    // Named slots under `$slots`, after the children, in canonical order
+    // (here, code unit order: no class declares them), with a slot of a slot
+    // value; their values are any non-inline blocks.
+    'named slots': () => {
+      const host = $createParagraphNode().append($createTextNode('body'));
+      $getRoot().append(host);
+      const title = $createParagraphNode().append($createTextNode('title'));
+      $setSlot(host, 'title', title);
+      $setSlot(
+        title,
+        'inner',
+        $createParagraphNode().append($createTextNode('inner')),
+      );
+      $setSlot(host, 'aside', $createParagraphNode());
+      $setSlot(host, '2', $createParagraphNode().setIndent(1));
     },
     // NodeState under `$`, which an editor that has none of these configs
     // writes back as it came. `count` 0 is the default, which is left out.

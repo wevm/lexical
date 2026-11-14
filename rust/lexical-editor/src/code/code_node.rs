@@ -234,6 +234,11 @@ fn insert_new_after(selection: &SelectionRef) -> Result<Option<NodeRef>, Lexical
 }
 
 impl LexicalNode for CodeNode {
+    /// `children: 'inline'` in its `$config()`.
+    fn declares_inline_children(&self) -> bool {
+        true
+    }
+
     fn get_type(&self) -> &'static str {
         "code"
     }

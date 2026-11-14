@@ -152,6 +152,11 @@ fn with_tag(json: Object, tag: Option<HeadingTagType>) -> Object {
 }
 
 impl LexicalNode for HeadingNode {
+    /// `children: 'inline'` in its `$config()`.
+    fn declares_inline_children(&self) -> bool {
+        true
+    }
+
     fn get_type(&self) -> &'static str {
         "heading"
     }
@@ -292,6 +297,11 @@ pub fn is_quote_node(node: &NodeRef) -> bool {
 }
 
 impl LexicalNode for QuoteNode {
+    /// `children: 'inline'` in its `$config()`.
+    fn declares_inline_children(&self) -> bool {
+        true
+    }
+
     fn get_type(&self) -> &'static str {
         "quote"
     }
@@ -468,8 +478,8 @@ fn range_selection() -> Option<SelectionRef> {
 /// events' handlers, which aren't ported, and `shouldHandlePasteAsFiles`
 /// (`DRAG_DROP_PASTE`) with files, which the port's `DataTransfer` doesn't
 /// carry. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form,
-/// and `SELECT_ALL_COMMAND` always selects the whole document, as JS does
-/// outside a slot (slots aren't ported).
+/// and `SELECT_ALL_COMMAND` selects the whole document, or the slot frame
+/// the caret is in.
 ///
 /// `COPY_COMMAND`, `CUT_COMMAND` and `PASTE_COMMAND` take the clipboard
 /// event's `clipboardData` (`None` for a keyboard or input event): a copy
@@ -647,7 +657,24 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
         editor.register_command(
             &SELECT_ALL_COMMAND,
             |_, _| {
-                select_all()?;
+                // Scoped to the slot frame the caret is in, if any: a
+                // whole-document select-all would escape the slot.
+                match get_selection().filter(SelectionRef::is_range) {
+                    Some(selection)
+                        if crate::slot::get_slot_frame(
+                            &selection
+                                .point(crate::Which::Anchor)
+                                .expect("a range")
+                                .get_node()?,
+                        )
+                        .is_some() =>
+                    {
+                        crate::selection_insert_nodes::select_all_in(&selection)?;
+                    }
+                    _ => {
+                        select_all()?;
+                    }
+                }
                 Ok(true)
             },
             COMMAND_PRIORITY_EDITOR,

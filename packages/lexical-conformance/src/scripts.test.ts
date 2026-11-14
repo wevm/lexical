@@ -5631,3 +5631,535 @@ test('scripts/selection-utils', () => {
     ],
   );
 });
+
+test('scripts/slots', () => {
+  // Named slots (LexicalSlot.ts): setting, moving, replacing and removing
+  // slot values; their place in text content, JSON and traversals; the
+  // refusals; GC of a removed host's slots; and typing, deleting and
+  // selecting into and out of them, where the slot boundary behaves like a
+  // shadow root. Keys: the root's descendants get 1, 2, 3… in document
+  // order, then each parsed slot value and its text in turn.
+  const act = (action: Record<string, unknown>): Action => action as Action;
+  const setSlot = (key: string, name: string, value: Node | string): Action =>
+    act(
+      typeof value === 'string'
+        ? {do: 'setSlot', key, name, valueKey: value}
+        : {do: 'setSlot', key, name, node: value},
+    );
+  const removeSlot = (key: string, name: string): Action =>
+    act({do: 'removeSlot', key, name});
+  const slots = (...keys: string[]): Action[] =>
+    keys.map(key => act({do: 'logSlots', key}));
+  const exist = (...keys: string[]): Action => act({do: 'logNodesExist', keys});
+  const frame: Action = act({do: 'logSelectionSlotFrame'});
+  const selectionText: Action = act({do: 'logSelectionText'});
+  const dfs = (
+    options: {start?: string; end?: string; reverse?: boolean} = {},
+  ): Action => act({do: 'logDfsWithSlots', ...options});
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const dispatch = (command: string, payload: Json = null): Step => ({
+    dispatch: command,
+    payload,
+  });
+  const richText = true;
+  emit(
+    'slots',
+    'Named slots: their values, JSON, text, traversal, GC and the selection and editing rules at a slot boundary.',
+    [
+      {
+        name: 'set, move, replace and remove',
+        steps: [
+          // Keys: the host paragraph 1, "Body" 2.
+          doc(p(t('Body'))),
+          // "Title" 3 and 4, "Aside" 5 and 6: canonical order puts aside
+          // first, whatever the order they were set in.
+          update(
+            setSlot('1', 'title', p(t('Title'))),
+            setSlot('1', 'aside', p(t('Aside'))),
+            ...slots('1', '3', '4', '2'),
+          ),
+          // Setting the same value again changes nothing.
+          update(setSlot('1', 'title', '3'), ...slots('1')),
+          // Move: the title's paragraph goes to "sub" and leaves "title".
+          update(setSlot('1', 'sub', '3'), ...slots('1', '3')),
+          // Replace: the previous value is removed, then collected.
+          update(setSlot('1', 'sub', p(t('New'))), ...slots('1')),
+          update(exist('3', '4', '7', '8')),
+          update(removeSlot('1', 'aside'), removeSlot('1', 'missing')),
+          update(exist('5', '6'), ...slots('1')),
+        ],
+      },
+      {
+        name: 'refusals',
+        steps: [
+          // Keys: the host paragraph 1, "Body" 2, the slot value 3, "T" 4.
+          doc(p(t('Body'))),
+          update(setSlot('1', 'title', p(t('T')))),
+          // A slot value can't be removed or replaced through the tree.
+          update(node('3', 'remove')),
+          update(node('3', 'replace', p(t('X')))),
+          // Inline values and reserved names are refused.
+          update(setSlot('1', 'inline', t('x'))),
+          update(setSlot('1', '__proto__', p())),
+          update(setSlot('1', 'constructor', p())),
+          // A host can't be slotted into its own slot value.
+          update(setSlot('3', 'loop', '1')),
+          // A slot value takes children as any block does.
+          update(node('3', 'append', [p(t('child'))])),
+        ],
+      },
+      {
+        name: 'JSON, text and depth',
+        steps: [
+          // Keys: the host 1, "Body" 2; from the parsed $slots, "b" 3 and 4,
+          // "10" 5 and 6, "a" 7, its slot "inner" 8 and 9, and "A" 10.
+          doc(p(t('Body'))),
+          update(
+            setSlot('1', 'b', p(t('B'))),
+            setSlot('1', '10', p(t('Ten'))),
+            setSlot('1', 'a', {
+              ...p(t('A')),
+              $slots: {inner: p(t('In'))},
+            } as Node),
+            ...slots('1', '7', '9', '10'),
+            act({do: 'logDepth', key: '10'}),
+            act({do: 'logDepth', key: '9'}),
+          ),
+          // A document that carries $slots parses back to the same JSON.
+          update(
+            act({
+              do: 'append',
+              key: 'root',
+              nodes: [
+                {
+                  ...p(t('Second')),
+                  // Out of order on purpose: canonical order sorts them.
+                  // eslint-disable-next-line sort-keys-fix/sort-keys-fix
+                  $slots: {z: p(t('Z')), y: p(t('Y'))},
+                } as Node,
+              ],
+            }),
+          ),
+        ],
+      },
+      {
+        name: 'dfs with slots',
+        steps: [
+          // Keys: the paragraph 1, "x" 2, the host 3, "Body" 4; the slots "s"
+          // 5 and 6, "r" 7, its slot "q" 8 and 9, and "R" 10.
+          doc(p(t('x')), p(t('Body'))),
+          update(
+            setSlot('3', 's', p(t('S'))),
+            setSlot('3', 'r', {...p(t('R')), $slots: {q: p(t('Q'))}} as Node),
+          ),
+          update(
+            dfs(),
+            dfs({reverse: true}),
+            dfs({start: '3'}),
+            dfs({end: '3'}),
+            dfs({reverse: true, start: '3'}),
+            dfs({start: '7'}),
+          ),
+        ],
+      },
+      {
+        extension: true,
+        name: 'GC of a removed host',
+        steps: [
+          // Keys: the paragraph 1, "a" 2, the host 3, "b" 4, the rule 5; the
+          // host's slot 6 and 7 with its own slot 8 and 9; the rule's slot
+          // 10 and 11.
+          doc(p(t('a')), p(t('b')), hr()),
+          update(
+            setSlot('3', 'one', {
+              ...p(t('One')),
+              $slots: {deep: p(t('Deep'))},
+            } as Node),
+            setSlot('5', 'caption', p(t('Caption'))),
+            ...slots('5', '10'),
+          ),
+          // A decorator host's text is its slots'.
+          update(act({do: 'logRootTextContent'})),
+          update(node('3', 'remove'), node('5', 'remove')),
+          update(exist('3', '4', '5', '6', '7', '8', '9', '10', '11')),
+        ],
+      },
+      {
+        name: 'typing and selecting in a slot',
+        richText,
+        steps: [
+          // Keys: "A" paragraph 1 and 2, the host 3, "Body" 4, its slot 5
+          // and "Title" 6.
+          doc(p(t('A')), p(t('Body'))),
+          update(setSlot('3', 'title', p(t('Title')))),
+          update(select(['6', 5, 'text']), call('insertText', '!'), frame),
+          // Enter in a block slot value is a no-op.
+          update(select(['6', 2, 'text']), call('insertParagraph')),
+          // Blocks pasted into it are flattened.
+          update(
+            select(['6', 1, 'text']),
+            call('insertNodes', [p(t('X')), p(t('Y'))]),
+          ),
+          // Select all stays in the slot.
+          update(select(['6', 1, 'text'])),
+          dispatch('SELECT_ALL_COMMAND'),
+          update(selectionText, frame),
+          // A selection from the slot into the body is clamped to the slot.
+          update(select(['6', 1, 'text'], ['4', 2, 'text']), selectionText),
+          update(select(['4', 2, 'text'], ['6', 1, 'text']), selectionText),
+          // A selection around the host carries the slot's text.
+          update(select(['2', 0, 'text'], ['4', 4, 'text']), selectionText),
+          // setBlocksType leaves a slot value alone.
+          update(
+            select(['6', 1, 'text']),
+            act({block: 'h1', do: 'setBlocksType'}),
+          ),
+          // Select all in the body selects the document.
+          update(select(['4', 1, 'text'])),
+          dispatch('SELECT_ALL_COMMAND'),
+          update(selectionText, frame),
+        ],
+      },
+      {
+        name: 'deleting at a slot boundary',
+        richText,
+        steps: [
+          // Keys: "A" paragraph 1 and 2, the host 3, "Body" 4, its slot 5
+          // and "Title" 6.
+          doc(p(t('A')), p(t('Body'))),
+          update(setSlot('3', 'title', p(t('Title')))),
+          // Backspace at the start of the slot stops there.
+          update(select(['6', 0, 'text'])),
+          dispatch('DELETE_CHARACTER_COMMAND', true),
+          // Backspace at the start of the host would merge it away with its
+          // slots: it stays.
+          update(select(['4', 0, 'text'])),
+          dispatch('DELETE_CHARACTER_COMMAND', true),
+          // Removing a range in the slot edits only the slot.
+          update(
+            select(['6', 1, 'text'], ['6', 4, 'text']),
+            call('removeText'),
+          ),
+          // Removing a range around the host keeps it: merging it would lose
+          // its slots.
+          update(
+            select(['2', 0, 'text'], ['4', 4, 'text']),
+            call('removeText'),
+          ),
+          update(exist('3', '5', '6')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'copy and mark through slots',
+        richText,
+        steps: [
+          // Keys: "A" paragraph 1 and 2, the host 3, "Body" 4, its slot 5
+          // and "Title" 6.
+          doc(p(t('A')), p(t('Body'))),
+          update(setSlot('3', 'title', p(t('Title')))),
+          // A copy around the host carries its slots whole.
+          update(select(['2', 0, 'text'], ['4', 2, 'text']), act({do: 'copy'})),
+          // A copy in the slot walks the slot.
+          update(select(['6', 1, 'text'], ['6', 3, 'text']), act({do: 'copy'})),
+          // Marking around the host marks the slot's text too.
+          update(
+            select(['2', 0, 'text'], ['4', 4, 'text']),
+            act({do: 'addMarkID', id: 'm1'}),
+          ),
+        ],
+      },
+    ],
+  );
+});
+
+test('scripts/block-id', () => {
+  // BlockIdExtension (@lexical/extension): ids assigned to the blocks an
+  // update creates, kept through splits, merges and setBlocksType, repaired
+  // when a paste or a clone repeats one, positional ids for a document
+  // loaded without ids (and derived ids for repeated ones), handles, and
+  // the config options. `generateId: 'counter'` makes ids id1, id2...; the
+  // state JSON of each step shows every id (`"$": {"blockId": ...}`).
+  const act = (action: Record<string, unknown>): Action => action as Action;
+  const ids = (...keys: string[]): Action => act({do: 'logBlockIds', keys});
+  const byId = (id: string): Action => act({do: 'logBlockById', id});
+  const setId = (key: string, id: string | null): Action =>
+    act({do: 'setBlockId', id, key});
+  const identified = (key: string): Action => act({do: 'logIdentified', key});
+  const handles = (name?: string): Action =>
+    act(
+      name === undefined
+        ? {do: 'logBlockHandles'}
+        : {do: 'logBlockHandles', name},
+    );
+  const handle = (key: string): Action => act({do: 'logBlockHandle', key});
+  const resolve = (value: string, read?: string): Action =>
+    act(
+      read === undefined
+        ? {do: 'resolveBlockHandle', handle: value}
+        : {do: 'resolveBlockHandle', handle: value, read},
+    );
+  const withId = (block: Node, id: string): Node =>
+    ({...block, $: {blockId: id}}) as Node;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const enter = run('INSERT_PARAGRAPH_COMMAND');
+  const backspace = run('DELETE_CHARACTER_COMMAND', true);
+  const start = (...blocks: Node[]): Step =>
+    update(node('root', 'clear'), {do: 'append', key: 'root', nodes: blocks});
+  const blockId = (config: {[key: string]: Json} = {}): ExtensionArg => [
+    'BlockIdExtension',
+    {generateId: 'counter', ...config},
+  ];
+  const root = (...children: Node[]) => ({
+    root: {
+      children,
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'root',
+      version: 1,
+    },
+  });
+  // A test extension that loads `json` as the initial editor state.
+  const loads = (json: object): ExtensionSpec => ({
+    initialEditorState: {json: json as never},
+    name: 'test/load',
+    phases: [],
+  });
+  emit(
+    'block-id',
+    'BlockIdExtension: ids on creation, kept through split, merge and setBlocksType, repaired after a paste or a clone repeats one, positional and derived ids for a document loaded without ids, handles and their resolution, and the disabled, $isIdentifiedBlock, generateId and repairTransforms options.',
+    [
+      {
+        extensions: ['RichTextExtension', blockId()],
+        name: 'ids on creation, split and merge',
+        steps: [
+          // The initial paragraph got a positional id at the load.
+          update(ids('1'), identified('1')),
+          // Keys: the paragraph 2, its text 3. It sits where the initial
+          // paragraph sat, so it takes its id.
+          start(p(t('abcd'))),
+          update(select(['3', 2, 'text'])),
+          // Enter in the middle: the new paragraph 5 (with the text 4)
+          // gets a new id.
+          enter,
+          update(ids('2', '5'), byId('id1'), byId('id2')),
+          // Enter at the start of 5: its id follows the content, and the
+          // emptied paragraph gets a new one.
+          update(select(['4', 0, 'text'])),
+          enter,
+          update(byId('id1'), byId('id2')),
+          // Backspace at the start merges the paragraph into the one
+          // before it, which keeps its id.
+          backspace,
+          backspace,
+          update(ids('2'), byId('id1'), byId('id2')),
+          type('x'),
+          // setBlocksType: the heading takes the paragraph's id.
+          update({block: 'h1', do: 'setBlocksType'}),
+        ],
+      },
+      {
+        extensions: ['RichTextExtension', blockId()],
+        name: 'repairs after a paste and a clone',
+        steps: [
+          // Keys: "one" 2 and 3, "two" 4 and 5.
+          start(p(t('one')), p(t('two'))),
+          update(select(['5', 3, 'text'])),
+          // A pasted block that carries an id already in the document
+          // yields it to the block it was copied from; one with an unused
+          // id keeps it. (The first block merges into "two".)
+          update({
+            do: 'pasteLexical',
+            nodes: [
+              p(t('merged')),
+              withId(p(t('pasted')), 'id1'),
+              withId(p(t('fresh')), 'kept'),
+            ],
+          }),
+          update(byId('id1'), byId('kept')),
+          // A clone inserted with the same id.
+          update(node('2', 'insertAfter', withId(p(t('clone')), 'id1'))),
+          update(byId('id1')),
+          // Paste a copy of the first block and of the clone at the end of
+          // the first (a copy would log the editor's random namespace): the
+          // copy of the clone repeats its id.
+          update(select(['3', 3, 'text']), {
+            do: 'pasteLexical',
+            nodes: [
+              withId(p(t('one')), 'yV2Q4QYdu_-lckETHqioD'),
+              withId(p(t('clone')), 'id3'),
+            ],
+          }),
+          // An invalid id set directly reads as none, and is replaced.
+          update(setId('2', 'not valid'), ids('2')),
+          update(ids('2')),
+        ],
+      },
+      {
+        extensionDefs: {
+          load: loads(
+            root(
+              p(t('first')),
+              q(t('second')),
+              withId(p(t('dup a')), 'same'),
+              withId(p(t('dup b')), 'same'),
+              list('bullet', li(t('item')), li(list('bullet', li(t('deep'))))),
+            ),
+          ),
+        },
+        extensions: ['load', 'RichTextExtension', 'ListExtension', blockId()],
+        name: 'positional and derived ids on load',
+        steps: [
+          // Keys in document order: the list is 9, its items 10 and 12, the
+          // nested list 13 and its item 14.
+          update(
+            identified('9'),
+            identified('10'),
+            identified('12'),
+            identified('13'),
+            identified('14'),
+            byId('same'),
+          ),
+          // A block without an id gets a generated one after the load.
+          update(select(['2', 5, 'text'])),
+          enter,
+        ],
+      },
+      {
+        extensions: ['RichTextExtension', blockId()],
+        name: 'slots',
+        steps: [
+          // Keys: the host 2, its text 3, the slot value 4.
+          start(p(t('host'))),
+          update(
+            act({do: 'setSlot', key: '2', name: 'title', node: p(t('Title'))}),
+          ),
+          update(ids('2', '4'), identified('4'), byId('id1')),
+        ],
+      },
+      {
+        extensions: ['RichTextExtension', blockId()],
+        name: 'handles',
+        steps: [
+          start(p(t('a')), p(t('b')), p(t('c'))),
+          // blk6251 and blk6912 hash to keys that share 4 characters.
+          update(setId('2', 'blk6251'), setId('4', 'blk6912')),
+          update(
+            handles('read'),
+            handle('2'),
+            handle('4'),
+            handle('6'),
+            resolve('4oXJ'),
+            resolve('4oXJt'),
+            resolve('abc'),
+            resolve('a b'),
+            resolve('ZZZZ'),
+            resolve('blk6251-and-more'),
+            resolve('id3'),
+          ),
+          // The read keeps naming what it named.
+          update(node('2', 'remove')),
+          update(
+            resolve('4oXJ'),
+            resolve('4oXJ', 'read'),
+            resolve('4oXJe', 'read'),
+            resolve('4oXJt', 'read'),
+            handles(),
+          ),
+        ],
+      },
+      {
+        extensions: ['RichTextExtension', blockId({disabled: true})],
+        name: 'disabled, then enabled',
+        steps: [
+          start(p(t('a')), p(t('b'))),
+          update(ids('2', '4'), setId('2', 'manual')),
+          update(byId('manual'), handles(), handle('2')),
+          {setSignals: [['BlockIdExtension', 'disabled', false]]},
+          update(ids('2', '4'), byId('manual'), handles()),
+          {setSignals: [['BlockIdExtension', 'disabled', true]]},
+          update(select(['5', 1, 'text'])),
+          enter,
+        ],
+      },
+      {
+        extensions: [
+          'RichTextExtension',
+          'ListExtension',
+          blockId({$isIdentifiedBlock: 'rootChild'}),
+        ],
+        name: '$isIdentifiedBlock',
+        steps: [
+          start(list('number', li(t('one')), li(t('two'))), p(t('after'))),
+          update(identified('2'), identified('3'), identified('7')),
+        ],
+      },
+      {
+        extensions: ['RichTextExtension', blockId({generateId: 'stutter'})],
+        name: 'generateId that repeats itself',
+        steps: [start(p(t('a')), p(t('b')), p(t('c')))],
+      },
+      {
+        extensions: ['RichTextExtension', blockId({generateId: 'invalid'})],
+        name: 'generateId that never makes a valid id',
+        steps: [
+          start(p(t('a'))),
+          update(node('2', 'insertAfter', p(t('b')))),
+          update(ids('2')),
+        ],
+      },
+      {
+        extensions: ['RichTextExtension', blockId()],
+        name: 'collaboration and historic updates are repaired after',
+        steps: [
+          start(p(t('a'))),
+          {
+            tag: ['collaboration'],
+            update: [node('2', 'insertAfter', p(t('remote')))],
+          },
+          {tag: ['historic'], update: [node('4', 'insertAfter', p(t('old')))]},
+        ],
+      },
+      {
+        extensions: ['RichTextExtension', blockId({repairTransforms: false})],
+        name: 'repairTransforms: false',
+        steps: [
+          start(p(t('a'))),
+          {
+            tag: ['collaboration'],
+            update: [
+              // A copy of the initial paragraph's positional id.
+              node(
+                '2',
+                'insertAfter',
+                withId(p(t('copy')), 'yV2Q4QYdu_-lckETHqioD'),
+              ),
+              node('2', 'insertAfter', p(t('remote'))),
+            ],
+          },
+        ],
+      },
+      {
+        extensions: [
+          'RichTextExtension',
+          ['HistoryExtension', {disabled: false}],
+          blockId(),
+        ],
+        name: 'undo and redo keep ids',
+        steps: [
+          start(p(t('ab'))),
+          update(select(['3', 1, 'text'])),
+          {...enter, now: 1000},
+          {...run('UNDO_COMMAND'), now: 2000},
+          update(byId('id1')),
+          {...run('REDO_COMMAND'), now: 3000},
+          update(byId('id1')),
+        ],
+      },
+    ],
+  );
+});

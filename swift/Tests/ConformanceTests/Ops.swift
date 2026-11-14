@@ -183,6 +183,8 @@ private final class ScriptContext {
   var clipboard: DataTransfer?
   /// The editor states `saveEditorState` kept, by name.
   var saved: [String: EditorState] = [:]
+  /// The block handles `logBlockHandles` kept, by name.
+  var handles: [String: JSMap<String, String>] = [:]
 
   init(_ editor: Editor? = nil) { self.editor = editor }
 
@@ -614,6 +616,119 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
   case "logSelectionText":
     guard let selection = try getSelection() else { throw ScriptError("no selection") }
     ctx.log.append(.array([.string("selectionText"), .string(try selection.getTextContent())]))
+  case "setSlot":
+    let host = try node(action["key"]?.stringValue.orThrow() ?? "")
+    guard isSlotHost(host) else { throw ScriptError("not a slot host") }
+    let value: LexicalNode
+    if let valueKey = action["valueKey"]?.stringValue {
+      value = try node(valueKey)
+    } else {
+      value = try parse(.array([action["node"] ?? .null]))[0]
+    }
+    try setSlot(host, action["name"]?.stringValue.orThrow() ?? "", value)
+  case "removeSlot":
+    let host = try node(action["key"]?.stringValue.orThrow() ?? "")
+    guard isSlotHost(host) else { throw ScriptError("not a slot host") }
+    try removeSlot(host, action["name"]?.stringValue.orThrow() ?? "")
+  case "logSlots":
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    let slotted = try node(key)
+    let keyOf: (LexicalNode?) -> JSONValue = { $0.map { .string($0.getKey()) } ?? .null }
+    ctx.log.append(
+      .array([
+        .string("slots"), .string(key), strings(try getSlotNames(slotted)),
+        keyOf(try getSlotHost(slotted)),
+        try getSlotNameWithinHost(slotted).map { .string($0) } ?? .null,
+        keyOf(try getSlotFrame(slotted)),
+      ]))
+  case "logSelectionSlotFrame":
+    let frame = try getSelectionSlotFrame(getSelection())
+    ctx.log.append(
+      .array([.string("selectionSlotFrame"), frame.map { .string($0.getKey()) } ?? .null]))
+  case "logDfsWithSlots":
+    let start = try action["start"]?.stringValue.map { try node($0) }
+    let end = try action["end"]?.stringValue.map { try node($0) }
+    let reverse = action["reverse"]?.boolValue ?? false
+    let nodes = try reverse ? reverseDfsWithSlots(start, end) : dfsWithSlots(start, end)
+    ctx.log.append(
+      .array([
+        .string("dfsWithSlots"), .bool(reverse),
+        .array(nodes.map { .array([.string($0.node.getKey()), .int($0.depth)]) }),
+      ]))
+  case "logNodesExist":
+    let keys = action["keys"]?.arrayValue ?? []
+    ctx.log.append(
+      .array([
+        .string("nodesExist"),
+        .array(
+          try keys.map { key in
+            let key = key.stringValue ?? ""
+            return .array([.string(key), .bool(try getNodeByKey(key) != nil)])
+          }),
+      ]))
+  case "setBlockId":
+    try setState(
+      node(action["key"]?.stringValue ?? ""), blockIdState, action["id"]?.stringValue)
+  case "logBlockIds":
+    let keys = action["keys"]?.arrayValue ?? []
+    ctx.log.append(
+      .array([
+        .string("blockIds"),
+        .array(
+          try keys.map { key in
+            let key = key.stringValue ?? ""
+            return .array([.string(key), try getBlockId(node(key)).map { .string($0) } ?? .null])
+          }),
+      ]))
+  case "logBlockById":
+    let id = action["id"]?.stringValue ?? ""
+    ctx.log.append(
+      .array([
+        .string("blockById"), .string(id),
+        try getBlockById(id).map { .string($0.getKey()) } ?? .null,
+      ]))
+  case "logIdentified":
+    let key = action["key"]?.stringValue ?? ""
+    let target = try node(key)
+    ctx.log.append(
+      .array([
+        .string("identified"), .string(key),
+        .bool(try getExtensionOutput(BlockIdExtension).isIdentifiedBlock(target)),
+        .bool(try defaultIsIdentifiedBlock(target)), .bool(try isRootChildBlock(target)),
+      ]))
+  case "logBlockHandles":
+    let handles = try getBlockHandles()
+    if let name = action["name"]?.stringValue {
+      ctx.handles[name] = handles
+    }
+    ctx.log.append(
+      .array([
+        .string("blockHandles"),
+        .array(handles.map { id, handle in .array([.string(id), .string(handle)]) }),
+      ]))
+  case "logBlockHandle":
+    let key = action["key"]?.stringValue ?? ""
+    ctx.log.append(
+      .array([
+        .string("blockHandle"), .string(key),
+        try getBlockHandle(node(key)).map { .string($0) } ?? .null,
+      ]))
+  case "resolveBlockHandle":
+    let handle = action["handle"]?.stringValue ?? ""
+    var options: BlockHandleOptions?
+    if let name = action["read"]?.stringValue {
+      guard let read = ctx.handles[name] else { throw ScriptError("no handles kept as \(name)") }
+      options = BlockHandleOptions(read: read)
+    }
+    let result = try resolveBlockHandle(handle, options)
+    let detail: JSONValue =
+      switch result {
+      case .found(let found): .string(found.getKey())
+      case .ambiguous(_, let candidates): .array(candidates.map { .string($0) })
+      case .invalid(_, let reason): .string(reason.rawValue)
+      case .notFound: .null
+      }
+    ctx.log.append(.array([.string("resolved"), .string(handle), .string(result.status), detail]))
   case "setState":
     try ctx.state(action["state"]?.stringValue.orThrow() ?? "").set(
       node(action["key"]?.stringValue.orThrow() ?? ""), action["value"] ?? .null)

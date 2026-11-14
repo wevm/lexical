@@ -16,7 +16,8 @@
 //! `EditorStateExtension`, `DecoratorTextExtension`,
 //! `NormalizeInlineElementsExtension` (which `RichTextExtension` and
 //! `PlainTextExtension` depend on), `TabIndentationExtension`,
-//! `SelectBlockExtension` and the config of `PreventSelectAllExtension`.
+//! `SelectBlockExtension`, `BlockIdExtension` (block ids, positional ids and
+//! handles) and the config of `PreventSelectAllExtension`.
 //! The other packages' extensions are in their modules, behind their
 //! features (`rich_text_extension`, `list_extension`...). The types it builds
 //! on are `lexical`'s `extension-core`, at the crate root
@@ -32,6 +33,8 @@
 //! reads a `KeyboardEvent`; and the package's other extensions
 //! (rust/PARITY.md).
 
+mod block_handles;
+mod block_id_extension;
 mod clear_editor_extension;
 mod config;
 mod decorator_text_extension;
@@ -45,11 +48,20 @@ mod initial_state_extension;
 mod lexical_builder;
 mod named_signals;
 mod normalize_inline_elements_extension;
+mod positional_block_id;
 mod select_block_extension;
 pub mod signals;
 mod tab_indentation_extension;
 mod watched_signal;
 
+pub use block_id_extension::{
+    BlockHandleInvalidReason, BlockHandleOptions, BlockHandleResult, BlockIdConfig,
+    BlockIdConfigOverrides, BlockIdExtensionType, BlockIdOutput, BlockIdRuntime, GenerateId,
+    GetBlockByIdFn, GetBlockHandleFn, GetBlockHandlesFn, IsIdentifiedBlock,
+    MIN_BLOCK_HANDLE_LENGTH, ResolveBlockHandleFn, block_id_extension, block_id_state,
+    default_is_identified_block, generate_block_id, get_block_by_id, get_block_handle,
+    get_block_handles, get_block_id, is_root_child_block, resolve_block_handle,
+};
 pub use clear_editor_extension::{
     ClearEditorConfig, ClearEditorConfigOverrides, ClearEditorExtensionType, ClearEditorOutput,
     OnClear, clear_editor_extension, register_clear_editor,

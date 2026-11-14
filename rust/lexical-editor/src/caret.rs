@@ -9,9 +9,9 @@
 //! that say which kinds a function takes or returns, as the JS types do.
 //!
 //! A caret's origin is a [`NodeRef`], which always resolves the latest
-//! version of the node, so `getLatest()` returns the same caret. Slots are
-//! not ported, so no node is a slot value and `$filterByMode` only stops at
-//! roots.
+//! version of the node, so `getLatest()` returns the same caret.
+//! `$filterByMode` stops at roots and at slotted nodes, whose up-link is
+//! their host rather than a parent.
 
 use crate::LexicalError;
 use crate::error::invariant;
@@ -96,8 +96,8 @@ fn filter_by_mode(node: Option<NodeRef>, mode: RootMode) -> Option<NodeRef> {
         RootMode::Root => node.is_root(),
         RootMode::ShadowRoot => is_root_or_shadow_root(&*node.get_latest()),
     };
-    // A slot value is a boundary too, once slots are ported.
-    (!is_boundary).then_some(node)
+    // A slotted node has no parent: it is an upward boundary in every mode.
+    (!is_boundary && crate::slot::get_slot_host_key(&node).is_none()).then_some(node)
 }
 
 impl PointCaret {
@@ -885,4 +885,128 @@ pub fn get_common_ancestor(a: &NodeRef, b: &NodeRef) -> Option<CommonAncestorRes
         child = Some(p);
     }
     None
+}
+
+/// `CommonAncestorAcrossSlotsResult` (`@experimental`): like
+/// [`CommonAncestorResult`], except that the common ancestor may be a
+/// decorator slot host, and the node on either side below it may be one of
+/// its slot values rather than a child.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CommonAncestorAcrossSlotsResult {
+    Same {
+        common_ancestor: NodeRef,
+    },
+    Ancestor {
+        common_ancestor: NodeRef,
+        b: NodeRef,
+    },
+    Descendant {
+        common_ancestor: NodeRef,
+        a: NodeRef,
+    },
+    Branch {
+        common_ancestor: NodeRef,
+        a: NodeRef,
+        b: NodeRef,
+    },
+}
+
+/// `$getParentAcrossSlots(node)`.
+fn get_parent_across_slots(node: &NodeRef) -> Option<NodeRef> {
+    node.get_parent()
+        .or_else(|| crate::slot::get_slot_host(node))
+}
+
+/// `$getCommonAncestorAcrossSlots(a, b)` (`@experimental`): like
+/// [`get_common_ancestor`], but a slot value's parent is its host.
+pub fn get_common_ancestor_across_slots(
+    a: &NodeRef,
+    b: &NodeRef,
+) -> Option<CommonAncestorAcrossSlotsResult> {
+    let mut a_path: HashMap<NodeKey, Option<NodeRef>> = HashMap::new();
+    let mut child: Option<NodeRef> = None;
+    let mut node = Some(a.clone());
+    while let Some(n) = node {
+        a_path.insert(n.get_key().to_owned(), child);
+        node = get_parent_across_slots(&n);
+        child = Some(n);
+    }
+    let mut child: Option<NodeRef> = None;
+    let mut node = Some(b.clone());
+    while let Some(n) = node {
+        if let Some(a_child) = a_path.get(n.get_key()) {
+            let common_ancestor = n.clone();
+            return Some(match (a_child.clone(), child) {
+                (None, None) => CommonAncestorAcrossSlotsResult::Same { common_ancestor },
+                (None, Some(b)) => CommonAncestorAcrossSlotsResult::Ancestor { common_ancestor, b },
+                (Some(a), None) => {
+                    CommonAncestorAcrossSlotsResult::Descendant { common_ancestor, a }
+                }
+                (Some(a), Some(b)) => CommonAncestorAcrossSlotsResult::Branch {
+                    common_ancestor,
+                    a,
+                    b,
+                },
+            });
+        }
+        node = get_parent_across_slots(&n);
+        child = Some(n);
+    }
+    None
+}
+
+/// `$comparePointCaretNextAcrossSlots(a, b)` (`@experimental`): like
+/// [`compare_point_caret_next`], with a host's slot values, in slot order,
+/// after the points before the host and before its children. `None` when
+/// the carets have no common ancestor.
+pub fn compare_point_caret_next_across_slots(a: &PointCaret, b: &PointCaret) -> Option<Ordering> {
+    use crate::slot::get_slot_host_key;
+    Some(
+        match get_common_ancestor_across_slots(&a.origin, &b.origin)? {
+            CommonAncestorAcrossSlotsResult::Same { .. } => compare_same_origin_carets(a, b),
+            CommonAncestorAcrossSlotsResult::Ancestor { b: node_b, .. } => {
+                if a.is_child_caret() && get_slot_host_key(&node_b).is_none() {
+                    Ordering::Less
+                } else {
+                    Ordering::Greater
+                }
+            }
+            CommonAncestorAcrossSlotsResult::Descendant { a: node_a, .. } => {
+                if b.is_child_caret() && get_slot_host_key(&node_a).is_none() {
+                    Ordering::Greater
+                } else {
+                    Ordering::Less
+                }
+            }
+            CommonAncestorAcrossSlotsResult::Branch {
+                common_ancestor,
+                a: node_a,
+                b: node_b,
+            } => {
+                let a_slot = get_slot_host_key(&node_a).is_some();
+                let b_slot = get_slot_host_key(&node_b).is_some();
+                if a_slot && b_slot {
+                    // Two slot values of one host: slot order.
+                    for key in crate::slot::get_slot_map(&common_ancestor).values() {
+                        if key == node_a.get_key() || key == node_b.get_key() {
+                            return Some(if key == node_a.get_key() {
+                                Ordering::Less
+                            } else {
+                                Ordering::Greater
+                            });
+                        }
+                    }
+                }
+                if a_slot {
+                    Ordering::Less
+                } else if b_slot {
+                    Ordering::Greater
+                } else if node_a.is_before(&node_b) {
+                    Ordering::Less
+                } else {
+                    Ordering::Greater
+                }
+            }
+        },
+    )
 }

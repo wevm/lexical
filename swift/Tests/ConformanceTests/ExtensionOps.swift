@@ -46,6 +46,7 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "DecoratorTextExtension": DecoratorTextExtension
   case "EditorStateExtension": EditorStateExtension
   case "AutoLinkExtension": AutoLinkExtension
+  case "BlockIdExtension": BlockIdExtension
   case "CheckListExtension": CheckListExtension
   case "CodeExtension": CodeExtension
   case "CodeIndentExtension": CodeIndentExtension
@@ -312,6 +313,35 @@ final class TestExtensions {
           }
           return true
         })
+    case "BlockIdExtension":
+      return try configured(
+        BlockIdExtension,
+        partials(key, configs) { (p: inout Partial<BlockIdConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          case "repairTransforms": p.set(\.repairTransforms, try bool(value))
+          case "generateId" where value.stringValue == "counter":
+            // `id1`, `id2`...
+            var n = 0
+            p.set(\.generateId) {
+              n += 1
+              return "id\(n)"
+            }
+          case "generateId" where value.stringValue == "stutter":
+            // Each of `id1`, `id2`... twice in a row.
+            var n = 0
+            p.set(\.generateId) {
+              defer { n += 1 }
+              return "id\((n >> 1) + 1)"
+            }
+          case "generateId" where value.stringValue == "invalid":
+            p.set(\.generateId) { "not valid" }
+          case "$isIdentifiedBlock" where value.stringValue == "rootChild":
+            p.set(\.isIdentifiedBlock, isRootChildBlock)
+          default: return false
+          }
+          return true
+        })
     case "SelectBlockExtension":
       return try configured(
         SelectBlockExtension,
@@ -364,6 +394,9 @@ final class TestExtensions {
     case ("TabIndentationExtension", "maxIndent"):
       try getExtensionDependencyFromEditor(editor, TabIndentationExtension).output.maxIndent.set(
         try intOrNull(value))
+    case ("BlockIdExtension", "disabled"):
+      try getExtensionDependencyFromEditor(editor, BlockIdExtension).output.disabled.set(
+        try bool(value))
     case ("SelectBlockExtension", "disabled"):
       try getExtensionDependencyFromEditor(editor, SelectBlockExtension).output.disabled.set(
         try bool(value))

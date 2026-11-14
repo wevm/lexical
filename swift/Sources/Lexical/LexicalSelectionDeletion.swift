@@ -3,11 +3,14 @@
 //
 // JS moves the selection by a character, word or line through the DOM's
 // `Selection.modify`, after `$modifySelectionAroundDecoratorsAndBlocks` has
-// handled the moves that cross decorators and blocks. Without a view (a
-// headless editor, and JS under jsdom, which has no `modify`) only that
-// first step runs. With a view, `Editor.selectionMovement` stands in for
-// `Selection.modify`: it says where the caret lands, and the rest follows
-// `$extendSelectionForDeletion` and `modify`.
+// handled the moves that cross decorators and blocks. `Editor.selectionMovement`
+// stands in for `Selection.modify`: it says where the caret lands, and the
+// rest follows `$extendSelectionForDeletion` and `modify`. Without one, the
+// port does what JS does without the DOM's: an editor with no root element
+// has no window, and the step throws ("window object not found", from
+// `getWindow`) as a headless JS editor does; one with a root element but no
+// movement stops after the first step, as JS does under jsdom, whose
+// selection has no `modify`.
 
 /// Where a caret lands when it moves one unit, which only text layout knows
 /// (the DOM's `Selection.modify` in JS).
@@ -125,6 +128,18 @@ private func modifySelectionAroundDecoratorsAndBlocks(
   return checkForBlock || !isLineBoundary
 }
 
+/// `getDOMSelection(getWindow(editor))` as the movement steps read it: the
+/// editor's `selectionMovement`, or `nil` when it has a root element but no
+/// movement. An editor without either has no window, and this throws.
+private func selectionMovement() throws -> (any SelectionMovement)? {
+  let editor = try getActiveEditor()
+  if let movement = editor.selectionMovement {
+    return movement
+  }
+  try invariant(editor.getRootElement() != nil, "window object not found")
+  return nil
+}
+
 /// `$extendSelectionForDeletion`. Returns whether it stopped at a slot.
 private func extendSelectionForDeletion(
   _ selection: RangeSelection, _ isBackward: Bool, _ granularity: SelectionGranularity
@@ -132,9 +147,9 @@ private func extendSelectionForDeletion(
   if try modifySelectionAroundDecoratorsAndBlocks(selection, .extend, isBackward, granularity) {
     return false
   }
-  // JS continues through `Selection.modify`; without a view the port stops
-  // here, as JS does when the DOM selection has no `modify`.
-  guard let movement = try getActiveEditor().selectionMovement,
+  // JS continues through `Selection.modify`, which the view's movement
+  // stands in for.
+  guard let movement = try selectionMovement(),
     let landed = try movement.landedPoint(
       from: selection.focus, isBackward: isBackward, granularity: granularity)
   else {
@@ -322,7 +337,7 @@ extension RangeSelection {
       return
     }
     // JS continues through the DOM selection; the view's movement stands in.
-    guard let movement = try getActiveEditor().selectionMovement,
+    guard let movement = try selectionMovement(),
       let landed = try movement.landedPoint(
         from: focus, isBackward: isBackward, granularity: granularity)
     else {

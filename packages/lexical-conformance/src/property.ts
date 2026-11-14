@@ -606,8 +606,9 @@ export function sequenceEditor(): LexicalEditor {
   );
   // The window of the upstream unit tests (jsdom), with no root element: the
   // deletion commands read its DOM selection, which has no `modify` there, so
-  // they resolve in the model, as the Swift editor does without a view. A
-  // headless JS editor has no window at all and throws instead.
+  // they resolve in the model (the Swift runner gives its editor a
+  // `selectionMovement` that never moves). A headless JS editor has no window
+  // at all and throws instead, as a headless Swift or Rust editor does.
   (editor as unknown as {_window: unknown})._window = globalThis.window;
   return editor;
 }

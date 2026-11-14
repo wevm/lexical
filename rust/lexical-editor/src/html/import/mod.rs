@@ -56,9 +56,10 @@ pub use dom_import_extension::{
 #[cfg(feature = "extension")]
 pub use import_context::{
     DomNodePredicate, ImportContextPairOrUpdater, ImportSession, ImportSourceKind,
-    ImportStateConfig, WhitespaceImportConfig, create_import_state, default_is_inline,
-    default_preserves_whitespace, get_import_context_value, import_overlays, import_source,
-    import_text_format, import_text_style, import_whitespace_config, with_import_context,
+    ImportStateConfig, SharedDataTransfer, WhitespaceImportConfig, create_import_state,
+    default_is_inline, default_preserves_whitespace, get_import_context_value, import_overlays,
+    import_source, import_source_data_transfer, import_text_format, import_text_style,
+    import_whitespace_config, with_import_context,
 };
 #[cfg(feature = "extension")]
 pub use inline_styles_from_style_sheets::inline_styles_from_style_sheets;

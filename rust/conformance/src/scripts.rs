@@ -1711,7 +1711,9 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
         }
         Some("copy") => {
             let data_transfer = Rc::new(DataTransfer::new());
-            let data = clipboard::get_clipboard_data_from_selection(get_selection().as_ref())?;
+            // `$clipboardDataWithoutHtml`: the default stacks less `text/html`.
+            let mut data = clipboard::get_clipboard_data_from_selection(get_selection().as_ref())?;
+            data.retain(|(mime, _)| mime != "text/html");
             clipboard::set_lexical_clipboard_data_transfer(&data_transfer, &data);
             let entries = data_transfer
                 .types()

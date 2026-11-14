@@ -22,20 +22,26 @@ use crate::{CUT_TAG, PASTE_TAG, UpdateOptions};
 use crate::{Editor, LexicalError, Unregister};
 use std::rc::Rc;
 
-/// `onCopyForPlainText(event, editor)`: in an update, the selection's text
-/// as the clipboard data's `text/plain`, unless nothing is selected. JS
-/// also writes `$getHtmlContent(editor)` as `text/html` first, which comes
-/// with `html` (rust/PARITY.md).
+/// `onCopyForPlainText(event, editor)`: in an update, the selection's HTML
+/// (`$getHtmlContent`, with the `html` feature) as the clipboard data's
+/// `text/html` and its text as `text/plain`, unless nothing is selected.
 fn on_copy_for_plain_text(clipboard_data: Option<Rc<DataTransfer>>) -> Result<(), LexicalError> {
     let Some(editor) = crate::updates::get_active_editor() else {
         return Ok(());
     };
+    #[cfg(feature = "html")]
+    let html_editor = editor.clone();
     editor.update(
         move || {
             let selection = get_selection();
             if let (Some(selection), Some(clipboard_data)) = (selection, clipboard_data)
                 && !selection.range().is_some_and(|r| r.is_collapsed())
             {
+                #[cfg(feature = "html")]
+                clipboard_data.set_data(
+                    "text/html",
+                    &crate::clipboard::get_html_content(&html_editor, Some(&selection))?,
+                );
                 clipboard_data.set_data("text/plain", &selection.get_text_content()?);
             }
             Ok(())

@@ -41,13 +41,12 @@ use crate::lexical_dom::{
     get_document, is_block_dom_node, is_inline_dom_node,
 };
 use crate::lexical_selection::SelectionRef;
-use crate::node::{LexicalNode, NodeRef};
+use crate::node::NodeRef;
 use crate::nodes::artificial::{create_artificial_node, is_artificial_node};
 use crate::nodes::line_break::create_line_break_node;
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::{Editor, LexicalError, get_root};
 use import::inline_styles_from_style_sheets_dom;
-use std::rc::Rc;
 
 /// `IGNORE_TAGS`.
 const IGNORE_TAGS: [&str; 2] = ["STYLE", "SCRIPT"];
@@ -190,65 +189,6 @@ fn append_terminating_line_break(element: &DomNode, last_included_child: Option<
     }
 }
 
-/// `$sliceSelectedTextNodeContent(selection, textNode, 'clone')`
-/// (`@lexical/selection`): the text node's value, cut to the part the
-/// selection covers when an end of the selection is in it.
-fn slice_selected_text_node_content(
-    selection: &SelectionRef,
-    text_node: &NodeRef,
-) -> Result<Rc<dyn LexicalNode>, LexicalError> {
-    let latest = text_node.get_latest();
-    let Some(range) = selection.range() else {
-        return Ok(latest);
-    };
-    let key = text_node.get_key();
-    let (anchor, focus) = (&range.anchor, &range.focus);
-    if (anchor.key != key && focus.key != key)
-        || !text_node.is_selected(Some(selection))?
-        || text_node.is_token()
-        || text_node.is_segmented()
-    {
-        return Ok(latest);
-    }
-    let (start, end) = if selection.is_backward()? {
-        (focus, anchor)
-    } else {
-        (anchor, focus)
-    };
-    let text = &latest.text().expect("a text node").text;
-    let (start_offset, end_offset) = if start.point_type == crate::PointType::Element
-        || end.point_type == crate::PointType::Element
-    {
-        let slices = crate::caret_range_from_selection(&range)?.get_text_slices();
-        match crate::get_text_point_caret_slice_for_node(&slices, text_node) {
-            Some(slice) => {
-                let (s, e) = slice.get_slice_indices();
-                (s, Some(e))
-            }
-            None => (
-                if start.key == key { start.offset } else { 0 },
-                (end.key == key).then_some(end.offset),
-            ),
-        }
-    } else {
-        (
-            if start.key == key { start.offset } else { 0 },
-            (end.key == key).then_some(end.offset),
-        )
-    };
-    // JS's slice clamps its ends and takes an empty slice when they cross.
-    let len = crate::utf16::len(text);
-    let end_offset = end_offset.unwrap_or(len).min(len);
-    let start_offset = start_offset.min(end_offset);
-    let sliced = crate::utf16::slice(text, start_offset, end_offset);
-    if sliced == *text {
-        return Ok(latest);
-    }
-    let mut clone = latest.clone_node();
-    clone.text_mut().expect("a text node").text = sliced;
-    Ok(Rc::from(clone))
-}
-
 /// `$appendNodesToHTML(editor, currentNode, parentElementAppend,
 /// selection, domConfig)`: appends the node's DOM, with its children's,
 /// to `parent`, or only its children's when the node isn't included.
@@ -264,7 +204,7 @@ fn append_nodes_to_html(
     let exclude = (dom_config.should_exclude)(current_node, selection, editor)?;
     let target = match selection {
         Some(selection) if current_node.is_text() => {
-            slice_selected_text_node_content(selection, current_node)?
+            crate::selection::slice_selected_text_node_content(selection, current_node)?
         }
         _ => current_node.get_latest(),
     };

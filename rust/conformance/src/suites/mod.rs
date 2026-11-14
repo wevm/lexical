@@ -41,6 +41,11 @@ pub fn all() -> Vec<Suite> {
             check: serialization::check,
         },
         Suite {
+            file: "serialization/overflow",
+            variant: None,
+            check: serialization::check,
+        },
+        Suite {
             file: "scripts/updates",
             variant: None,
             check: crate::scripts::check,
@@ -91,6 +96,11 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/overflow",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "scripts/plain-text",
             variant: None,
             check: crate::scripts::check,
@@ -128,8 +138,7 @@ pub fn all() -> Vec<Suite> {
 pub fn package_of(node_type: &str) -> Option<&'static str> {
     Some(match node_type {
         "root" | "paragraph" | "text" | "linebreak" | "tab" | "heading" | "quote" | "list"
-        | "listitem" | "link" | "autolink" | "code" | "code-highlight" => return None,
-        "overflow" => "lexical-overflow",
+        | "listitem" | "link" | "autolink" | "code" | "code-highlight" | "overflow" => return None,
         "hashtag" => "lexical-hashtag",
         _ => "unknown",
     })

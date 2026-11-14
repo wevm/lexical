@@ -90,6 +90,25 @@ pub(crate) fn has_non_space(text: &str) -> bool {
     text.chars().any(|c| !is_js_space(c as u32))
 }
 
+/// `indexBy(list, callback)`: the items by the key `callback` gives them,
+/// skipping those without one (or with an empty one), in order.
+pub(crate) fn index_by<T: Clone>(
+    list: &[T],
+    callback: impl Fn(&T) -> Option<String>,
+) -> Vec<(String, Vec<T>)> {
+    let mut index: Vec<(String, Vec<T>)> = Vec::new();
+    for item in list {
+        let Some(key) = callback(item).filter(|k| !k.is_empty()) else {
+            continue;
+        };
+        match index.iter_mut().find(|(k, _)| *k == key) {
+            Some((_, items)) => items.push(item.clone()),
+            None => index.push((key, vec![item.clone()])),
+        }
+    }
+    index
+}
+
 /// What `transformersByType` returns.
 #[derive(Clone, Default)]
 pub(crate) struct ByType {

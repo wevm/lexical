@@ -6,6 +6,7 @@ import LexicalHashtag
 import LexicalHistory
 import LexicalLink
 import LexicalList
+import LexicalMarkdown
 import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
@@ -56,6 +57,9 @@ private enum CoreCommand {
   /// `SELECT_ALL_COMMAND`, whose keyboard event no handler reads; ops.ts
   /// dispatches it with `null`.
   case keyboard(LexicalCommand<KeyboardEvent>)
+  /// `KEY_ENTER_COMMAND`, which takes a keyboard event or `null`; ops.ts
+  /// dispatches it with `null`.
+  case key(LexicalCommand<KeyboardEvent?>)
   /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
   case listStart(LexicalCommand<UpdateListStartPayload>)
   /// `TOGGLE_LINK_COMMAND`: `null`, a URL, or `{url, target, rel, title}`.
@@ -77,6 +81,7 @@ private let coreCommands: [String: CoreCommand] = [
   "INSERT_LINE_BREAK_COMMAND": .bool(INSERT_LINE_BREAK_COMMAND),
   "INSERT_PARAGRAPH_COMMAND": .void(INSERT_PARAGRAPH_COMMAND),
   "INSERT_TAB_COMMAND": .void(INSERT_TAB_COMMAND),
+  "KEY_ENTER_COMMAND": .key(KEY_ENTER_COMMAND),
   "OUTDENT_CONTENT_COMMAND": .void(OUTDENT_CONTENT_COMMAND),
   "REDO_COMMAND": .void(REDO_COMMAND),
   "REMOVE_TEXT_COMMAND": .void(REMOVE_TEXT_COMMAND),
@@ -250,6 +255,9 @@ private final class ScriptContext {
     case .keyboard(let command):
       guard payload == .null else { throw ScriptError("\(name) takes no payload") }
       return try editor.dispatchCommand(command, KeyboardEvent())
+    case .key(let command):
+      guard payload == .null else { throw ScriptError("\(name) takes no payload") }
+      return try editor.dispatchCommand(command, nil)
     case .listStart(let command):
       return try editor.dispatchCommand(command, try listStart(payload))
     case .toggleLink(let command):
@@ -277,6 +285,8 @@ private final class ScriptContext {
         { payload, _ in try listener(.object(JSONObject(payload.map { ($0, .bool($1)) }))) },
         priority)
     case .keyboard(let command):
+      _ = editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
+    case .key(let command):
       _ = editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
     case .listStart(let command):
       _ = editor.registerCommand(
@@ -661,8 +671,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   // @lexical/code-core's nodes, `CodeExtension`'s TabNode transform and
   // `registerCodeIndentation`, `overflow: true` @lexical/overflow's
   // `OverflowNode`, `hashtag: true` @lexical/hashtag's `HashtagNode` and
-  // `registerLexicalHashtag`, and `extension: true` @lexical/extension's
-  // `HorizontalRuleNode` and `DecoratorTextNode`, as ops.ts does.
+  // `registerLexicalHashtag`, `extension: true` @lexical/extension's
+  // `HorizontalRuleNode` and `DecoratorTextNode`, and `markdown: true`
+  // `registerMarkdownShortcuts` with `TRANSFORMERS`, as ops.ts does.
   var nodes: [LexicalNodeConfig] =
     script["richText"]?.boolValue == true
     ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
@@ -717,8 +728,17 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   }
   if script["code"]?.boolValue == true {
     // `CodeExtension`'s register, which ops.ts calls on its own; Swift's
-    // takes the builder's state, so its transform is registered here. Its
-    // KEY_ENTER_COMMAND handler is left out: no script dispatches a key.
+    // takes the builder's state, so its handler and transform are
+    // registered here.
+    _ = editor.registerCommand(
+      KEY_ENTER_COMMAND,
+      { event, _ in
+        guard let selection = try getSelection() as? RangeSelection,
+          try exitCodeNodeOnEnter(selection) != nil
+        else { return false }
+        event?.preventDefault()
+        return true
+      }, COMMAND_PRIORITY_LOW)
     _ = try editor.registerNodeTransform(TabNode.self) { node in
       if try node.getFormat() != 0, try node.getParent() is CodeNode {
         try node.setFormat(0)
@@ -728,6 +748,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   }
   if script["hashtag"]?.boolValue == true {
     _ = try registerLexicalHashtag(editor)
+  }
+  if script["markdown"]?.boolValue == true {
+    _ = try registerMarkdownShortcuts(editor, TRANSFORMERS)
   }
   for name in script["transforms"]?.arrayValue ?? [] {
     try registerTransform(name.stringValue.orThrow(), ctx)

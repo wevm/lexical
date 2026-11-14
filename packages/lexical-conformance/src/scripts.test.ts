@@ -1027,6 +1027,28 @@ test('scripts/rich-text-commands', () => {
     "@lexical/rich-text's registerRichText: the handlers of the commands that edit text, format it, and insert, align and indent blocks.",
     [
       {
+        // A block decorator, to select alone.
+        extension: true,
+        name: 'KEY_ENTER_COMMAND with no event',
+        richText,
+        steps: [
+          doc(p(t('ab')), {type: 'horizontalrule', version: 1} as Node),
+          update(select(['2', 1, 'text'])),
+          // Enter turns capitalize, lowercase and uppercase off the pending
+          // format (DEFAULT_ESCAPE_FORMAT_TRIGGERS), and keeps bold.
+          run('FORMAT_TEXT_COMMAND', 'capitalize'),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('KEY_ENTER_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'x'),
+          // A block decorator selected alone: Enter goes past it.
+          update({do: 'selectNodes', keys: ['3']}),
+          run('KEY_ENTER_COMMAND'),
+          // No selection: nothing handles it.
+          update({do: 'clearSelection'}),
+          run('KEY_ENTER_COMMAND'),
+        ],
+      },
+      {
         name: 'inserting and deleting text',
         richText,
         steps: [
@@ -1163,6 +1185,17 @@ test('scripts/plain-text', () => {
     'plain-text',
     "@lexical/plain-text's registerPlainText: the handlers of the commands that edit text and insert line breaks.",
     [
+      {
+        name: 'KEY_ENTER_COMMAND with no event',
+        plainText,
+        steps: [
+          doc(p(t('ab'))),
+          update(select(['2', 1, 'text'])),
+          run('KEY_ENTER_COMMAND'),
+          update({do: 'clearSelection'}),
+          run('KEY_ENTER_COMMAND'),
+        ],
+      },
       {
         name: 'typing, Enter and line breaks',
         plainText,
@@ -2229,6 +2262,20 @@ test('scripts/code', () => {
           // A range: rich text removes it first.
           update(select(['3', 1, 'text'], ['5', 0, 'text'])),
           enter,
+        ],
+      },
+      {
+        code,
+        name: "KEY_ENTER_COMMAND: CodeExtension's handler leaves the block after two line breaks",
+        richText,
+        steps: [
+          doc(codeBlock(null, ch('a'), br()), p(t('after'))),
+          // One line break: rich text's handler inserts another.
+          update(select(['1', 2, 'element'])),
+          run('KEY_ENTER_COMMAND'),
+          // Two: CodeExtension's handler removes them and leaves the block.
+          run('KEY_ENTER_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'x'),
         ],
       },
       {
@@ -3396,6 +3443,222 @@ test('scripts/decorator', () => {
           backspace,
           run('UNDO_COMMAND'),
           run('REDO_COMMAND'),
+        ],
+      },
+    ],
+  );
+});
+
+test('scripts/markdown-shortcuts', () => {
+  // `registerMarkdownShortcuts(editor, TRANSFORMERS)` (@lexical/markdown)
+  // over rich text, lists, links and code: markdown typed a character at a
+  // time becomes rich text, as `MarkdownShortcutPlugin` makes it, and Enter
+  // (KEY_ENTER_COMMAND, dispatched with no event as an input layer without
+  // a DOM does) runs the transformers that trigger on it.
+  const base = {
+    code: true,
+    link: true,
+    list: true,
+    markdown: true,
+    richText: true,
+  };
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const enter = run('KEY_ENTER_COMMAND');
+  const insert = (text: string, tag?: string[]): Step =>
+    tag === undefined
+      ? update(call('insertText', text))
+      : {tag, update: [call('insertText', text)]};
+  const typed = (text: string): Step[] => [...text].map(c => insert(c));
+  const empty: Step[] = [doc(p()), update(select(['1', 0, 'element']))];
+  emit(
+    'markdown-shortcuts',
+    "@lexical/markdown's registerMarkdownShortcuts with TRANSFORMERS: block shortcuts (headings, quotes, lists, code fences) typed at a line's start or run on Enter, inline formats and links typed to their closing tag, the cases that cancel them (a space inside, a word around an intraword tag, an open code span, a code block), several characters inserted at once, the composition-end, collaboration and historic tags, and undo after a shortcut.",
+    [
+      {
+        ...base,
+        name: 'headings from # to ######',
+        steps: [
+          ...empty,
+          ...typed('# One'),
+          enter,
+          ...typed('### Three'),
+          enter,
+          ...typed('###### Six'),
+          enter,
+          // Seven is too many.
+          ...typed('####### Seven'),
+        ],
+      },
+      {
+        ...base,
+        name: 'a quote, then a heading inside it',
+        steps: [...empty, ...typed('> quoted'), enter, ...typed('> # x')],
+      },
+      {
+        ...base,
+        name: 'bullet lists with -, * and +, and an ordered list',
+        steps: [
+          ...empty,
+          ...typed('- dash'),
+          enter,
+          enter,
+          ...typed('* star'),
+          enter,
+          enter,
+          ...typed('+ plus'),
+          enter,
+          enter,
+          ...typed('3. three'),
+          enter,
+          ...typed('next'),
+        ],
+      },
+      {
+        ...base,
+        name: 'no block shortcut away from the line start, or in a list item',
+        steps: [
+          ...empty,
+          ...typed('a # b > c - d'),
+          enter,
+          ...typed('- item - x'),
+          ...typed(' # y'),
+        ],
+      },
+      {
+        ...base,
+        name: 'a block shortcut typed before existing text',
+        steps: [
+          doc(p(t('Hello', {format: 1}), t(' world'))),
+          update(select(['2', 0, 'text'])),
+          ...typed('## '),
+        ],
+      },
+      {
+        ...base,
+        name: 'a code fence with a space, and with a language on Enter',
+        steps: [
+          ...empty,
+          ...typed('``` '),
+          ...typed('# not a heading'),
+          enter,
+          enter,
+          enter,
+          ...typed('```js'),
+          enter,
+          ...typed('x'),
+        ],
+      },
+      {
+        ...base,
+        name: 'Enter elsewhere inserts a paragraph',
+        steps: [
+          ...empty,
+          ...typed('## Title'),
+          enter,
+          // Not at the end of the line.
+          ...typed('```x'),
+          update(select(['6', 3, 'text'])),
+          enter,
+          // Shortcuts that need a space don't run on Enter.
+          ...typed('-'),
+          enter,
+          ...typed('1.'),
+          enter,
+        ],
+      },
+      {
+        ...base,
+        name: 'bold, italic, strikethrough, highlight and code',
+        steps: [
+          ...empty,
+          ...typed(
+            'a **b** c *d* e __f__ g _h_ i ~~j~~ k ==l== m `n` o ***p***',
+          ),
+        ],
+      },
+      {
+        ...base,
+        name: 'what cancels an inline format',
+        steps: [
+          ...empty,
+          // A space before the closing tag or after the opening one.
+          ...typed('**a ** and ** b** and '),
+          // Nothing between the tags.
+          ...typed('**** and '),
+          // An underscore inside a word.
+          ...typed('snake_case_name and '),
+          // A longer run of the same character.
+          ...typed('x***y** and '),
+          // Inside an open code span.
+          ...typed('`a *b* c` done'),
+        ],
+      },
+      {
+        ...base,
+        name: 'the opening tag in an earlier text node',
+        steps: [
+          ...empty,
+          ...typed('**ab'),
+          run('FORMAT_TEXT_COMMAND', 'italic'),
+          ...typed('cd**'),
+          ...typed(' then'),
+        ],
+      },
+      {
+        ...base,
+        name: 'a link',
+        steps: [
+          ...empty,
+          ...typed('see [Lexical](https://lexical.dev) and [x](y "t")'),
+        ],
+      },
+      {
+        ...base,
+        name: 'typing in the middle of a line',
+        steps: [
+          doc(p(t('one  two'))),
+          update(select(['2', 4, 'text'])),
+          ...typed('*x*'),
+        ],
+      },
+      {
+        ...base,
+        name: 'several characters at once, and the composition-end tag',
+        steps: [
+          ...empty,
+          insert('# '),
+          insert('**bold**'),
+          insert(' '),
+          insert('**', ['composition-end']),
+          insert(' **x', ['composition-end']),
+          insert('**', ['composition-end']),
+        ],
+      },
+      {
+        ...base,
+        name: 'the collaboration and historic tags',
+        steps: [
+          ...empty,
+          insert('#', ['collaboration']),
+          insert(' ', ['collaboration']),
+          insert('*', ['historic']),
+          insert('a', ['historic']),
+          insert('*', ['historic']),
+        ],
+      },
+      {
+        ...base,
+        history: {delay: 300},
+        name: 'undo after a shortcut',
+        steps: [
+          ...empty,
+          ...typed('# Hi'),
+          {...run('UNDO_COMMAND'), now: 1000},
+          {...run('UNDO_COMMAND'), now: 2000},
+          {...run('REDO_COMMAND'), now: 3000},
+          ...typed(' **b**'),
+          {...run('UNDO_COMMAND'), now: 4000},
         ],
       },
     ],

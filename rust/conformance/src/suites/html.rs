@@ -54,12 +54,25 @@ pub fn check_entity(case: &Value, file: &Value) -> Result<Outcome, String> {
 /// `html/export`: `$generateHtmlFromNodes` writes the HTML jsdom gave for
 /// the document, with the case's theme.
 pub fn check_export(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    export(case, Vec::new())
+}
+
+/// `html/export-mark`: as `html/export`, with `MarkNode` and `LinkNode`.
+pub fn check_export_mark(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    export(
+        case,
+        [lexical::mark::mark_nodes(), lexical::link::link_nodes()].concat(),
+    )
+}
+
+fn export(case: &Value, nodes: Vec<lexical::NodeClass>) -> Result<Outcome, String> {
     let theme = match case.get("theme") {
         Some(Value::Object(theme)) => theme.clone(),
         _ => lexical::json::Object::new(),
     };
     let editor = create_editor(CreateEditorArgs {
         theme,
+        nodes,
         ..Default::default()
     });
     let state = editor

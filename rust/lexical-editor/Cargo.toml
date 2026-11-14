@@ -23,10 +23,19 @@ history = []
 selection = []
 # @lexical/utils.
 utils = ["selection"]
-# @lexical/rich-text: HeadingNode and QuoteNode.
-rich-text = ["selection", "utils"]
-# @lexical/plain-text: registerPlainText's model command handlers.
-plain-text = []
+# @lexical/rich-text: HeadingNode, QuoteNode and registerRichText's model
+# command handlers, with its copy, cut and paste handlers (@lexical/clipboard).
+rich-text = ["selection", "utils", "clipboard"]
+# @lexical/plain-text: registerPlainText's model command handlers, with its
+# copy, cut and paste handlers (@lexical/clipboard). Upstream it also depends
+# on @lexical/dragon, @lexical/extension, @lexical/selection and
+# @lexical/utils, which those handlers don't use.
+plain-text = ["clipboard"]
+# @lexical/clipboard: the JSON and plain-text paths of copy and paste
+# (clipboard.ts, and the default import stack of ClipboardImportExtension.ts).
+# Upstream it also depends on @lexical/extension and @lexical/html, for the
+# extensions and the HTML paths, which aren't ported.
+clipboard = ["selection", "utils"]
 # @lexical/list: ListNode, ListItemNode, registerList and the model parts of
 # registerCheckList. Upstream it also depends on @lexical/extension and
 # @lexical/html, for ListExtension and the DOM import, which aren't ported.

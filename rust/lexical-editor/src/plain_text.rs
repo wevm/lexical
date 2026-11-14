@@ -2,8 +2,10 @@
 //! command handlers that act on the model, from
 //! `packages/lexical-plain-text/src/index.ts`.
 //!
-//! The handlers of DOM events (the arrow keys, Backspace, Delete, Enter,
-//! copy, cut, paste, drop and drag) wait for an input layer, and
+//! Its copy, cut and paste handlers take the `DataTransfer` of the
+//! platform's clipboard event. The handlers of the other DOM events (the
+//! arrow keys, Backspace, Delete, Enter, drop and drag) wait for an input
+//! layer, and
 //! `PlainTextExtension`'s dependencies (`DragonExtension`,
 //! `NormalizeInlineElementsExtension`,
 //! `NormalizeTripleClickSelectionExtension`) for the extension API.
@@ -13,10 +15,80 @@ use crate::commands::{
     DELETE_WORD_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, REMOVE_TEXT_COMMAND,
     SELECT_ALL_COMMAND,
 };
+use crate::commands::{COPY_COMMAND, CUT_COMMAND, PASTE_COMMAND};
 use crate::editor::COMMAND_PRIORITY_EDITOR;
+use crate::events::DataTransfer;
 use crate::lexical_selection::{SelectionRef, get_selection};
 use crate::selection_insert_nodes::select_all;
+use crate::{CUT_TAG, PASTE_TAG, UpdateOptions};
 use crate::{Editor, LexicalError, Unregister};
+use std::rc::Rc;
+
+/// `onCopyForPlainText(event, editor)`: in an update, the selection's text
+/// as the clipboard data's `text/plain`, unless nothing is selected. JS
+/// also writes `$getHtmlContent(editor)` as `text/html` first, which comes
+/// with `html` (rust/PARITY.md).
+fn on_copy_for_plain_text(clipboard_data: Option<Rc<DataTransfer>>) -> Result<(), LexicalError> {
+    let Some(editor) = crate::updates::get_active_editor() else {
+        return Ok(());
+    };
+    editor.update(
+        move || {
+            let selection = get_selection();
+            if let (Some(selection), Some(clipboard_data)) = (selection, clipboard_data)
+                && !selection.range().is_some_and(|r| r.is_collapsed())
+            {
+                clipboard_data.set_data("text/plain", &selection.get_text_content()?);
+            }
+            Ok(())
+        },
+        UpdateOptions::default(),
+    )
+}
+
+/// `onPasteForPlainText(event, editor)`: in an update tagged `paste`, the
+/// clipboard data at a range selection, with
+/// `$insertDataTransferForPlainText`.
+fn on_paste_for_plain_text(clipboard_data: Option<Rc<DataTransfer>>) -> Result<(), LexicalError> {
+    let Some(editor) = crate::updates::get_active_editor() else {
+        return Ok(());
+    };
+    editor.update(
+        move || {
+            if let (Some(clipboard_data), Some(selection)) = (clipboard_data, range_selection()) {
+                crate::clipboard::insert_data_transfer_for_plain_text(&clipboard_data, &selection)?;
+            }
+            Ok(())
+        },
+        UpdateOptions {
+            // PASTE_TAG gives the paste its own undo entry (#8609).
+            tags: vec![PASTE_TAG.to_owned()],
+            ..UpdateOptions::default()
+        },
+    )
+}
+
+/// `onCutForPlainText(event, editor)`: copies, then removes the range
+/// selection in an update tagged `cut`.
+fn on_cut_for_plain_text(
+    clipboard_data: Option<Rc<DataTransfer>>,
+    editor: &Editor,
+) -> Result<(), LexicalError> {
+    on_copy_for_plain_text(clipboard_data)?;
+    editor.update(
+        || {
+            if let Some(selection) = range_selection() {
+                selection.remove_text()?;
+            }
+            Ok(())
+        },
+        UpdateOptions {
+            // CUT_TAG gives the cut its own undo entry (#8609).
+            tags: vec![CUT_TAG.to_owned()],
+            ..UpdateOptions::default()
+        },
+    )
+}
 
 /// The current selection when it is a range selection.
 fn range_selection() -> Option<SelectionRef> {
@@ -87,6 +159,23 @@ pub fn register_plain_text(editor: &Editor) -> Unregister {
             },
             COMMAND_PRIORITY_EDITOR,
         ),
+        on_range(editor, &COPY_COMMAND, |_, clipboard_data| {
+            on_copy_for_plain_text(clipboard_data.clone())
+        }),
+        editor.register_command(
+            &CUT_COMMAND,
+            |clipboard_data, editor| {
+                if range_selection().is_none() {
+                    return Ok(false);
+                }
+                on_cut_for_plain_text(clipboard_data.clone(), editor)?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        on_range(editor, &PASTE_COMMAND, |_, clipboard_data| {
+            on_paste_for_plain_text(clipboard_data.clone())
+        }),
     ];
     Box::new(move || {
         for unregister in unregisters {

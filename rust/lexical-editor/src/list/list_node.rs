@@ -158,6 +158,18 @@ impl LexicalNode for ListNode {
         false
     }
 
+    /// `ListNode.extractWithChild(child)`: a list goes with a list item
+    /// that is copied.
+    fn extract_with_child(
+        &self,
+        _: &NodeRef,
+        child: &NodeRef,
+        _: Option<&crate::lexical_selection::SelectionRef>,
+        _: &str,
+    ) -> Result<bool, LexicalError> {
+        Ok(is_list_item_node(child))
+    }
+
     /// `ListNode.canIndent()`.
     fn can_indent(&self) -> bool {
         false

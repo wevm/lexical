@@ -3,16 +3,19 @@
 //! generated JSON (`LexicalRichTextGeneratedJSON.ts`).
 //!
 //! `registerRichText`'s command handlers ([`register_rich_text`]) that act
-//! on the model. The handlers of DOM events (click, arrow keys, Backspace,
-//! Delete, Enter, Escape, Space, Tab, copy, cut, paste and drag and drop)
-//! wait for an input layer, and the DOM parts (`createDOM`, `exportDOM`,
-//! `importDOM`) come with `html`.
+//! on the model, with those of copy, cut and paste, which take the
+//! `DataTransfer` of the platform's clipboard event. The handlers of the
+//! other DOM events (click, arrow keys, Backspace, Delete, Enter, Escape,
+//! Space, Tab and drag and drop) wait for an input layer, and the DOM parts
+//! (`createDOM`, `exportDOM`, `importDOM`) come with `html`.
 
+use crate::clipboard::{copy_to_clipboard, insert_data_transfer_for_rich_text};
 use crate::commands::{
-    CONTROLLED_TEXT_INSERTION_COMMAND, DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND,
-    DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
-    INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND,
-    OUTDENT_CONTENT_COMMAND, REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
+    CONTROLLED_TEXT_INSERTION_COMMAND, COPY_COMMAND, CUT_COMMAND, DELETE_CHARACTER_COMMAND,
+    DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND,
+    INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND,
+    INSERT_TAB_COMMAND, OUTDENT_CONTENT_COMMAND, PASTE_COMMAND, REMOVE_TEXT_COMMAND,
+    SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
 };
 use crate::editor::COMMAND_PRIORITY_EDITOR;
 use crate::generated_json::{
@@ -32,7 +35,7 @@ use crate::nodes::tab::create_tab_node;
 use crate::selection_insert_nodes::{insert_nodes, select_all};
 use crate::utils::{find_matching_parent, handle_indent_and_outdent};
 use crate::utils::{is_at_end_of_node, is_at_start_of_node};
-use crate::{Editor, LexicalError, NodeClass, Unregister};
+use crate::{CUT_TAG, Editor, LexicalError, NodeClass, PASTE_TAG, Unregister, UpdateOptions};
 
 /// The node classes this package registers (`RichTextExtension`'s
 /// `nodes`): `HeadingNode` and `QuoteNode`.
@@ -376,6 +379,75 @@ impl LexicalNode for QuoteNode {
     }
 }
 
+/// `onPasteForRichText(event, editor)`: in an update tagged `paste`, the
+/// clipboard data at the selection.
+fn on_paste_for_rich_text(
+    clipboard_data: Option<std::rc::Rc<crate::DataTransfer>>,
+    editor: &Editor,
+) -> Result<(), LexicalError> {
+    let target = editor.clone();
+    editor.update(
+        move || {
+            let selection = get_selection();
+            if let (Some(clipboard_data), Some(selection)) = (clipboard_data, selection) {
+                insert_data_transfer_for_rich_text(&clipboard_data, &selection, &target)?;
+            }
+            Ok(())
+        },
+        UpdateOptions {
+            // PASTE_TAG gives the paste its own undo entry (#8609).
+            tags: vec![PASTE_TAG.to_owned()],
+            ..UpdateOptions::default()
+        },
+    )
+}
+
+/// `onCutForRichText(event, editor)`: widens a selection of the whole
+/// document to the root's children (so the copy carries the blocks the
+/// removal takes, #5835), copies, then removes the selection, all tagged
+/// `cut`.
+fn on_cut_for_rich_text(
+    clipboard_data: Option<std::rc::Rc<crate::DataTransfer>>,
+    editor: &Editor,
+) -> Result<(), LexicalError> {
+    let cut = || vec![CUT_TAG.to_owned()];
+    editor.update(
+        || {
+            if let Some(selection) = range_selection()
+                && !selection.range().is_some_and(|r| r.is_collapsed())
+            {
+                crate::selection_deletion::internal_expand_selection_to_whole_document(&selection)?;
+            }
+            Ok(())
+        },
+        UpdateOptions {
+            discrete: true,
+            tags: cut(),
+            ..UpdateOptions::default()
+        },
+    )?;
+    copy_to_clipboard(editor, clipboard_data)?;
+    editor.update(
+        || {
+            match get_selection() {
+                Some(selection) if selection.is_range() => selection.remove_text()?,
+                Some(selection) => {
+                    for node in selection.get_nodes()? {
+                        node.remove(false)?;
+                    }
+                }
+                None => {}
+            }
+            Ok(())
+        },
+        UpdateOptions {
+            // CUT_TAG gives the cut its own undo entry (#8609).
+            tags: cut(),
+            ..UpdateOptions::default()
+        },
+    )
+}
+
 /// The current selection when it is a range selection.
 fn range_selection() -> Option<SelectionRef> {
     get_selection().filter(SelectionRef::is_range)
@@ -385,11 +457,24 @@ fn range_selection() -> Option<SelectionRef> {
 /// that act on the model, at `COMMAND_PRIORITY_EDITOR`, and returns what
 /// unregisters them.
 ///
-/// JS's `escapeFormatTriggers` (for click and arrow keys) and
-/// `shouldHandlePasteAsFiles` (for paste) go with those events' handlers,
-/// which aren't ported. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the
-/// string form, and `SELECT_ALL_COMMAND` always selects the whole document,
-/// as JS does outside a slot (slots aren't ported).
+/// JS's `escapeFormatTriggers` (for click and arrow keys) goes with those
+/// events' handlers, which aren't ported, and `shouldHandlePasteAsFiles`
+/// (`DRAG_DROP_PASTE`) with files, which the port's `DataTransfer` doesn't
+/// carry. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form,
+/// and `SELECT_ALL_COMMAND` always selects the whole document, as JS does
+/// outside a slot (slots aren't ported).
+///
+/// `COPY_COMMAND`, `CUT_COMMAND` and `PASTE_COMMAND` take the clipboard
+/// event's `clipboardData` (`None` for a keyboard or input event): a copy
+/// writes the selection to it (`copyToClipboard`), a cut copies and then
+/// removes the selection (`onCutForRichText`), and a paste inserts it with
+/// `$insertDataTransferForRichText` (`onPasteForRichText`), each in an
+/// update of its own with JS's tags. A copy or cut without one writes
+/// nothing, where JS goes through the DOM to get an event; a cut still
+/// removes the selection. JS's cut removes it after the copy's promise
+/// settles, in a later update; here that update is queued with the others.
+/// Without a DOM, no event comes from an input inside a decorator
+/// (`$isEventFromEmbeddedInput`).
 pub fn register_rich_text(editor: &Editor) -> Unregister {
     let unregisters: Vec<Unregister> = vec![
         editor.register_command(
@@ -557,6 +642,33 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
             |_, _| {
                 select_all()?;
                 Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &COPY_COMMAND,
+            |clipboard_data, editor| {
+                copy_to_clipboard(editor, clipboard_data.clone())?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &CUT_COMMAND,
+            |clipboard_data, editor| {
+                on_cut_for_rich_text(clipboard_data.clone(), editor)?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &PASTE_COMMAND,
+            |clipboard_data, editor| {
+                if get_selection().is_some() {
+                    on_paste_for_rich_text(clipboard_data.clone(), editor)?;
+                    return Ok(true);
+                }
+                Ok(false)
             },
             COMMAND_PRIORITY_EDITOR,
         ),

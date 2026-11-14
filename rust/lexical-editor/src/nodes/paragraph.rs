@@ -8,7 +8,7 @@ use crate::json::{Object, Value};
 use crate::lexical_selection::SelectionRef;
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
-use crate::selection_deletion::is_js_whitespace;
+use crate::selection_deletion::{is_block_fully_selected, is_js_whitespace};
 
 /// `$createParagraphNode()`.
 pub fn create_paragraph_node() -> NodeRef {
@@ -71,6 +71,40 @@ impl LexicalNode for ParagraphNode {
 
     fn update_from_json(&mut self, json: &Object) {
         update_element_node(&mut self.element, json);
+    }
+
+    /// `ParagraphNode.extractWithChild(child, selection, destination)`: a
+    /// paragraph with an alignment, an indent or a style goes with the
+    /// child of a range selection that covers all of its text.
+    fn extract_with_child(
+        &self,
+        this: &NodeRef,
+        _: &NodeRef,
+        selection: Option<&SelectionRef>,
+        _: &str,
+    ) -> Result<bool, LexicalError> {
+        let Some(selection) = selection.filter(|s| s.is_range()) else {
+            return Ok(false);
+        };
+        // Alignment, indent and inline style live on the paragraph element
+        // and nowhere else. Splicing the children up into the payload drops
+        // them silently (#8101), so a paragraph carrying any of that has to
+        // travel as a block.
+        if self.element.get_format_type().is_empty()
+            && this.get_indent()? == 0.0
+            && self.element.get_style().is_empty()
+        {
+            return Ok(false);
+        }
+        // A partial selection is a fragment of a line rather than a block:
+        // that fragment must merge into the paste target instead of imposing
+        // its source block on it.
+        let range = selection.range().expect("a range selection");
+        if is_block_fully_selected(this, &range)? {
+            let text_content = this.get_text_content();
+            return Ok(!text_content.is_empty() && selection.get_text_content()? == text_content);
+        }
+        Ok(false)
     }
 
     /// `ParagraphNode.insertNewAfter`: a paragraph with the selection's

@@ -7,6 +7,16 @@
  */
 
 import {
+  $generateJSONFromSelectedNodes,
+  $generateNodesFromSerializedNodes,
+  $getLexicalContent,
+  $insertDataTransferForPlainText,
+  $insertDataTransferForRichText,
+  $insertGeneratedNodes,
+  type LexicalClipboardData,
+  setLexicalClipboardDataTransfer,
+} from '@lexical/clipboard';
+import {
   CodeExtension,
   CodeHighlightNode,
   CodeNode,
@@ -280,6 +290,49 @@ export type Action =
    * when there is none, logging `['migrateMarkNodesToMarkState', count]`.
    */
   | {do: 'migrateMarkNodesToMarkState'; key?: string}
+  /**
+   * Copies the selection (@lexical/clipboard): the data
+   * `$getClipboardDataFromSelection` gives with its default MIME types but
+   * `text/html` (`text/plain` from `getTextContent()`, then
+   * `application/x-lexical-editor` from `$getLexicalContent`, left out when
+   * that is `null`), written by `setLexicalClipboardDataTransfer` to a new
+   * `DataTransfer`. Logs `['copy', [[type, data]...]]` and keeps the
+   * `DataTransfer` for `pasteClipboard`.
+   */
+  | {do: 'copy'}
+  /**
+   * `$insertDataTransferForRichText` (or, with `plain`,
+   * `$insertDataTransferForPlainText`) of the last `copy`'s `DataTransfer` at
+   * `$getSelection()`.
+   */
+  | {do: 'pasteClipboard'; plain?: boolean}
+  /**
+   * `$insertDataTransferForRichText` of a `DataTransfer` whose
+   * `application/x-lexical-editor` is `JSON.stringify({namespace, nodes})`,
+   * in the editor's namespace, at `$getSelection()`.
+   */
+  | {do: 'pasteLexical'; nodes: SerializedLexicalNode[]}
+  /**
+   * `$insertDataTransferForPlainText` of a `DataTransfer` whose `text/plain`
+   * is `text` at `$getSelection()`.
+   */
+  | {do: 'pastePlainText'; text: string}
+  /**
+   * `$insertDataTransferForRichText` (or, with `plain`,
+   * `$insertDataTransferForPlainText`) of a `DataTransfer` with `data` set
+   * in key order, at `$getSelection()`.
+   */
+  | {do: 'pasteData'; data: Record<string, string>; plain?: boolean}
+  /**
+   * Logs `['generateJSON', $generateJSONFromSelectedNodes(editor, selection)]`
+   * of `$getSelection()`, or of `null` (the whole document) with `whole`.
+   */
+  | {do: 'generateJSON'; whole?: boolean}
+  /**
+   * `$insertGeneratedNodes(editor, $generateNodesFromSerializedNodes(nodes),
+   * $getSelection())`.
+   */
+  | {do: 'insertGeneratedNodes'; nodes: SerializedLexicalNode[]}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /**
@@ -556,7 +609,81 @@ type Context = {
   /** The test extensions made so far, by key. */
   extensions: Map<string, AnyLexicalExtension>;
   defs: {[key: string]: ExtensionSpec};
+  /** The `DataTransfer` of the last `copy`. */
+  clipboard: ScriptDataTransfer | null;
 };
+
+/**
+ * A headless `DataTransfer` (Node has none): the data by format, in the
+ * order it was first set, with the format lowercased and `text` and `url`
+ * read as `text/plain` and `text/uri-list`, as browsers do. The Swift and
+ * Rust ports have the same one.
+ */
+class ScriptDataTransfer {
+  entries: [string, string][] = [];
+
+  static format(format: string): string {
+    const lower = format.toLowerCase();
+    return lower === 'text'
+      ? 'text/plain'
+      : lower === 'url'
+        ? 'text/uri-list'
+        : lower;
+  }
+
+  get types(): string[] {
+    return this.entries.map(([type]) => type);
+  }
+
+  getData(format: string): string {
+    const type = ScriptDataTransfer.format(format);
+    const entry = this.entries.find(([t]) => t === type);
+    return entry === undefined ? '' : entry[1];
+  }
+
+  setData(format: string, data: string): void {
+    const type = ScriptDataTransfer.format(format);
+    const entry = this.entries.find(([t]) => t === type);
+    if (entry === undefined) {
+      this.entries.push([type, data]);
+    } else {
+      entry[1] = data;
+    }
+  }
+
+  static of(data: Record<string, string>): ScriptDataTransfer {
+    const dataTransfer = new ScriptDataTransfer();
+    for (const [type, value] of Object.entries(data)) {
+      dataTransfer.setData(type, value);
+    }
+    return dataTransfer;
+  }
+
+  asDataTransfer(): DataTransfer {
+    return this as unknown as DataTransfer;
+  }
+}
+
+/**
+ * `$getClipboardDataFromSelection(selection)` with its default MIME types but
+ * `text/html`, whose `$getHtmlContent` needs a DOM: the same steps
+ * (`$getClipboardDataWithConfigFromSelection` over
+ * `DEFAULT_EXPORT_MIME_TYPE`), in its key order.
+ */
+function $clipboardDataWithoutHtml(
+  editor: LexicalEditor,
+  selection: ReturnType<typeof $getSelection>,
+): LexicalClipboardData {
+  const clipboardData: LexicalClipboardData = {'text/plain': ''};
+  if (selection !== null) {
+    const lexical = $getLexicalContent(editor, selection);
+    if (lexical !== null) {
+      clipboardData['application/x-lexical-editor'] = lexical;
+    }
+    clipboardData['text/plain'] = selection.getTextContent();
+  }
+  return clipboardData;
+}
 
 function $node(key: string): LexicalNode {
   const node = $getNodeByKey(key);
@@ -1124,6 +1251,62 @@ function $runAction(action: Action, ctx: Context): void {
         ),
       ]);
       return;
+    case 'copy': {
+      const dataTransfer = new ScriptDataTransfer();
+      setLexicalClipboardDataTransfer(
+        dataTransfer.asDataTransfer(),
+        $clipboardDataWithoutHtml(ctx.editor, $getSelection()),
+      );
+      ctx.clipboard = dataTransfer;
+      ctx.log.push(['copy', dataTransfer.entries]);
+      return;
+    }
+    case 'pasteClipboard': {
+      if (ctx.clipboard === null) {
+        throw new Error('nothing copied');
+      }
+      $insertDataTransfer(ctx.clipboard, action.plain === true);
+      return;
+    }
+    case 'pasteLexical':
+      $insertDataTransfer(
+        ScriptDataTransfer.of({
+          'application/x-lexical-editor': JSON.stringify({
+            namespace: ctx.editor._config.namespace,
+            nodes: action.nodes,
+          }),
+        }),
+        false,
+      );
+      return;
+    case 'pastePlainText':
+      $insertDataTransfer(
+        ScriptDataTransfer.of({'text/plain': action.text}),
+        true,
+      );
+      return;
+    case 'pasteData':
+      $insertDataTransfer(
+        ScriptDataTransfer.of(action.data),
+        action.plain === true,
+      );
+      return;
+    case 'generateJSON':
+      ctx.log.push([
+        'generateJSON',
+        $generateJSONFromSelectedNodes(
+          ctx.editor,
+          action.whole === true ? null : $getSelection(),
+        ) as unknown as Json,
+      ]);
+      return;
+    case 'insertGeneratedNodes':
+      $insertGeneratedNodes(
+        ctx.editor,
+        $generateNodesFromSerializedNodes(action.nodes),
+        $anySel(),
+      );
+      return;
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -1134,6 +1317,21 @@ function $runAction(action: Action, ctx: Context): void {
         ),
       ]);
       return;
+  }
+}
+
+/**
+ * `$insertDataTransferForRichText` (or, with `plain`,
+ * `$insertDataTransferForPlainText`) of `dataTransfer` at the selection.
+ */
+function $insertDataTransfer(
+  dataTransfer: ScriptDataTransfer,
+  plain: boolean,
+): void {
+  if (plain) {
+    $insertDataTransferForPlainText(dataTransfer.asDataTransfer(), $anySel());
+  } else {
+    $insertDataTransferForRichText(dataTransfer.asDataTransfer(), $anySel());
   }
 }
 
@@ -1490,6 +1688,13 @@ function testExtension(ctx: Context, spec: ExtensionSpec): AnyLexicalExtension {
   return extension;
 }
 
+/**
+ * Every session's editor namespace, which a clipboard payload names. An
+ * empty one would make `createEditor` pick one (`createUID`), from a counter
+ * that every editor of the process shares.
+ */
+export const NAMESPACE = 'conformance';
+
 /** A script's editor, set up with its transforms, handlers and listeners,
  * that runs steps one at a time. */
 export type Session = {
@@ -1525,6 +1730,7 @@ function snapshotOf(
 export function startSession(script: Omit<Script, 'steps'>): Session {
   resetRandomKey();
   const ctx: Context = {
+    clipboard: null,
     commands: new Map(),
     defs: script.extensionDefs ?? {},
     editor: undefined as never,
@@ -1567,7 +1773,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     build = snapshotOf(built, ctx.log, true) as BuildResult;
   } else {
     ctx.editor = createEditor({
-      namespace: '',
+      namespace: NAMESPACE,
       nodes: [
         ...(script.richText ? [HeadingNode, QuoteNode] : []),
         ...(script.list ? [ListNode, ListItemNode] : []),

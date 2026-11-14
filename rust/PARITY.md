@@ -56,6 +56,8 @@ updated with each milestone.
 | `@lexical/file` (the `file` feature) | `packages/lexical-file/src/fileImportExport.ts`: `SerializedDocument`, `serializedDocumentFromEditorState` (an empty `source` is `"Lexical"`, a `lastSaved` of 0 or NaN is `Date.now()`, the version is the upstream release), `editorStateFromSerializedDocument` (from a string or a document, either JSON form), `importFile` and `exportFile` (with `toISOString` for the default file name), with the app reading and saving the file where JS's `readTextFileFromSystem` and `exportBlob` use the DOM | `file::file_import_export` | `file/export`, `file/import`; unit tests for `toISOString` against Node and an export-then-import round trip |
 | `@lexical/devtools-core`'s tree view (the `devtools` feature) | `packages/lexical-devtools-core/src/generateContent.ts`: `generateContent` (the text form), `$printRangeSelection`, `printNodeSelection`, `$visitTree`, `normalize` (with `obfuscateText`), `printNode` (text, link with `link`, paragraph), `printTextFormatProperties`, `printAllTextNodeProperties`, `printAllLinkNodeProperties`, `printDetailProperties`, `printModeProperties`, `printFormatProperties`, `printTargetProperties`, `printRelProperties`, `printTitleProperties`, `printStateProperties`, `$printSelectedCharsLine`, `$getSelectionStartEnd`, `CustomPrintNodeFn`, `LexicalCommandLog`'s entries; from the core `LexicalNode.isSelected` (`$isKeyInSelectionNodes` and the inline decorator rule), `isBefore`, `LexicalEditor.version` (the port's own, `lexical-rust@0.53.0`, as Swift prints `lexical-swift@...`), `_config.namespace` (`createUID` when none is given), `isEditable` and `setEditable` | `devtools`, `node`, `editor`, `lexical_utils` | `devtools/tree` (keys mapped to the port's and the version line to the port's, as Swift's runner does) |
 | `$setBlocksType` (the `selection` feature) | `packages/lexical-selection/src/range-selection.ts` (`$setBlocksType`, with its default `$afterCreateElement`, `$copyBlockFormatIndent`, and `$isPointAtBlockEdge`), through `LexicalNode.replace` and `ListItemNode.replace` | `selection` | `scripts/set-blocks-type`, the block-decorator case of `scripts/decorator`, `property/sequences` |
+| Clipboard, JSON and plain text (the `clipboard` feature) | `packages/lexical-clipboard/src/clipboard.ts`: `$generateJSONFromSelectedNodes` (`$appendNodesToJSON`: `isSelected`, `excludeFromCopy('clone')`, `extractWithChild`, the text sliced at the selection's edges, empty slices left out, a node selection's element taking its subtree), `$generateNodesFromSerializedNodes`, `$insertGeneratedNodes` (`SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`, `$updateSelectionOnInsert`), `$getLexicalContent`, `$insertDataTransferForPlainText`, `$insertDataTransferForRichText` (the default stack of `ClipboardImportExtension.ts`: `$runImport` with `$defaultLexicalEditorImporter` and `$defaultPlainTextImporter` for `text/plain` and `text/uri-list`, by `DEFAULT_IMPORT_MIME_TYPE_PRIORITY`), `$getClipboardDataFromSelection` (the default `ExportMimeTypeConfig` but `text/html`), `setLexicalClipboardDataTransfer`; `$sliceSelectedTextNodeContent` (`@lexical/selection`, `'clone'`); from the core `LexicalNode.isSelected`, `createEditor`'s `namespace` and `getNamespace` (as the devtools row has them), `insertNodes`' CASE 1 (inside a code block), `PASTE_COMMAND`, `COPY_COMMAND`, `CUT_COMMAND` and `SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`, and `DataTransfer` (`getData`, `setData`, `types`, as Swift's in `LexicalEvents.swift`); the `extractWithChild` of `ParagraphNode`, `ListNode` and `ListItemNode` | `clipboard`, `events`, `selection`, `node`, `editor`, `commands`, `selection_insert_nodes`, `nodes::paragraph`, `list` | `scripts/clipboard` |
+| Copy, cut and paste handlers (the `rich-text` and `plain-text` features) | `registerRichText`'s `COPY_COMMAND` (`copyToClipboard` with an event, `$copyToClipboardEvent`), `CUT_COMMAND` (`onCutForRichText`, with `INTERNAL_$expandSelectionToWholeDocument`) and `PASTE_COMMAND` (`onPasteForRichText`) handlers; `registerPlainText`'s (`onCopyForPlainText`, `onCutForPlainText`, `onPasteForPlainText`), with JS's `paste` and `cut` tags | `rich_text`, `plain_text`, `clipboard` | unit tests (no vector: headless JS has no `ClipboardEvent`) |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -76,7 +78,7 @@ touches:
   DOM (a line boundary landing in its private text, a DOM range inside
   one) have no model counterpart. `isSelected()`, with its rule for an
   inline decorator at the end of its parent, is ported (for the tree view,
-  the `devtools` feature), though no vector reaches that rule;
+  the `devtools` feature, and `@lexical/clipboard`'s copy), though no vector reaches that rule;
   `getTopLevelElement` is not, nor are slots on decorators (`__slotHost`, `__slots`). `@lexical/extension`'s
   `HorizontalRuleExtension` (`INSERT_HORIZONTAL_RULE_COMMAND`, clicks, the
   selected class) isn't ported (see the extension API below), and
@@ -171,9 +173,9 @@ touches:
   DOM. What `NodeStructureExtension` does for links where it enforces node
   structure (lifting blocks, merging equal adjacent links, which
   `$linkNodeTransform` then leaves to it) isn't ported, so the transform
-  always does both. `extractWithChild` is a node hook that nothing calls
-  yet: its caller is `@lexical/html`'s copy. `HeadingNode`'s override is
-  ported; `ParagraphNode`'s, which reads the selection, comes with `html`. In a headless editor,
+  always does both. `extractWithChild` is called by `@lexical/clipboard`'s
+  copy (the `clipboard` feature); `HeadingNode`'s, `ParagraphNode`'s,
+  `ListNode`'s, `ListItemNode`'s and `LinkNode`'s overrides are ported. In a headless editor,
   `LinkNode.canInsertTextBefore` and `canInsertTextAfter` change nothing a
   vector can see: `insertText` at the edge of an inline parent's text puts
   the text outside the parent either way, and
@@ -229,14 +231,14 @@ touches:
   `MarkNode.canInsertTextBefore` and `canInsertTextAfter` change nothing a
   vector can see, as for `LinkNode`: `$insertText` puts text typed at the
   edge of an inline parent's text outside it either way. `extractWithChild`
-  and `excludeFromCopy` are node hooks that nothing calls yet (their
-  callers are `@lexical/clipboard`'s and `@lexical/html`'s copies);
+  and `excludeFromCopy` are node hooks that `@lexical/clipboard`'s copy
+  (the `clipboard` feature) calls, as `@lexical/html`'s will;
   `scripts/mark` calls them directly.
 - `@lexical/overflow`'s `createDOM` and `updateDOM`, which come with
   `html`, and `OverflowExtension`, which isn't ported yet
-  (`overflow_nodes()` is its `nodes`). `excludeFromCopy` is a node hook
-  that nothing calls yet: its callers are `@lexical/clipboard`'s and
-  `@lexical/html`'s copies. `@lexical/react`'s character limit
+  (`overflow_nodes()` is its `nodes`). `excludeFromCopy` is called by
+  `@lexical/clipboard`'s copy (the `clipboard` feature); `@lexical/html`'s
+  copy calls it too, with `'html'`. `@lexical/react`'s character limit
   (`useCharacterLimit.ts`: `$wrapOverflowedNodes`, `findOffset`,
   `$wrapNode`, `$unwrapNode`, `$mergePrevious`), which is what makes
   overflow nodes, isn't ported: no vector runs it (every vector's overflow
@@ -301,14 +303,15 @@ touches:
   `usize`.
 - `registerRichText`'s handlers of DOM events (click, the arrow keys,
   Backspace, Delete, Enter, Escape, Space and Tab keys, `MOVE_TO_START` and
-  `MOVE_TO_END`, copy, cut, paste, drop and drag), which wait for an input
-  layer, with its `escapeFormatTriggers` and `shouldHandlePasteAsFiles`;
+  `MOVE_TO_END`, drop and drag), which wait for an input layer, with its
+  `escapeFormatTriggers` and `shouldHandlePasteAsFiles` (`DRAG_DROP_PASTE`,
+  for a paste of files, which the port's `DataTransfer` doesn't carry);
   `CONTROLLED_TEXT_INSERTION_COMMAND`'s `beforeinput` form; and
   `SELECT_ALL_COMMAND`'s scoping to a slot (slots aren't ported). The DOM
   parts of `@lexical/rich-text` (`createDOM`, `exportDOM`, `importDOM`)
   come with `html`.
 - `registerPlainText`'s handlers of DOM events (the arrow keys, Backspace,
-  Delete, Enter, copy, cut, paste, drop and drag) and `PlainTextExtension`
+  Delete, Enter, drop and drag) and `PlainTextExtension`
   with its dependencies (`DragonExtension`,
   `NormalizeInlineElementsExtension`, whose transform
   `register_normalize_inline_elements` registers,
@@ -320,6 +323,43 @@ touches:
   its blocks) is ported but no vector reaches it: headless JS needs the
   DOM's `Selection.modify` to get there and throws, which `scripts/rich-text`
   records.
+- Of `@lexical/clipboard` (the `clipboard` feature):
+  - The HTML parts: `$getHtmlContent`, the `text/html` entry of
+    `$getClipboardDataFromSelection`, `onCopyForPlainText`'s `text/html`,
+    and `$insertDataTransferForRichText`'s `text/html` importer
+    (`$defaultHtmlImporter`, `trustHTML`, and the iOS Safari check that
+    skips HTML equal to the plain text). They need `@lexical/html`'s
+    export and import, which another branch ports (M4); until then a
+    rich-text paste of HTML alone inserts nothing, and one with plain text
+    inserts the text. `scripts/clipboard` records copies without
+    `text/html` (`ops.ts`'s `$clipboardDataWithoutHtml`, the default export
+    stack less its HTML entry), so its vectors need no DOM.
+  - `GetClipboardDataExtension` (`$exportMimeTypeFromSelection`,
+    `ExportMimeTypeFunction`, `GetClipboardDataConfig`),
+    `ClipboardImportExtension` (`ImportMimeTypeFunction`, the priority
+    config, `$getImportOutput`) and `ClipboardDOMImportExtension`, which
+    need the extension API; the functions here do what their defaults do.
+  - Drag and drop (`$handleRichTextDrop`, `$handlePlainTextDrop`,
+    `$doDrop`, `$writeDragSourceToDataTransfer`, `caretFromPoint.ts`),
+    which hit-test the DOM.
+  - `copyToClipboard`'s DOM and timer plumbing (without an event it fires a
+    `copy` at the document, with a 50 ms timeout and a guard against a copy
+    in flight) and the promise it returns. The copy and cut handlers take
+    the clipboard event's `DataTransfer` as their payload (`None` for a
+    keyboard event or no event) and, with none, copy nothing; a cut still
+    removes the selection. `$copyToClipboardEvent` also declines in JS
+    when the window has no DOM selection or it is outside the editor,
+    which in headless JS is always (a copy writes nothing); the port, like
+    Swift, writes the selection, since without a DOM the platform only
+    sends the editor's own copy. No vector records the handlers, as
+    headless JS can't run them; unit tests cover them.
+  - Slots: `$getSelectionSlotFrame` and a host's `$slots` in the copy
+    (slots aren't ported, so the walk starts at the root), and
+    `INTERNAL_$withExportMemo`, a cache that changes no output.
+  - `$sliceSelectedTextNodeContent`'s `'self'` mode, which writes a node's
+    text without `getWritable`; every ported caller passes `'clone'`.
+  - `DataTransfer`'s files, `clearData`, `dropEffect` and `effectAllowed`,
+    which nothing ported reads.
 - Composition, the DOM reconciler, mutation listeners, selection-change
   notifications and `$onUpdate` callbacks (none of which a headless editor
   runs, except `$onUpdate`), and `RootNode.__cachedText`. So `history` passes

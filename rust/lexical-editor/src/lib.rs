@@ -47,6 +47,8 @@
 mod caret;
 mod caret_tree;
 mod caret_utils;
+#[cfg(feature = "clipboard")]
+pub mod clipboard;
 #[cfg(feature = "code")]
 pub mod code;
 mod commands;
@@ -56,6 +58,7 @@ pub mod devtools;
 mod editor;
 mod editor_state;
 mod error;
+mod events;
 #[cfg(feature = "extension")]
 pub mod extension;
 #[cfg(feature = "extension")]
@@ -125,11 +128,12 @@ pub use caret_utils::{
 };
 pub use commands::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
-    CONTROLLED_TEXT_INSERTION_COMMAND, DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND,
-    DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
-    INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND,
-    OUTDENT_CONTENT_COMMAND, REDO_COMMAND, REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND,
-    SET_TEXT_FORMAT_COMMAND, UNDO_COMMAND,
+    CONTROLLED_TEXT_INSERTION_COMMAND, COPY_COMMAND, CUT_COMMAND, DELETE_CHARACTER_COMMAND,
+    DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND,
+    INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND,
+    INSERT_TAB_COMMAND, InsertClipboardNodesPayload, OUTDENT_CONTENT_COMMAND, PASTE_COMMAND,
+    REDO_COMMAND, REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND,
+    SELECTION_INSERT_CLIPBOARD_NODES_COMMAND, SET_TEXT_FORMAT_COMMAND, UNDO_COMMAND,
 };
 pub use editor::{
     COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
@@ -140,6 +144,7 @@ pub use editor::{
 };
 pub use editor_state::EditorState;
 pub use error::LexicalError;
+pub use events::DataTransfer;
 #[cfg(feature = "extension")]
 pub use extension_core::{
     AbortController, AbortSignal, AnyLexicalExtension, AnyLexicalExtensionArgument,

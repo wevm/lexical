@@ -181,6 +181,10 @@
       ("Helvetica Neue", "font-weight: 900", "HelveticaNeue-Bold"),
       ("Georgia", "font-weight: 500", "Georgia"),
       ("Georgia", "font-weight: 600", "Georgia-Bold"),
+      ("Menlo", "font-weight: 500", "Menlo-Regular"),
+      ("Optima", "font-weight: 500", "Optima-Regular"),
+      ("Baskerville", "font-weight: 500", "Baskerville"),
+      ("Futura", "font-weight: 900", "Futura-Bold"),
     ])
     func drawsANamedFamilyAtItsWeight(family: String, css: String, face: String) throws {
       let (view, window) = try makeView()
@@ -191,7 +195,7 @@
       }
       let font = try #require(
         view.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
-      #expect(font.fontName == face)
+      #expect(font.fontName == face, "drew \(font.fontName)")
       _ = window
     }
 

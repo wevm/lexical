@@ -51,6 +51,8 @@ mod caret_utils;
 pub mod code;
 mod commands;
 pub mod constants;
+#[cfg(feature = "html")]
+pub mod dom;
 mod editor;
 mod editor_state;
 mod error;
@@ -88,6 +90,7 @@ mod selection_format;
 mod selection_insert_nodes;
 mod selection_insert_text;
 mod serialized_export;
+mod set_dom_style;
 #[cfg(feature = "text")]
 pub mod text;
 mod updates;
@@ -149,6 +152,9 @@ pub use nodes::text::{TextData, create_text_node, toggle_text_format_type};
 pub use selection_deletion::{SelectionAlter, SelectionGranularity, SelectionMovement};
 pub use selection_insert_nodes::{insert_nodes, select_all};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
+pub use set_dom_style::{StyleObject, get_style_object_from_css, js_trim};
+#[cfg(feature = "html")]
+pub use set_dom_style::{set_dom_style_from_css, set_dom_style_object};
 pub use updates::parse_serialized_node;
 
 /// The upstream Lexical release this port conforms to. The conformance

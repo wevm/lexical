@@ -136,3 +136,90 @@ fn deleting_past_the_documents_ends_does_nothing() {
     assert_eq!(p.delete_word(false), Outcome::default());
     assert_eq!(p.step_count(), 1, "no step ran");
 }
+
+fn surface() -> Surface {
+    Surface::new(
+        Playground::new(vec![
+            json::parse(r#"{"type":"paragraph","children":[{"type":"text","text":"a😀b"}]}"#)
+                .unwrap(),
+            json::parse(
+                r#"{"type":"paragraph","children":[{"type":"text","text":"bold","format":1}]}"#,
+            )
+            .unwrap(),
+        ])
+        .unwrap(),
+    )
+}
+
+#[test]
+fn the_surface_takes_typing_and_ranges_in_utf16() {
+    let mut s = surface();
+    assert_eq!(s.display_text(), "a😀b\nbold");
+    assert_eq!(s.text_length_utf16(), 9);
+    // After the emoji: UTF-16 offset 3, byte 5.
+    s.set_selected_range_utf16(3..3);
+    assert_eq!(s.selection(), (5..5, false));
+    assert_eq!(s.replace_text_utf16(None, "x").error, None);
+    assert_eq!(s.display_text(), "a😀xb\nbold");
+    assert_eq!(s.caret(), 6);
+    // Replacing a given range: the emoji.
+    assert_eq!(s.replace_text_utf16(Some(1..3), "é").error, None);
+    assert_eq!(s.display_text(), "aéxb\nbold");
+    assert_eq!(s.text_for_range_utf16(0..2), ("aé".to_owned(), 0..2));
+    // A backward selection.
+    s.move_to(4, false);
+    s.move_to(1, true);
+    assert_eq!(s.selection(), (1..4, true));
+    assert_eq!(s.selected_text(), "éx");
+}
+
+#[test]
+fn a_composition_shows_without_reaching_lexical_until_committed() {
+    let mut s = surface();
+    s.move_to(1, false);
+    s.replace_and_mark_utf16(None, "か", Some(1..1));
+    assert_eq!(s.display_text(), "aか😀b\nbold");
+    assert_eq!(s.marked_range(), Some(1..4));
+    assert_eq!(s.selection(), (4..4, false));
+    assert_eq!(
+        s.playground.document().text(),
+        "a😀b\nbold",
+        "Lexical hasn't seen it"
+    );
+    let runs = s.runs();
+    assert!(runs.iter().any(|r| r.composing && r.range == (1..4)));
+    let covered: usize = runs.iter().map(|r| r.range.len()).sum();
+    assert_eq!(covered, s.display_text().len(), "the runs cover the text");
+    // The input method replaces its composition, then commits.
+    s.replace_and_mark_utf16(None, "かな", None);
+    assert_eq!(s.display_text(), "aかな😀b\nbold");
+    assert_eq!(s.replace_text_utf16(None, "仮名").error, None);
+    assert_eq!(s.display_text(), "a仮名😀b\nbold");
+    assert_eq!(s.marked_range(), None);
+    assert_eq!(s.caret(), "a仮名".len());
+    // An empty composition ends it without an edit.
+    let steps = s.playground.step_count();
+    s.replace_and_mark_utf16(None, "x", None);
+    s.replace_and_mark_utf16(None, "", None);
+    assert_eq!(s.display_text(), "a仮名😀b\nbold");
+    assert_eq!(s.playground.step_count(), steps);
+}
+
+#[test]
+fn the_surface_draws_formats_and_edits_through_lexical() {
+    let mut s = surface();
+    let bold = s
+        .runs()
+        .into_iter()
+        .find(|r| r.format == format_flag("bold"));
+    assert_eq!(bold.map(|r| r.range), Some(7..11));
+    s.move_to(s.display_text().len(), false);
+    assert_eq!(s.edit(Playground::insert_paragraph).error, None);
+    assert_eq!(s.replace_text_utf16(None, "new").error, None);
+    assert_eq!(s.display_text(), "a😀b\nbold\nnew");
+    assert_eq!(s.delete(Unit::Character, true).error, None);
+    assert_eq!(s.display_text(), "a😀b\nbold\nne");
+    s.select_all();
+    assert_eq!(s.edit(|p| p.format_text("italic")).error, None);
+    assert!(s.playground.has_format("italic"));
+}

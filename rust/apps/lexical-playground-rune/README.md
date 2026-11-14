@@ -58,4 +58,4 @@ bundle stays, to open from Finder.
 
 Like every Rune app, it renders headless too:
 `cargo run -- --snap playground.png --size 1100x720 --scene typed` (and
-`--tree`, `--script`; see Rune's README). The scenes are `typed` and `json`.
+`--tree`, `--script`; see Rune's README). The scenes are `typed`, `json` and `parity` (Replay vectors, run).

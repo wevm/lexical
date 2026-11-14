@@ -24,6 +24,9 @@ pull request.
 | --------------------- | --------------------- | --------- | --------------------------------------------------------- |
 | `rust/lexical-editor` | `lexical-editor`      | not yet   | The port: core, and one feature per upstream package      |
 | `rust/conformance`    | `lexical-conformance` | never     | The conformance runner: replays every vector file         |
+| `rust/apps/lexical-playground-core` | `lexical-playground-core` | never | The playgrounds' binding to `lexical-editor` |
+| `rust/apps/lexical-playground-rune` | `lexical-playground-rune` | never | The playground on Rune (a workspace of its own) |
+| `rust/apps/lexical-playground-gpui` | `lexical-playground-gpui` | never | The playground on GPUI (a workspace of its own) |
 
 `rust/` is developed in wevm/lexical, with its own CI
 (`.github/workflows/rust.yml`), so it can later be mirrored to
@@ -170,8 +173,8 @@ Each milestone ends with green CI and a report to the Space.
 | Milestone | Scope | Vectors that pass when done | Status |
 | --- | --- | --- | --- |
 | M0 | The `rust/` workspace, JSON as JS writes it, the core nodes (root, paragraph, text, tab, line break), `parseEditorState` and `toJSON` in both forms, the conformance runner, CI | `meta`, `serialization/core`, the core-only cases of `property/documents` (JSON and text) | done |
-| M1 | The core model: `editor.update` and the commit (dirty nodes, normalization, transforms, listeners, commands, tags), node creation and methods (`splitText`, `mergeWithSibling`, `spliceText`, `insertAfter`, `remove`, `replace`...) with UTF-16 offsets, `RangeSelection` and `NodeSelection` editing, carets, NodeState, slots, the schema facility, `DecoratorNode`, the extension API (`buildEditorFromExtensions`), the parity ledger | `scripts/*`, `fuzz/core`, `file/*` | in progress: the update cycle, `setEditorState`, commands, transforms, listeners, the node methods, carets, selection reading and `RangeSelection`/`NodeSelection` editing are done (`scripts/*` and `fuzz/core` pass); next, the platform's `Selection.modify` as an editor hook, NodeState, `DecoratorNode`, the extension API |
-| P | Desktop playgrounds (`apps/`): `lexical-playground-rune` on Rune, then `lexical-playground-gpui` on GPUI, sharing `lexical-playground-core`; they grow with each milestone below | the vectors, replayed in the app; a session exported from the app replays in JS (`replay.test.ts`) | in progress |
+| M1 | The core model: `editor.update` and the commit (dirty nodes, normalization, transforms, listeners, commands, tags), node creation and methods (`splitText`, `mergeWithSibling`, `spliceText`, `insertAfter`, `remove`, `replace`...) with UTF-16 offsets, `RangeSelection` and `NodeSelection` editing, carets, NodeState, slots, the schema facility, `DecoratorNode`, the extension API (`buildEditorFromExtensions`), the parity ledger | `scripts/*`, `fuzz/core`, `file/*` | in progress: the update cycle, `setEditorState`, commands, transforms, listeners, the node methods, carets, selection reading and `RangeSelection`/`NodeSelection` editing are done (`scripts/*` and `fuzz/core` pass), and the platform's `Selection.modify` is an editor hook (`SelectionMovement`); next, NodeState, `DecoratorNode`, the extension API |
+| P | Desktop playgrounds (`apps/`): `lexical-playground-rune` on Rune, then `lexical-playground-gpui` on GPUI, sharing `lexical-playground-core`; they grow with each milestone below | the vectors, replayed in the app; a session exported from the app replays in JS (`replay.test.ts`); in CI, a GPUI session typed in a real window replays in JS | both apps run on macOS with typing, Return, deletion, formatting, input methods and the Parity panel; they grow with each milestone |
 | M2 | `rich-text` (headings, quotes, and the command handlers a text surface dispatches: typing, Enter, Backspace, formatting) and `history` (undo), which the playgrounds need first; then the node packages `list`, `link`, `code`, `overflow`, `hashtag`, with `selection` and `utils` | `serialization/*`, `property/documents` (JSON and text), `entities/hashtag-*` | |
 | M3 | The commands `property/sequences` dispatches | `property/sequences` | |
 | M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | |
@@ -192,17 +195,32 @@ app is its own Cargo workspace under `apps/` (Rune needs Rust 1.90 or
 later; the crate stays on 1.88), and both depend on
 `apps/lexical-playground-core`, which is in this workspace:
 
-- Lexical owns the document and the selection; the framework's text field
-  draws a mirror of them, lays it out, hit-tests and moves the caret. Keys
-  that edit run as Lexical updates before the field sees them, and a change
-  the field makes itself (an input method's commit, a cut) is replayed into
-  Lexical as the text it replaced; then the mirror is rebuilt, as Lexical's
-  reconciler rebuilds the DOM. This is the Swift port's split with TextKit.
+- Lexical owns the document and the selection; the app draws them, lays
+  them out, hit-tests and moves the caret, as a browser does for
+  `contenteditable` and TextKit does for the Swift port.
+  - **Rune:** its `text_input` draws a mirror of the document. Keys that
+    edit run as Lexical updates before the field sees them, and a change
+    the field makes itself (an input method's commit, a cut) is replayed
+    into Lexical as the text it replaced; then the mirror is rebuilt, as
+    Lexical's reconciler rebuilds the DOM.
+  - **GPUI:** an element of its own draws the document, and is the window's
+    text input client (`EntityInputHandler`) through `Surface` in the core
+    crate, which maps UTF-16 ranges to Lexical points and keeps an input
+    method's composition outside Lexical until it commits, as a browser
+    does. Keys are GPUI actions bound as macOS binds them.
+  - Deleting by character, word or line extends the selection in the core
+    crate (graphemes, words, the paragraph) before the step runs, so the
+    step is what JS runs once the browser's `Selection.modify` has moved.
+    `SelectionMovement` lets an app answer that from its own layout instead.
 - Every edit is a step of the conformance script language, run by the same
   interpreter that replays `scripts/*`. Export session writes the steps
   and their results as a vector file that JS replays and compares
   (`packages/lexical-conformance/src/replay.test.ts`); Replay vectors runs
   the conformance report in the app.
+- The GPUI app has an end-to-end mode for CI (`--features e2e`), as
+  zbugs-gpui does: it types, composes and deletes in its own window through
+  the input handler and key bindings, then exports the session, which JS
+  replays in the same job.
 - To try one: `cargo run --release` in its directory. On macOS a
   `bundle.sh` runner makes a `.app` that stays in the Dock, as zbugs' do.
 

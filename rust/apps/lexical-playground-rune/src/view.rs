@@ -34,7 +34,7 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .w_full()
         .h_full()
         .fill(k.c.page)
-        .child(toolbar(s, k))
+        .child(toolbar(s, k, cx.chrome_insets().leading))
         .child(
             row()
                 .w_full()
@@ -47,8 +47,15 @@ pub fn view(s: &State, cx: &mut Cx<State>) -> El {
         .child(status_bar(s, k))
 }
 
-fn toolbar(s: &State, k: &Kit) -> El {
-    let mut bar = row().w_full().gap(6.0).padding(10.0).fill(k.c.bg_base);
+/// `leading`: the macOS traffic lights' width, where the toolbar shares the
+/// titlebar's band.
+fn toolbar(s: &State, k: &Kit, leading: f32) -> El {
+    let mut bar = row()
+        .w_full()
+        .gap(6.0)
+        .padding(10.0)
+        .pl(if leading > 0.0 { leading + 12.0 } else { 10.0 })
+        .fill(k.c.bg_base);
     bar = bar.child(text("Lexical").font(k.ty.body_medium).color(k.c.text_base));
     for (name, label) in FORMATS {
         let on = s.playground.has_format(name);
@@ -88,7 +95,11 @@ fn toolbar(s: &State, k: &Kit) -> El {
 }
 
 fn editor(s: &State, k: &Kit) -> El {
+    // The field's own ink is white, for a dark window; the kit's follows
+    // the system's appearance.
     let field = text_input(&s.edit, TextStyle::new(16.0, 400.0))
+        .color(k.c.text_base)
+        .caret(k.c.text_base, k.selection())
         .key("editor")
         .w_full()
         .grow(1.0)
@@ -144,6 +155,7 @@ fn mono(s: &str, k: &Kit) -> El {
         .font(k.ty.mono)
         .color(k.c.text_base)
         .selectable(true)
+        .wrap()
         .w_full()
 }
 
@@ -160,6 +172,7 @@ fn parity(s: &State, k: &Kit) -> El {
                 .font(k.ty.small)
                 .color(k.c.text_muted)
                 .selectable(true)
+                .wrap()
                 .w_full(),
         )
         .child(
@@ -193,7 +206,7 @@ fn parity(s: &State, k: &Kit) -> El {
     out
 }
 
-fn replay() -> (String, bool) {
+pub fn replay() -> (String, bool) {
     replay_vectors().unwrap_or_else(|e| (e, false))
 }
 

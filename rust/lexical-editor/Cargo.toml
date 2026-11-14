@@ -55,8 +55,8 @@ text = []
 # mergeRegister, which aren't ported.
 hashtag = ["text"]
 # @lexical/extension's decorators: HorizontalRuleNode (a block decorator) and
-# DecoratorTextNode (an inline one). The rest of the package, the extension
-# API, isn't ported.
+# DecoratorTextNode (an inline one), and NormalizeInlineElementsExtension's
+# transform. The rest of the package, the extension API, isn't ported.
 extension = []
 
 [dependencies]

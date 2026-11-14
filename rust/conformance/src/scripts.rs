@@ -12,7 +12,7 @@
 //! exports them, and any other name is a command the script makes.
 //!
 //! A script with `richText: true` registers `@lexical/rich-text`'s nodes
-//! (`HeadingNode`, `QuoteNode`).
+//! (`HeadingNode`, `QuoteNode`) and `registerRichText`'s handlers.
 //!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
@@ -22,9 +22,13 @@ use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
-    COMMAND_PRIORITY_EDITOR, CaretDirection, CreateEditorArgs, Direction, Editor, LexicalCommand,
-    LexicalError, NodeRef, PointCaret, PointType, REDO_COMMAND, RangeSelection, SelectionRef,
-    SliceMode, TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
+    COMMAND_PRIORITY_EDITOR, CONTROLLED_TEXT_INSERTION_COMMAND, CaretDirection, CreateEditorArgs,
+    DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, Direction, Editor,
+    FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND,
+    INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, LexicalCommand, LexicalError, NodeRef,
+    OUTDENT_CONTENT_COMMAND, PointCaret, PointType, REDO_COMMAND, REMOVE_TEXT_COMMAND,
+    RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND, SelectionRef, SliceMode,
+    TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
     caret_range_from_selection, create_command, create_editor, create_node_selection,
     create_range_selection, get_caret_range, get_child_caret, get_node_by_key, get_root,
     get_selection, get_sibling_caret, get_text_point_caret, insert_nodes, normalize_caret,
@@ -55,7 +59,23 @@ impl Ctx {
             "CAN_UNDO_COMMAND" => ScriptCommand::Bool(CAN_UNDO_COMMAND),
             "CLEAR_EDITOR_COMMAND" => ScriptCommand::Void(CLEAR_EDITOR_COMMAND),
             "CLEAR_HISTORY_COMMAND" => ScriptCommand::Void(CLEAR_HISTORY_COMMAND),
+            "CONTROLLED_TEXT_INSERTION_COMMAND" => {
+                ScriptCommand::Str(CONTROLLED_TEXT_INSERTION_COMMAND)
+            }
+            "DELETE_CHARACTER_COMMAND" => ScriptCommand::Bool(DELETE_CHARACTER_COMMAND),
+            "DELETE_LINE_COMMAND" => ScriptCommand::Bool(DELETE_LINE_COMMAND),
+            "DELETE_WORD_COMMAND" => ScriptCommand::Bool(DELETE_WORD_COMMAND),
+            "FORMAT_ELEMENT_COMMAND" => ScriptCommand::Str(FORMAT_ELEMENT_COMMAND),
+            "FORMAT_TEXT_COMMAND" => ScriptCommand::Str(FORMAT_TEXT_COMMAND),
+            "INDENT_CONTENT_COMMAND" => ScriptCommand::Void(INDENT_CONTENT_COMMAND),
+            "INSERT_LINE_BREAK_COMMAND" => ScriptCommand::Bool(INSERT_LINE_BREAK_COMMAND),
+            "INSERT_PARAGRAPH_COMMAND" => ScriptCommand::Void(INSERT_PARAGRAPH_COMMAND),
+            "INSERT_TAB_COMMAND" => ScriptCommand::Void(INSERT_TAB_COMMAND),
+            "OUTDENT_CONTENT_COMMAND" => ScriptCommand::Void(OUTDENT_CONTENT_COMMAND),
             "REDO_COMMAND" => ScriptCommand::Void(REDO_COMMAND),
+            "REMOVE_TEXT_COMMAND" => ScriptCommand::Void(REMOVE_TEXT_COMMAND),
+            "SELECT_ALL_COMMAND" => ScriptCommand::Void(SELECT_ALL_COMMAND),
+            "SET_TEXT_FORMAT_COMMAND" => ScriptCommand::Formats(SET_TEXT_FORMAT_COMMAND),
             "UNDO_COMMAND" => ScriptCommand::Void(UNDO_COMMAND),
             _ => ScriptCommand::Json(
                 self.commands
@@ -69,11 +89,23 @@ impl Ctx {
 }
 
 /// A command a script names, by its payload type: Lexical's own take
-/// nothing (`void`) or a boolean, and those the script makes take any JSON.
+/// nothing (`void`), a boolean, a string or a map of formats to booleans,
+/// and those the script makes take any JSON.
 enum ScriptCommand {
     Void(LexicalCommand<()>),
     Bool(LexicalCommand<bool>),
+    Str(LexicalCommand<String>),
+    Formats(LexicalCommand<Vec<(String, bool)>>),
     Json(LexicalCommand<Value>),
+}
+
+/// `SET_TEXT_FORMAT_COMMAND`'s payload, an object of booleans, in key order.
+fn formats_of(payload: &Value) -> Option<Vec<(String, bool)>> {
+    payload
+        .as_object()?
+        .iter()
+        .map(|(name, value)| Some((name.to_owned(), value.as_bool()?)))
+        .collect()
 }
 
 impl ScriptCommand {
@@ -86,6 +118,12 @@ impl ScriptCommand {
             }
             ScriptCommand::Bool(command) if payload.as_bool().is_some() => {
                 editor.dispatch_command(command, payload.as_bool() == Some(true))
+            }
+            ScriptCommand::Str(command) if payload.as_str().is_some() => {
+                editor.dispatch_command(command, payload.as_str().unwrap_or("").to_owned())
+            }
+            ScriptCommand::Formats(command) if formats_of(&payload).is_some() => {
+                editor.dispatch_command(command, formats_of(&payload).unwrap_or_default())
             }
             ScriptCommand::Json(command) => editor.dispatch_command(command, payload),
             _ => Err(err(format!(
@@ -111,6 +149,22 @@ impl ScriptCommand {
             ScriptCommand::Bool(command) => editor.register_command(
                 command,
                 move |payload, editor| listener(&(*payload).into(), editor),
+                priority,
+            ),
+            ScriptCommand::Str(command) => editor.register_command(
+                command,
+                move |payload, editor| listener(&payload.as_str().into(), editor),
+                priority,
+            ),
+            ScriptCommand::Formats(command) => editor.register_command(
+                command,
+                move |payload, editor| {
+                    let mut formats = Object::new();
+                    for (name, value) in payload {
+                        formats.insert(name.as_str(), (*value).into());
+                    }
+                    listener(&formats.into(), editor)
+                },
                 priority,
             ),
             ScriptCommand::Json(command) => editor.register_command(command, listener, priority),
@@ -669,6 +723,9 @@ impl Session {
             },
         });
         let ctx = Rc::new(Ctx::default());
+        if rich_text {
+            let _unregister = lexical::rich_text::register_rich_text(&editor);
+        }
         for name in script
             .get("transforms")
             .and_then(Value::as_array)

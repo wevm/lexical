@@ -32,10 +32,12 @@ use crate::caret::{
 use crate::caret_utils::{
     caret_from_point, caret_range_from_selection, get_caret_range_in_direction,
     is_extendable_text_point_caret, normalize_caret, rewind_sibling_caret, set_point_from_caret,
-    update_range_selection_from_caret_range,
+    set_selection_from_caret_range, update_range_selection_from_caret_range,
 };
 use crate::error::invariant;
-use crate::lexical_selection::{Point, PointType, RangeSelection, SelectionRef, Which};
+use crate::lexical_selection::{
+    Point, PointType, RangeSelection, SelectionRef, Which, get_selection,
+};
 use crate::lexical_utils::{
     get_root, is_block, is_shadow_root_node, restore_empty_container_paragraph,
 };
@@ -43,7 +45,7 @@ use crate::node::NodeRef;
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::nodes::line_break::LineBreakNode;
 use crate::nodes::paragraph::create_paragraph_node;
-use crate::selection_insert_nodes::normalize_selection;
+use crate::selection_insert_nodes::{get_previous_selection, normalize_selection};
 use crate::updates::get_active_editor;
 use crate::utf16;
 use std::rc::Rc;
@@ -302,6 +304,25 @@ impl SelectionRef {
     /// `selection.deleteLine(isBackward)`.
     pub fn delete_line(&self, is_backward: bool) -> Result<(), LexicalError> {
         delete_text_by_granularity(self, is_backward, SelectionGranularity::LineBoundary)
+    }
+
+    /// `NodeSelection.deleteNodes()`: removes the selected nodes, first
+    /// moving the selection to just after the first of them when this is
+    /// the current (or last committed) selection, and gives an emptied root
+    /// a paragraph. (JS skips slotted nodes; slots are not ported.)
+    pub fn delete_nodes(&self) -> Result<(), LexicalError> {
+        let nodes = self.get_nodes()?;
+        let current = get_selection().or_else(get_previous_selection);
+        if let (Some(current), Some(first)) = (current, nodes.first())
+            && current.ptr_eq(self)
+        {
+            let first_caret = get_sibling_caret(first, CaretDirection::Next);
+            set_selection_from_caret_range(&get_caret_range(first_caret.clone(), first_caret)?)?;
+        }
+        for node in &nodes {
+            node.remove(false)?;
+        }
+        ensure_root_has_paragraph()
     }
 }
 

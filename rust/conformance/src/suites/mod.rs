@@ -60,6 +60,11 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/rich-text-commands",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "fuzz/core",
             variant: None,
             check: crate::scripts::check,

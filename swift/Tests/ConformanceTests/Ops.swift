@@ -1,5 +1,7 @@
 import Foundation
 import Lexical
+import LexicalHistory
+import LexicalRichText
 
 // The Swift interpreter of the script vectors that
 // packages/lexical-conformance/src/ops.ts writes. It must do exactly what
@@ -34,10 +36,55 @@ struct StepRecord {
   var error: Bool
 }
 
+/// `CORE_COMMANDS` in ops.ts: Lexical's own commands, which `dispatch` and
+/// handlers name as JS exports them. Their payloads are typed in Swift, so
+/// the script's JSON payload is converted on the way in and out.
+private enum CoreCommand {
+  case void(LexicalCommand<Void>)
+  case bool(LexicalCommand<Bool>)
+  case string(LexicalCommand<String>)
+  /// `SET_TEXT_FORMAT_COMMAND`: an object of booleans, in key order.
+  case formats(LexicalCommand<[(TextFormatType, Bool)]>)
+  /// `SELECT_ALL_COMMAND`, whose keyboard event no handler reads; ops.ts
+  /// dispatches it with `null`.
+  case keyboard(LexicalCommand<KeyboardEvent>)
+}
+
+private let coreCommands: [String: CoreCommand] = [
+  "CAN_REDO_COMMAND": .bool(CAN_REDO_COMMAND),
+  "CAN_UNDO_COMMAND": .bool(CAN_UNDO_COMMAND),
+  "CLEAR_EDITOR_COMMAND": .void(CLEAR_EDITOR_COMMAND),
+  "CLEAR_HISTORY_COMMAND": .void(CLEAR_HISTORY_COMMAND),
+  "CONTROLLED_TEXT_INSERTION_COMMAND": .string(CONTROLLED_TEXT_INSERTION_COMMAND),
+  "DELETE_CHARACTER_COMMAND": .bool(DELETE_CHARACTER_COMMAND),
+  "DELETE_LINE_COMMAND": .bool(DELETE_LINE_COMMAND),
+  "DELETE_WORD_COMMAND": .bool(DELETE_WORD_COMMAND),
+  "FORMAT_ELEMENT_COMMAND": .string(FORMAT_ELEMENT_COMMAND),
+  "FORMAT_TEXT_COMMAND": .string(FORMAT_TEXT_COMMAND),
+  "INDENT_CONTENT_COMMAND": .void(INDENT_CONTENT_COMMAND),
+  "INSERT_LINE_BREAK_COMMAND": .bool(INSERT_LINE_BREAK_COMMAND),
+  "INSERT_PARAGRAPH_COMMAND": .void(INSERT_PARAGRAPH_COMMAND),
+  "INSERT_TAB_COMMAND": .void(INSERT_TAB_COMMAND),
+  "OUTDENT_CONTENT_COMMAND": .void(OUTDENT_CONTENT_COMMAND),
+  "REDO_COMMAND": .void(REDO_COMMAND),
+  "REMOVE_TEXT_COMMAND": .void(REMOVE_TEXT_COMMAND),
+  "SELECT_ALL_COMMAND": .keyboard(SELECT_ALL_COMMAND),
+  "SET_TEXT_FORMAT_COMMAND": .formats(SET_TEXT_FORMAT_COMMAND),
+  "UNDO_COMMAND": .void(UNDO_COMMAND),
+]
+
+/// `SET_TEXT_FORMAT_COMMAND`'s payload as the script writes it.
+private func formats(_ payload: JSONValue) throws -> [(TextFormatType, Bool)] {
+  let object = try payload.objectValue.orThrow()
+  return try object.keys.map { ($0, try object[$0]?.boolValue.orThrow() ?? false) }
+}
+
 private final class ScriptContext {
   let editor: Editor
   var log: [JSONValue] = []
   var commands: [String: LexicalCommand<JSONValue>] = [:]
+  /// The session's clock (ms): what the history listener reads as `Date.now()`.
+  var clock: Double = 0
 
   init(_ editor: Editor) { self.editor = editor }
 
@@ -46,6 +93,51 @@ private final class ScriptContext {
     let command = LexicalCommand<JSONValue>(name)
     commands[name] = command
     return command
+  }
+
+  /// `editor.dispatchCommand(command(ctx, name), payload)`.
+  func dispatch(_ name: String, _ payload: JSONValue) throws -> Bool {
+    switch coreCommands[name] {
+    case .void(let command):
+      guard payload == .null else { throw ScriptError("\(name) takes no payload") }
+      return try editor.dispatchCommand(command, ())
+    case .bool(let command):
+      return try editor.dispatchCommand(command, try payload.boolValue.orThrow())
+    case .string(let command):
+      return try editor.dispatchCommand(command, try payload.stringValue.orThrow())
+    case .formats(let command):
+      return try editor.dispatchCommand(command, try formats(payload))
+    case .keyboard(let command):
+      guard payload == .null else { throw ScriptError("\(name) takes no payload") }
+      return try editor.dispatchCommand(command, KeyboardEvent())
+    case nil:
+      return try editor.dispatchCommand(self.command(name), payload)
+    }
+  }
+
+  /// `editor.registerCommand(command(ctx, name), listener, priority)`.
+  func register(
+    _ name: String, _ priority: Int, _ listener: @escaping (JSONValue) throws -> Bool
+  ) {
+    switch coreCommands[name] {
+    case .void(let command):
+      _ = editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
+    case .bool(let command):
+      _ = editor.registerCommand(command, { payload, _ in try listener(.bool(payload)) }, priority)
+    case .string(let command):
+      _ = editor.registerCommand(
+        command, { payload, _ in try listener(.string(payload)) }, priority)
+    case .formats(let command):
+      _ = editor.registerCommand(
+        command,
+        { payload, _ in try listener(.object(JSONObject(payload.map { ($0, .bool($1)) }))) },
+        priority)
+    case .keyboard(let command):
+      _ = editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
+    case nil:
+      _ = editor.registerCommand(
+        self.command(name), { payload, _ in try listener(payload) }, priority)
+    }
   }
 }
 
@@ -298,8 +390,7 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
       ]))
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
-    let handled = try ctx.editor.dispatchCommand(
-      ctx.command(name), action["payload"] ?? .null)
+    let handled = try ctx.dispatch(name, action["payload"] ?? .null)
     ctx.log.append(.array([.string("dispatched"), .string(name), .bool(handled)]))
   default:
     throw ScriptError("unknown action \(String(describing: kind))")
@@ -358,8 +449,17 @@ private func registerTransform(_ name: String, _ ctx: ScriptContext) throws {
 /// step.
 func runScript(_ script: JSONValue) throws -> [StepRecord] {
   resetRandomKey()
-  let editor = try createEditor(CreateEditorArgs(namespace: "", onError: { throw $0 }))
+  // `richText: true` registers @lexical/rich-text's nodes and
+  // `registerRichText`, as ops.ts does.
+  let nodes: [LexicalNodeConfig] =
+    script["richText"]?.boolValue == true
+    ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
+  let editor = try createEditor(
+    CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))
   let ctx = ScriptContext(editor)
+  if script["richText"]?.boolValue == true {
+    _ = registerRichText(editor)
+  }
   for name in script["transforms"]?.arrayValue ?? [] {
     try registerTransform(name.stringValue.orThrow(), ctx)
   }
@@ -367,15 +467,16 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
     let id = try handler["id"]?.stringValue.orThrow() ?? ""
     let actions = handler["actions"]?.arrayValue ?? []
     let result = handler["result"]?.boolValue ?? false
-    editor.registerCommand(
-      ctx.command(try handler["command"]?.stringValue.orThrow() ?? ""),
-      { payload, _ in
-        ctx.log.append(.array([.string("handler"), .string(id), payload]))
-        for action in actions {
-          try runAction(action, ctx)
-        }
-        return result
-      }, handler["priority"]?.int ?? COMMAND_PRIORITY_EDITOR)
+    ctx.register(
+      try handler["command"]?.stringValue.orThrow() ?? "",
+      handler["priority"]?.int ?? COMMAND_PRIORITY_EDITOR
+    ) { payload in
+      ctx.log.append(.array([.string("handler"), .string(id), payload]))
+      for action in actions {
+        try runAction(action, ctx)
+      }
+      return result
+    }
   }
   if script["listen"]?.boolValue == true {
     editor.registerUpdateListener { payload in
@@ -403,9 +504,16 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
       ctx.log.append(.array([.string("textContent"), .string(content)]))
     }
   }
+  if let delay = script["history"]?["delay"]?.numberValue {
+    // ops.ts reads `Date.now()` at every update; here that is the session clock.
+    _ = try registerHistory(editor, createEmptyHistoryState(), delay) { [unowned ctx] in ctx.clock }
+  }
   let steps = script["steps"]?.arrayValue ?? []
   let finalOnly = script["snapshot"]?.stringValue == "final"
   return try steps.enumerated().map { i, step in
+    if let now = step["now"]?.numberValue {
+      ctx.clock = now
+    }
     ctx.log = []
     var failed = false
     do {
@@ -419,7 +527,7 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
           }, EditorUpdateOptions(tag: tags, discrete: true))
       } else {
         let name = try step["dispatch"]?.stringValue.orThrow() ?? ""
-        let handled = try editor.dispatchCommand(ctx.command(name), step["payload"] ?? .null)
+        let handled = try ctx.dispatch(name, step["payload"] ?? .null)
         ctx.log.append(.array([.string("dispatched"), .string(name), .bool(handled)]))
       }
     } catch {

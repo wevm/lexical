@@ -2,21 +2,34 @@
 //! `QuoteNode`, from `packages/lexical-rich-text/src/index.ts`, with their
 //! generated JSON (`LexicalRichTextGeneratedJSON.ts`).
 //!
-//! `registerRichText`'s command handlers come next; the DOM parts
-//! (`createDOM`, `exportDOM`, `importDOM`, paste and drag and drop) come with
-//! `html` or have no counterpart.
+//! `registerRichText`'s command handlers ([`register_rich_text`]) that act
+//! on the model. The handlers of DOM events (click, arrow keys, Backspace,
+//! Delete, Enter, Escape, Space, Tab, copy, cut, paste and drag and drop)
+//! wait for an input layer, and the DOM parts (`createDOM`, `exportDOM`,
+//! `importDOM`) come with `html`.
 
+use crate::commands::{
+    CONTROLLED_TEXT_INSERTION_COMMAND, DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND,
+    DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
+    INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND,
+    OUTDENT_CONTENT_COMMAND, REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
+};
+use crate::editor::COMMAND_PRIORITY_EDITOR;
 use crate::generated_json::{
     export_compact_element_node, export_element_node, update_element_node,
 };
 use crate::json::{Object, Value};
 use crate::lexical_selection::SelectionRef;
+use crate::lexical_selection::get_selection;
 use crate::lexical_utils::{set_node_key, with_writable};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
 use crate::nodes::paragraph::create_paragraph_node;
+use crate::nodes::tab::create_tab_node;
+use crate::selection_insert_nodes::{insert_nodes, select_all};
+use crate::utils::{find_matching_parent, handle_indent_and_outdent};
 use crate::utils::{is_at_end_of_node, is_at_start_of_node};
-use crate::{LexicalError, NodeClass};
+use crate::{Editor, LexicalError, NodeClass, Unregister};
 
 /// The node classes this package registers (`RichTextExtension`'s
 /// `nodes`): `HeadingNode` and `QuoteNode`.
@@ -334,4 +347,195 @@ impl LexicalNode for QuoteNode {
         this.replace(&paragraph, false)?;
         Ok(true)
     }
+}
+
+/// The current selection when it is a range selection.
+fn range_selection() -> Option<SelectionRef> {
+    get_selection().filter(SelectionRef::is_range)
+}
+
+/// `registerRichText(editor)`: registers the rich text command handlers
+/// that act on the model, at `COMMAND_PRIORITY_EDITOR`, and returns what
+/// unregisters them.
+///
+/// JS's `escapeFormatTriggers` (for click and arrow keys) and
+/// `shouldHandlePasteAsFiles` (for paste) go with those events' handlers,
+/// which aren't ported. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the
+/// string form, and `SELECT_ALL_COMMAND` always selects the whole document,
+/// as JS does outside a slot (slots aren't ported).
+pub fn register_rich_text(editor: &Editor) -> Unregister {
+    let unregisters: Vec<Unregister> = vec![
+        editor.register_command(
+            &DELETE_CHARACTER_COMMAND,
+            |&is_backward, _| match get_selection() {
+                Some(selection) if selection.is_range() => {
+                    selection.delete_character(is_backward)?;
+                    Ok(true)
+                }
+                Some(selection) if selection.is_node() => {
+                    selection.delete_nodes()?;
+                    Ok(true)
+                }
+                _ => Ok(false),
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &DELETE_WORD_COMMAND,
+            |&is_backward, _| {
+                let Some(selection) = range_selection() else {
+                    return Ok(false);
+                };
+                selection.delete_word(is_backward)?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &DELETE_LINE_COMMAND,
+            |&is_backward, _| {
+                let Some(selection) = range_selection() else {
+                    return Ok(false);
+                };
+                selection.delete_line(is_backward)?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &CONTROLLED_TEXT_INSERTION_COMMAND,
+            |text, _| {
+                if let Some(selection) = get_selection() {
+                    selection.insert_text(text)?;
+                }
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &REMOVE_TEXT_COMMAND,
+            |_, _| {
+                let Some(selection) = range_selection() else {
+                    return Ok(false);
+                };
+                selection.remove_text()?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &FORMAT_TEXT_COMMAND,
+            |format, _| {
+                let Some(selection) = get_selection() else {
+                    return Ok(false);
+                };
+                selection.format_text(format, None)?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &SET_TEXT_FORMAT_COMMAND,
+            |formats, _| {
+                let Some(selection) = get_selection() else {
+                    return Ok(false);
+                };
+                let formats: Vec<(&str, bool)> = formats
+                    .iter()
+                    .map(|(name, value)| (name.as_str(), *value))
+                    .collect();
+                selection.set_text_format(&formats)?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &FORMAT_ELEMENT_COMMAND,
+            |format, _| {
+                let Some(selection) = get_selection() else {
+                    return Ok(false);
+                };
+                for node in selection.get_nodes()? {
+                    let element = find_matching_parent(&node, |parent| {
+                        parent.is_element() && !parent.is_inline()
+                    });
+                    if let Some(element) = element {
+                        element.set_element_format(format);
+                    }
+                }
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &INSERT_LINE_BREAK_COMMAND,
+            |&select_start, _| {
+                let Some(selection) = range_selection() else {
+                    return Ok(false);
+                };
+                selection.insert_line_break(select_start)?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &INSERT_PARAGRAPH_COMMAND,
+            |_, _| {
+                let Some(selection) = range_selection() else {
+                    return Ok(false);
+                };
+                selection.insert_paragraph()?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &INSERT_TAB_COMMAND,
+            |_, _| {
+                let tab_node = create_tab_node();
+                if let Some(range) = get_selection().and_then(|s| s.range()) {
+                    tab_node.set_format(range.format);
+                    tab_node.set_style(&range.style);
+                }
+                insert_nodes(vec![tab_node])?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &INDENT_CONTENT_COMMAND,
+            |_, _| {
+                handle_indent_and_outdent(|block| {
+                    let indent = block.element_data().get_indent();
+                    block.set_indent(indent + 1.0);
+                })
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &OUTDENT_CONTENT_COMMAND,
+            |_, _| {
+                handle_indent_and_outdent(|block| {
+                    let indent = block.element_data().get_indent();
+                    if indent > 0.0 {
+                        block.set_indent((indent - 1.0).max(0.0));
+                    }
+                })
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &SELECT_ALL_COMMAND,
+            |_, _| {
+                select_all()?;
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+    ];
+    Box::new(move || {
+        for unregister in unregisters {
+            unregister();
+        }
+    })
 }

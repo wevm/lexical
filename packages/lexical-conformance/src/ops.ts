@@ -7,7 +7,7 @@
  */
 
 import {createEmptyHistoryState, registerHistory} from '@lexical/history';
-import {HeadingNode, QuoteNode} from '@lexical/rich-text';
+import {HeadingNode, QuoteNode, registerRichText} from '@lexical/rich-text';
 import {
   $caretRangeFromSelection,
   $createNodeSelection,
@@ -37,19 +37,33 @@ import {
   CLEAR_EDITOR_COMMAND,
   CLEAR_HISTORY_COMMAND,
   COMMAND_PRIORITY_EDITOR,
+  CONTROLLED_TEXT_INSERTION_COMMAND,
   createCommand,
   createEditor,
+  DELETE_CHARACTER_COMMAND,
+  DELETE_LINE_COMMAND,
+  DELETE_WORD_COMMAND,
   type ElementNode,
+  FORMAT_ELEMENT_COMMAND,
+  FORMAT_TEXT_COMMAND,
+  INDENT_CONTENT_COMMAND,
+  INSERT_LINE_BREAK_COMMAND,
+  INSERT_PARAGRAPH_COMMAND,
+  INSERT_TAB_COMMAND,
   type LexicalCommand,
   type LexicalEditor,
   type LexicalNode,
   type NodeCaret,
+  OUTDENT_CONTENT_COMMAND,
   ParagraphNode,
   type PointCaret,
   REDO_COMMAND,
+  REMOVE_TEXT_COMMAND,
   resetRandomKey,
   RootNode,
+  SELECT_ALL_COMMAND,
   type SerializedLexicalNode,
+  SET_TEXT_FORMAT_COMMAND,
   TextNode,
   UNDO_COMMAND,
 } from 'lexical';
@@ -140,7 +154,11 @@ export type Script = {
    * registered after the handlers and listeners, on the session's clock.
    */
   history?: {delay: number};
-  /** Register `@lexical/rich-text`'s nodes (`HeadingNode`, `QuoteNode`). */
+  /**
+   * Register `@lexical/rich-text`'s nodes (`HeadingNode`, `QuoteNode`) and
+   * `registerRichText(editor)`, before the transforms and handlers, as
+   * `RichTextExtension` does.
+   */
   richText?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
@@ -490,7 +508,21 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['CAN_UNDO_COMMAND', CAN_UNDO_COMMAND],
   ['CLEAR_EDITOR_COMMAND', CLEAR_EDITOR_COMMAND],
   ['CLEAR_HISTORY_COMMAND', CLEAR_HISTORY_COMMAND],
+  ['CONTROLLED_TEXT_INSERTION_COMMAND', CONTROLLED_TEXT_INSERTION_COMMAND],
+  ['DELETE_CHARACTER_COMMAND', DELETE_CHARACTER_COMMAND],
+  ['DELETE_LINE_COMMAND', DELETE_LINE_COMMAND],
+  ['DELETE_WORD_COMMAND', DELETE_WORD_COMMAND],
+  ['FORMAT_ELEMENT_COMMAND', FORMAT_ELEMENT_COMMAND],
+  ['FORMAT_TEXT_COMMAND', FORMAT_TEXT_COMMAND],
+  ['INDENT_CONTENT_COMMAND', INDENT_CONTENT_COMMAND],
+  ['INSERT_LINE_BREAK_COMMAND', INSERT_LINE_BREAK_COMMAND],
+  ['INSERT_PARAGRAPH_COMMAND', INSERT_PARAGRAPH_COMMAND],
+  ['INSERT_TAB_COMMAND', INSERT_TAB_COMMAND],
+  ['OUTDENT_CONTENT_COMMAND', OUTDENT_CONTENT_COMMAND],
   ['REDO_COMMAND', REDO_COMMAND],
+  ['REMOVE_TEXT_COMMAND', REMOVE_TEXT_COMMAND],
+  ['SELECT_ALL_COMMAND', SELECT_ALL_COMMAND],
+  ['SET_TEXT_FORMAT_COMMAND', SET_TEXT_FORMAT_COMMAND],
   ['UNDO_COMMAND', UNDO_COMMAND],
 ]);
 
@@ -588,6 +620,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     },
   });
   const ctx: Context = {commands: new Map(), editor, log: []};
+  if (script.richText) {
+    registerRichText(editor);
+  }
   for (const name of script.transforms ?? []) {
     const transform = TRANSFORMS[name];
     if (transform === undefined) {

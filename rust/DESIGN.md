@@ -170,16 +170,41 @@ Each milestone ends with green CI and a report to the Space.
 | Milestone | Scope | Vectors that pass when done | Status |
 | --- | --- | --- | --- |
 | M0 | The `rust/` workspace, JSON as JS writes it, the core nodes (root, paragraph, text, tab, line break), `parseEditorState` and `toJSON` in both forms, the conformance runner, CI | `meta`, `serialization/core`, the core-only cases of `property/documents` (JSON and text) | done |
-| M1 | The core model: `editor.update` and the commit (dirty nodes, normalization, transforms, listeners, commands, tags), node creation and methods (`splitText`, `mergeWithSibling`, `spliceText`, `insertAfter`, `remove`, `replace`...) with UTF-16 offsets, `RangeSelection` and `NodeSelection` editing, carets, NodeState, slots, the schema facility, `DecoratorNode`, the extension API (`buildEditorFromExtensions`), the parity ledger | `scripts/*`, `fuzz/core`, `file/*` | in progress: the update cycle, `setEditorState`, commands, transforms, listeners and the node methods are done (`scripts/updates`, `commands` pass; `listeners`, `transforms` pass but for the cases that type); carets and selection reading (`getNodes`, `getTextContent`) are done (`scripts/caret` passes); next, `RangeSelection` editing |
-| M2 | Node packages: `rich-text`, `list`, `link`, `code`, `overflow`, `hashtag`, with `selection` and `utils` | `serialization/*`, `property/documents` (JSON and text), `entities/hashtag-*` | |
-| M3 | `history`, and the commands `property/sequences` dispatches | `property/sequences` | |
+| M1 | The core model: `editor.update` and the commit (dirty nodes, normalization, transforms, listeners, commands, tags), node creation and methods (`splitText`, `mergeWithSibling`, `spliceText`, `insertAfter`, `remove`, `replace`...) with UTF-16 offsets, `RangeSelection` and `NodeSelection` editing, carets, NodeState, slots, the schema facility, `DecoratorNode`, the extension API (`buildEditorFromExtensions`), the parity ledger | `scripts/*`, `fuzz/core`, `file/*` | in progress: the update cycle, `setEditorState`, commands, transforms, listeners, the node methods, carets, selection reading and `RangeSelection`/`NodeSelection` editing are done (`scripts/*` and `fuzz/core` pass); next, the platform's `Selection.modify` as an editor hook, NodeState, `DecoratorNode`, the extension API |
+| P | Desktop playgrounds (`apps/`): `lexical-playground-rune` on Rune, then `lexical-playground-gpui` on GPUI, sharing `lexical-playground-core`; they grow with each milestone below | the vectors, replayed in the app; a session exported from the app replays in JS (`replay.test.ts`) | in progress |
+| M2 | `rich-text` (headings, quotes, and the command handlers a text surface dispatches: typing, Enter, Backspace, formatting) and `history` (undo), which the playgrounds need first; then the node packages `list`, `link`, `code`, `overflow`, `hashtag`, with `selection` and `utils` | `serialization/*`, `property/documents` (JSON and text), `entities/hashtag-*` | |
+| M3 | The commands `property/sequences` dispatches | `property/sequences` | |
 | M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import | `html/*`, `css/*`, `property/documents` (HTML) | |
 | M5 | `markdown` | `markdown/import-export`, `property/documents` (Markdown) | |
 | M6 | `yjs`: a port of `@lexical/yjs` on `yrs` (behind the feature), with new JS vectors for the binding (sevki/lexical-rs's `lexical-yjs` and jpcamara/yrby's `lexical-yjs-html` only as cross-checks) | the new collab vectors | |
 | M7 | Releases: the mirror, changesets, a name tmm settles | | |
 
 The `devtools/tree` vectors come with whichever milestone a tool needs
-them; the `scenarios/*` vectors are Tier 2 and stay unreplayed.
+them. The `scenarios/*` vectors, recorded from a real browser, need a text
+layout behind `Selection.modify`; the playgrounds' binding replays them once
+rich-text is in.
+
+## Playgrounds
+
+tmm asked for desktop playgrounds, as wevm/zero has zbugs on GPUI and on
+Rune, rather than a web one: the Rust port is meant for native apps. Each
+app is its own Cargo workspace under `apps/` (Rune needs Rust 1.90 or
+later; the crate stays on 1.88), and both depend on
+`apps/lexical-playground-core`, which is in this workspace:
+
+- Lexical owns the document and the selection; the framework's text field
+  draws a mirror of them, lays it out, hit-tests and moves the caret. Keys
+  that edit run as Lexical updates before the field sees them, and a change
+  the field makes itself (an input method's commit, a cut) is replayed into
+  Lexical as the text it replaced; then the mirror is rebuilt, as Lexical's
+  reconciler rebuilds the DOM. This is the Swift port's split with TextKit.
+- Every edit is a step of the conformance script language, run by the same
+  interpreter that replays `scripts/*`. Export session writes the steps
+  and their results as a vector file that JS replays and compares
+  (`packages/lexical-conformance/src/replay.test.ts`); Replay vectors runs
+  the conformance report in the app.
+- To try one: `cargo run --release` in its directory. On macOS a
+  `bundle.sh` runner makes a `.app` that stays in the Dock, as zbugs' do.
 
 ## Releases (planned for M7)
 

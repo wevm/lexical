@@ -35,7 +35,9 @@ public final class TextKitInputController {
   public let movement = TextKitMovement()
   /// Keeps `document` in step with the editor's commits.
   public let reconciler = TextKitReconciler()
-  /// The look of the rendered text; set it before the view first renders.
+  /// The look of the rendered text. Text already drawn keeps the look it
+  /// was drawn with, so set this before the view first renders; on a live
+  /// view, set the view's `theme`, which draws the text again.
   public var theme: TextKitTheme = .default
   /// The document last rendered, which the view shows.
   public var document: TextKitDocument { reconciler.document }

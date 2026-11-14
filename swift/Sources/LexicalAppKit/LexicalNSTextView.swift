@@ -59,6 +59,17 @@
     public var placeholder: String? {
       didSet { needsDisplay = true }
     }
+    /// The look of the rendered text and the placeholder, the controller's
+    /// `theme` (`TextKitTheme.default` until set). A different theme draws
+    /// the document again; an equal one leaves it as it is.
+    public var theme: TextKitTheme {
+      get { controller.theme }
+      set {
+        guard newValue != controller.theme else { return }
+        controller.theme = newValue
+        controller.report { try controller.renderAll(replacing: textStorage?.length ?? 0) }
+      }
+    }
     /// Whether the editor's state can show the placeholder, as of the last
     /// commit.
     public private(set) var canShowPlaceholder = false

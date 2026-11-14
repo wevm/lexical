@@ -27,9 +27,11 @@
 //! `CodeHighlightNode`), `CodeExtension`'s transform and
 //! `registerCodeIndentation`, one with `overflow: true`
 //! `@lexical/overflow`'s `OverflowNode`, and one with `hashtag: true`
-//! `@lexical/hashtag`'s `HashtagNode` and `registerLexicalHashtag`, and one
+//! `@lexical/hashtag`'s `HashtagNode` and `registerLexicalHashtag`, one
 //! with `extension: true` `@lexical/extension`'s decorators
-//! (`HorizontalRuleNode`, `DecoratorTextNode`).
+//! (`HorizontalRuleNode`, `DecoratorTextNode`), and one with `mark: true`
+//! `@lexical/mark`'s `MarkNode`; the MarkState actions (`addMarkID`...) run
+//! without `MarkStateExtension`, as in `ops.ts`.
 //!
 //! `setState`, `updateState`, `logState` and `logStateChange` name the
 //! NodeState configs of `ops.ts`'s `STATES` and its `UPDATERS`, made here
@@ -43,6 +45,7 @@ use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
 use lexical::link;
 use lexical::list;
+use lexical::mark;
 use lexical::rich_text::{HeadingTagType, create_heading_node, create_quote_node};
 use lexical::selection::set_blocks_type;
 use lexical::{
@@ -421,7 +424,15 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "logRootTextContent"
             | "logRootTextContentEmpty"
             | "logCanShowPlaceholder"
-            | "logTextIntersection",
+            | "logTextIntersection"
+            | "wrapSelectionInMarkNode"
+            | "unwrapMarkNode"
+            | "logMarkIDs"
+            | "addMarkID"
+            | "removeMarkID"
+            | "logNodeMarkIDs"
+            | "logMarkIDsAtSelection"
+            | "migrateMarkNodesToMarkState",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -464,6 +475,19 @@ fn element(node: NodeRef) -> Result<NodeRef, LexicalError> {
     } else {
         Err(err(format!("{} is not an element", node.get_key())))
     }
+}
+
+fn mark_node(node: NodeRef) -> Result<NodeRef, LexicalError> {
+    if mark::is_mark_node(&node) {
+        Ok(node)
+    } else {
+        Err(err(format!("{} is not a mark node", node.get_key())))
+    }
+}
+
+/// An array of strings as JSON.
+fn strings(values: &[String]) -> Value {
+    Value::Array(values.iter().map(|v| v.as_str().into()).collect())
 }
 
 fn list_item(node: NodeRef) -> Result<NodeRef, LexicalError> {
@@ -582,6 +606,13 @@ fn sel() -> Result<RangeSelection, LexicalError> {
         .ok_or_else(|| err("not a range selection"))
 }
 
+/// `$sel()` as the selection itself.
+fn range_sel() -> Result<SelectionRef, LexicalError> {
+    get_selection()
+        .filter(SelectionRef::is_range)
+        .ok_or_else(|| err("not a range selection"))
+}
+
 fn direction(v: &Value) -> Result<CaretDirection, LexicalError> {
     match v.as_str() {
         Some("next") => Ok(CaretDirection::Next),
@@ -643,8 +674,51 @@ fn run_node_method(
 ) -> Result<(), LexicalError> {
     let a = |i| arg(args, i);
     match method {
+        "addID" => mark_node(n)?.add_id(&string(&a(0))?),
         "append" => element(n)?.append(&parse(&a(0))?)?,
         "clear" => element(n)?.clear()?,
+        "deleteID" => mark_node(n)?.delete_id(&string(&a(0))?),
+        "excludeFromCopy" => {
+            let destination = string(&a(0))?;
+            let excluded = element(n.clone())?.exclude_from_copy(&destination);
+            ctx.log(vec![
+                "excludeFromCopy".into(),
+                n.get_key().into(),
+                destination.into(),
+                excluded.into(),
+            ]);
+        }
+        "extractWithChild" => {
+            let child = string(&a(0))?;
+            let destination = string(&a(1))?;
+            let selection = get_selection().ok_or_else(|| err("no selection"))?;
+            let extracted = element(n.clone())?.extract_with_child(
+                &node(&child)?,
+                Some(&selection),
+                &destination,
+            )?;
+            ctx.log(vec![
+                "extractWithChild".into(),
+                n.get_key().into(),
+                child.into(),
+                destination.into(),
+                extracted.into(),
+            ]);
+        }
+        "getIDs" => {
+            let ids = mark_node(n.clone())?.get_ids().unwrap_or_default();
+            ctx.log(vec!["getIDs".into(), n.get_key().into(), strings(&ids)]);
+        }
+        "hasID" => {
+            let id = string(&a(0))?;
+            let has = mark_node(n.clone())?.has_id(&id);
+            ctx.log(vec![
+                "hasID".into(),
+                n.get_key().into(),
+                id.into(),
+                has.into(),
+            ]);
+        }
         "insertAfter" => {
             n.insert_after(&parse_serialized_node(&a(0))?, flag(&a(1), true))?;
         }
@@ -692,6 +766,15 @@ fn run_node_method(
             v => n.set_format(number(&v)?),
         },
         "setFormat" => element(n)?.set_element_format(a(0).as_str().unwrap_or("")),
+        "setIDs" => {
+            let ids = a(0)
+                .as_array()
+                .ok_or_else(|| err("expected an array of ids"))?
+                .iter()
+                .map(string)
+                .collect::<Result<Vec<_>, _>>()?;
+            mark_node(n)?.set_ids(&ids);
+        }
         "setIndent" => element(n)?.set_indent(number(&a(0))?)?,
         "setMode" => text(n)?.set_mode(&string(&a(0))?)?,
         "setStyle" if n.is_text() => n.set_style(&string(&a(0))?),
@@ -968,6 +1051,80 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             };
             set_blocks_type(get_selection().as_ref(), create, None)
         }
+        Some("wrapSelectionInMarkNode") => {
+            let is_backward = flag(action.get("isBackward").unwrap_or(&Value::Null), false);
+            let id = action.str("id").map_err(err)?;
+            mark::wrap_selection_in_mark_node(&range_sel()?, is_backward, id, None)
+        }
+        Some("unwrapMarkNode") => {
+            mark::unwrap_mark_node(&mark_node(node(action.str("key").map_err(err)?)?)?)
+        }
+        Some("logMarkIDs") => {
+            let key = action.str("key").map_err(err)?;
+            let offset = number(action.get("offset").unwrap_or(&Value::Null))?;
+            let ids = mark::get_mark_ids(&text(node(key)?)?, offset as usize);
+            ctx.log(vec![
+                "markIDs".into(),
+                key.into(),
+                offset.into(),
+                ids.as_deref().map_or(Value::Null, strings),
+            ]);
+            Ok(())
+        }
+        Some("addMarkID") => {
+            let id = action.str("id").map_err(err)?;
+            let selection = get_selection().ok_or_else(|| err("no selection"))?;
+            let nodes = mark::add_mark_id(id, &selection)?;
+            ctx.log(vec![
+                "addMarkID".into(),
+                id.into(),
+                Value::Array(nodes.iter().map(|n| n.get_key().into()).collect()),
+            ]);
+            Ok(())
+        }
+        Some("removeMarkID") => {
+            let id = action.str("id").map_err(err)?;
+            if action.get("inSelection").and_then(Value::as_bool) == Some(true) {
+                let selection = get_selection().ok_or_else(|| err("no selection"))?;
+                mark::remove_mark_id(id, Some(&selection))
+            } else {
+                mark::remove_mark_id(id, None)
+            }
+        }
+        Some("logNodeMarkIDs") => {
+            let key = action.str("key").map_err(err)?;
+            let ids = mark::get_node_mark_ids(&node(key)?)?;
+            ctx.log(vec!["nodeMarkIDs".into(), key.into(), strings(&ids)]);
+            Ok(())
+        }
+        Some("logMarkIDsAtSelection") => {
+            let mode = action.get("mode").and_then(Value::as_str);
+            let ids = mark::get_mark_ids_at_selection(
+                get_selection().as_ref(),
+                match mode {
+                    Some("all") => mark::MarkIDsMode::All,
+                    _ => mark::MarkIDsMode::Any,
+                },
+            )?;
+            ctx.log(vec![
+                "markIDsAtSelection".into(),
+                mode.map_or(Value::Null, Value::from),
+                strings(&ids),
+            ]);
+            Ok(())
+        }
+        Some("migrateMarkNodesToMarkState") => {
+            let target = match action.get("key").and_then(Value::as_str) {
+                Some(key) => Some(node(key)?),
+                None => None,
+            };
+            let count = mark::migrate_mark_nodes_to_mark_state(target.as_ref())?;
+            ctx.log(vec![
+                "migrateMarkNodesToMarkState".into(),
+                (count as f64).into(),
+            ]);
+            Ok(())
+        }
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");
             let payload = action.get("payload").cloned().unwrap_or(Value::Null);
@@ -1138,7 +1295,7 @@ fn snapshot_of(editor: &Editor, ctx: &Ctx, snapshot: bool) -> Result<Object, Str
 }
 
 /// The package flags a script with `extensions` can't have.
-const PACKAGE_FLAGS: [&str; 8] = [
+const PACKAGE_FLAGS: [&str; 9] = [
     "richText",
     "plainText",
     "list",
@@ -1147,6 +1304,7 @@ const PACKAGE_FLAGS: [&str; 8] = [
     "overflow",
     "hashtag",
     "extension",
+    "mark",
 ];
 
 impl Session {
@@ -1200,6 +1358,7 @@ impl Session {
         let with_overflow = script.get("overflow").and_then(Value::as_bool) == Some(true);
         let with_hashtag = script.get("hashtag").and_then(Value::as_bool) == Some(true);
         let with_extension = script.get("extension").and_then(Value::as_bool) == Some(true);
+        let with_mark = script.get("mark").and_then(Value::as_bool) == Some(true);
         let mut nodes = Vec::new();
         if rich_text {
             nodes.extend(lexical::rich_text::rich_text_nodes());
@@ -1221,6 +1380,9 @@ impl Session {
         }
         if with_extension {
             nodes.extend(lexical::extension::extension_nodes());
+        }
+        if with_mark {
+            nodes.extend(mark::mark_nodes());
         }
         let editor = create_editor(CreateEditorArgs {
             nodes,

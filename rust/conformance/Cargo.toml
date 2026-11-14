@@ -9,7 +9,7 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-lexical = { workspace = true, features = ["autolink", "code", "devtools", "extension", "file", "hashtag", "history", "link", "list", "overflow", "plain-text", "rich-text", "text"] }
+lexical = { workspace = true, features = ["autolink", "code", "devtools", "extension", "file", "hashtag", "history", "link", "list", "mark", "overflow", "plain-text", "rich-text", "text"] }
 
 [lints]
 workspace = true

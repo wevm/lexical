@@ -327,7 +327,7 @@ let package = Package(
       dependencies: [
         "Lexical", "LexicalCodeCore", "LexicalDevtoolsCore", "LexicalExtension", "LexicalFile",
         "LexicalHashtag", "LexicalHistory", "LexicalHTML", "LexicalLink", "LexicalList",
-        "LexicalMarkdown", "LexicalOverflow", "LexicalPlainText", "LexicalRichText",
+        "LexicalMark", "LexicalMarkdown", "LexicalOverflow", "LexicalPlainText", "LexicalRichText",
         "LexicalSelection", "LexicalTesting", "LexicalText",
       ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.

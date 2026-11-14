@@ -2,6 +2,7 @@ import Lexical
 import LexicalCodeCore
 import LexicalLink
 import LexicalList
+import LexicalMark
 import LexicalOverflow
 import Testing
 
@@ -21,6 +22,7 @@ struct SerializationTests {
   static let linkCases: [Case] = (try? Vectors.load("serialization/link")) ?? []
   static let codeCases: [Case] = (try? Vectors.load("serialization/code")) ?? []
   static let overflowCases: [Case] = (try? Vectors.load("serialization/overflow")) ?? []
+  static let markCases: [Case] = (try? Vectors.load("serialization/mark")) ?? []
 
   @Test(arguments: cases)
   func roundTrip(_ vector: Case) throws {
@@ -52,6 +54,11 @@ struct SerializationTests {
   @Test(arguments: overflowCases)
   func overflowRoundTrip(_ vector: Case) throws {
     try check(vector, createEditor(CreateEditorArgs(nodes: [.klass(OverflowNode.self)])))
+  }
+
+  @Test(arguments: markCases)
+  func markRoundTrip(_ vector: Case) throws {
+    try check(vector, createEditor(CreateEditorArgs(nodes: [.klass(MarkNode.self)])))
   }
 
   func check(_ vector: Case, _ editor: Editor) throws {

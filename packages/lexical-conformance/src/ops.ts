@@ -53,6 +53,18 @@ import {
   REMOVE_LIST_COMMAND,
   UPDATE_LIST_START_COMMAND,
 } from '@lexical/list';
+import {
+  $addMarkID,
+  $getMarkIDs,
+  $getMarkIDsAtSelection,
+  $getNodeMarkIDs,
+  $isMarkNode,
+  $migrateMarkNodesToMarkState,
+  $removeMarkID,
+  $unwrapMarkNode,
+  $wrapSelectionInMarkNode,
+  MarkNode,
+} from '@lexical/mark';
 import {OverflowNode} from '@lexical/overflow';
 import {registerPlainText} from '@lexical/plain-text';
 import {
@@ -237,6 +249,37 @@ export type Action =
    * (@lexical/text).
    */
   | {do: 'logTextIntersection'; characters: number}
+  /**
+   * `$wrapSelectionInMarkNode($getSelection(), isBackward, id)`
+   * (@lexical/mark), with the default `$createMarkNode`.
+   */
+  | {do: 'wrapSelectionInMarkNode'; isBackward: boolean; id: string}
+  /** `$unwrapMarkNode(node)`. */
+  | {do: 'unwrapMarkNode'; key: string}
+  /** Logs `['markIDs', key, offset, $getMarkIDs(node, offset)]`. */
+  | {do: 'logMarkIDs'; key: string; offset: number}
+  /**
+   * `$addMarkID(id, $getSelection())` (MarkStateExtension.ts, without the
+   * extension), logging `['addMarkID', id, keys]` of the nodes it marked.
+   */
+  | {do: 'addMarkID'; id: string}
+  /**
+   * `$removeMarkID(id, $getSelection())` with `inSelection`, otherwise
+   * `$removeMarkID(id)`, which walks the document.
+   */
+  | {do: 'removeMarkID'; id: string; inSelection?: boolean}
+  /** Logs `['nodeMarkIDs', key, $getNodeMarkIDs(node)]`. */
+  | {do: 'logNodeMarkIDs'; key: string}
+  /**
+   * Logs `['markIDsAtSelection', mode, ids]`: `$getMarkIDsAtSelection()` of
+   * the current selection, with `mode` when it is given (`null` otherwise).
+   */
+  | {do: 'logMarkIDsAtSelection'; mode?: 'any' | 'all'}
+  /**
+   * `$migrateMarkNodesToMarkState(node)` of the node `key`, or of the root
+   * when there is none, logging `['migrateMarkNodesToMarkState', count]`.
+   */
+  | {do: 'migrateMarkNodesToMarkState'; key?: string}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /**
@@ -464,6 +507,12 @@ export type Script = {
   extensions?: ExtensionArg[];
   /** The test extensions `extensions` names, by key. */
   extensionDefs?: {[key: string]: ExtensionSpec};
+  /**
+   * Register `@lexical/mark`'s `MarkNode`, as `MarkExtension` does. The
+   * MarkState functions (`$addMarkID`...) run without `MarkStateExtension`,
+   * with its default `markableNodes`.
+   */
+  mark?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -643,6 +692,13 @@ function element(node: LexicalNode): ElementNode {
   return node;
 }
 
+function markNode(node: LexicalNode): MarkNode {
+  if (!$isMarkNode(node)) {
+    throw new Error(`${node.getKey()} is not a mark node`);
+  }
+  return node;
+}
+
 function listItem(node: LexicalNode): ListItemNode {
   if (!$isListItemNode(node)) {
     throw new Error(`${node.getKey()} is not a list item`);
@@ -653,15 +709,48 @@ function listItem(node: LexicalNode): ListItemNode {
 /**
  * The node methods a script may call, by name. A method that exists on both
  * text and element nodes (`select`, `setFormat`, `setStyle`) calls the one of
- * the node's kind. The return value is logged only for `splitText`.
+ * the node's kind. The return value is logged only for `splitText` and the
+ * methods that read (`hasID`, `getIDs`, `extractWithChild`,
+ * `excludeFromCopy`).
  */
 const NODE_METHODS: Record<
   string,
   (node: LexicalNode, args: Json[] | undefined, ctx: Context) => void
 > = {
+  addID: (n, args) => markNode(n).addID(arg(args, 0) as string),
   append: (n, args) =>
     element(n).append(...$parse(arg(args, 0) as SerializedLexicalNode[])),
   clear: n => element(n).clear(),
+  deleteID: (n, args) => markNode(n).deleteID(arg(args, 0) as string),
+  // `excludeFromCopy(destination)`, logged.
+  excludeFromCopy: (n, args, ctx) => {
+    const destination = arg(args, 0) as 'clone' | 'html';
+    ctx.log.push([
+      'excludeFromCopy',
+      n.getKey(),
+      destination,
+      element(n).excludeFromCopy(destination),
+    ]);
+  },
+  // `extractWithChild(child, $getSelection(), destination)`, logged.
+  extractWithChild: (n, args, ctx) => {
+    const child = arg(args, 0) as string;
+    const destination = arg(args, 1) as 'clone' | 'html';
+    ctx.log.push([
+      'extractWithChild',
+      n.getKey(),
+      child,
+      destination,
+      element(n).extractWithChild($node(child), $anySel(), destination),
+    ]);
+  },
+  getIDs: (n, _args, ctx) => {
+    ctx.log.push(['getIDs', n.getKey(), markNode(n).getIDs()]);
+  },
+  hasID: (n, args, ctx) => {
+    const id = arg(args, 0) as string;
+    ctx.log.push(['hasID', n.getKey(), id, markNode(n).hasID(id)]);
+  },
   insertAfter: (n, args) =>
     n.insertAfter(
       $parse([arg(args, 0) as SerializedLexicalNode])[0],
@@ -711,6 +800,7 @@ const NODE_METHODS: Record<
       element(n).setFormat(arg(args, 0) as never);
     }
   },
+  setIDs: (n, args) => markNode(n).setIDs(arg(args, 0) as string[]),
   setIndent: (n, args) => element(n).setIndent(arg(args, 0) as number),
   setMode: (n, args) => text(n).setMode(arg(args, 0) as never),
   setStyle: (n, args) => {
@@ -982,6 +1072,58 @@ function $runAction(action: Action, ctx: Context): void {
       ]);
       return;
     }
+    case 'wrapSelectionInMarkNode':
+      $wrapSelectionInMarkNode($sel(), action.isBackward, action.id);
+      return;
+    case 'unwrapMarkNode':
+      $unwrapMarkNode(markNode($node(action.key)));
+      return;
+    case 'logMarkIDs':
+      ctx.log.push([
+        'markIDs',
+        action.key,
+        action.offset,
+        $getMarkIDs(text($node(action.key)), action.offset),
+      ]);
+      return;
+    case 'addMarkID':
+      ctx.log.push([
+        'addMarkID',
+        action.id,
+        $addMarkID(action.id, $anySel()).map(n => n.getKey()),
+      ]);
+      return;
+    case 'removeMarkID':
+      if (action.inSelection) {
+        $removeMarkID(action.id, $anySel());
+      } else {
+        $removeMarkID(action.id);
+      }
+      return;
+    case 'logNodeMarkIDs':
+      ctx.log.push([
+        'nodeMarkIDs',
+        action.key,
+        $getNodeMarkIDs($node(action.key)),
+      ]);
+      return;
+    case 'logMarkIDsAtSelection':
+      ctx.log.push([
+        'markIDsAtSelection',
+        action.mode ?? null,
+        action.mode === undefined
+          ? $getMarkIDsAtSelection()
+          : $getMarkIDsAtSelection(undefined, action.mode),
+      ]);
+      return;
+    case 'migrateMarkNodesToMarkState':
+      ctx.log.push([
+        'migrateMarkNodesToMarkState',
+        $migrateMarkNodesToMarkState(
+          action.key === undefined ? undefined : $node(action.key),
+        ),
+      ]);
+      return;
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -1400,6 +1542,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       'overflow',
       'hashtag',
       'extension',
+      'mark',
     ] as const) {
       if (script[flag]) {
         throw new Error(`extensions and ${flag} don't mix`);
@@ -1433,6 +1576,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
         ...(script.overflow ? [OverflowNode] : []),
         ...(script.hashtag ? [HashtagNode] : []),
         ...(script.extension ? [HorizontalRuleNode, DecoratorTextNode] : []),
+        ...(script.mark ? [MarkNode] : []),
       ],
       onError: e => {
         throw e;

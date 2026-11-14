@@ -24,10 +24,12 @@ import {
   ListItemNode,
   ListNode,
 } from '@lexical/list';
+import {$addMarkID, $createMarkNode, MarkNode} from '@lexical/mark';
 import {$createOverflowNode, OverflowNode} from '@lexical/overflow';
 import {
   $createLineBreakNode,
   $createParagraphNode,
+  $createRangeSelection,
   $createTabNode,
   $createTextNode,
   $getRoot,
@@ -336,6 +338,77 @@ test('serialization/overflow', () => {
     'serialization/overflow',
     'serialization',
     'Documents with @lexical/overflow nodes and the exact JSON text JS writes for them.',
+    cases,
+  );
+});
+
+// Documents with @lexical/mark's MarkNode, and with the `markIds` NodeState
+// that MarkStateExtension's $addMarkID stores on the leaves instead.
+test('serialization/mark', () => {
+  const documents: Record<string, () => void> = {
+    'a mark with element properties': () => {
+      $getRoot().append(
+        $createParagraphNode().append(
+          $createMarkNode(['x'])
+            .setFormat('center')
+            .setIndent(1)
+            .setDirection('rtl')
+            .setTextFormat(1)
+            .setTextStyle('color: red')
+            .append($createTextNode('b')),
+        ),
+      );
+    },
+    'a mark with no ids': () => {
+      $getRoot().append(
+        $createParagraphNode().append(
+          $createMarkNode().append($createTextNode('none')),
+        ),
+      );
+    },
+    'mark ids as NodeState': () => {
+      const text = $createTextNode('one two');
+      $getRoot().append(
+        $createParagraphNode().append(text, $createLineBreakNode()),
+      );
+      const selection = $createRangeSelection();
+      selection.anchor.set(text.getKey(), 0, 'text');
+      selection.focus.set(text.getKey(), 3, 'text');
+      $addMarkID('c2', selection);
+      $addMarkID('c1', selection);
+    },
+    'nested and overlapping marks': () => {
+      $getRoot().append(
+        $createParagraphNode().append(
+          $createTextNode('a'),
+          $createMarkNode(['x', 'y']).append(
+            $createTextNode('b').toggleFormat('bold'),
+            $createMarkNode(['z']).append($createTextNode('c')),
+          ),
+          $createTextNode('d'),
+        ),
+      );
+    },
+  };
+  const cases: Case[] = Object.entries(documents).map(([name, build]) => {
+    const editor = createHeadlessEditor({
+      nodes: [MarkNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    editor.update(build, {discrete: true});
+    const state = editor.getEditorState();
+    return {
+      compact: JSON.stringify(state.toJSON(true)),
+      legacy: JSON.stringify(state.toJSON()),
+      name,
+    };
+  });
+  emitVectors(
+    'serialization/mark',
+    'serialization',
+    'Documents with @lexical/mark nodes, and mark ids as NodeState, and the exact JSON text JS writes for them.',
     cases,
   );
 });

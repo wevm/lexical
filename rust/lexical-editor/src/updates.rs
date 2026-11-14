@@ -15,11 +15,12 @@ use crate::editor_state::{clone_editor_state, create_empty_editor_state};
 use crate::error::invariant;
 use crate::gc::garbage_collect_detached_nodes;
 use crate::json::Value;
+use crate::lexical_selection::has_dirty_selection;
+use crate::lexical_utils::{get_node_by_key, get_root};
 use crate::node::NodeRef;
+use crate::nodes::element::is_root_or_shadow_root;
 use crate::normalization::normalize_text_node;
 use crate::ordered::{OrderedMap, OrderedSet};
-use crate::selection::has_dirty_selection;
-use crate::utils::{get_node_by_key, get_root};
 use crate::{Editor, EditorState, LexicalError, constants::NODE_STATE_KEY};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
@@ -118,6 +119,13 @@ fn apply_transforms(
     node: &NodeRef,
     cache: &mut HashMap<&'static str, Vec<Transform>>,
 ) -> Result<(), LexicalError> {
+    // `ElementNode`'s own `$transform`, first in every element's set.
+    if node.is_element() {
+        normalize_shadow_root_children(node)?;
+        if !node.is_attached() {
+            return Ok(());
+        }
+    }
     let node_type = node.get_type();
     let transforms = cache
         .entry(node_type)
@@ -128,6 +136,32 @@ fn apply_transforms(
         if !node.is_attached() {
             break;
         }
+    }
+    Ok(())
+}
+
+/// `$normalizeShadowRootChildren(node)` (`LexicalElementNode.ts`), the
+/// `$transform` every `ElementNode` has: wraps each run of inline children
+/// of a root or shadow root in the block the first one's
+/// `createParentElementNode` makes, for documents parsed from outside.
+/// `NodeStructureExtension`, which takes this over when it enforces
+/// structure, isn't ported.
+fn normalize_shadow_root_children(node: &NodeRef) -> Result<(), LexicalError> {
+    if !is_root_or_shadow_root(&*node.get_latest()) {
+        return Ok(());
+    }
+    let mut block: Option<NodeRef> = None;
+    for child in node.get_children() {
+        block = if child.is_inline() {
+            let block = match block {
+                Some(block) => block,
+                None => child.replace(&child.create_parent_element_node(), false)?,
+            };
+            block.append(&[child])?;
+            Some(block)
+        } else {
+            None
+        };
     }
     Ok(())
 }

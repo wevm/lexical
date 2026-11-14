@@ -12,6 +12,7 @@ import {test} from 'vitest';
 import {
   type Action,
   type HandlerSpec,
+  type Json,
   runScript,
   type Script,
   type Step,
@@ -899,6 +900,251 @@ test('scripts/history', () => {
           // History clears, but nothing handles the command.
           {dispatch: 'CLEAR_EDITOR_COMMAND', now: 4100},
           undo(4200),
+        ],
+      },
+    ],
+  );
+});
+
+function h(tag: string, ...children: Node[]): Node {
+  return {...p(...children), tag, type: 'heading'} as Node;
+}
+
+function q(...children: Node[]): Node {
+  return {...p(...children), type: 'quote'} as Node;
+}
+
+test('scripts/rich-text', () => {
+  // `@lexical/rich-text`'s nodes: what Enter (`insertParagraph`) and
+  // Backspace at a block's start (`deleteCharacter`) do in a heading and a
+  // quote, and a quote that is a shadow root.
+  const richText = true;
+  emit(
+    'rich-text',
+    "@lexical/rich-text's HeadingNode and QuoteNode: insertNewAfter, collapseAtStart, the shadow root quote, and their JSON.",
+    [
+      {
+        name: 'Enter at the end, in the middle and at the start of a heading',
+        richText,
+        steps: [
+          doc(
+            {...h('h2', t('Title')), format: 'center', indent: 1} as Node,
+            p(t('body')),
+          ),
+          update(select(['2', 5, 'text']), call('insertParagraph')),
+          update(select(['2', 2, 'text']), call('insertParagraph')),
+          update(select(['2', 0, 'text']), call('insertParagraph')),
+          update(select(['2', 0, 'text']), call('insertText', 'X')),
+        ],
+      },
+      {
+        name: 'Enter in an empty heading and with a selection over it',
+        richText,
+        steps: [
+          doc(h('h3'), h('h4', t('abcdef'))),
+          update(select(['1', 0, 'element']), call('insertParagraph')),
+          update(
+            select(['3', 1, 'text'], ['3', 4, 'text']),
+            call('insertParagraph'),
+          ),
+        ],
+      },
+      {
+        name: 'Backspace at the start of a heading',
+        richText,
+        steps: [
+          doc(p(t('before')), h('h1', t('Title')), h('h2')),
+          // A heading with content stays; the selection merges nothing.
+          update(select(['4', 0, 'text']), call('deleteCharacter', true)),
+          // An empty heading becomes a paragraph.
+          update(select(['5', 0, 'element']), call('deleteCharacter', true)),
+        ],
+      },
+      {
+        name: 'Enter and Backspace in a quote',
+        richText,
+        steps: [
+          doc(p(t('a')), {
+            ...q(t('quoted')),
+            direction: 'rtl',
+            format: 'right',
+          } as Node),
+          update(
+            select(['4', 3, 'text']),
+            {args: ['bold'], do: 'selection', method: 'formatText'},
+            call('insertParagraph'),
+          ),
+          update(select(['4', 0, 'text']), call('deleteCharacter', true)),
+        ],
+      },
+      {
+        name: 'a shadow root quote',
+        richText,
+        steps: [
+          doc(
+            p(t('a')),
+            {...q(p(t('one')), p(t('two'))), shadowRoot: true} as Node,
+            {...q(), shadowRoot: 'yes'} as Node,
+          ),
+          update(select(['5', 0, 'text']), call('insertParagraph')),
+          // Merges the new empty paragraph back.
+          update(select(['5', 0, 'text']), call('deleteCharacter', true)),
+          // At the start of the quote's first block, from a text point and
+          // from the block's element point: headless JS needs the DOM's
+          // Selection.modify to get to the quote's collapseAtStart, and
+          // throws.
+          update(select(['5', 0, 'text']), call('deleteCharacter', true)),
+          update(select(['4', 0, 'element']), call('deleteCharacter', true)),
+          // `shadowRoot: 'yes'` isn't a boolean, so this quote is inline: it
+          // becomes a paragraph.
+          update(select(['8', 0, 'element']), call('deleteCharacter', true)),
+        ],
+      },
+      {
+        name: 'a shadow root quote parsed with inline children',
+        richText,
+        steps: [
+          doc({...q(t('loose'), br(), t('text')), shadowRoot: true} as Node),
+          update(select(['2', 2, 'text']), call('insertText', '!')),
+        ],
+      },
+    ],
+  );
+});
+
+test('scripts/rich-text-commands', () => {
+  // `registerRichText`'s handlers for the commands that act on the model,
+  // dispatched outside an update as an input layer does.
+  const richText = true;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const canUndo: HandlerSpec[] = [
+    {command: 'CAN_UNDO_COMMAND', id: 'canUndo', priority: 0, result: false},
+    {command: 'CAN_REDO_COMMAND', id: 'canRedo', priority: 0, result: false},
+  ];
+  emit(
+    'rich-text-commands',
+    "@lexical/rich-text's registerRichText: the handlers of the commands that edit text, format it, and insert, align and indent blocks.",
+    [
+      {
+        name: 'inserting and deleting text',
+        richText,
+        steps: [
+          doc(p(t('hello world'))),
+          update(select(['2', 11, 'text'])),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', '!'),
+          // Collapsed, these need the DOM's Selection.modify, so headless
+          // JS throws.
+          run('DELETE_CHARACTER_COMMAND', true),
+          run('DELETE_WORD_COMMAND', true),
+          run('DELETE_LINE_COMMAND', false),
+          // Expanded, they delete the selection.
+          update(select(['2', 10, 'text'], ['2', 12, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          update(select(['2', 0, 'text'], ['2', 2, 'text'])),
+          run('DELETE_WORD_COMMAND', false),
+          update(select(['2', 2, 'text'], ['2', 6, 'text'])),
+          run('DELETE_LINE_COMMAND', true),
+          update(select(['2', 0, 'text'], ['2', 1, 'text'])),
+          run('REMOVE_TEXT_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'X'),
+        ],
+      },
+      {
+        name: 'formatting a range, a collapsed caret and a node selection',
+        richText,
+        steps: [
+          doc(p(t('dogs.')), p(t('cats'))),
+          update(select(['2', 0, 'text'], ['2', 5, 'text'])),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          update(select(['2', 0, 'text'], ['2', 4, 'text'])),
+          run('FORMAT_TEXT_COMMAND', 'italic'),
+          run('SET_TEXT_FORMAT_COMMAND', {bold: true, italic: false}),
+          run('SET_TEXT_FORMAT_COMMAND', {subscript: true, superscript: true}),
+          update(select(['4', 2, 'text'])),
+          run('FORMAT_TEXT_COMMAND', 'underline'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'u'),
+          run('FORMAT_TEXT_COMMAND', 'underline'),
+          run('FORMAT_TEXT_COMMAND', 'underline'),
+          update({do: 'selectNodes', keys: ['4']}),
+          run('FORMAT_TEXT_COMMAND', 'strikethrough'),
+        ],
+      },
+      {
+        name: 'paragraphs, line breaks and tabs',
+        richText,
+        steps: [
+          doc(h('h1', t('Title')), p(t('ab'))),
+          update(select(['2', 5, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          update(select(['4', 1, 'text'])),
+          run('INSERT_LINE_BREAK_COMMAND', false),
+          run('INSERT_LINE_BREAK_COMMAND', true),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('INSERT_TAB_COMMAND'),
+          update(select(['2', 1, 'text'], ['2', 3, 'text'])),
+          run('INSERT_TAB_COMMAND'),
+        ],
+      },
+      {
+        name: 'aligning and indenting blocks',
+        richText,
+        steps: [
+          doc(p(t('one')), h('h2', t('two')), q(t('three'))),
+          update(select(['2', 1, 'text'], ['4', 1, 'text'])),
+          run('FORMAT_ELEMENT_COMMAND', 'center'),
+          run('INDENT_CONTENT_COMMAND'),
+          run('INDENT_CONTENT_COMMAND'),
+          update(select(['6', 2, 'text'])),
+          run('INDENT_CONTENT_COMMAND'),
+          run('FORMAT_ELEMENT_COMMAND', 'end'),
+          update(select(['2', 0, 'text'], ['6', 5, 'text'])),
+          run('OUTDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          run('FORMAT_ELEMENT_COMMAND', ''),
+        ],
+      },
+      {
+        name: 'select all, deleting a node selection, and no selection',
+        richText,
+        steps: [
+          doc(p(t('one')), p(t('two'))),
+          update({do: 'clearSelection'}),
+          run('DELETE_CHARACTER_COMMAND', true),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('INDENT_CONTENT_COMMAND'),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'x'),
+          run('SELECT_ALL_COMMAND'),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          update({do: 'selectNodes', keys: ['4']}),
+          run('DELETE_CHARACTER_COMMAND', false),
+          update({do: 'selectNodes', keys: ['1']}),
+          run('DELETE_CHARACTER_COMMAND', true),
+        ],
+      },
+      {
+        handlers: canUndo,
+        history: {delay: 300},
+        name: 'bold on and off in two presses, with history',
+        richText,
+        steps: [
+          doc(p(t('The quick dogs.'))),
+          {...update(select(['2', 10, 'text'], ['2', 15, 'text'])), now: 1000},
+          {...run('FORMAT_TEXT_COMMAND', 'bold'), now: 2000},
+          {...run('FORMAT_TEXT_COMMAND', 'bold'), now: 3000},
+          // At a collapsed caret, only the pending format changes.
+          {...update(select(['2', 0, 'text'])), now: 4000},
+          {...run('FORMAT_TEXT_COMMAND', 'bold'), now: 5000},
+          {...run('FORMAT_TEXT_COMMAND', 'bold'), now: 6000},
+          {...run('FORMAT_TEXT_COMMAND', 'bold'), now: 7000},
+          {...run('CONTROLLED_TEXT_INSERTION_COMMAND', 'A'), now: 8000},
+          {...run('UNDO_COMMAND'), now: 9000},
+          {...run('UNDO_COMMAND'), now: 9100},
+          {...run('UNDO_COMMAND'), now: 9200},
+          {...run('REDO_COMMAND'), now: 9300},
         ],
       },
     ],

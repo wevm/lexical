@@ -6,7 +6,7 @@ use crate::node::{LexicalNode, NodeBase, NodeRef};
 
 /// `$createLineBreakNode()`.
 pub fn create_line_break_node() -> NodeRef {
-    crate::utils::set_node_key(Box::new(LineBreakNode::default()))
+    crate::lexical_utils::set_node_key(Box::new(LineBreakNode::default()))
 }
 
 /// A soft line break (Shift+Enter).

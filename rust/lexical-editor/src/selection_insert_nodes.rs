@@ -10,17 +10,17 @@
 use crate::LexicalError;
 use crate::caret::CaretDirection;
 use crate::caret_utils::{caret_from_point, normalize_caret, set_point_from_caret};
+use crate::lexical_selection::{
+    Point, PointType, RangeSelection, Selection, SelectionRef, Which, get_selection, set_selection,
+};
+use crate::lexical_utils::{get_root, is_block};
 use crate::node::NodeRef;
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::nodes::line_break::{LineBreakNode, create_line_break_node};
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::nodes::tab::create_tab_node;
 use crate::nodes::text::create_text_node;
-use crate::selection::{
-    Point, PointType, RangeSelection, Selection, SelectionRef, Which, get_selection, set_selection,
-};
 use crate::updates::{get_active_editor, get_active_editor_state};
-use crate::utils::{get_root, is_block};
 use std::rc::Rc;
 
 impl SelectionRef {
@@ -386,7 +386,7 @@ fn is_block_container(node: &NodeRef) -> bool {
 
 /// `$findMatchingParent(startingNode, findFn)`: the node or its nearest
 /// ancestor below the root that matches.
-fn find_matching_parent(
+pub fn find_matching_parent(
     starting_node: &NodeRef,
     find_fn: impl Fn(&NodeRef) -> bool,
 ) -> Option<NodeRef> {
@@ -679,7 +679,7 @@ pub fn generate_nodes_from_raw_text(text: &str) -> Vec<NodeRef> {
 }
 
 /// `$getPreviousSelection()`: the committed editor state's selection.
-fn get_previous_selection() -> Option<SelectionRef> {
+pub(crate) fn get_previous_selection() -> Option<SelectionRef> {
     let editor = get_active_editor()?;
     editor.get_editor_state().0.selection.borrow().clone()
 }

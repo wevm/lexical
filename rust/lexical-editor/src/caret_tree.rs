@@ -8,13 +8,13 @@
 
 use crate::LexicalError;
 use crate::error::invariant;
-use crate::node::{NodeKey, NodeRef};
-use crate::selection::{
+use crate::lexical_selection::{
     PointType, SelectionRef, Which, get_selection, selection_touches_element,
     update_element_selection_on_create_delete_node,
 };
+use crate::lexical_utils::{get_writable, mutate};
+use crate::node::{NodeKey, NodeRef};
 use crate::updates::error_on_read_only;
-use crate::utils::{get_writable, mutate};
 
 fn set_first(parent: &str, key: Option<NodeKey>) {
     mutate(parent, |p| {

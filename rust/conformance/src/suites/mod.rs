@@ -46,6 +46,11 @@ pub fn all() -> Vec<Suite> {
             check: html::check_import,
         },
         Suite {
+            file: "html/import-nodes",
+            variant: None,
+            check: html::check_import_nodes,
+        },
+        Suite {
             file: "html/parse",
             variant: None,
             check: html::check_parse,
@@ -307,7 +312,7 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "property/documents",
-            variant: Some("JSON, text and Markdown"),
+            variant: Some("JSON, text, Markdown and HTML"),
             check: property::check_document,
         },
         Suite {

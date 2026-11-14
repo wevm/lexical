@@ -364,6 +364,27 @@ pub fn theme_string<'a>(theme: &'a Object, key: &str) -> Option<&'a str> {
     theme.get(key).and_then(Value::as_str)
 }
 
+/// `addClassNamesToElement(element, theme[key])`: the class names of a
+/// theme entry that is a string (any other kind adds none).
+pub fn add_theme_class_names(element: &DomNode, theme: &Object, key: &str) {
+    if let Some(class_names) = theme_string(theme, key) {
+        add_class_names_to_element(element, &[class_names]);
+    }
+}
+
+/// `element.closest(tag)` for a lower-case tag name: the element or its
+/// nearest ancestor with that name.
+pub fn closest(element: &DomNode, tag: &str) -> Option<DomNode> {
+    let mut node = Some(element.clone());
+    while let Some(n) = node {
+        if n.is_element() && n.local_name() == tag {
+            return Some(n);
+        }
+        node = n.parent_element();
+    }
+    None
+}
+
 /// `removeEmptyDOMAttribute(dom, attributeName)`.
 pub fn remove_empty_dom_attribute(dom: &DomNode, attribute_name: &str) {
     if dom.get_attribute(attribute_name).as_deref() == Some("") {

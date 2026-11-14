@@ -7,6 +7,7 @@
  */
 import type {JSDOM} from 'jsdom';
 
+import {HorizontalRuleNode} from '@lexical/extension';
 import {createHeadlessEditor} from '@lexical/headless';
 import {$generateHtmlFromNodes, $generateNodesFromDOM} from '@lexical/html';
 import {
@@ -25,6 +26,7 @@ import {readFileSync} from 'node:fs';
 import {test} from 'vitest';
 
 import {browserWindow} from './browserWindow';
+import {DOCUMENT_NODES} from './property';
 import {emitVectors} from './vectors';
 
 type Case = {
@@ -262,6 +264,74 @@ test('html/import', () => {
     'html/import',
     'html-import',
     'HTML (curated, plus every html/export output) and the nodes $generateNodesFromDOM makes from it in jsdom, each as exportJSON with its children.',
+    cases,
+  );
+});
+
+/** HTML for the importers of the node packages (lists, rich text, links, code, the horizontal rule). */
+const NODES_IMPORT_CORPUS = [
+  '<ul><li>one</li><li>two<ul><li>nested</li></ul></li></ul>',
+  '<ol start="3"><li>three</li><li value="7">seven</li></ol>',
+  '<ol start=" -2x"><li>a</li></ol><ol start="99999999999"><li>b</li></ol>',
+  '<ul __lexicallisttype="check"><li aria-checked="true">done</li><li aria-checked="false">todo</li></ul>',
+  '<ul class="contains-task-list"><li class="task-list-item"><input type="checkbox" checked> gh</li><li class="task-list-item"><input type="checkbox"> gh2</li></ul>',
+  '<ul data-is-checklist="1"><li class="joplin-checkbox"><div class="checkbox-wrapper"><input type="checkbox" checked></div>j</li></ul>',
+  '<ul><li><p style="text-align: center">docs</p></li><li dir="rtl" style="text-align: right">r</li></ul>',
+  '<ul><li>a</li>loose<li>b</li></ul>',
+  '<h1>one</h1><h2 style="text-align: center">two</h2><h3 dir="rtl">three</h3><h4 data-lexical-indent="2">four</h4><h5>five</h5><h6>six</h6>',
+  '<p><span style="font-size: 26pt">Docs title</span></p>',
+  '<blockquote style="text-align: right" dir="ltr">quote<br>more</blockquote>',
+  '<blockquote><p>a</p><p>b</p></blockquote>',
+  '<p><a href="https://example.com" target="_blank" rel="noopener" title="t">link</a> <a href="/x"></a><a href="#y"><b>bold</b></a></p>',
+  '<pre data-language="js" data-theme="dark">const a = 1;\n\tb();</pre>',
+  '<code>one line</code><code>two\nlines</code><code>a<br>b</code>',
+  '<div style="font-family: monospace">mono<br>code</div><div style="font-family: Menlo, monospace"><div>child</div></div>',
+  '<table class="js-file-line-container"><tr><td class="blob-num">1</td><td class="js-file-line">line one</td></tr><tr><td>2</td><td class="js-file-line">line two</td></tr></table>',
+  '<p>before</p><hr><p>after</p>',
+  '<p>a<hr>b</p>',
+];
+
+test('html/import-nodes', () => {
+  const htmls = [
+    ...NODES_IMPORT_CORPUS,
+    // Everything property/documents' HTML export writes must import too.
+    // That file comes from property.test.ts, so a `generate` that changes it
+    // needs a second run to bring this one up to date.
+    ...JSON.parse(
+      readFileSync(
+        new URL('../vectors/property/documents.json', import.meta.url),
+        'utf8',
+      ),
+    )
+      .cases.map((c: {html?: string | null}) => c.html)
+      .filter((html: unknown): html is string => typeof html === 'string'),
+  ];
+  const cases: ImportCase[] = htmls.map(html => {
+    const editor = createHeadlessEditor({
+      namespace: '',
+      nodes: [...DOCUMENT_NODES, HorizontalRuleNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    let nodes = '';
+    withJSDOM(win => {
+      const dom = new win.DOMParser().parseFromString(html, 'text/html');
+      editor.update(
+        () => {
+          nodes = JSON.stringify(
+            $generateNodesFromDOM(editor, dom).map($nodeToJSON),
+          );
+        },
+        {discrete: true},
+      );
+    });
+    return {html, nodes};
+  });
+  emitVectors(
+    'html/import-nodes',
+    'html-import',
+    'HTML for the node packages (curated, plus every property/documents HTML export) and the nodes $generateNodesFromDOM makes from it in jsdom with the property/documents nodes and HorizontalRuleNode, each as exportJSON with its children.',
     cases,
   );
 });

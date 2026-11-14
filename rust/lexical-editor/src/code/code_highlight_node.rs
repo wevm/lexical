@@ -73,6 +73,24 @@ impl LexicalNode for CodeHighlightNode {
     fn get_type(&self) -> &'static str {
         "code-highlight"
     }
+    /// `CodeHighlightNode.createDOM(config)`: `TextNode`'s, with the
+    /// theme's `codeHighlight[highlightType]` class names.
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, crate::LexicalError> {
+        let element = crate::nodes::text::create_dom(self, config)?;
+        if let (Some(highlight_type), Some(crate::json::Value::Object(code_highlight))) = (
+            self.highlight_type.as_deref().filter(|t| !t.is_empty()),
+            config.theme.get("codeHighlight"),
+        ) {
+            crate::lexical_dom::add_theme_class_names(&element, code_highlight, highlight_type);
+        }
+        Ok(element)
+    }
     fn base(&self) -> &NodeBase {
         &self.base
     }

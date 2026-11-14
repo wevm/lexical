@@ -207,7 +207,7 @@ public struct JSONObject: Equatable, Sendable, Sequence {
 /// as is.
 /// The value of `key` when it is a JS array index: a canonical decimal
 /// below 2³² − 1.
-private func arrayIndex(_ key: String) -> UInt32? {
+func arrayIndex(_ key: String) -> UInt32? {
   guard let first = key.utf8.first, first >= 0x30, first <= 0x39,
     key == "0" || first != 0x30, key.utf8.count <= 10,
     key.utf8.allSatisfy({ $0 >= 0x30 && $0 <= 0x39 }),

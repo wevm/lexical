@@ -334,6 +334,7 @@ let package = Package(
         "LexicalExtension", "LexicalFile", "LexicalHashtag", "LexicalHistory", "LexicalHTML",
         "LexicalLink", "LexicalList", "LexicalMark", "LexicalMarkdown", "LexicalOverflow",
         "LexicalPlainText", "LexicalRichText", "LexicalSelection", "LexicalTesting", "LexicalText",
+        "LexicalUtils",
       ]),
     // Ports of the upstream unit tests, each marked with `.upstream(...)`.
     .testTarget(

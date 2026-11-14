@@ -60,6 +60,8 @@ updated with each milestone.
 | `$setBlocksType` (the `selection` feature) | `packages/lexical-selection/src/range-selection.ts` (`$setBlocksType`, with its default `$afterCreateElement`, `$copyBlockFormatIndent`, and `$isPointAtBlockEdge`), through `LexicalNode.replace` and `ListItemNode.replace` | `selection` | `scripts/set-blocks-type`, the block-decorator case of `scripts/decorator`, `property/sequences` |
 | Clipboard, JSON and plain text (the `clipboard` feature) | `packages/lexical-clipboard/src/clipboard.ts`: `$generateJSONFromSelectedNodes` (`$appendNodesToJSON`: `isSelected`, `excludeFromCopy('clone')`, `extractWithChild`, the text sliced at the selection's edges, empty slices left out, a node selection's element taking its subtree), `$generateNodesFromSerializedNodes`, `$insertGeneratedNodes` (`SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`, `$updateSelectionOnInsert`), `$getLexicalContent`, `$insertDataTransferForPlainText`, `$insertDataTransferForRichText` (the default stack of `ClipboardImportExtension.ts`: `$runImport` with `$defaultLexicalEditorImporter` and `$defaultPlainTextImporter` for `text/plain` and `text/uri-list`, by `DEFAULT_IMPORT_MIME_TYPE_PRIORITY`), `$getClipboardDataFromSelection` (the default `ExportMimeTypeConfig` but `text/html`), `setLexicalClipboardDataTransfer`; `$sliceSelectedTextNodeContent` (`@lexical/selection`, `'clone'`); from the core `LexicalNode.isSelected`, `createEditor`'s `namespace` and `getNamespace` (as the devtools row has them), `insertNodes`' CASE 1 (inside a code block), `PASTE_COMMAND`, `COPY_COMMAND`, `CUT_COMMAND` and `SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`, and `DataTransfer` (`getData`, `setData`, `types`, as Swift's in `LexicalEvents.swift`); the `extractWithChild` of `ParagraphNode`, `ListNode` and `ListItemNode` | `clipboard`, `events`, `selection`, `node`, `editor`, `commands`, `selection_insert_nodes`, `nodes::paragraph`, `list` | `scripts/clipboard` |
 | Copy, cut and paste handlers (the `rich-text` and `plain-text` features) | `registerRichText`'s `COPY_COMMAND` (`copyToClipboard` with an event, `$copyToClipboardEvent`), `CUT_COMMAND` (`onCutForRichText`, with `INTERNAL_$expandSelectionToWholeDocument`) and `PASTE_COMMAND` (`onPasteForRichText`) handlers; `registerPlainText`'s (`onCopyForPlainText`, `onCutForPlainText`, `onPasteForPlainText`), with JS's `paste` and `cut` tags | `rich_text`, `plain_text`, `clipboard` | unit tests (no vector: headless JS has no `ClipboardEvent`) |
+| The rest of `@lexical/selection`'s model (the `selection` feature) | `packages/lexical-selection/src/lexical-node.ts` (`$sliceSelectedTextNodeContent`, its `'clone'` mode only, `$isAtNodeEnd`, `$trimTextContentFromAnchor`, `$addNodeStyle` as the deprecated no-op it is, `$patchStyleText` with values, `null` and functions of the previous value, `$forEachSelectedTextNode`, `$ensureForwardRangeSelection`), `range-selection.ts` (`$wrapNodes` with `$wrapNodesImpl`, `$shouldOverrideDefaultCharacterSelection`, `$isParentElementRTL`, `$moveCaretSelection`, `$moveCharacter`, `$getSelectionStyleValueForProperty`), `utils.ts` (`getCSSFromStyleObject`, `getStyleObjectFromRawCSS`), and its re-exports of `getStyleObjectFromCSS`, `$cloneWithProperties` and `$selectAll` (with a selection to scope it, `select_all_in`); from the core `getStyleObjectFromCSS` (`StyleObject`, in a JS object's key order), `$cloneWithProperties`, `$splitNode`, `ElementNode.getDescendantByIndex`, `TextNode.canHaveFormat` | `selection`, `set_dom_style`, `lexical_utils`, `selection_insert_nodes` | `scripts/selection-utils` |
+| `@lexical/utils`'s model (the `utils` feature) | `packages/lexical-utils/src/index.ts`: `DFSNode`, `$dfs`, `$reverseDfs`, `$dfsIterator`, `$reverseDfsIterator` (Rust iterators), `$getAdjacentCaret`, `$getNextSiblingOrParentSibling`, `$getDepth`, `$getNextRightPreorderNode`, `$getNearestNodeOfType`, `$getNearestBlockElementAncestorOrThrow`, `registerNestedElementResolver` (by node type), `$restoreEditorState`, `$insertNodeToNearestRoot`, `$insertNodeIntoLeaf`, `$wrapNodeInElement`, `$filter`, `$handleIndentAndOutdent`, `$insertFirst`, `$unwrapAndFilterDescendants`, `$descendantsMatching`, `$firstToLastIterator`, `$lastToFirstIterator`, `$unwrapNode`, `StateConfigWrapper`, `makeStateWrapper`, `$onEscapeUp`, `$onEscapeDown`, `$isAtStartOfNode`, `$isAtEndOfNode`; its re-exports of `$findMatchingParent`, `$getAdjacentSiblingOrParentSiblingCaret`, `$insertNodeToNearestRootAtCaret`, `$isBlockFullySelected`, `$isRootOrShadowRoot`, `$splitNode` and `mergeRegister` (no longer behind the `extension` feature) | `utils`, `lexical_utils`, `caret_utils`, `selection_deletion`, `merge_register` | `scripts/selection-utils` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -160,9 +162,29 @@ touches:
   model step, which a movement whose `has_dom_selection` is false does. The DOM
   details around the measurement (block cursor element, shadow DOM ranges,
   Firefox's line-affinity retry) have no counterpart.
-  `$selectAll(selection)`'s scoping isn't ported, nor
   `insertNodes`' CASE 3a (blocks with no block ancestor, which needs
-  `$insertNodeToNearestRootAtCaret`).
+  `$insertNodeToNearestRootAtCaret`) isn't ported.
+- Of `@lexical/selection` and `@lexical/utils`, what needs the DOM, a
+  browser or pieces the port doesn't have: `createDOMRange`,
+  `createRectsFromDOMRange`, `positionNodeOnRange`, `markSelection`,
+  `selectionAlwaysOnDisplay`, `dedupeSelectionRects` (DOM ranges and rects);
+  `addClassNamesToElement`, `removeClassNamesFromElement`, `isHTMLElement`,
+  `isHTMLAnchorElement`, `isBlockDomNode`, `isInlineDomNode`,
+  `getScrollParent`, `calculateZoomLevel` (DOM elements); `mediaFileReader`,
+  `isMimeType` and `eventFiles` (`File`, which the port has no type for, and
+  a `DataTransfer`'s files, which the port's `DataTransfer` doesn't carry); the `CAN_USE_*` and `IS_*` environment flags (a
+  browser's user agent); `$getComputedStyleForElement`,
+  `$getComputedStyleForParent` and `$isParentRTL` (computed styles, so
+  `$isParentElementRTL` and the vertical writing mode `$moveCharacter` and
+  `$shouldOverrideDefaultCharacterSelection` read are always false, as in
+  a headless JS editor); `$sliceSelectedTextNodeContent`'s default `'self'`
+  mode (it writes the node's text without `getWritable`, and a node's
+  committed value can't change in place here);
+  `objectKlassEquals` (JS constructors, which a node type string stands for
+  here); `$isEditorIsNestedEditor` (an editor has no parent editor yet);
+  `$dfsWithSlots` and its iterator forms (slots aren't ported); and
+  `trimTextContentFromAnchor`, JS's deprecated other name for
+  `$trimTextContentFromAnchor`.
 - `@lexical/list`'s DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
   `importDOM`, the theme class names, `ListImportExtension`/`ListImportRules`
   and `WordListImportExtension`), which come with `html`;

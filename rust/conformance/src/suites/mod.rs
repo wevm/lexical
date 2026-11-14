@@ -188,6 +188,11 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/selection-utils",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "scripts/set-blocks-type",
             variant: None,
             check: crate::scripts::check,

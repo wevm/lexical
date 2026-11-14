@@ -48,23 +48,26 @@ use lexical::link;
 use lexical::list;
 use lexical::mark;
 use lexical::rich_text::{HeadingTagType, create_heading_node, create_quote_node};
-use lexical::selection::set_blocks_type;
+use lexical::selection::{self, set_blocks_type};
+use lexical::utils;
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
     COMMAND_PRIORITY_EDITOR, CONTROLLED_TEXT_INSERTION_COMMAND, CaretDirection, CreateEditorArgs,
     DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, DataTransfer, Direction,
-    Editor, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
+    Editor, EditorState, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
     INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, LexicalCommand,
     LexicalError, NodeRef, OUTDENT_CONTENT_COMMAND, PointCaret, PointType, REDO_COMMAND,
     REMOVE_TEXT_COMMAND, RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
     SelectionAlter, SelectionGranularity, SelectionRef, SliceMode, StateConfig, StateValueConfig,
     TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
-    caret_range_from_selection, create_command, create_editor, create_node_selection,
-    create_paragraph_node, create_range_selection, create_state, create_state_with,
-    get_caret_range, get_child_caret, get_node_by_key, get_root, get_selection, get_sibling_caret,
-    get_state, get_state_change, get_text_point_caret, insert_nodes, normalize_caret,
-    parse_serialized_node, remove_text_from_caret_range, reset_random_key, select_all,
-    set_selection, set_selection_from_caret_range, set_state, set_state_with, utf16,
+    caret_range_from_selection, clone_with_properties, create_command, create_editor,
+    create_node_selection, create_paragraph_node, create_range_selection, create_state,
+    create_state_with, export_node_json, get_caret_range, get_child_caret, get_node_by_key,
+    get_root, get_selection, get_sibling_caret, get_state, get_state_change,
+    get_style_object_from_css, get_text_point_caret, insert_nodes, is_block_fully_selected,
+    normalize_caret, parse_serialized_node, remove_text_from_caret_range, reset_random_key,
+    select_all, set_selection, set_selection_from_caret_range, set_state, set_state_with,
+    split_node, utf16,
 };
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
@@ -88,6 +91,8 @@ struct Ctx {
     /// while JS runs a step, so what the history merges by. It starts at 0,
     /// and a step's `now` sets it.
     clock: Rc<Cell<f64>>,
+    /// The editor states `saveEditorState` kept, by name.
+    saved: RefCell<HashMap<String, EditorState>>,
 }
 
 /// `ops.ts`'s `STATES`, one set per session (JS's are shared by every
@@ -452,7 +457,38 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "pastePlainText"
             | "pasteData"
             | "generateJSON"
-            | "insertGeneratedNodes",
+            | "insertGeneratedNodes"
+            | "patchStyleText"
+            | "logSelectionStyleValue"
+            | "logStyleObject"
+            | "logAtNodeEnd"
+            | "trimTextContentFromAnchor"
+            | "forEachSelectedTextNode"
+            | "ensureForwardRangeSelection"
+            | "wrapNodes"
+            | "logShouldOverride"
+            | "moveCharacter"
+            | "logSlice"
+            | "copyBlockFormatIndent"
+            | "logCloneWithProperties"
+            | "logDfs"
+            | "logDepth"
+            | "logNextSiblingOrParentSibling"
+            | "logNextRightPreorderNode"
+            | "logNearestBlockElementAncestor"
+            | "logChildren"
+            | "unwrapAndFilterDescendants"
+            | "logDescendantsMatching"
+            | "insertFirst"
+            | "insertNodeToNearestRoot"
+            | "insertNodeIntoLeaf"
+            | "splitNode"
+            | "wrapNodeInElement"
+            | "unwrapNode"
+            | "saveEditorState"
+            | "restoreEditorState"
+            | "escape"
+            | "logBlockFullySelected",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -874,7 +910,13 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             set_selection(Some(selection));
             Ok(())
         }
-        Some("selectAll") => select_all().map(|_| ()),
+        Some("selectAll") => {
+            if action.get("scoped").and_then(Value::as_bool) == Some(true) {
+                selection::select_all_in(&range_sel()?).map(drop)
+            } else {
+                select_all().map(drop)
+            }
+        }
         Some("logSelectionText") => {
             let selection = get_selection().ok_or_else(|| err("no selection"))?;
             ctx.log(vec![
@@ -1059,18 +1101,10 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             })
         }
         Some("setBlocksType") => {
-            let block = action.get("block").and_then(Value::as_str).unwrap_or("");
-            let create: Box<dyn Fn() -> NodeRef> = match block {
-                "paragraph" => Box::new(create_paragraph_node),
-                "quote" => Box::new(|| create_quote_node(false)),
-                tag => {
-                    let tag = HeadingTagType::parse(tag)
-                        .ok_or_else(|| err(format!("unknown block {tag}")))?;
-                    Box::new(move || create_heading_node(tag))
-                }
-            };
+            let create = create_block(action.get("block").unwrap_or(&Value::Null))?;
             set_blocks_type(get_selection().as_ref(), create, None)
         }
+        Some(_) if run_selection_utils_action(action, ctx, editor)? => Ok(()),
         Some("wrapSelectionInMarkNode") => {
             let is_backward = flag(action.get("isBackward").unwrap_or(&Value::Null), false);
             let id = action.str("id").map_err(err)?;
@@ -1228,6 +1262,343 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
     }
 }
 
+/// `$create(block)`: a function making a new paragraph, quote or heading.
+fn create_block(block: &Value) -> Result<Box<dyn Fn() -> NodeRef>, LexicalError> {
+    Ok(match block.as_str().unwrap_or("") {
+        "paragraph" => Box::new(create_paragraph_node),
+        "quote" => Box::new(|| create_quote_node(false)),
+        tag => {
+            let tag =
+                HeadingTagType::parse(tag).ok_or_else(|| err(format!("unknown block {tag}")))?;
+            Box::new(move || create_heading_node(tag))
+        }
+    })
+}
+
+/// A list of node types as `ops.ts` writes it.
+fn types(v: Option<&Value>) -> Vec<String> {
+    v.and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|t| t.as_str().map(str::to_owned))
+        .collect()
+}
+
+fn keys(nodes: impl IntoIterator<Item = NodeRef>) -> Value {
+    Value::Array(nodes.into_iter().map(|n| n.get_key().into()).collect())
+}
+
+/// The actions of `@lexical/selection`'s and `@lexical/utils`'s functions
+/// (`scripts/selection-utils`): whether `action` is one, once it ran.
+fn run_selection_utils_action(
+    action: &Value,
+    ctx: &Ctx,
+    editor: &Editor,
+) -> Result<bool, LexicalError> {
+    let key = || action.str("key").map_err(err);
+    let keyed = || node(action.str("key").map_err(err)?);
+    let any = || get_selection().ok_or_else(|| err("no selection"));
+    let parse_one = |v: Option<&Value>| -> Result<NodeRef, LexicalError> {
+        parse_serialized_node(v.unwrap_or(&Value::Null))
+    };
+    match action.get("do").and_then(Value::as_str) {
+        Some("patchStyleText") => {
+            let patch = action
+                .get("patch")
+                .and_then(Value::as_object)
+                .ok_or_else(|| err("expected a patch"))?;
+            let entries: Vec<(&str, selection::StylePatchValue)> = patch
+                .iter()
+                .map(|(k, v)| {
+                    let value = match v {
+                        Value::Null => selection::StylePatchValue::Remove,
+                        Value::String(value) => selection::StylePatchValue::Value(value.clone()),
+                        _ => selection::StylePatchValue::Compute(Rc::new(|prev, target| {
+                            let kind = match target {
+                                selection::StylePatchTarget::Selection(_) => "selection",
+                                selection::StylePatchTarget::Text(_) => "text",
+                                selection::StylePatchTarget::Element(_) => "element",
+                            };
+                            format!("{}@{kind}", prev.unwrap_or("null"))
+                        })),
+                    };
+                    (k, value)
+                })
+                .collect();
+            selection::patch_style_text(&any()?, &entries)?;
+        }
+        Some("logSelectionStyleValue") => {
+            let property = action.str("property").map_err(err)?;
+            let default_value = action.get("defaultValue").and_then(Value::as_str);
+            let value = selection::get_selection_style_value_for_property(
+                &any()?,
+                property,
+                default_value.unwrap_or(""),
+            )?;
+            ctx.log(vec!["styleValue".into(), property.into(), value.into()]);
+        }
+        Some("logStyleObject") => {
+            let css = action.str("css").map_err(err)?;
+            let object = get_style_object_from_css(css);
+            ctx.log(vec![
+                "styleObject".into(),
+                css.into(),
+                Value::Array(
+                    object
+                        .iter()
+                        .map(|(k, v)| Value::Array(vec![k.into(), v.into()]))
+                        .collect(),
+                ),
+                selection::get_css_from_style_object(&object).into(),
+            ]);
+        }
+        Some("logAtNodeEnd") => {
+            let range = sel()?;
+            ctx.log(vec![
+                "atNodeEnd".into(),
+                selection::is_at_node_end(&range.anchor)?.into(),
+                selection::is_at_node_end(&range.focus)?.into(),
+            ]);
+        }
+        Some("trimTextContentFromAnchor") => {
+            let count = number(action.get("count").unwrap_or(&Value::Null))?;
+            selection::trim_text_content_from_anchor(editor, &sel()?.anchor, count as usize)?;
+        }
+        Some("forEachSelectedTextNode") => {
+            let mut visited = Vec::new();
+            selection::for_each_selected_text_node(|text_node| {
+                visited.push(Value::Array(vec![
+                    text_node.get_key().into(),
+                    text_node.get_text_content().into(),
+                ]));
+                Ok(())
+            })?;
+            ctx.log(vec![
+                "forEachSelectedTextNode".into(),
+                Value::Array(visited),
+            ]);
+        }
+        Some("ensureForwardRangeSelection") => {
+            selection::ensure_forward_range_selection(&range_sel()?)?;
+        }
+        Some("wrapNodes") => {
+            let create = create_block(action.get("block").unwrap_or(&Value::Null))?;
+            let wrapping = match action.get("wrapping") {
+                Some(block) => Some(create_block(block)?()),
+                None => None,
+            };
+            selection::wrap_nodes(&any()?, create, wrapping.as_ref())?;
+        }
+        Some("logShouldOverride") => {
+            let is_backward = flag(action.get("isBackward").unwrap_or(&Value::Null), false);
+            let range = sel()?;
+            ctx.log(vec![
+                "shouldOverride".into(),
+                is_backward.into(),
+                selection::should_override_default_character_selection(&range, is_backward)?.into(),
+                selection::is_parent_element_rtl(&range).into(),
+            ]);
+        }
+        Some("moveCharacter") => {
+            selection::move_character(
+                &range_sel()?,
+                flag(action.get("shift").unwrap_or(&Value::Null), false),
+                flag(action.get("isBackward").unwrap_or(&Value::Null), false),
+            )?;
+        }
+        Some("logSlice") => {
+            let sliced = selection::slice_selected_text_node_content(&any()?, &text(keyed()?)?)?;
+            ctx.log(vec![
+                "slice".into(),
+                key()?.into(),
+                sliced.get_text_content().into(),
+            ]);
+        }
+        Some("copyBlockFormatIndent") => {
+            selection::copy_block_format_indent(
+                &element(node(action.str("from").map_err(err)?)?)?,
+                &element(node(action.str("to").map_err(err)?)?)?,
+            )?;
+        }
+        Some("logCloneWithProperties") => {
+            let n = keyed()?;
+            if n.is_text() {
+                #[allow(deprecated)]
+                selection::add_node_style(&n);
+            }
+            let mut json = export_node_json(&*clone_with_properties(&n));
+            // `exportJSON()` of an element has its own (empty) children.
+            if n.is_element() {
+                json.insert("children", Value::Array(Vec::new()));
+            }
+            ctx.log(vec!["clone".into(), key()?.into(), json.into()]);
+        }
+        Some("logDfs") => {
+            let start = action
+                .get("start")
+                .and_then(Value::as_str)
+                .map(node)
+                .transpose()?;
+            let end = action
+                .get("end")
+                .and_then(Value::as_str)
+                .map(node)
+                .transpose()?;
+            let reverse = flag(action.get("reverse").unwrap_or(&Value::Null), false);
+            let nodes = if reverse {
+                utils::reverse_dfs(start.as_ref(), end.as_ref())
+            } else {
+                utils::dfs(start.as_ref(), end.as_ref())
+            };
+            ctx.log(vec![
+                "dfs".into(),
+                reverse.into(),
+                Value::Array(
+                    nodes
+                        .into_iter()
+                        .map(|d| {
+                            Value::Array(vec![d.node.get_key().into(), (d.depth as f64).into()])
+                        })
+                        .collect(),
+                ),
+            ]);
+        }
+        Some("logDepth") => {
+            let depth = utils::get_depth(Some(&keyed()?));
+            ctx.log(vec!["depth".into(), key()?.into(), (depth as f64).into()]);
+        }
+        Some("logNextSiblingOrParentSibling") => {
+            let found = utils::get_next_sibling_or_parent_sibling(&keyed()?);
+            ctx.log(vec![
+                "nextSiblingOrParentSibling".into(),
+                key()?.into(),
+                found.map_or(Value::Null, |(n, d)| {
+                    Value::Array(vec![n.get_key().into(), (d as f64).into()])
+                }),
+            ]);
+        }
+        Some("logNextRightPreorderNode") => {
+            let found = utils::get_next_right_preorder_node(&keyed()?);
+            ctx.log(vec![
+                "nextRightPreorderNode".into(),
+                key()?.into(),
+                found.map_or(Value::Null, |n| n.get_key().into()),
+            ]);
+        }
+        Some("logNearestBlockElementAncestor") => {
+            let found = utils::get_nearest_block_element_ancestor_or_throw(&keyed()?)?;
+            ctx.log(vec![
+                "nearestBlockElementAncestor".into(),
+                key()?.into(),
+                found.get_key().into(),
+            ]);
+        }
+        Some("logChildren") => {
+            let parent = element(keyed()?)?;
+            let reverse = flag(action.get("reverse").unwrap_or(&Value::Null), false);
+            let children = if reverse {
+                keys(utils::last_to_first_iterator(&parent))
+            } else {
+                keys(utils::first_to_last_iterator(&parent))
+            };
+            ctx.log(vec![
+                "children".into(),
+                key()?.into(),
+                reverse.into(),
+                children,
+            ]);
+        }
+        Some("unwrapAndFilterDescendants") => {
+            let keep = types(action.get("keep"));
+            let did_mutate = utils::unwrap_and_filter_descendants(&element(keyed()?)?, |n| {
+                keep.iter().any(|t| t == n.get_type())
+            })?;
+            ctx.log(vec![
+                "unwrapAndFilterDescendants".into(),
+                key()?.into(),
+                did_mutate.into(),
+            ]);
+        }
+        Some("logDescendantsMatching") => {
+            let types = types(action.get("types"));
+            let found = utils::descendants_matching(&element(keyed()?)?.get_children(), |n| {
+                types.iter().any(|t| t == n.get_type())
+            });
+            ctx.log(vec![
+                "descendantsMatching".into(),
+                key()?.into(),
+                keys(found),
+            ]);
+        }
+        Some("insertFirst") => {
+            utils::insert_first(&element(keyed()?)?, &parse_one(action.get("node"))?)?;
+        }
+        Some("insertNodeToNearestRoot") => {
+            let inserted = utils::insert_node_to_nearest_root(&parse_one(action.get("node"))?)?;
+            ctx.log(vec![
+                "insertNodeToNearestRoot".into(),
+                inserted.get_key().into(),
+            ]);
+        }
+        Some("insertNodeIntoLeaf") => {
+            utils::insert_node_into_leaf(&parse_one(action.get("node"))?)?;
+        }
+        Some("splitNode") => {
+            let offset = number(action.get("offset").unwrap_or(&Value::Null))?;
+            let (left, right) = split_node(&element(keyed()?)?, offset as usize)?;
+            ctx.log(vec![
+                "splitNode".into(),
+                left.map_or(Value::Null, |n| n.get_key().into()),
+                right.get_key().into(),
+            ]);
+        }
+        Some("wrapNodeInElement") => {
+            let create = create_block(action.get("block").unwrap_or(&Value::Null))?;
+            let wrapped = utils::wrap_node_in_element(&keyed()?, create)?;
+            ctx.log(vec!["wrapNodeInElement".into(), wrapped.get_key().into()]);
+        }
+        Some("unwrapNode") => utils::unwrap_node(&element(keyed()?)?)?,
+        Some("saveEditorState") => {
+            let name = action.str("name").map_err(err)?;
+            ctx.saved
+                .borrow_mut()
+                .insert(name.to_owned(), editor.get_editor_state());
+        }
+        Some("restoreEditorState") => {
+            let name = action.str("name").map_err(err)?;
+            let state = ctx
+                .saved
+                .borrow()
+                .get(name)
+                .cloned()
+                .ok_or_else(|| err(format!("no saved state {name}")))?;
+            utils::restore_editor_state(editor, &state);
+        }
+        Some("escape") => {
+            let types = types(action.get("types"));
+            let is_container =
+                |n: &NodeRef| n.is_element() && types.iter().any(|t| t == n.get_type());
+            let direction = action.str("direction").map_err(err)?;
+            let result = if direction == "up" {
+                utils::on_escape_up(is_container)?
+            } else {
+                utils::on_escape_down(is_container)?
+            };
+            ctx.log(vec!["escape".into(), direction.into(), result.into()]);
+        }
+        Some("logBlockFullySelected") => {
+            let result = is_block_fully_selected(&element(keyed()?)?, &sel()?)?;
+            ctx.log(vec![
+                "blockFullySelected".into(),
+                key()?.into(),
+                result.into(),
+            ]);
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
 /// `$selectionSnapshot()`.
 pub(crate) fn selection_snapshot() -> Value {
     let Some(selection) = get_selection() else {
@@ -1261,6 +1632,7 @@ pub(crate) fn selection_snapshot() -> Value {
 
 /// `TRANSFORMS[name](ctx)`.
 fn register_transform(editor: &Editor, name: &'static str, ctx: &Rc<Ctx>) -> Result<(), String> {
+    let session_ctx = ctx.clone();
     let ctx = ctx.clone();
     let log = move |node: &NodeRef| {
         ctx.log(vec!["transform".into(), name.into(), node.get_key().into()]);
@@ -1306,6 +1678,25 @@ fn register_transform(editor: &Editor, name: &'static str, ctx: &Rc<Ctx>) -> Res
             }
             Ok(())
         }),
+        "mark:nested" => {
+            let ctx = session_ctx;
+            utils::register_nested_element_resolver(
+                editor,
+                "mark",
+                |from| mark::create_mark_node(&from.get_ids().unwrap_or_default()),
+                move |from, to| {
+                    ctx.log(vec![
+                        "nestedOverlap".into(),
+                        from.get_key().into(),
+                        to.get_key().into(),
+                    ]);
+                    for id in from.get_ids().unwrap_or_default() {
+                        to.add_id(&id);
+                    }
+                    Ok(())
+                },
+            )
+        }
         "text:upper-a" => editor.register_node_transform("text", move |node| {
             log(node);
             let content = node.get_text_content();
@@ -1322,6 +1713,7 @@ fn register_transform(editor: &Editor, name: &'static str, ctx: &Rc<Ctx>) -> Res
 /// The transform names `ops.ts` defines, as `'static` strings.
 fn transform_name(name: &str) -> Option<&'static str> {
     [
+        "mark:nested",
         "paragraph:log",
         "paragraph:remove-empty",
         "root:log",

@@ -1,6 +1,7 @@
 /// The `Record<string, string>` of CSS properties that
-/// `getStyleObjectFromCSS` returns: properties keep the order they were
-/// first set in, as a JS object's string keys do.
+/// `getStyleObjectFromCSS` returns: properties keep a JS object's key
+/// order, array-index keys first in ascending order, then the others in the
+/// order they were first set in.
 public struct StyleObject: Equatable, Sequence, ExpressibleByDictionaryLiteral {
   public private(set) var keys: [String] = []
   private var values: [String: String] = [:]
@@ -20,7 +21,16 @@ public struct StyleObject: Equatable, Sequence, ExpressibleByDictionaryLiteral {
     get { values[key] }
     set {
       if let newValue {
-        if values.updateValue(newValue, forKey: key) == nil { keys.append(key) }
+        if values.updateValue(newValue, forKey: key) == nil {
+          if let index = arrayIndex(key) {
+            let position =
+              keys.firstIndex { other in arrayIndex(other).map { $0 > index } ?? true }
+              ?? keys.count
+            keys.insert(key, at: position)
+          } else {
+            keys.append(key)
+          }
+        }
       } else if values.removeValue(forKey: key) != nil {
         keys.removeAll { $0 == key }
       }

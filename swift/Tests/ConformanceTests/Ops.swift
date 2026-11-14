@@ -13,6 +13,7 @@ import LexicalPlainText
 import LexicalRichText
 import LexicalSelection
 import LexicalText
+import LexicalUtils
 
 // The Swift interpreter of the script vectors that
 // packages/lexical-conformance/src/ops.ts writes. It must do exactly what
@@ -180,6 +181,8 @@ private final class ScriptContext {
   var clock: Double = 0
   /// The `DataTransfer` of the last `copy`.
   var clipboard: DataTransfer?
+  /// The editor states `saveEditorState` kept, by name.
+  var saved: [String: EditorState] = [:]
 
   init(_ editor: Editor? = nil) { self.editor = editor }
 
@@ -563,7 +566,12 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     }
     try setSelection(selection)
   case "clearSelection": try setSelection(nil)
-  case "selectAll": _ = try selectAll()
+  case "selectAll":
+    if action["scoped"]?.boolValue == true {
+      _ = try selectAll(rangeSelection())
+    } else {
+      _ = try selectAll()
+    }
   case "insertNodes": try insertNodes(parse(action["nodes"] ?? .null))
   case "selection":
     try runSelectionMethod(action["method"]?.stringValue.orThrow() ?? "", action["args"] ?? .null)
@@ -763,7 +771,9 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)
     ctx.log.append(.array([.string("dispatched"), .string(name), .bool(handled)]))
   default:
-    throw ScriptError("unknown action \(String(describing: kind))")
+    guard try runSelectionUtilsAction(kind ?? "", action, ctx) else {
+      throw ScriptError("unknown action \(String(describing: kind))")
+    }
   }
 }
 
@@ -780,12 +790,207 @@ private func insertDataTransfer(
   }
 }
 
+/// `$createBlock(block)` in ops.ts: a new paragraph, quote or heading.
+private func createBlock(_ block: JSONValue?) throws -> ElementNode {
+  switch try block?.stringValue.orThrow() {
+  case "paragraph": try createParagraphNode()
+  case "quote": try createQuoteNode()
+  case let tag? where ["h1", "h2", "h3", "h4", "h5", "h6"].contains(tag):
+    try createHeadingNode(tag)
+  case let block: throw ScriptError("unknown block \(String(describing: block))")
+  }
+}
+
+/// The type names of `types`, a JSON array of strings.
+private func types(_ types: JSONValue?) -> [String] {
+  (types?.arrayValue ?? []).compactMap(\.stringValue)
+}
+
+private func keys(_ nodes: [LexicalNode]) -> JSONValue { .array(nodes.map { $0.getKey() }) }
+
+/// A `patchStyleText` patch: `null` removes a property, `{fn: 'describe'}`
+/// is `(prev, target) => prev@kind`, and a string is the value.
+private func stylePatchValue(_ value: JSONValue) -> StylePatchValue {
+  if value == .null { return .remove }
+  if let value = value.stringValue { return .value(value) }
+  return .compute { prev, target in
+    let kind =
+      switch target {
+      case .selection: "selection"
+      case .text: "text"
+      case .element: "element"
+      }
+    return "\(prev ?? "null")@\(kind)"
+  }
+}
+
+/// The @lexical/selection and @lexical/utils actions of ops.ts; false when
+/// `kind` is none of them.
+private func runSelectionUtilsAction(
+  _ kind: String, _ action: JSONValue, _ ctx: ScriptContext
+) throws -> Bool {
+  func key() throws -> String { try action["key"]?.stringValue.orThrow() ?? "" }
+  func keyed() throws -> LexicalNode { try node(key()) }
+  func flag(_ name: String) -> Bool { action[name]?.boolValue ?? false }
+  func one() throws -> LexicalNode { try parse(.array([action["node"] ?? .null])).first.orThrow() }
+  func log(_ items: JSONValue...) { ctx.log.append(.array(items)) }
+  switch kind {
+  case "patchStyleText":
+    let patch = try action["patch"]?.objectValue.orThrow() ?? JSONObject()
+    let entries = patch.keys.map { ($0, stylePatchValue(patch[$0] ?? .null)) }
+    // A `StylePatch` is only written as a literal.
+    switch entries.count {
+    case 1: try patchStyleText(anySelection(), [entries[0].0: entries[0].1])
+    case 2:
+      try patchStyleText(
+        anySelection(), [entries[0].0: entries[0].1, entries[1].0: entries[1].1])
+    default: throw ScriptError("a patch of \(entries.count) properties")
+    }
+  case "logSelectionStyleValue":
+    let property = try action["property"]?.stringValue.orThrow() ?? ""
+    let value = try getSelectionStyleValueForProperty(
+      anySelection(), property, action["defaultValue"]?.stringValue ?? "")
+    log(.string("styleValue"), .string(property), .string(value))
+  case "logStyleObject":
+    let css = try action["css"]?.stringValue.orThrow() ?? ""
+    let object = getStyleObjectFromCSS(css)
+    log(
+      .string("styleObject"), .string(css),
+      .array(object.map { .array([.string($0.key), .string($0.value)]) }),
+      .string(getCSSFromStyleObject(object)))
+  case "logAtNodeEnd":
+    let selection = try rangeSelection()
+    log(
+      .string("atNodeEnd"), .bool(try isAtNodeEnd(selection.anchor)),
+      .bool(try isAtNodeEnd(selection.focus)))
+  case "trimTextContentFromAnchor":
+    try trimTextContentFromAnchor(
+      ctx.editor, rangeSelection().anchor, action["count"]?.int.orThrow() ?? 0)
+  case "forEachSelectedTextNode":
+    var visited: [JSONValue] = []
+    try forEachSelectedTextNode { textNode in
+      visited.append(.array([.string(textNode.getKey()), .string(try textNode.getTextContent())]))
+    }
+    log(.string("forEachSelectedTextNode"), .array(visited))
+  case "ensureForwardRangeSelection": try ensureForwardRangeSelection(rangeSelection())
+  case "wrapNodes":
+    let wrapping = try action["wrapping"].map { try createBlock($0) }
+    try wrapNodes(anySelection(), { try createBlock(action["block"]) }, wrapping)
+  case "logShouldOverride":
+    let selection = try rangeSelection()
+    let isBackward = flag("isBackward")
+    log(
+      .string("shouldOverride"), .bool(isBackward),
+      .bool(try shouldOverrideDefaultCharacterSelection(selection, isBackward)),
+      .bool(try isParentElementRTL(selection)))
+  case "moveCharacter":
+    try moveCharacter(rangeSelection(), flag("shift"), flag("isBackward"))
+  case "logSlice":
+    let sliced = try sliceSelectedTextNodeContent(anySelection(), text(keyed()), .clone)
+    log(.string("slice"), .string(try key()), .string(try sliced.getTextContent()))
+  case "copyBlockFormatIndent":
+    try copyBlockFormatIndent(
+      element(node(action["from"]?.stringValue.orThrow() ?? "")),
+      element(node(action["to"]?.stringValue.orThrow() ?? "")))
+  case "logCloneWithProperties":
+    let n = try keyed()
+    if let t = n as? TextNode {
+      addNodeStyle(t)
+    }
+    log(.string("clone"), .string(try key()), .object(try cloneWithProperties(n).exportJSON()))
+  case "logDfs":
+    let start = try action["start"]?.stringValue.map { try node($0) }
+    let end = try action["end"]?.stringValue.map { try node($0) }
+    let reverse = flag("reverse")
+    let nodes = try reverse ? reverseDfs(start, end) : dfs(start, end)
+    log(
+      .string("dfs"), .bool(reverse),
+      .array(nodes.map { .array([.string($0.node.getKey()), .int($0.depth)]) }))
+  case "logDepth":
+    log(.string("depth"), .string(try key()), .int(try getDepth(keyed())))
+  case "logNextSiblingOrParentSibling":
+    let found = try getNextSiblingOrParentSibling(keyed())
+    log(
+      .string("nextSiblingOrParentSibling"), .string(try key()),
+      found.map { .array([.string($0.0.getKey()), .int($0.1)]) } ?? .null)
+  case "logNextRightPreorderNode":
+    let found = try getNextRightPreorderNode(keyed())
+    log(
+      .string("nextRightPreorderNode"), .string(try key()),
+      found.map { .string($0.getKey()) } ?? .null)
+  case "logNearestBlockElementAncestor":
+    let found = try getNearestBlockElementAncestorOrThrow(keyed())
+    log(.string("nearestBlockElementAncestor"), .string(try key()), .string(found.getKey()))
+  case "logChildren":
+    let parent = try element(keyed())
+    let reverse = flag("reverse")
+    let children =
+      try (reverse ? lastToFirstIterator(parent) : firstToLastIterator(parent)).toArray()
+    log(.string("children"), .string(try key()), .bool(reverse), keys(children))
+  case "unwrapAndFilterDescendants":
+    let keep = types(action["keep"])
+    let didMutate = try unwrapAndFilterDescendants(element(keyed())) {
+      keep.contains($0.getType())
+    }
+    log(.string("unwrapAndFilterDescendants"), .string(try key()), .bool(didMutate))
+  case "logDescendantsMatching":
+    let types = types(action["types"])
+    let found = try descendantsMatching(element(keyed()).getChildren()) {
+      types.contains($0.getType())
+    }
+    log(.string("descendantsMatching"), .string(try key()), keys(found))
+  case "insertFirst": try insertFirst(element(keyed()), one())
+  case "insertNodeToNearestRoot":
+    let inserted = try insertNodeToNearestRoot(one())
+    log(.string("insertNodeToNearestRoot"), .string(inserted.getKey()))
+  case "insertNodeIntoLeaf": try insertNodeIntoLeaf(one())
+  case "splitNode":
+    let (left, right) = try splitNode(element(keyed()), action["offset"]?.int.orThrow() ?? 0)
+    log(.string("splitNode"), left.map { .string($0.getKey()) } ?? .null, .string(right.getKey()))
+  case "wrapNodeInElement":
+    let wrapped = try wrapNodeInElement(keyed()) { try createBlock(action["block"]) }
+    log(.string("wrapNodeInElement"), .string(wrapped.getKey()))
+  case "unwrapNode": try unwrapNode(element(keyed()))
+  case "saveEditorState":
+    ctx.saved[try action["name"]?.stringValue.orThrow() ?? ""] = ctx.editor.getEditorState()
+  case "restoreEditorState":
+    let name = try action["name"]?.stringValue.orThrow() ?? ""
+    guard let state = ctx.saved[name] else { throw ScriptError("no saved state \(name)") }
+    try restoreEditorState(ctx.editor, state)
+  case "escape":
+    let types = types(action["types"])
+    let isContainer = { (n: LexicalNode) in n is ElementNode && types.contains(n.getType()) }
+    let direction = try action["direction"]?.stringValue.orThrow() ?? ""
+    let result = try direction == "up" ? onEscapeUp(isContainer) : onEscapeDown(isContainer)
+    log(.string("escape"), .string(direction), .bool(result))
+  case "logBlockFullySelected":
+    let result = try isBlockFullySelected(element(keyed()), rangeSelection())
+    log(.string("blockFullySelected"), .string(try key()), .bool(result))
+  default: return false
+  }
+  return true
+}
+
 private func registerTransform(_ name: String, _ ctx: ScriptContext) throws {
   let editor: Editor = ctx.editor
   func log(_ key: NodeKey) {
     ctx.log.append(.array([.string("transform"), .string(name), .string(key)]))
   }
   switch name {
+  case "mark:nested":
+    // `registerNestedElementResolver` (@lexical/utils) for MarkNode: a mark
+    // directly in another moves out of it, after logging
+    // `['nestedOverlap', parent, node]` and giving the parent's ids to the
+    // node; the parent's children after it go into a new mark with its ids.
+    _ = try registerNestedElementResolver(
+      editor, MarkNode.self, { from in try createMarkNode(from.getIDs()) },
+      { from, to in
+        ctx.log.append(
+          .array([.string("nestedOverlap"), .string(from.getKey()), .string(to.getKey())]))
+        for id in try from.getIDs() {
+          try to.addID(id)
+        }
+      })
   case "text:upper-a":
     try editor.registerNodeTransform(TextNode.self) { node in
       log(node.getKey())

@@ -758,6 +758,9 @@ importers:
       '@lexical/text':
         specifier: workspace:*
         version: link:../lexical-text
+      '@lexical/utils':
+        specifier: workspace:*
+        version: link:../lexical-utils
       entities:
         specifier: 2.2.0
         version: 2.2.0

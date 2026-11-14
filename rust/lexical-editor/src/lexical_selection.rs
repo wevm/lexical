@@ -747,7 +747,7 @@ pub(crate) fn adjust_point_offset_for_merged_sibling(
 }
 
 /// `$hasAncestor(child, targetNode)`.
-fn has_ancestor(child: &NodeRef, target: &NodeRef) -> bool {
+pub(crate) fn has_ancestor(child: &NodeRef, target: &NodeRef) -> bool {
     let mut parent = child.get_parent();
     while let Some(p) = parent {
         if &p == target {

@@ -9,6 +9,7 @@
 use crate::LexicalError;
 use crate::caret::CaretDirection;
 use crate::caret_utils::{caret_from_point, normalize_caret, set_point_from_caret};
+use crate::error::invariant;
 use crate::lexical_selection::{
     Point, PointType, RangeSelection, Selection, SelectionRef, Which, get_selection, set_selection,
 };
@@ -708,10 +709,57 @@ pub fn insert_nodes(nodes: Vec<NodeRef>) -> Result<(), LexicalError> {
     selection.insert_nodes(nodes)
 }
 
+/// `$selectAll(selection)`: for a range selection, moves its points to the
+/// start and end of the root or shadow root that holds its anchor, down to
+/// text where they can be, and returns it (a slot value scopes it in JS;
+/// slots aren't ported); for a node selection, [`select_all`], which is
+/// `$selectAll()`.
+pub fn select_all_in(selection: &SelectionRef) -> Result<SelectionRef, LexicalError> {
+    let Some(anchor) = selection.point(Which::Anchor) else {
+        return select_all();
+    };
+    let anchor_node = anchor.get_node()?;
+    // `RootNode.getTopLevelElementOrThrow` always throws by design, so when
+    // the caret is at the root's element-level (typically after deleting
+    // every top-level child) fall through to the regular "select all root
+    // children" path before the throw fires.
+    let container = if anchor_node.is_root() {
+        anchor_node
+    } else {
+        // `getTopLevelElementOrThrow().getParent()`: the root or shadow
+        // root above the anchor.
+        let mut node = anchor_node.clone();
+        loop {
+            let Some(parent) = node.get_parent() else {
+                return Err(LexicalError::new(format!(
+                    "Expected node {} to have a top parent element.",
+                    anchor_node.get_key()
+                )));
+            };
+            if is_root_or_shadow_root(&*parent.get_latest()) {
+                invariant!(
+                    node.is_element() || (node == anchor_node && node.is_decorator()),
+                    "Children of root nodes must be elements or decorators"
+                );
+                break parent;
+            }
+            node = parent;
+        }
+    };
+    selection.point_set(Which::Anchor, container.get_key(), 0, PointType::Element)?;
+    selection.point_set(
+        Which::Focus,
+        container.get_key(),
+        container.get_children_size(),
+        PointType::Element,
+    )?;
+    normalize_selection_for_select_all(selection, &container)?;
+    Ok(selection.clone())
+}
+
 /// `$selectAll()`: selects the whole root, with the points moved down to
-/// text where they can be, and returns the selection. (JS's
-/// `$selectAll(selection)`, which scopes an existing selection, is not
-/// ported.)
+/// text where they can be, and returns the selection. [`select_all_in`] is
+/// `$selectAll(selection)`, which scopes an existing selection.
 pub fn select_all() -> Result<SelectionRef, LexicalError> {
     let root = get_root();
     let new_selection = root.select(Some(0), Some(root.get_children_size()))?;

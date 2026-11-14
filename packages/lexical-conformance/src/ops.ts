@@ -82,6 +82,7 @@ import {
 } from '@lexical/list';
 import {
   $addMarkID,
+  $createMarkNode,
   $getMarkIDs,
   $getMarkIDsAtSelection,
   $getNodeMarkIDs,
@@ -103,7 +104,23 @@ import {
   registerRichText,
   RichTextExtension,
 } from '@lexical/rich-text';
-import {$setBlocksType} from '@lexical/selection';
+import {
+  $addNodeStyle,
+  $copyBlockFormatIndent,
+  $ensureForwardRangeSelection,
+  $forEachSelectedTextNode,
+  $getSelectionStyleValueForProperty,
+  $isAtNodeEnd,
+  $isParentElementRTL,
+  $moveCharacter,
+  $patchStyleText,
+  $setBlocksType,
+  $shouldOverrideDefaultCharacterSelection,
+  $sliceSelectedTextNodeContent,
+  $trimTextContentFromAnchor,
+  $wrapNodes,
+  getCSSFromStyleObject,
+} from '@lexical/selection';
 import {
   $canShowPlaceholder,
   $canShowPlaceholderCurry,
@@ -113,7 +130,31 @@ import {
   $rootTextContent,
 } from '@lexical/text';
 import {
+  $descendantsMatching,
+  $dfs,
+  $firstToLastIterator,
+  $getDepth,
+  $getNearestBlockElementAncestorOrThrow,
+  $getNextRightPreorderNode,
+  $getNextSiblingOrParentSibling,
+  $insertFirst,
+  $insertNodeIntoLeaf,
+  $insertNodeToNearestRoot,
+  $isBlockFullySelected,
+  $lastToFirstIterator,
+  $onEscapeDown,
+  $onEscapeUp,
+  $restoreEditorState,
+  $reverseDfs,
+  $splitNode,
+  $unwrapAndFilterDescendants,
+  $unwrapNode,
+  $wrapNodeInElement,
+  registerNestedElementResolver,
+} from '@lexical/utils';
+import {
   $caretRangeFromSelection,
+  $cloneWithProperties,
   $createNodeSelection,
   $createParagraphNode,
   $createRangeSelection,
@@ -143,6 +184,7 @@ import {
   type AnyLexicalExtension,
   type AnyLexicalExtensionArgument,
   type AnyStateConfig,
+  type BaseSelection,
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,
   type CaretDirection,
@@ -158,9 +200,11 @@ import {
   DELETE_CHARACTER_COMMAND,
   DELETE_LINE_COMMAND,
   DELETE_WORD_COMMAND,
+  type EditorState,
   type ElementNode,
   FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
+  getStyleObjectFromCSS,
   INDENT_CONTENT_COMMAND,
   INSERT_LINE_BREAK_COMMAND,
   INSERT_PARAGRAPH_COMMAND,
@@ -222,7 +266,8 @@ export type Action =
   | {do: 'select'; anchor: PointSpec; focus?: PointSpec}
   | {do: 'selectNodes'; keys: string[]}
   | {do: 'clearSelection'}
-  | {do: 'selectAll'}
+  /** `$selectAll()`, or with `scoped`, `$selectAll($getSelection())`. */
+  | {do: 'selectAll'; scoped?: boolean}
   /** `$insertNodes` with the parsed nodes. */
   | {do: 'insertNodes'; nodes: SerializedLexicalNode[]}
   /** A method of the current selection; see SELECTION_METHODS. */
@@ -351,7 +396,138 @@ export type Action =
    * $getSelection())`.
    */
   | {do: 'insertGeneratedNodes'; nodes: SerializedLexicalNode[]}
+  /**
+   * `$patchStyleText($getSelection(), patch)` (@lexical/selection). A value
+   * `{fn: 'describe'}` is the function `(prev, target) => prev@kind`, where
+   * `prev` is the current value (`null` when unset) and `kind` is
+   * `selection`, `text` or `element`.
+   */
+  | {do: 'patchStyleText'; patch: {[key: string]: PatchValue}}
+  /**
+   * Logs `['styleValue', property, value]`:
+   * `$getSelectionStyleValueForProperty($getSelection(), property,
+   * defaultValue)`, with JS's default `''` when `defaultValue` is absent.
+   */
+  | {do: 'logSelectionStyleValue'; property: string; defaultValue?: string}
+  /**
+   * Logs `['styleObject', css, entries, getCSSFromStyleObject(object)]` of
+   * `object = getStyleObjectFromCSS(css)`.
+   */
+  | {do: 'logStyleObject'; css: string}
+  /** Logs `['atNodeEnd', anchor, focus]`: `$isAtNodeEnd` of each point. */
+  | {do: 'logAtNodeEnd'}
+  /** `$trimTextContentFromAnchor(editor, selection.anchor, count)`. */
+  | {do: 'trimTextContentFromAnchor'; count: number}
+  /**
+   * `$forEachSelectedTextNode(fn)`, logging
+   * `['forEachSelectedTextNode', [[key, text]...]]` of the nodes `fn` got.
+   */
+  | {do: 'forEachSelectedTextNode'}
+  /** `$ensureForwardRangeSelection($getSelection())`. */
+  | {do: 'ensureForwardRangeSelection'}
+  /**
+   * `$wrapNodes($getSelection(), $create(block), wrapping)`, where
+   * `wrapping` is `$create(wrapping)` when given and `null` otherwise.
+   */
+  | {do: 'wrapNodes'; block: BlockType; wrapping?: BlockType}
+  /**
+   * Logs `['shouldOverride', isBackward, result, rtl]`:
+   * `$shouldOverrideDefaultCharacterSelection(selection, isBackward)` and
+   * `$isParentElementRTL(selection)`.
+   */
+  | {do: 'logShouldOverride'; isBackward: boolean}
+  /** `$moveCharacter($getSelection(), shift, isBackward)`. */
+  | {do: 'moveCharacter'; shift: boolean; isBackward: boolean}
+  /**
+   * Logs `['slice', key, text]`: the text of
+   * `$sliceSelectedTextNodeContent($getSelection(), node, 'clone')`.
+   */
+  | {do: 'logSlice'; key: string}
+  /** `$copyBlockFormatIndent(from, to)`. */
+  | {do: 'copyBlockFormatIndent'; from: string; to: string}
+  /**
+   * Logs `['clone', key, json]`: the `exportJSON()` of
+   * `$cloneWithProperties(node)` after `$addNodeStyle(node)`, a no-op.
+   */
+  | {do: 'logCloneWithProperties'; key: string}
+  /**
+   * Logs `['dfs', reverse, [[key, depth]...]]`: `$dfs(start, end)`, or
+   * `$reverseDfs(start, end)` with `reverse` (@lexical/utils), where an
+   * absent key is `undefined`.
+   */
+  | {do: 'logDfs'; start?: string; end?: string; reverse?: boolean}
+  /** Logs `['depth', key, $getDepth(node)]`. */
+  | {do: 'logDepth'; key: string}
+  /**
+   * Logs `['nextSiblingOrParentSibling', key, [key, depthDiff] | null]`:
+   * `$getNextSiblingOrParentSibling(node)`.
+   */
+  | {do: 'logNextSiblingOrParentSibling'; key: string}
+  /**
+   * Logs `['nextRightPreorderNode', key, key | null]`:
+   * `$getNextRightPreorderNode(node)`.
+   */
+  | {do: 'logNextRightPreorderNode'; key: string}
+  /**
+   * Logs `['nearestBlockElementAncestor', key, key]`:
+   * `$getNearestBlockElementAncestorOrThrow(node)`.
+   */
+  | {do: 'logNearestBlockElementAncestor'; key: string}
+  /**
+   * Logs `['children', key, reverse, keys]`: `$firstToLastIterator(node)`,
+   * or `$lastToFirstIterator(node)` with `reverse`.
+   */
+  | {do: 'logChildren'; key: string; reverse?: boolean}
+  /**
+   * `$unwrapAndFilterDescendants(node, n => keep.includes(n.getType()))`,
+   * logging `['unwrapAndFilterDescendants', key, didMutate]`.
+   */
+  | {do: 'unwrapAndFilterDescendants'; key: string; keep: string[]}
+  /**
+   * Logs `['descendantsMatching', key, keys]`: `$descendantsMatching` of the
+   * node's children with `n => types.includes(n.getType())`.
+   */
+  | {do: 'logDescendantsMatching'; key: string; types: string[]}
+  /** `$insertFirst(node, parsed)`. */
+  | {do: 'insertFirst'; key: string; node: SerializedLexicalNode}
+  /**
+   * `$insertNodeToNearestRoot(parsed)`, logging
+   * `['insertNodeToNearestRoot', key]` of what it returns.
+   */
+  | {do: 'insertNodeToNearestRoot'; node: SerializedLexicalNode}
+  /** `$insertNodeIntoLeaf(parsed)`. */
+  | {do: 'insertNodeIntoLeaf'; node: SerializedLexicalNode}
+  /** `$splitNode(node, offset)`, logging `['splitNode', left, right]`. */
+  | {do: 'splitNode'; key: string; offset: number}
+  /**
+   * `$wrapNodeInElement(node, $create(block))`, logging
+   * `['wrapNodeInElement', key]` of the new element.
+   */
+  | {do: 'wrapNodeInElement'; key: string; block: BlockType}
+  /** `$unwrapNode(node)`. */
+  | {do: 'unwrapNode'; key: string}
+  /** Keeps `editor.getEditorState()` (the committed state) as `name`. */
+  | {do: 'saveEditorState'; name: string}
+  /** `$restoreEditorState(editor, state)` of the state kept as `name`. */
+  | {do: 'restoreEditorState'; name: string}
+  /**
+   * `$onEscapeUp(isContainer)` or `$onEscapeDown(isContainer)`, where
+   * `isContainer` accepts an element of one of `types`, logging
+   * `['escape', direction, result]`.
+   */
+  | {do: 'escape'; direction: 'up' | 'down'; types: string[]}
+  /**
+   * Logs `['blockFullySelected', key, result]`:
+   * `$isBlockFullySelected(node, $getSelection())`.
+   */
+  | {do: 'logBlockFullySelected'; key: string}
   | {do: 'dispatch'; command: string; payload?: Json};
+
+/** The blocks the `$create` of an action makes. */
+export type BlockType = 'paragraph' | 'quote' | HeadingTagType;
+
+/** A value of a `patchStyleText` patch. */
+export type PatchValue = string | null | {fn: 'describe'};
 
 /**
  * A command handler: logs, runs its actions, then returns `result`. Like
@@ -641,6 +817,8 @@ type Context = {
   defs: {[key: string]: ExtensionSpec};
   /** The `DataTransfer` of the last `copy`. */
   clipboard: ScriptDataTransfer | null;
+  /** The editor states `saveEditorState` kept, by name. */
+  saved: Map<string, EditorState>;
 };
 
 /**
@@ -818,6 +996,24 @@ const SELECTION_METHODS: Record<string, (args: Json[] | undefined) => void> = {
   setStyle: args => $sel().setStyle(arg(args, 0) as string),
   toggleFormat: args => $sel().toggleFormat(arg(args, 0) as never),
 };
+
+/** `$create(block)`: a new paragraph, quote or heading. */
+function $createBlock(block: BlockType): ElementNode {
+  switch (block) {
+    case 'paragraph':
+      return $createParagraphNode();
+    case 'quote':
+      return $createQuoteNode();
+    case 'h1':
+    case 'h2':
+    case 'h3':
+    case 'h4':
+    case 'h5':
+    case 'h6':
+      return $createHeadingNode(block);
+  }
+  throw new Error(`unknown block ${block}`);
+}
 
 function $anySel() {
   const selection = $getSelection();
@@ -1074,7 +1270,11 @@ function $runAction(action: Action, ctx: Context): void {
       $setSelection(null);
       return;
     case 'selectAll':
-      $selectAll();
+      if (action.scoped) {
+        $selectAll($sel());
+      } else {
+        $selectAll();
+      }
       return;
     case 'insertNodes':
       $insertNodes($parse(action.nodes));
@@ -1172,22 +1372,7 @@ function $runAction(action: Action, ctx: Context): void {
     }
     case 'setBlocksType': {
       const {block} = action;
-      $setBlocksType($getSelection(), (): ElementNode => {
-        switch (block) {
-          case 'paragraph':
-            return $createParagraphNode();
-          case 'quote':
-            return $createQuoteNode();
-          case 'h1':
-          case 'h2':
-          case 'h3':
-          case 'h4':
-          case 'h5':
-          case 'h6':
-            return $createHeadingNode(block);
-        }
-        throw new Error(`unknown block ${block}`);
-      });
+      $setBlocksType($getSelection(), () => $createBlock(block));
       return;
     }
     case 'logSelectionText':
@@ -1337,6 +1522,273 @@ function $runAction(action: Action, ctx: Context): void {
         $anySel(),
       );
       return;
+    case 'patchStyleText': {
+      const patch: Record<
+        string,
+        | string
+        | null
+        | ((
+            prev: string | null,
+            target: TextNode | ElementNode | BaseSelection,
+          ) => string)
+      > = {};
+      for (const [key, value] of Object.entries(action.patch)) {
+        patch[key] =
+          value !== null && typeof value === 'object'
+            ? (prev, target) =>
+                `${prev ?? 'null'}@${
+                  $isRangeSelection(target)
+                    ? 'selection'
+                    : target instanceof TextNode
+                      ? 'text'
+                      : 'element'
+                }`
+            : value;
+      }
+      $patchStyleText($anySel(), patch as never);
+      return;
+    }
+    case 'logSelectionStyleValue':
+      ctx.log.push([
+        'styleValue',
+        action.property,
+        action.defaultValue === undefined
+          ? $getSelectionStyleValueForProperty($anySel(), action.property)
+          : $getSelectionStyleValueForProperty(
+              $anySel(),
+              action.property,
+              action.defaultValue,
+            ),
+      ]);
+      return;
+    case 'logStyleObject': {
+      const object = getStyleObjectFromCSS(action.css);
+      ctx.log.push([
+        'styleObject',
+        action.css,
+        Object.entries(object),
+        getCSSFromStyleObject(object),
+      ]);
+      return;
+    }
+    case 'logAtNodeEnd': {
+      const selection = $sel();
+      ctx.log.push([
+        'atNodeEnd',
+        $isAtNodeEnd(selection.anchor),
+        $isAtNodeEnd(selection.focus),
+      ]);
+      return;
+    }
+    case 'trimTextContentFromAnchor':
+      $trimTextContentFromAnchor(ctx.editor, $sel().anchor, action.count);
+      return;
+    case 'forEachSelectedTextNode': {
+      const visited: Json[] = [];
+      $forEachSelectedTextNode(textNode => {
+        visited.push([textNode.getKey(), textNode.getTextContent()]);
+      });
+      ctx.log.push(['forEachSelectedTextNode', visited]);
+      return;
+    }
+    case 'ensureForwardRangeSelection':
+      $ensureForwardRangeSelection($sel());
+      return;
+    case 'wrapNodes': {
+      const {block, wrapping} = action;
+      $wrapNodes(
+        $anySel(),
+        () => $createBlock(block),
+        wrapping === undefined ? null : $createBlock(wrapping),
+      );
+      return;
+    }
+    case 'logShouldOverride': {
+      const selection = $sel();
+      ctx.log.push([
+        'shouldOverride',
+        action.isBackward,
+        $shouldOverrideDefaultCharacterSelection(selection, action.isBackward),
+        $isParentElementRTL(selection),
+      ]);
+      return;
+    }
+    case 'moveCharacter':
+      $moveCharacter($sel(), action.shift, action.isBackward);
+      return;
+    case 'logSlice':
+      ctx.log.push([
+        'slice',
+        action.key,
+        $sliceSelectedTextNodeContent(
+          $anySel(),
+          text($node(action.key)),
+          'clone',
+        ).getTextContent(),
+      ]);
+      return;
+    case 'copyBlockFormatIndent':
+      $copyBlockFormatIndent(
+        element($node(action.from)),
+        element($node(action.to)),
+      );
+      return;
+    case 'logCloneWithProperties': {
+      const n = $node(action.key);
+      if ($isTextNode(n)) {
+        $addNodeStyle(n);
+      }
+      ctx.log.push([
+        'clone',
+        action.key,
+        $cloneWithProperties(n).exportJSON() as unknown as Json,
+      ]);
+      return;
+    }
+    case 'logDfs': {
+      const start =
+        action.start === undefined ? undefined : $node(action.start);
+      const end = action.end === undefined ? undefined : $node(action.end);
+      const nodes = action.reverse ? $reverseDfs(start, end) : $dfs(start, end);
+      ctx.log.push([
+        'dfs',
+        action.reverse ?? false,
+        nodes.map(({depth, node: n}) => [n.getKey(), depth]),
+      ]);
+      return;
+    }
+    case 'logDepth':
+      ctx.log.push(['depth', action.key, $getDepth($node(action.key))]);
+      return;
+    case 'logNextSiblingOrParentSibling': {
+      const found = $getNextSiblingOrParentSibling($node(action.key));
+      ctx.log.push([
+        'nextSiblingOrParentSibling',
+        action.key,
+        found === null ? null : [found[0].getKey(), found[1]],
+      ]);
+      return;
+    }
+    case 'logNextRightPreorderNode': {
+      const found = $getNextRightPreorderNode($node(action.key));
+      ctx.log.push([
+        'nextRightPreorderNode',
+        action.key,
+        found === null ? null : found.getKey(),
+      ]);
+      return;
+    }
+    case 'logNearestBlockElementAncestor':
+      ctx.log.push([
+        'nearestBlockElementAncestor',
+        action.key,
+        $getNearestBlockElementAncestorOrThrow($node(action.key)).getKey(),
+      ]);
+      return;
+    case 'logChildren': {
+      const parent = element($node(action.key));
+      const iterator = action.reverse
+        ? $lastToFirstIterator(parent)
+        : $firstToLastIterator(parent);
+      ctx.log.push([
+        'children',
+        action.key,
+        action.reverse ?? false,
+        Array.from(iterator, n => n.getKey()),
+      ]);
+      return;
+    }
+    case 'unwrapAndFilterDescendants': {
+      const {keep} = action;
+      ctx.log.push([
+        'unwrapAndFilterDescendants',
+        action.key,
+        $unwrapAndFilterDescendants(element($node(action.key)), n =>
+          keep.includes(n.getType()),
+        ),
+      ]);
+      return;
+    }
+    case 'logDescendantsMatching': {
+      const {types} = action;
+      ctx.log.push([
+        'descendantsMatching',
+        action.key,
+        $descendantsMatching(
+          element($node(action.key)).getChildren(),
+          (n): n is LexicalNode => types.includes(n.getType()),
+        ).map(n => n.getKey()),
+      ]);
+      return;
+    }
+    case 'insertFirst':
+      $insertFirst(element($node(action.key)), $parse([action.node])[0]);
+      return;
+    case 'insertNodeToNearestRoot':
+      ctx.log.push([
+        'insertNodeToNearestRoot',
+        $insertNodeToNearestRoot($parse([action.node])[0]).getKey(),
+      ]);
+      return;
+    case 'insertNodeIntoLeaf':
+      $insertNodeIntoLeaf($parse([action.node])[0]);
+      return;
+    case 'splitNode': {
+      const [left, right] = $splitNode(
+        element($node(action.key)),
+        action.offset,
+      );
+      ctx.log.push([
+        'splitNode',
+        left === null ? null : left.getKey(),
+        right.getKey(),
+      ]);
+      return;
+    }
+    case 'wrapNodeInElement': {
+      const {block} = action;
+      ctx.log.push([
+        'wrapNodeInElement',
+        $wrapNodeInElement($node(action.key), () =>
+          $createBlock(block),
+        ).getKey(),
+      ]);
+      return;
+    }
+    case 'unwrapNode':
+      $unwrapNode(element($node(action.key)));
+      return;
+    case 'saveEditorState':
+      ctx.saved.set(action.name, ctx.editor.getEditorState());
+      return;
+    case 'restoreEditorState': {
+      const state = ctx.saved.get(action.name);
+      if (state === undefined) {
+        throw new Error(`no saved state ${action.name}`);
+      }
+      $restoreEditorState(ctx.editor, state);
+      return;
+    }
+    case 'escape': {
+      const {types} = action;
+      const isContainer = (n?: LexicalNode | null): n is ElementNode =>
+        $isElementNode(n) && types.includes(n.getType());
+      ctx.log.push([
+        'escape',
+        action.direction,
+        action.direction === 'up'
+          ? $onEscapeUp(isContainer)
+          : $onEscapeDown(isContainer),
+      ]);
+      return;
+    }
+    case 'logBlockFullySelected':
+      ctx.log.push([
+        'blockFullySelected',
+        action.key,
+        $isBlockFullySelected(element($node(action.key)), $sel()),
+      ]);
+      return;
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -1423,6 +1875,23 @@ function command(ctx: Context, name: string): LexicalCommand<Json> {
  * `['transform', name, key]` when called, and each converges.
  */
 const TRANSFORMS: Record<string, (ctx: Context) => () => void> = {
+  // `registerNestedElementResolver` (@lexical/utils) for MarkNode: a mark
+  // directly in another moves out of it, after logging
+  // `['nestedOverlap', parent, node]` and giving the parent's ids to the
+  // node; the parent's children after it go into a new mark with its ids.
+  'mark:nested': ctx =>
+    registerNestedElementResolver<MarkNode>(
+      ctx.editor,
+      MarkNode,
+      from => $createMarkNode(from.getIDs()),
+      (from, to) => {
+        ctx.log.push(['nestedOverlap', from.getKey(), to.getKey()]);
+        for (const id of from.getIDs()) {
+          to.addID(id);
+        }
+      },
+    ),
+
   // Records every paragraph transform without changing anything.
   'paragraph:log': ctx =>
     ctx.editor.registerNodeTransform(ParagraphNode, node => {
@@ -1852,6 +2321,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     editor: undefined as never,
     extensions: new Map(),
     log: [],
+    saved: new Map(),
   };
   let build: BuildResult | undefined;
   if (script.extensions !== undefined) {

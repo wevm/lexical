@@ -279,10 +279,11 @@
       #expect(view.draggingUpdated(other) != .move)
     }
 
-    /// A file dragged over the view is not read until it is dropped: as a
-    /// browser's `dragover` does, `DRAGOVER_COMMAND`'s transfer lists the
-    /// `Files` type with no files, and the drop's has the file's data.
-    @Test func readsADraggedFileOnlyWhenItIsDropped() throws {
+    /// A dragged file is read only when a handler asks for its bytes: as
+    /// a browser's `dragover` does, `DRAGOVER_COMMAND`'s transfer lists the
+    /// `Files` type with no files, and the drop's file has the file's name
+    /// and size and reads it in `bytes()`, as a web `File` reads its blob.
+    @Test func readsADroppedFileOnlyWhenItsBytesAreRead() async throws {
       let (view, window) = try showDemo()
       var overTypes: [String] = []
       var overFiles: [DataTransferFile] = []
@@ -314,10 +315,35 @@
       let drag = Drag(from: nil, over: window, at: point, pasteboard)
       _ = view.draggingUpdated(drag)
       #expect(overTypes.contains("Files"))
-      #expect(overFiles.map(\.data.count) == [])
+      #expect(overFiles.isEmpty)
       _ = view.performDragOperation(drag)
       #expect(droppedFiles.map(\.name) == [url.lastPathComponent])
-      #expect(droppedFiles.map(\.data) == [Array("dragged".utf8)])
+      #expect(droppedFiles.map(\.type) == ["text/plain"])
+      #expect(droppedFiles.map(\.size) == [7])
+      let file = try #require(droppedFiles.first)
+      // The drop read nothing: the bytes are the file's when they're read.
+      try Data("changed since".utf8).write(to: url)
+      #expect(try await file.bytes() == Array("changed since".utf8))
+      try FileManager.default.removeItem(at: url)
+      await #expect(throws: (any Error).self) { try await file.bytes() }
+    }
+
+    /// An image on the pasteboard with no file behind it, as an app copies
+    /// one, is read when its bytes are, and only while the pasteboard still
+    /// holds it.
+    @Test func readsAPastedImageOnlyWhileThePasteboardHoldsIt() async throws {
+      let pasteboard = NSPasteboard(name: .init("lexical-test-\(UUID().uuidString)"))
+      defer { pasteboard.releaseGlobally() }
+      pasteboard.clearContents()
+      let png: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 1, 2, 3]
+      pasteboard.setData(Data(png), forType: .png)
+      let file = try #require(pasteboard.lexicalDataTransfer().files.first)
+      #expect(file.name == "image.png")
+      #expect(file.type == "image/png")
+      #expect(try await file.bytes() == png)
+      pasteboard.clearContents()
+      pasteboard.setData(Data([9]), forType: .png)
+      await #expect(throws: (any Error).self) { try await file.bytes() }
     }
 
     /// A file dragged over the view is taken as a copy, as a contenteditable

@@ -221,14 +221,15 @@ let DragDropPasteExtension = defineExtension(
       { files, _ in
         let images = files.filter { isMimeType($0, ACCEPTABLE_IMAGE_TYPES) }
         if images.isEmpty { return false }
-        // JS reads the files asynchronously, then inserts each.
-        let payloads = images.map {
-          InsertImagePayload(
-            altText: $0.name,
-            src: "data:\($0.type);base64,\(Data($0.data).base64EncodedString())")
-        }
+        // As `mediaFileReader` does, the files are read in order, then
+        // inserted together.
         nonisolated(unsafe) let editor = editor
-        DispatchQueue.main.async {
+        Task { @MainActor in
+          var payloads: [InsertImagePayload] = []
+          for image in images {
+            guard let src = try? await dataURL(image) else { continue }
+            payloads.append(InsertImagePayload(altText: image.name, src: src))
+          }
           for payload in payloads {
             _ = try? editor.dispatchCommand(INSERT_IMAGE_COMMAND, payload)
           }
@@ -236,3 +237,9 @@ let DragDropPasteExtension = defineExtension(
         return true
       }, COMMAND_PRIORITY_LOW)
   })
+
+/// `FileReader.readAsDataURL(file)`, off the main thread.
+@concurrent
+private func dataURL(_ file: DataTransferFile) async throws -> String {
+  "data:\(file.type);base64,\(Data(try await file.bytes()).base64EncodedString())"
+}

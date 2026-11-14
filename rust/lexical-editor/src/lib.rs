@@ -61,6 +61,8 @@ pub mod constants;
 pub mod decorator_block;
 #[cfg(feature = "devtools")]
 pub mod devtools;
+#[cfg(feature = "html")]
+pub mod dom;
 mod editor;
 mod editor_state;
 mod error;
@@ -193,7 +195,9 @@ pub use selection_deletion::{
 };
 pub use selection_insert_nodes::{insert_nodes, select_all, select_all_in};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
-pub use set_dom_style::{StyleObject, get_style_object_from_css};
+pub use set_dom_style::{StyleObject, get_style_object_from_css, js_trim};
+#[cfg(feature = "html")]
+pub use set_dom_style::{set_dom_style_from_css, set_dom_style_object};
 pub use slot::{
     get_declared_slots, get_selection_slot_frame, get_slot, get_slot_frame, get_slot_host,
     get_slot_name_within_host, get_slot_names, is_slot_child, is_slot_host, remove_slot, set_slot,

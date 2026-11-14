@@ -521,6 +521,22 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         }
     }
 
+    /// The node types of the classes this node's class extends, nearest
+    /// first, without the base classes that have no type of their own
+    /// (`ElementNode`, `DecoratorNode`): JS's class chain, which matches
+    /// `DOMRenderExtension`'s overrides of a class to the nodes of the
+    /// classes that extend it (the `html` feature). `["text"]` for a node
+    /// with `TextNode` fields that isn't a `TextNode` itself, and none for
+    /// any other; a class that extends another typed class overrides it.
+    #[cfg(feature = "html")]
+    fn super_types(&self) -> Vec<&'static str> {
+        if self.text().is_some() && self.get_type() != "text" {
+            vec!["text"]
+        } else {
+            Vec::new()
+        }
+    }
+
     /// The class's static `importDOM()` (the `html` feature): the
     /// conversions it offers by DOM node name, or `None`.
     #[cfg(feature = "html")]

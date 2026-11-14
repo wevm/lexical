@@ -12,10 +12,22 @@ import {
 } from '@lexical/extension';
 import {createHeadlessEditor} from '@lexical/headless';
 import {
+  $generateDOMFromRoot,
   $generateHtmlFromNodes,
   $generateNodesFromDOM,
   $generateNodesFromDOMViaExtension,
+  $getRenderContextValue,
+  $setRenderContextValue,
+  $withRenderContext,
+  contextUpdater,
+  contextValue,
   CoreImportExtension,
+  createRenderState,
+  domOverride,
+  type DOMRenderConfig,
+  DOMRenderExtension,
+  RenderContextExport,
+  RenderContextRoot,
 } from '@lexical/html';
 import {JSDOM} from 'jsdom';
 import {
@@ -23,13 +35,23 @@ import {
   $createParagraphNode,
   $createTabNode,
   $createTextNode,
+  $getDocument,
   $getRoot,
   $isElementNode,
+  $isParagraphNode,
+  $isTextNode,
+  configExtension,
   defineExtension,
+  type DOMExportOutput,
   type EditorThemeClasses,
   type ElementFormatType,
+  isHTMLElement,
+  type LexicalEditor,
   type LexicalNode,
+  ParagraphNode,
+  TabNode,
   TEXT_TYPE_TO_FORMAT,
+  TextNode,
 } from 'lexical';
 import {readFileSync} from 'node:fs';
 import {test} from 'vitest';
@@ -441,6 +463,220 @@ test('html/import-extension', () => {
     'html/import-extension',
     'html-import',
     "HTML (html/import's corpus, curated cases for the walk, the inline format rule, <hr> and <style> sheets, and every html/export output) and the nodes DOMImportExtension's $generateNodesFromDOM makes from it in a jsdom document, in an editor built from CoreImportExtension and HorizontalRuleExtension, each as exportJSON with its children.",
+    cases,
+  );
+});
+
+/** A render state the `editor-gate` scenarios gate an override on. */
+const RENDER_FLAG = createRenderState('flag', () => false);
+/** A render state the `context` scenario writes into the HTML. */
+const RENDER_LABEL = createRenderState('label', () => 'none');
+
+/** Adds `value` to the element's `attr`, space-separated. */
+function $tagExport(
+  output: DOMExportOutput,
+  attr: string,
+  value: string,
+): DOMExportOutput {
+  const {element} = output;
+  if (isHTMLElement(element)) {
+    const prev = element.getAttribute(attr);
+    element.setAttribute(attr, prev ? `${prev} ${value}` : value);
+  }
+  return output;
+}
+
+/**
+ * The DOMRenderExtension configs the html/export-render vector replays,
+ * by name. The Rust and Swift runners define the same scenarios.
+ */
+const RENDER_SCENARIOS: Record<string, Partial<DOMRenderConfig>> = {
+  context: {
+    contextDefaults: [contextValue(RENDER_LABEL, 'default')],
+    overrides: [
+      domOverride([ParagraphNode], {
+        $exportDOM: (_node, $next) =>
+          $tagExport(
+            $next(),
+            'data-label',
+            [
+              $getRenderContextValue(RENDER_LABEL),
+              String($getRenderContextValue(RenderContextExport)),
+              String($getRenderContextValue(RenderContextRoot)),
+            ].join(' '),
+          ),
+      }),
+    ],
+  },
+  'create-dom': {
+    overrides: [
+      domOverride([ParagraphNode], {
+        $createDOM: (node, $next) => {
+          const element = $next();
+          element.setAttribute('data-size', String(node.getChildrenSize()));
+          return element;
+        },
+      }),
+    ],
+  },
+  'editor-gate': {
+    contextDefaults: [contextValue(RENDER_FLAG, true)],
+    overrides: [
+      domOverride(
+        '*',
+        {$exportDOM: (_node, $next) => $tagExport($next(), 'data-gate', 'on')},
+        {disabledForEditor: reader => reader.get(RENDER_FLAG)},
+      ),
+    ],
+  },
+  exclude: {
+    overrides: [
+      domOverride([ParagraphNode], {
+        $shouldExclude: (node, selection, $next) =>
+          node.getChildrenSize() > 2 || $next(),
+      }),
+    ],
+  },
+  include: {
+    overrides: [
+      domOverride('*', {
+        $extractWithChild: (node, child, selection, destination, $next) =>
+          ($isParagraphNode(node) &&
+            $isTextNode(child) &&
+            child.hasFormat('bold')) ||
+          $next(),
+        $shouldInclude: (node, selection, $next) =>
+          !$isParagraphNode(node) && $next(),
+      }),
+    ],
+  },
+  none: {},
+  order: {
+    overrides: [
+      domOverride('*', {
+        $exportDOM: (_node, $next) =>
+          $tagExport($next(), 'data-order', 'wildcard'),
+      }),
+      domOverride([(node: LexicalNode) => node.getTextContent().length > 2], {
+        $exportDOM: (_node, $next) =>
+          $tagExport($next(), 'data-order', 'predicate'),
+      }),
+      domOverride([TabNode], {
+        $exportDOM: (_node, $next) => $tagExport($next(), 'data-order', 'tab'),
+      }),
+      domOverride([TextNode], {
+        $exportDOM: (_node, $next) => $tagExport($next(), 'data-order', 'text'),
+      }),
+    ],
+  },
+  'session-gate': {
+    overrides: [
+      domOverride(
+        '*',
+        {
+          $exportDOM: (_node, $next) =>
+            $tagExport($next(), 'data-session', 'on'),
+        },
+        {disabledForSession: reader => reader.get(RenderContextRoot)},
+      ),
+    ],
+  },
+};
+
+/**
+ * How a case exports: `html` is `$generateHtmlFromNodes`, `root` the
+ * innerHTML of a div `$generateDOMFromRoot` fills, and `scoped` is `html`
+ * inside `$withRenderContext` with `contextUpdater(label, l => l + '+scoped')`.
+ */
+const RENDER_OPS = ['html', 'root', 'scoped'] as const;
+
+function $renderExport(editor: LexicalEditor, op: string): string {
+  if (op === 'root') {
+    const container = $getDocument().createElement('div');
+    $generateDOMFromRoot(container);
+    return container.innerHTML;
+  }
+  if (op === 'scoped') {
+    return $withRenderContext(
+      [contextUpdater(RENDER_LABEL, label => `${label}+scoped`)],
+      editor,
+    )(() => $generateHtmlFromNodes(editor));
+  }
+  return $generateHtmlFromNodes(editor);
+}
+
+test('html/export-render', () => {
+  const documents: {name: string; build: () => void}[] = [
+    {
+      build: () =>
+        $getRoot().append(
+          $createParagraphNode().append(
+            $createTextNode('Hello').toggleFormat('bold'),
+            $createTabNode(),
+            $createTextNode('ab'),
+          ),
+          $createParagraphNode().append($createTextNode('plain')),
+          $createParagraphNode(),
+        ),
+      name: 'mixed',
+    },
+  ];
+  for (let seed = 1; seed <= 12; seed++) {
+    const random = prng(seed);
+    documents.push({
+      build: () => $randomDocument(random),
+      name: `seed ${seed}`,
+    });
+  }
+  const cases: {
+    name: string;
+    scenario: string;
+    /** Whether `$setRenderContextValue(flag, false)` ran before the export. */
+    flagOff?: boolean;
+    op: string;
+    editorState: string;
+    html: string;
+  }[] = [];
+  const scenarios: [string, boolean][] = [
+    ...Object.keys(RENDER_SCENARIOS).map(s => [s, false] as [string, boolean]),
+    ['editor-gate', true],
+  ];
+  for (const {name, build} of documents) {
+    for (const [scenario, flagOff] of scenarios) {
+      const editor = buildEditorFromExtensions(
+        defineExtension({
+          dependencies: [
+            configExtension(DOMRenderExtension, RENDER_SCENARIOS[scenario]),
+          ],
+          name: '[conformance]',
+        }),
+      );
+      editor.update(build, {discrete: true});
+      if (flagOff) {
+        $setRenderContextValue(RENDER_FLAG, false, editor);
+      }
+      const editorState = JSON.stringify(editor.getEditorState().toJSON());
+      const ops = scenario === 'context' ? RENDER_OPS : RENDER_OPS.slice(0, 2);
+      for (const op of ops) {
+        const html = withJSDOM(() =>
+          editor.read(() => $renderExport(editor, op)),
+        );
+        cases.push({
+          editorState,
+          html,
+          name: `${name}, ${scenario}${flagOff ? ' (flag off)' : ''}, ${op}`,
+          op,
+          scenario,
+          ...(flagOff ? {flagOff} : {}),
+        });
+      }
+      editor.dispose();
+    }
+  }
+  emitVectors(
+    'html/export-render',
+    'html-export-render',
+    'Documents (a fixed one and seeded random core-node ones) exported through DOMRenderExtension overrides, by scenario: overrides by class, predicate and wildcard composed in order, $createDOM, $shouldInclude with $extractWithChild, $shouldExclude, disabledForEditor (and $setRenderContextValue lifting it), disabledForSession, and render context values. Each is exported with $generateHtmlFromNodes (`html`), $generateDOMFromRoot (`root`), and, for `context`, inside $withRenderContext (`scoped`), in jsdom. The scenarios are code in html.test.ts that each runner repeats.',
     cases,
   );
 });

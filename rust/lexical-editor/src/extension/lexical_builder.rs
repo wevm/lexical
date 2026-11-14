@@ -171,6 +171,10 @@ impl LexicalBuilder {
         // `createEditor`'s random one.
         let editor = create_editor(CreateEditorArgs {
             nodes: config.nodes,
+            #[cfg(feature = "html")]
+            html: config.html,
+            #[cfg(feature = "html")]
+            dom: config.dom,
             ..Default::default()
         });
         *editor.0.builder.borrow_mut() = Some(Rc::new(self.clone()));
@@ -405,6 +409,24 @@ impl LexicalBuilder {
             for node in extension.nodes() {
                 if !nodes.iter().any(|n| n.node_type() == node.node_type()) {
                     nodes.push(*node);
+                }
+            }
+            // `htmlExport.set(k, v)` and `Object.assign(htmlImport, ...)`:
+            // a later extension's entry replaces an earlier one's in place.
+            #[cfg(feature = "html")]
+            {
+                let html = extension.html();
+                for (k, v) in &html.export {
+                    match config.html.export.iter_mut().find(|(key, _)| key == k) {
+                        Some(entry) => entry.1 = v.clone(),
+                        None => config.html.export.push((k, v.clone())),
+                    }
+                }
+                for (k, v) in &html.import {
+                    match config.html.import.iter_mut().find(|(key, _)| key == k) {
+                        Some(entry) => entry.1 = v.clone(),
+                        None => config.html.import.push((k.clone(), v.clone())),
+                    }
                 }
             }
         }

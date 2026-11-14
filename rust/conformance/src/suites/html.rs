@@ -171,3 +171,230 @@ pub fn check_import_extension(case: &Value, _file: &Value) -> Result<Outcome, St
     same("nodes", nodes.borrow().as_str(), case.str("nodes")?)?;
     Ok(Outcome::Pass)
 }
+
+/// Adds `value` to the element's `attr`, space-separated (`$tagExport`).
+fn tag_export(
+    output: lexical::lexical_dom::DomExportOutput,
+    attr: &str,
+    value: &str,
+) -> lexical::lexical_dom::DomExportOutput {
+    if let Some(element) = output.element.as_ref().filter(|e| e.is_element()) {
+        let tagged = match element.get_attribute(attr) {
+            Some(prev) if !prev.is_empty() => format!("{prev} {value}"),
+            _ => value.to_owned(),
+        };
+        element.set_attribute(attr, &tagged);
+    }
+    output
+}
+
+/// The render states of `html/export-render`'s scenarios, made once
+/// (`RENDER_FLAG` and `RENDER_LABEL`).
+struct RenderStates {
+    flag: lexical::html::RenderStateConfig<bool>,
+    label: lexical::html::RenderStateConfig<String>,
+}
+
+thread_local! {
+    static RENDER_STATES: RenderStates = RenderStates {
+        flag: lexical::html::create_render_state("flag", || false),
+        label: lexical::html::create_render_state("label", || "none".to_owned()),
+    };
+}
+
+/// `RENDER_SCENARIOS[name]` of html.test.ts.
+fn render_scenario(name: &str) -> Result<lexical::html::DomRenderConfigOverrides, String> {
+    use lexical::html::import::context_value;
+    use lexical::html::{
+        DomOverrideOptions, DomRenderConfigOverrides, DomRenderMatchConfig, NodeMatch,
+        dom_override, get_render_context_value, render_context_export, render_context_root,
+    };
+    use lexical::nodes::paragraph::ParagraphNode;
+    use lexical::nodes::tab::TabNode;
+    use lexical::nodes::text::TextNode;
+    let (flag, label) = RENDER_STATES.with(|s| (s.flag.clone(), s.label.clone()));
+    let paragraph = || Some(vec![NodeMatch::class::<ParagraphNode>()]);
+    let is_paragraph = |node: &NodeRef| node.get_type() == "paragraph";
+    let tag = |attr: &'static str, value: &'static str| DomRenderMatchConfig {
+        export_dom: Some(Rc::new(move |_, _, next, _| {
+            Ok(tag_export(next()?, attr, value))
+        })),
+        ..Default::default()
+    };
+    let (overrides, context_defaults) = match name {
+        "context" => (
+            vec![dom_override(
+                paragraph(),
+                DomRenderMatchConfig {
+                    export_dom: Some(Rc::new(move |_, _, next, editor| {
+                        let value = [
+                            get_render_context_value(&label, editor),
+                            get_render_context_value(&render_context_export(), editor).to_string(),
+                            get_render_context_value(&render_context_root(), editor).to_string(),
+                        ]
+                        .join(" ");
+                        Ok(tag_export(next()?, "data-label", &value))
+                    })),
+                    ..Default::default()
+                },
+                DomOverrideOptions::default(),
+            )],
+            vec![context_value(
+                &RENDER_STATES.with(|s| s.label.clone()),
+                "default".to_owned(),
+            )],
+        ),
+        "create-dom" => (
+            vec![dom_override(
+                paragraph(),
+                DomRenderMatchConfig {
+                    create_dom: Some(Rc::new(|_, this, next, _| {
+                        let element = next()?;
+                        element.set_attribute("data-size", &this.get_children_size().to_string());
+                        Ok(element)
+                    })),
+                    ..Default::default()
+                },
+                DomOverrideOptions::default(),
+            )],
+            Vec::new(),
+        ),
+        "editor-gate" => (
+            vec![dom_override(
+                None,
+                tag("data-gate", "on"),
+                DomOverrideOptions {
+                    disabled_for_editor: Some(Rc::new(move |reader| reader.get(&flag))),
+                    ..Default::default()
+                },
+            )],
+            vec![context_value(&RENDER_STATES.with(|s| s.flag.clone()), true)],
+        ),
+        "exclude" => (
+            vec![dom_override(
+                paragraph(),
+                DomRenderMatchConfig {
+                    should_exclude: Some(Rc::new(|node, _, next, _| {
+                        Ok(node.get_children_size() > 2 || next()?)
+                    })),
+                    ..Default::default()
+                },
+                DomOverrideOptions::default(),
+            )],
+            Vec::new(),
+        ),
+        "include" => (
+            vec![dom_override(
+                None,
+                DomRenderMatchConfig {
+                    extract_with_child: Some(Rc::new(move |node, child, _, _, next, _| {
+                        Ok(
+                            (is_paragraph(node) && child.is_text() && child.has_format("bold"))
+                                || next()?,
+                        )
+                    })),
+                    should_include: Some(Rc::new(move |node, _, next, _| {
+                        Ok(!is_paragraph(node) && next()?)
+                    })),
+                    ..Default::default()
+                },
+                DomOverrideOptions::default(),
+            )],
+            Vec::new(),
+        ),
+        "none" => (Vec::new(), Vec::new()),
+        "order" => (
+            vec![
+                dom_override(None, tag("data-order", "wildcard"), Default::default()),
+                dom_override(
+                    Some(vec![NodeMatch::predicate(|_, node| {
+                        lexical::utf16::len(&node.get_text_content()) > 2
+                    })]),
+                    tag("data-order", "predicate"),
+                    Default::default(),
+                ),
+                dom_override(
+                    Some(vec![NodeMatch::class::<TabNode>()]),
+                    tag("data-order", "tab"),
+                    Default::default(),
+                ),
+                dom_override(
+                    Some(vec![NodeMatch::class::<TextNode>()]),
+                    tag("data-order", "text"),
+                    Default::default(),
+                ),
+            ],
+            Vec::new(),
+        ),
+        "session-gate" => (
+            vec![dom_override(
+                None,
+                tag("data-session", "on"),
+                DomOverrideOptions {
+                    disabled_for_session: Some(Rc::new(|reader| {
+                        reader.get(&render_context_root())
+                    })),
+                    ..Default::default()
+                },
+            )],
+            Vec::new(),
+        ),
+        other => return Err(format!("unknown scenario {other}")),
+    };
+    Ok(DomRenderConfigOverrides {
+        overrides: Some(overrides),
+        context_defaults: Some(context_defaults),
+    })
+}
+
+/// `html/export-render`: an editor built with `DOMRenderExtension` and the
+/// case's scenario exports the HTML jsdom gave (`$renderExport`).
+pub fn check_export_render(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    use lexical::html::import::context_updater;
+    use lexical::html::{
+        dom_render_extension, generate_dom_from_root, set_render_context_value, with_render_context,
+    };
+    use lexical::{LexicalExtension, config_extension, define_extension, get_root};
+    let host = define_extension(LexicalExtension::<(), (), ()> {
+        dependencies: vec![config_extension(
+            &dom_render_extension(),
+            [render_scenario(case.str("scenario")?)?],
+        )],
+        ..LexicalExtension::new("[conformance]", ())
+    });
+    let editor = lexical::extension::build_editor_from_extensions([host.into()])
+        .map_err(|e| e.to_string())?;
+    let state = editor
+        .parse_editor_state(case.str("editorState")?)
+        .map_err(|e| format!("editorState: {e}"))?;
+    editor
+        .set_editor_state(&state, None)
+        .map_err(|e| e.to_string())?;
+    if case.get("flagOff").and_then(Value::as_bool) == Some(true) {
+        let flag = RENDER_STATES.with(|s| s.flag.clone());
+        set_render_context_value(&flag, false, &editor).map_err(|e| e.to_string())?;
+    }
+    let op = case.str("op")?;
+    let html = editor
+        .read(|| match op {
+            "root" => {
+                let container = lexical::dom::get_document().create_element("div");
+                generate_dom_from_root(&container, &get_root(), &editor)?;
+                Ok(container.inner_html())
+            }
+            "scoped" => {
+                let label = RENDER_STATES.with(|s| s.label.clone());
+                let cfg = [context_updater(&label, |l| format!("{l}+scoped"))];
+                with_render_context(&cfg, &editor, || generate_html_from_nodes(&editor, None))
+            }
+            _ => generate_html_from_nodes(&editor, None),
+        })
+        .and_then(|html| html);
+    editor.dispose();
+    same(
+        "html",
+        html.map_err(|e| e.to_string())?.as_str(),
+        case.str("html")?,
+    )?;
+    Ok(Outcome::Pass)
+}

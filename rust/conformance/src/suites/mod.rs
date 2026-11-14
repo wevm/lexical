@@ -41,6 +41,11 @@ pub fn all() -> Vec<Suite> {
             check: html::check_export,
         },
         Suite {
+            file: "html/export-render",
+            variant: None,
+            check: html::check_export_render,
+        },
+        Suite {
             file: "html/import",
             variant: None,
             check: html::check_import,

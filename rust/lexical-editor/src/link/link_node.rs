@@ -445,6 +445,11 @@ impl LexicalNode for AutoLinkNode {
     fn get_type(&self) -> &'static str {
         "autolink"
     }
+    /// `AutoLinkNode extends LinkNode`.
+    #[cfg(feature = "html")]
+    fn super_types(&self) -> Vec<&'static str> {
+        vec!["link"]
+    }
     /// `AutoLinkNode.createDOM(config)`: a `<span>` once unlinked, else
     /// `LinkNode`'s `<a>`.
     #[cfg(feature = "html")]

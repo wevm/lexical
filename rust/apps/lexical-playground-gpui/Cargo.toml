@@ -1,0 +1,28 @@
+[package]
+name = "lexical-playground-gpui"
+version = "0.0.0"
+description = "The Lexical playground as a native desktop app: lexical-editor drawn with GPUI."
+edition = "2024"
+license = "MIT"
+publish = false
+
+# Its own workspace, beside rust/ and the Rune app: GPUI needs a newer Rust
+# than lexical-editor's 1.88 (rust-toolchain.toml).
+[workspace]
+
+[dependencies]
+lexical-playground-core = { path = "../lexical-playground-core" }
+# GPUI through GPUI Kit, the version wevm/zero's zbugs-gpui uses.
+gpui-kit = "0.9.1"
+# Graphemes and words, for moving the caret and double-click selection.
+unicode-segmentation = "1"
+
+[features]
+# The end-to-end run CI does: see src/e2e.rs.
+e2e = []
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

@@ -750,7 +750,7 @@ fn get_root_child_ancestor(node: &NodeRef) -> Option<NodeRef> {
 
 /// `$normalizeSelection(selection)` (`LexicalNormalization.ts`): moves
 /// element points down to the deepest text or element point.
-fn normalize_selection(selection: &SelectionRef) -> Result<(), LexicalError> {
+pub(crate) fn normalize_selection(selection: &SelectionRef) -> Result<(), LexicalError> {
     normalize_point(selection, Which::Anchor)?;
     normalize_point(selection, Which::Focus)
 }

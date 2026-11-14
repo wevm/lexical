@@ -1,0 +1,19 @@
+[package]
+name = "lexical-playground-core"
+description = "The editor binding the desktop playgrounds share: the document as text runs, offsets to selection points and back, and edits as conformance script steps."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+lexical.workspace = true
+lexical-conformance = { path = "../../conformance" }
+# Characters and words as text layout steps over them (grapheme clusters,
+# UAX #29 words), for deleting at a caret.
+unicode-segmentation = "1"
+
+[lints]
+workspace = true

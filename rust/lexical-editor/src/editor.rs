@@ -10,6 +10,7 @@ use crate::nodes::{
     text::TextNode,
 };
 use crate::ordered::{OrderedMap, OrderedSet};
+use crate::selection_deletion::SelectionMovement;
 use crate::updates::{
     begin_update, commit_pending_updates, parse_editor_state, read_editor_state,
     trigger_command_listeners, update_editor_sync,
@@ -64,9 +65,31 @@ impl NodeClass {
     }
 }
 
+/// `HISTORIC_TAG` (`LexicalUpdateTags.ts`): the update applies a state from
+/// the undo or redo stack.
+pub const HISTORIC_TAG: &str = "historic";
+
+/// `HISTORY_PUSH_TAG` (`LexicalUpdateTags.ts`): the update starts a new
+/// history entry.
+pub const HISTORY_PUSH_TAG: &str = "history-push";
+
 /// `HISTORY_MERGE_TAG` (`LexicalUpdateTags.ts`): the update joins the
 /// previous history entry.
 pub const HISTORY_MERGE_TAG: &str = "history-merge";
+
+/// `PASTE_TAG` (`LexicalUpdateTags.ts`): the update is a paste.
+pub const PASTE_TAG: &str = "paste";
+
+/// `CUT_TAG` (`LexicalUpdateTags.ts`): the update is a cut.
+pub const CUT_TAG: &str = "cut";
+
+/// `COMPOSITION_START_TAG` (`LexicalUpdateTags.ts`): the update starts an
+/// input method composition.
+pub const COMPOSITION_START_TAG: &str = "composition-start";
+
+/// `COMPOSITION_END_TAG` (`LexicalUpdateTags.ts`): the update ends an input
+/// method composition.
+pub const COMPOSITION_END_TAG: &str = "composition-end";
 
 /// `CreateEditorArgs`: the node classes to register besides the core ones.
 #[derive(Clone, Default)]
@@ -108,8 +131,16 @@ pub type Unregister = Box<dyn FnOnce()>;
 /// with the same name are different commands.
 pub struct LexicalCommand<P> {
     id: u64,
-    name: Rc<str>,
+    name: CommandName,
     _payload: PhantomData<fn(&P)>,
+}
+
+/// A command's name: shared when [`create_command`] makes it, static for
+/// the core's own commands (`commands`), which are constants.
+#[derive(Clone)]
+enum CommandName {
+    Static(&'static str),
+    Shared(Rc<str>),
 }
 
 impl<P> Clone for LexicalCommand<P> {
@@ -123,8 +154,21 @@ impl<P> Clone for LexicalCommand<P> {
 }
 
 impl<P> LexicalCommand<P> {
+    /// One of the core's own commands, with an id [`create_command`] never
+    /// gives (they count up from 1).
+    pub(crate) const fn constant(id: u64, name: &'static str) -> Self {
+        Self {
+            id,
+            name: CommandName::Static(name),
+            _payload: PhantomData,
+        }
+    }
+
     pub fn name(&self) -> &str {
-        &self.name
+        match &self.name {
+            CommandName::Static(name) => name,
+            CommandName::Shared(name) => name,
+        }
     }
     pub(crate) fn id(&self) -> u64 {
         self.id
@@ -140,7 +184,7 @@ pub fn create_command<P>(name: &str) -> LexicalCommand<P> {
     let id = NEXT_COMMAND_ID.with(|c| c.replace(c.get() + 1));
     LexicalCommand {
         id,
-        name: name.into(),
+        name: CommandName::Shared(name.into()),
         _payload: PhantomData,
     }
 }
@@ -209,6 +253,8 @@ pub(crate) struct EditorInner {
     text_content_listeners: Listeners<dyn Fn(&str)>,
     commands: RefCell<HashMap<u64, CommandListeners>>,
     next_id: Cell<u64>,
+    /// Stands in for the DOM's `Selection.modify` (no JS field).
+    selection_movement: RefCell<Option<Rc<dyn SelectionMovement>>>,
 }
 
 /// `createEditor(config)`: registers the core nodes (root, text, line
@@ -241,6 +287,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         text_content_listeners: RefCell::new(Vec::new()),
         commands: RefCell::new(HashMap::new()),
         next_id: Cell::new(1),
+        selection_movement: RefCell::new(None),
     }))
 }
 
@@ -259,6 +306,21 @@ impl Editor {
 
     fn weak(&self) -> Weak<EditorInner> {
         Rc::downgrade(&self.0)
+    }
+
+    /// Sets what stands in for the DOM's `Selection.modify` in this editor:
+    /// where a caret lands when `modify`, `deleteCharacter`, `deleteWord` or
+    /// `deleteLine` move it within text, which only text layout knows.
+    /// Without one (the default) the editor behaves as JS does with no root
+    /// element: those moves fail with `window object not found`.
+    pub fn set_selection_movement(&self, movement: Option<Rc<dyn SelectionMovement>>) {
+        *self.0.selection_movement.borrow_mut() = movement;
+    }
+
+    /// The movement [`set_selection_movement`](Self::set_selection_movement)
+    /// set.
+    pub(crate) fn selection_movement(&self) -> Option<Rc<dyn SelectionMovement>> {
+        self.0.selection_movement.borrow().clone()
     }
 
     /// `getEditorState()`: the committed state.

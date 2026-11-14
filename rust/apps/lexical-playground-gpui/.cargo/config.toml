@@ -1,0 +1,4 @@
+# `cargo run` on macOS runs the app from inside an app bundle (bundle.sh),
+# rather than as a bare executable, as wevm/zero's zbugs-gpui does.
+[target.'cfg(target_os = "macos")']
+runner = "./bundle.sh"

@@ -1,0 +1,28 @@
+[package]
+name = "lexical-playground-rune"
+version = "0.0.0"
+description = "The Lexical playground as a native desktop app: lexical-editor drawn with the Rune UI framework."
+edition = "2024"
+license = "MIT"
+publish = false
+
+# Its own workspace: Rune needs a newer Rust than lexical-editor's 1.88
+# (rust-toolchain.toml), and the app's dependencies stay out of rust/'s.
+[workspace]
+
+[dependencies]
+lexical-playground-core = { path = "../lexical-playground-core" }
+# Rune is pre-release: pinned to a rev of `dev`, which is never rewritten
+# (the rev wevm/zero's zbugs-rune uses).
+rune = { git = "https://github.com/anomalyco/rune", rev = "0add0d576dfe85712ddbf8b51d2a24221b45e786", default-features = false, features = [
+  "accessibility",
+  "embedded-fonts",
+  "metal-backend",
+] }
+rune-kit = { git = "https://github.com/anomalyco/rune", rev = "0add0d576dfe85712ddbf8b51d2a24221b45e786" }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

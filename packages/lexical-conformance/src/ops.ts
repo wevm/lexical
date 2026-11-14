@@ -6,6 +6,7 @@
  *
  */
 
+import {createEmptyHistoryState, registerHistory} from '@lexical/history';
 import {
   $caretRangeFromSelection,
   $createNodeSelection,
@@ -28,7 +29,12 @@ import {
   $selectAll,
   $setSelection,
   $setSelectionFromCaretRange,
+  type AnyLexicalCommand,
+  CAN_REDO_COMMAND,
+  CAN_UNDO_COMMAND,
   type CaretDirection,
+  CLEAR_EDITOR_COMMAND,
+  CLEAR_HISTORY_COMMAND,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
   createEditor,
@@ -39,10 +45,12 @@ import {
   type NodeCaret,
   ParagraphNode,
   type PointCaret,
+  REDO_COMMAND,
   resetRandomKey,
   RootNode,
   type SerializedLexicalNode,
   TextNode,
+  UNDO_COMMAND,
 } from 'lexical';
 
 // A small, JSON-only script language for editor sessions, interpreted here by
@@ -95,7 +103,11 @@ export type Action =
   | {do: 'logNormalizeCaret'; caret: CaretSpec}
   | {do: 'dispatch'; command: string; payload?: Json};
 
-/** A command handler: logs, runs its actions, then returns `result`. */
+/**
+ * A command handler: logs, runs its actions, then returns `result`. Like
+ * `dispatch`, `command` names one of Lexical's own commands (CORE_COMMANDS)
+ * or a command the script makes.
+ */
 export type HandlerSpec = {
   id: string;
   command: string;
@@ -104,10 +116,16 @@ export type HandlerSpec = {
   actions?: Action[];
 };
 
-/** A step: one discrete update, or a command dispatched outside an update. */
-export type Step =
+/**
+ * A step: one discrete update, or a command dispatched outside an update.
+ * `now` sets the session's clock (in ms, what `Date.now()` returns while
+ * steps run) before the step; without it the clock keeps its last value,
+ * which starts at 0.
+ */
+export type Step = (
   | {update: Action[]; tag?: string[]}
-  | {dispatch: string; payload?: Json};
+  | {dispatch: string; payload?: Json}
+) & {now?: number};
 
 export type Script = {
   name: string;
@@ -116,6 +134,11 @@ export type Script = {
   handlers?: HandlerSpec[];
   /** Log update, mutation and text content listener calls. */
   listen?: boolean;
+  /**
+   * `registerHistory(editor, createEmptyHistoryState(), delay)` (@lexical/history),
+   * registered after the handlers and listeners, on the session's clock.
+   */
+  history?: {delay: number};
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -455,7 +478,24 @@ function $runAction(action: Action, ctx: Context): void {
   }
 }
 
+/**
+ * Lexical's own commands, which `dispatch` and handlers name as JS exports
+ * them. Any other name is a command the script makes.
+ */
+const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
+  ['CAN_REDO_COMMAND', CAN_REDO_COMMAND],
+  ['CAN_UNDO_COMMAND', CAN_UNDO_COMMAND],
+  ['CLEAR_EDITOR_COMMAND', CLEAR_EDITOR_COMMAND],
+  ['CLEAR_HISTORY_COMMAND', CLEAR_HISTORY_COMMAND],
+  ['REDO_COMMAND', REDO_COMMAND],
+  ['UNDO_COMMAND', UNDO_COMMAND],
+]);
+
 function command(ctx: Context, name: string): LexicalCommand<Json> {
+  const core = CORE_COMMANDS.get(name);
+  if (core !== undefined) {
+    return core;
+  }
   let cmd = ctx.commands.get(name);
   if (cmd === undefined) {
     cmd = createCommand<Json>(name);
@@ -586,7 +626,36 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       ctx.log.push(['textContent', content]);
     });
   }
+  // The session's clock: `Date.now()` returns it while a step runs,
+  // including the read below that commits a dispatch's update, so the
+  // history listener sees it.
+  let clock = 0;
+  const atClock = <T>(f: () => T): T => {
+    const dateNow = Date.now;
+    Date.now = () => clock;
+    try {
+      return f();
+    } finally {
+      Date.now = dateNow;
+    }
+  };
+  if (script.history !== undefined) {
+    const {delay} = script.history;
+    atClock(() =>
+      // `registerHistory`'s default clock would keep the `Date.now` of the
+      // moment it registers; this one reads it at every update.
+      registerHistory(editor, createEmptyHistoryState(), delay, () =>
+        Date.now(),
+      ),
+    );
+  }
   const run = (step: Step, snapshot: boolean): StepResult => {
+    if (step.now !== undefined) {
+      clock = step.now;
+    }
+    return atClock(() => runAtClock(step, snapshot));
+  };
+  const runAtClock = (step: Step, snapshot: boolean): StepResult => {
     ctx.log = [];
     let error = false;
     try {

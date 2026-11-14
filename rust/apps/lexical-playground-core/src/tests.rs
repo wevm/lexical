@@ -481,3 +481,42 @@ fn the_tree_shows_lists_above_their_items() {
     );
     assert!(tree.contains("  (19) list check\n    (20) listitem check ☑\n"));
 }
+
+/// Types `text` a character at a time, as keys do.
+fn type_keys(p: &mut Playground, text: &str) {
+    for c in text.chars() {
+        assert_eq!(p.insert_text(&c.to_string()).error, None, "typing {c:?}");
+    }
+}
+
+#[test]
+fn markdown_shortcuts_turn_typed_markdown_into_rich_text() {
+    let mut p = Playground::new(vec![]).expect("an empty document");
+    caret_in(&mut p, 0, 0);
+    type_keys(&mut p, "# Title");
+    assert_eq!(p.document().blocks[0].block_type(), "h1");
+    assert_eq!(p.document().blocks[0].text, "Title");
+    p.insert_paragraph();
+    type_keys(&mut p, "- one **bold** and `code`");
+    let item = &p.document().blocks[1];
+    assert_eq!(item.block_type(), "bullet");
+    assert_eq!(item.text, "one bold and code");
+    let run = |text: &str| item.runs.iter().find(|r| r.text == text).unwrap();
+    assert!(run("bold").has_format("bold"));
+    assert!(run("code").has_format("code"));
+    // An empty item ends the list; then a code fence on Enter.
+    p.insert_paragraph();
+    p.insert_paragraph();
+    type_keys(&mut p, "```rust");
+    p.insert_paragraph();
+    type_keys(&mut p, "let x = 1;");
+    let code = &p.document().blocks[2];
+    assert_eq!(code.kind, "code");
+    assert_eq!(code.text, "let x = 1;");
+    // Undo takes the code back to the fence's text.
+    let steps = p.step_count();
+    p.undo();
+    p.undo();
+    assert_eq!(p.document().blocks[2].text, "```rust");
+    assert_eq!(p.step_count(), steps + 2);
+}

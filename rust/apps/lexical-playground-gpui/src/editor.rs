@@ -117,10 +117,15 @@ struct LineStyle {
     /// Whether the marker is a check box, which a click toggles.
     check: bool,
     quote: bool,
+    /// A code block's line: monospaced, on a tinted background.
+    code: bool,
 }
 
 /// One indent step: a list's nesting level, or a block's `indent`.
 const INDENT: f32 = 24.;
+
+/// How far a code block's text is inset in its background.
+const CODE_PADDING: f32 = 12.;
 
 /// A heading's text size and weight, as the JS playground's theme (and the
 /// Rune app) draws `h1` ... `h6` in a 16-point body.
@@ -153,6 +158,7 @@ fn line_styles(doc: &Document, size: Pixels, height: Pixels) -> Vec<LineStyle> {
             marker: None,
             check: false,
             quote: block.kind == "quote",
+            code: block.kind == "code",
         };
         if let Some(list) = &block.list {
             style.left = px(INDENT * (list.depth + 1) as f32);
@@ -164,6 +170,8 @@ fn line_styles(doc: &Document, size: Pixels, height: Pixels) -> Vec<LineStyle> {
             });
         } else if style.quote {
             style.left += px(16.);
+        } else if style.code {
+            style.left += px(CODE_PADDING);
         }
         let breaks = block
             .runs
@@ -769,7 +777,8 @@ fn text_runs(surface: &Surface, base: &TextStyle, theme: &Theme) -> Vec<TextRun>
             let checked = block
                 .and_then(|b| b.list.as_ref())
                 .is_some_and(|l| l.list_type == "check" && l.checked);
-            let mut font = if has("code") {
+            let in_code_block = block.is_some_and(|b| b.kind == "code");
+            let mut font = if has("code") || in_code_block {
                 font("Menlo")
             } else {
                 base_font.clone()
@@ -831,6 +840,8 @@ struct Prepaint {
     markers: Vec<(Point<Pixels>, Pixels, ShapedLine)>,
     /// Quotes' bars.
     bars: Vec<PaintQuad>,
+    /// Code blocks' backgrounds, under the selection.
+    backgrounds: Vec<PaintQuad>,
 }
 
 impl IntoElement for EditorElement {
@@ -1009,6 +1020,7 @@ impl Element for EditorElement {
             .map(|(at, height)| fill(Bounds::new(at, size(px(2.), height)), cx.theme().caret));
         let mut markers = Vec::new();
         let mut bars = Vec::new();
+        let mut backgrounds = Vec::new();
         let muted = cx.theme().muted_foreground;
         for line in lines.iter() {
             let top = bounds.origin.y + line.top;
@@ -1031,6 +1043,18 @@ impl Element for EditorElement {
                 let x = bounds.origin.x + line.style.left - shaped.width() - px(8.);
                 markers.push((point(x, top), line.style.height, shaped));
             }
+            if line.style.code {
+                backgrounds.push(fill(
+                    Bounds::new(
+                        point(bounds.origin.x + line.style.left - px(CODE_PADDING), top),
+                        size(
+                            bounds.size.width - line.style.left + px(CODE_PADDING),
+                            line.bottom() - line.top,
+                        ),
+                    ),
+                    muted.opacity(0.12),
+                ));
+            }
             if line.style.quote {
                 bars.push(fill(
                     Bounds::new(
@@ -1049,6 +1073,7 @@ impl Element for EditorElement {
             caret,
             markers,
             bars,
+            backgrounds,
         }
     }
 
@@ -1071,6 +1096,9 @@ impl Element for EditorElement {
             ElementInputHandler::new(bounds, self.editor.clone()),
             cx,
         );
+        for quad in prepaint.backgrounds.drain(..) {
+            window.paint_quad(quad);
+        }
         for quad in prepaint.selection.drain(..) {
             window.paint_quad(quad);
         }

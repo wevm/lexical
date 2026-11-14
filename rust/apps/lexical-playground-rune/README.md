@@ -37,8 +37,17 @@ macOS first; it also builds and renders on Linux.
   it.
 - **Blocks.** List items draw as the field's bullets and numbers at their
   depth (a check item as a bullet, struck through when checked), a quote
-  with the field's bar, headings larger and bolder, and links as the
-  field's links.
+  with the field's bar, a code block as the field's, headings larger and
+  bolder, and links as the field's links.
+- **Markdown shortcuts.** Typing markdown turns it into rich text, as
+  the web playground's `MarkdownShortcutPlugin` does
+  (`registerMarkdownShortcuts` with `TRANSFORMERS`): `# ` to `###### `
+  make headings, `> ` a quote, `- `, `* `, `+ ` and `1. ` list items,
+  `` ``` `` and a space or Return a code block, and `**bold**`, `*italic*`,
+  `~~strikethrough~~`, `` `code` ``, `==highlight==` and
+  `[text](url)` their formats and links once the closing tag is typed.
+  Undo takes a shortcut back to the text typed. Return dispatches
+  `KEY_ENTER_COMMAND`.
 - **The side panel.**
   - **Tree:** the node tree with keys.
   - **JSON:** the editor state's JSON.

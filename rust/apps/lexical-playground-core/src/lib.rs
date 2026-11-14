@@ -846,10 +846,11 @@ impl Playground {
     pub fn with_clock(children: Vec<Value>, clock: Clock) -> Result<Playground, String> {
         let mut script = Object::new();
         script.insert("name", "playground".into());
-        // `RichTextExtension`, `ListExtension`, `CheckListExtension` and
-        // `LinkExtension`: what the JS playground's editor has for these
-        // blocks and links.
-        for flag in ["richText", "list", "link"] {
+        // `RichTextExtension`, `ListExtension`, `CheckListExtension`,
+        // `LinkExtension`, `CodeExtension` and `MarkdownShortcutPlugin`
+        // (`registerMarkdownShortcuts` with `TRANSFORMERS`): what the JS
+        // playground's editor has for these blocks, links and shortcuts.
+        for flag in ["richText", "list", "link", "code", "markdown"] {
             script.insert(flag, true.into());
         }
         let mut history = Object::new();
@@ -990,10 +991,12 @@ impl Playground {
         self.edit("insertRawText", vec![text.into()])
     }
 
-    /// Enter: `INSERT_PARAGRAPH_COMMAND`, as rich text's `KEY_ENTER_COMMAND`
-    /// handler dispatches it, so a list item's handler runs.
+    /// Enter: `KEY_ENTER_COMMAND` with no event, as an input layer without
+    /// a DOM dispatches it. The markdown shortcuts and the code block take
+    /// it first; otherwise rich text's handler dispatches
+    /// `INSERT_PARAGRAPH_COMMAND`, so a list item's handler runs.
     pub fn insert_paragraph(&mut self) -> Outcome {
-        self.dispatch("INSERT_PARAGRAPH_COMMAND", None)
+        self.dispatch("KEY_ENTER_COMMAND", None)
     }
 
     /// Shift-Enter: `INSERT_LINE_BREAK_COMMAND`.

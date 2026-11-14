@@ -2,7 +2,8 @@
 //! `e2e` feature and run with `LEXICAL_PLAYGROUND_E2E=<file>`, the app
 //! drives its own window once it's up, the way macOS does — text through
 //! the window's input handler (typing and an input method's composition)
-//! and keys through their bindings, undo and redo included — checks the
+//! and keys through their bindings, undo and redo and the markdown
+//! shortcuts included — checks the
 //! document after each step,
 //! writes the session to `<file>` as a vector, and exits 0, or 1 with the
 //! step that failed. CI then replays the file in JS Lexical
@@ -285,5 +286,87 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
             "Type, delete, press Enter, or select text and make it bold."
         )
     );
+
+    // Markdown shortcuts (`registerMarkdownShortcuts`), typed a key at a
+    // time: `## ` before the paragraph's text makes it a heading, `**md**`
+    // makes bold text, `- ` a list item, and `` ``` `` then Return a code
+    // block.
+    let block_at = |i: usize, want: &'static str| {
+        let editor = editor.clone();
+        move |cx: &mut AsyncApp| -> Step {
+            let got = editor.read_with(cx, |e, _| {
+                let blocks = &e.surface.playground.document().blocks;
+                blocks.get(i).map(|b| match b.kind.as_str() {
+                    "code" => "code".to_owned(),
+                    _ => b.block_type().to_owned(),
+                })
+            });
+            if got.as_deref() == Some(want) {
+                Ok(())
+            } else {
+                Err(format!("block {i} is {got:?}, not {want}"))
+            }
+        }
+    };
+    let nothing = |_: &mut AsyncApp| -> Step { Ok(()) };
+    for k in ["#", "#"] {
+        step!("Typing ## ", typed(k), nothing);
+    }
+    step!("Typing ## ", typed(" "), block_at(1, "h2"));
+    step!(
+        "↓ to the heading's second line",
+        key(Box::new(Down)),
+        nothing
+    );
+    step!("To its end", key(Box::new(LineEnd)), expect(2, "next"));
+    for k in [" ", "*", "*", "m", "d", "*"] {
+        step!("Typing **md**", typed(k), nothing);
+    }
+    step!("Typing **md**", typed("*"), expect(2, "next md"));
+    step!(
+        "md is bold",
+        |_: &mut Window, _: &mut App| {},
+        |cx: &mut AsyncApp| -> Step {
+            let bold = editor.read_with(cx, |e, _| {
+                e.surface.playground.document().blocks[1]
+                    .runs
+                    .iter()
+                    .any(|r| r.text == "md" && r.has_format("bold"))
+            });
+            if bold {
+                Ok(())
+            } else {
+                Err("md is not bold".into())
+            }
+        }
+    );
+    step!(
+        "Return",
+        key(Box::new(InsertParagraph)),
+        block_at(2, "paragraph")
+    );
+    for k in ["-", " "] {
+        step!("Typing - ", typed(k), nothing);
+    }
+    step!("Typing an item", typed("item"), block_at(2, "bullet"));
+    step!(
+        "Return",
+        key(Box::new(InsertParagraph)),
+        block_at(3, "bullet")
+    );
+    step!(
+        "Return ends the list",
+        key(Box::new(InsertParagraph)),
+        block_at(3, "paragraph")
+    );
+    for k in ["`", "`", "`"] {
+        step!("Typing ```", typed(k), nothing);
+    }
+    step!(
+        "Return makes a code block",
+        key(Box::new(InsertParagraph)),
+        block_at(3, "code")
+    );
+    step!("Typing code", typed("let x = 1;"), block_at(3, "code"));
     Ok(())
 }

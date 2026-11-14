@@ -40,6 +40,39 @@
     }
   }
 
+  /// Each family's faces, by name, read once: reading a face's traits
+  /// means creating it.
+  @MainActor
+  private var familyFaces: [String: [TextKitFontFace]] = [:]
+
+  /// The face of `family` that CSS font matching picks for the weight and
+  /// slant.
+  @MainActor
+  private func namedFont(family: String, weight: Int, italic: Bool, size: CGFloat) -> UIFont? {
+    let faces =
+      familyFaces[family]
+      ?? UIFont.fontNames(forFamilyName: family).compactMap { name -> TextKitFontFace? in
+        guard let font = UIFont(name: name, size: 12) else { return nil }
+        let descriptor = font.fontDescriptor
+        let traits = descriptor.object(forKey: .traits) as? [UIFontDescriptor.TraitKey: Any]
+        return TextKitFontFace(
+          name: name, width: traits?[.width] as? Double ?? 0,
+          weight: cssFontWeight(traits?[.weight] as? CGFloat ?? 0),
+          italic: descriptor.symbolicTraits.contains(.traitItalic))
+      }
+    familyFaces[family] = faces
+    return faces.match(weight: weight, italic: italic).flatMap { UIFont(name: $0.name, size: size) }
+  }
+
+  /// A `UIFont.Weight` as the nearest CSS weight.
+  private func cssFontWeight(_ weight: CGFloat) -> Int {
+    let weights: [(UIFont.Weight, Int)] = [
+      (.ultraLight, 100), (.thin, 200), (.light, 300), (.regular, 400), (.medium, 500),
+      (.semibold, 600), (.bold, 700), (.heavy, 800), (.black, 900),
+    ]
+    return weights.min { abs($0.0.rawValue - weight) < abs($1.0.rawValue - weight) }?.1 ?? 400
+  }
+
   @MainActor
   private var fontCache: [TextKitFontKey: UIFont] = [:]
 
@@ -73,12 +106,7 @@
           let system = UIFont.systemFont(ofSize: size, weight: weight)
           font = system.fontDescriptor.withDesign(.serif).map { UIFont(descriptor: $0, size: size) }
         default:
-          if !UIFont.fontNames(forFamilyName: family).isEmpty {
-            let descriptor = UIFontDescriptor(fontAttributes: [
-              .family: family, .traits: [UIFontDescriptor.TraitKey.weight: weight],
-            ])
-            font = UIFont(descriptor: descriptor, size: size)
-          }
+          font = namedFont(family: family, weight: fontWeight, italic: italic, size: size)
         }
         if font != nil { break }
       }

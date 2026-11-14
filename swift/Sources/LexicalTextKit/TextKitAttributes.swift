@@ -691,6 +691,52 @@ public struct TextKitTextAttributes: Hashable, Sendable {
   }
 }
 
+/// One face of a font family, as CSS font matching sees it. The views
+/// read a family's faces from the platform and pick one with
+/// `match(weight:italic:)`.
+package struct TextKitFontFace: Sendable {
+  /// The PostScript name.
+  package var name: String
+  /// The face's width trait: 0 is normal, below 0 narrower.
+  package var width: Double
+  /// A CSS weight.
+  package var weight: Int
+  package var italic: Bool
+
+  package init(name: String, width: Double, weight: Int, italic: Bool) {
+    self.name = name
+    self.width = width
+    self.weight = weight
+    self.italic = italic
+  }
+}
+
+extension [TextKitFontFace] {
+  /// The face CSS font matching picks (CSS Fonts 4, §5.2): of the faces
+  /// nearest the normal width (narrower first), those of the slant if
+  /// there are any, and of those the weight. A weight between 400 and 500
+  /// tries heavier faces up to 500, then lighter ones, then heavier; below
+  /// 400 lighter first; above 500 heavier first.
+  package func match(weight: Int, italic: Bool) -> TextKitFontFace? {
+    func widthRank(_ face: TextKitFontFace) -> (Int, Double) {
+      (face.width > 0 ? 1 : 0, abs(face.width))
+    }
+    guard let width = map(widthRank).min(by: <) else { return nil }
+    let ofWidth = filter { widthRank($0) == width }
+    let ofSlant = ofWidth.filter { $0.italic == italic }
+    func weightRank(_ face: TextKitFontFace) -> (Int, Int) {
+      let group =
+        switch weight {
+        case 400...500: face.weight < weight ? 1 : face.weight <= 500 ? 0 : 2
+        case ..<400: face.weight <= weight ? 0 : 1
+        default: face.weight >= weight ? 0 : 1
+        }
+      return (group, abs(face.weight - weight))
+    }
+    return (ofSlant.isEmpty ? ofWidth : ofSlant).min { weightRank($0) < weightRank($1) }
+  }
+}
+
 /// The resolved look of a block's paragraph.
 public struct TextKitParagraphAttributes: Hashable, Sendable {
   public var alignment = TextKitTextAlignment.natural

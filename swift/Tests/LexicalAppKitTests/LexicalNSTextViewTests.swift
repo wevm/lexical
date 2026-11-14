@@ -165,6 +165,40 @@
       _ = window
     }
 
+    /// A named family draws in the face CSS font matching picks for the
+    /// weight: one of the family's own weights between Regular and Bold,
+    /// the nearest lighter face for 500 when there is no Medium, and no
+    /// condensed face for a weight only a condensed face has.
+    @Test(arguments: [
+      ("Avenir Next", "font-weight: 300", "AvenirNext-UltraLight"),
+      ("Avenir Next", "font-weight: 400", "AvenirNext-Regular"),
+      ("Avenir Next", "font-weight: 500", "AvenirNext-Medium"),
+      ("Avenir Next", "font-weight: 600", "AvenirNext-DemiBold"),
+      ("Avenir Next", "font-weight: 700", "AvenirNext-Bold"),
+      ("Avenir Next", "font-weight: 800", "AvenirNext-Heavy"),
+      ("Avenir Next", "font-weight: 500; font-style: italic", "AvenirNext-MediumItalic"),
+      ("Avenir", "font-weight: 600", "Avenir-Heavy"),
+      ("Helvetica Neue", "font-weight: 900", "HelveticaNeue-Bold"),
+      ("Georgia", "font-weight: 500", "Georgia"),
+      ("Georgia", "font-weight: 600", "Georgia-Bold"),
+      ("Menlo", "font-weight: 500", "Menlo-Regular"),
+      ("Optima", "font-weight: 500", "Optima-Regular"),
+      ("Baskerville", "font-weight: 500", "Baskerville"),
+      ("Futura", "font-weight: 900", "Futura-Bold"),
+    ])
+    func drawsANamedFamilyAtItsWeight(family: String, css: String, face: String) throws {
+      let (view, window) = try makeView()
+      try view.editor.update(discrete: true) {
+        try getRoot().clear().append(
+          createParagraphNode().append(
+            createTextNode("Weight").setStyle("font-family: \(family); \(css)")))
+      }
+      let font = try #require(
+        view.textStorage?.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+      #expect(font.fontName == face, "drew \(font.fontName)")
+      _ = window
+    }
+
     @Test func mapsResponderSelectors() throws {
       let (view, window) = try makeView()
       insert(view, "one two three")

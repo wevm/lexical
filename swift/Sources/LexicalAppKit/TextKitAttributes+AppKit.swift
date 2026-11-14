@@ -41,6 +41,43 @@
     }
   }
 
+  /// Each family's faces, by lowercased name, read once: reading a face's
+  /// traits means creating it.
+  @MainActor
+  private var familyFaces: [String: [TextKitFontFace]] = [:]
+
+  /// The face of `family` that CSS font matching picks for the weight and
+  /// slant.
+  @MainActor
+  private func namedFont(family: String, weight: Int, italic: Bool, size: CGFloat) -> NSFont? {
+    let key = family.lowercased()
+    let faces =
+      familyFaces[key]
+      ?? (NSFontManager.shared.availableMembers(ofFontFamily: family) ?? []).compactMap {
+        member -> TextKitFontFace? in
+        guard let name = member.first as? String, let font = NSFont(name: name, size: 12) else {
+          return nil
+        }
+        let descriptor = font.fontDescriptor
+        let traits = descriptor.object(forKey: .traits) as? [NSFontDescriptor.TraitKey: Any]
+        return TextKitFontFace(
+          name: name, width: traits?[.width] as? Double ?? 0,
+          weight: cssFontWeight(traits?[.weight] as? CGFloat ?? 0),
+          italic: descriptor.symbolicTraits.contains(.italic))
+      }
+    familyFaces[key] = faces
+    return faces.match(weight: weight, italic: italic).flatMap { NSFont(name: $0.name, size: size) }
+  }
+
+  /// An `NSFont.Weight` as the nearest CSS weight.
+  private func cssFontWeight(_ weight: CGFloat) -> Int {
+    let weights: [(NSFont.Weight, Int)] = [
+      (.ultraLight, 100), (.thin, 200), (.light, 300), (.regular, 400), (.medium, 500),
+      (.semibold, 600), (.bold, 700), (.heavy, 800), (.black, 900),
+    ]
+    return weights.min { abs($0.0.rawValue - weight) < abs($1.0.rawValue - weight) }?.1 ?? 400
+  }
+
   @MainActor
   private var fontCache: [TextKitFontKey: NSFont] = [:]
 
@@ -72,11 +109,7 @@
             NSFont(descriptor: $0, size: size)
           }
         default:
-          if let named = NSFontManager.shared.font(
-            withFamily: family, traits: [], weight: self.fontWeight >= 600 ? 9 : 5, size: size)
-          {
-            font = named
-          }
+          font = namedFont(family: family, weight: fontWeight, italic: italic, size: size)
         }
         if font != nil { break }
       }

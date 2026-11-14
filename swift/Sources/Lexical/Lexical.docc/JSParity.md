@@ -44,8 +44,11 @@ reason (`dom-only`, `react-only`, `out-of-scope-package`,
   checks always run.
 - **Offsets are UTF-16 code units**, as in JS and `NSString`.
 - **Typed node state.** A `StateConfig` carries its value type.
-- **Custom nodes** declare their properties with the `@LexicalNode` macro
-  and `@Field`, which generate the same schema JS's `$config` builds. A
+- **Custom nodes** declare their type and schema in `config()`, JS's
+  `$config()`: a `NodeConfig` with a `SchemaField` for each property stored
+  in a field (`withField`). The optional `LexicalMacros` product's
+  `@LexicalNode` and `@Field` macros write that `config()`, with
+  `getX`/`setX` accessors, from the properties. A
   node that overrides `getTextContent` must also override
   `getTextContentSize`, since Swift can't detect the override as JS does.
 - **Listeners that clean up.** A listener closure that returns a clean-up

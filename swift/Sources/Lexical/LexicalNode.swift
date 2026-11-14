@@ -7,8 +7,9 @@ public typealias NodeKey = String
 /// node through its key, inside `editor.update` or `editor.read`.
 ///
 /// A subclass declares its type, schema, and transforms in `config()`, like
-/// `$config()` in JS, and needs `required init(key:)`. `@LexicalNode`
-/// generates both.
+/// `$config()` in JS, and needs `required init(key:)`, which a subclass
+/// whose fields all have defaults inherits. `@LexicalNode`, in
+/// `LexicalMacros`, generates `config()` from `@Field` properties.
 open class LexicalNode {
   // The `__` fields are read and assigned whole, never passed inout, so
   // their dynamic exclusivity checks, a large share of an update's time, are

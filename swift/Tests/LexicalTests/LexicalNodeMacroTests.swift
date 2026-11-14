@@ -1,4 +1,5 @@
 import Lexical
+import LexicalMacros
 import LexicalTesting
 import Testing
 

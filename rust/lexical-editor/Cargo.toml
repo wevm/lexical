@@ -16,6 +16,9 @@ publish = false
 # (rust/DESIGN.md, "Packages and features"). The core (`lexical`) is always
 # built. The default build has no third-party dependencies.
 [features]
+# @lexical/history. Upstream it depends on @lexical/utils, which isn't ported;
+# it needs nothing from it.
+history = []
 
 [lints]
 workspace = true

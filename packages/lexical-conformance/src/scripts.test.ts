@@ -9,7 +9,13 @@ import type {SerializedLexicalNode} from 'lexical';
 
 import {test} from 'vitest';
 
-import {type Action, runScript, type Script, type Step} from './ops';
+import {
+  type Action,
+  type HandlerSpec,
+  runScript,
+  type Script,
+  type Step,
+} from './ops';
 import {emitVectors} from './vectors';
 
 // Hand-written editor sessions over the core nodes, recorded step by step by
@@ -639,6 +645,260 @@ test('scripts/caret', () => {
           update(select(['root', 0, 'element'], ['root', 1, 'element']), {
             do: 'removeTextFromCaretRange',
           }),
+        ],
+      },
+    ],
+  );
+});
+
+test('scripts/history', () => {
+  // `registerHistory` with a 300 ms delay, on the session's clock, which each
+  // step sets with `now`. The handlers log CAN_UNDO_COMMAND and
+  // CAN_REDO_COMMAND.
+  const history = {delay: 300};
+  const handlers: HandlerSpec[] = [
+    {command: 'CAN_UNDO_COMMAND', id: 'canUndo', priority: 0, result: false},
+    {command: 'CAN_REDO_COMMAND', id: 'canRedo', priority: 0, result: false},
+  ];
+  const at = (now: number, step: Step): Step => ({...step, now});
+  const type = (now: number, text: string, tag?: string[]): Step => ({
+    now,
+    tag,
+    update: [call('insertText', text)],
+  });
+  const undo = (now: number): Step => ({dispatch: 'UNDO_COMMAND', now});
+  const redo = (now: number): Step => ({dispatch: 'REDO_COMMAND', now});
+  emit(
+    'history',
+    '@lexical/history: which updates merge into one undo entry and which push a new one, undo, redo and clearing, and the CAN_UNDO/CAN_REDO notifications.',
+    [
+      {
+        handlers,
+        history,
+        name: 'typing merges within the delay and pushes after it, then undo and redo',
+        steps: [
+          at(0, doc(p(t('Hello')))),
+          // A selection-only update merges into the current entry.
+          at(0, update(select(['2', 5, 'text']))),
+          type(100, '!'),
+          type(200, 'a'),
+          // 499 < 200 + 300: merges.
+          type(499, 'b'),
+          // 799 is not < 499 + 300: pushes.
+          type(799, 'c'),
+          type(800, 'd'),
+          undo(900),
+          undo(901),
+          // The undo stack is empty: nothing changes.
+          undo(902),
+          redo(903),
+          redo(904),
+          // The redo stack is empty: nothing changes.
+          redo(905),
+        ],
+      },
+      {
+        handlers,
+        history,
+        listen: true,
+        name: 'a new edit after undo clears the redo stack',
+        steps: [
+          at(0, doc(p(t('ab')))),
+          at(0, update(select(['2', 2, 'text']))),
+          type(1000, 'c'),
+          type(2000, 'd'),
+          undo(2100),
+          undo(2200),
+          type(3000, 'x'),
+          redo(3100),
+          undo(3200),
+        ],
+      },
+      {
+        handlers,
+        history,
+        name: 'history-merge and history-push tags',
+        steps: [
+          at(0, doc(p(t('a')))),
+          at(0, update(select(['2', 1, 'text']))),
+          type(1000, 'b'),
+          // Within the delay, but tagged history-push.
+          type(1010, 'c', ['history-push']),
+          type(1020, 'd'),
+          // Long after, but tagged history-merge.
+          {
+            now: 5000,
+            tag: ['history-merge'],
+            update: [node('2', 'setTextContent', 'merged')],
+          },
+          // An unchanged text node marked dirty merges, unless tagged
+          // history-push.
+          {now: 6000, tag: ['history-push'], update: [node('2', 'markDirty')]},
+          at(7000, update(node('2', 'markDirty'))),
+          undo(8000),
+          undo(8001),
+          undo(8002),
+          undo(8003),
+        ],
+      },
+      {
+        handlers,
+        history,
+        name: 'selection-only updates merge, and one that clears the selection is discarded',
+        steps: [
+          at(0, doc(p(t('one')))),
+          at(10, update(select(['2', 3, 'text']))),
+          at(20, update({do: 'clearSelection'})),
+          at(1000, update(select(['2', 1, 'text']), call('insertText', 'X'))),
+          // Back to the selection at 3: the cleared one was never recorded.
+          undo(1100),
+          redo(1200),
+        ],
+      },
+      {
+        handlers,
+        history,
+        name: 'formatText, insertParagraph and a deletion, each undone',
+        steps: [
+          at(0, doc(p(t('Hello world')))),
+          at(
+            1000,
+            update(
+              select(['2', 0, 'text'], ['2', 5, 'text']),
+              call('formatText', 'bold'),
+            ),
+          ),
+          at(2000, update(node('2', 'selectEnd'), call('insertParagraph'))),
+          at(3000, update({do: 'selectAll'}, call('removeText'))),
+          undo(4000),
+          undo(4001),
+          undo(4002),
+          undo(4003),
+          redo(4004),
+          redo(4005),
+          redo(4006),
+        ],
+      },
+      {
+        history,
+        name: 'typing into an empty paragraph merges from the first character',
+        steps: [
+          at(0, doc(p())),
+          at(0, update(select(['1', 0, 'element']))),
+          type(10, 'a'),
+          type(20, 'b'),
+          type(30, 'c'),
+          undo(40),
+          redo(50),
+        ],
+      },
+      {
+        handlers,
+        history,
+        name: 'deleting backward and forward',
+        steps: [
+          at(0, doc(p(t('abcdef')))),
+          at(0, update(select(['2', 6, 'text']))),
+          // Backward: the caret moves back over the deleted character.
+          at(
+            10,
+            update(
+              select(['2', 5, 'text'], ['2', 6, 'text']),
+              call('removeText'),
+            ),
+          ),
+          at(
+            20,
+            update(
+              select(['2', 4, 'text'], ['2', 5, 'text']),
+              call('removeText'),
+            ),
+          ),
+          // Forward: the caret stays.
+          at(
+            30,
+            update(
+              select(['2', 2, 'text'], ['2', 3, 'text']),
+              call('removeText'),
+            ),
+          ),
+          at(
+            40,
+            update(
+              select(['2', 2, 'text'], ['2', 3, 'text']),
+              call('removeText'),
+            ),
+          ),
+          undo(50),
+          undo(60),
+          undo(70),
+        ],
+      },
+      {
+        handlers,
+        history,
+        name: 'paste and cut are their own entries',
+        steps: [
+          at(0, doc(p(t('ab')))),
+          at(0, update(select(['2', 2, 'text']))),
+          type(10, 'c'),
+          type(20, 'P', ['paste']),
+          type(30, 'd'),
+          {
+            now: 40,
+            tag: ['cut'],
+            update: [
+              select(['2', 0, 'text'], ['2', 1, 'text']),
+              call('removeText'),
+            ],
+          },
+          type(50, 'e'),
+          undo(60),
+          undo(70),
+          undo(80),
+          undo(90),
+        ],
+      },
+      {
+        handlers,
+        history,
+        name: 'a composition that changes nothing merges',
+        steps: [
+          at(0, doc(p(t('ab')))),
+          at(0, update(select(['2', 2, 'text']))),
+          type(1000, 'c'),
+          type(2000, 'x', ['composition-start']),
+          {
+            now: 3000,
+            tag: ['composition-end'],
+            update: [
+              select(['2', 3, 'text'], ['2', 4, 'text']),
+              call('removeText'),
+            ],
+          },
+          type(3010, 'd'),
+          undo(4000),
+          undo(4010),
+        ],
+      },
+      {
+        handlers,
+        history,
+        name: 'CLEAR_HISTORY_COMMAND and CLEAR_EDITOR_COMMAND',
+        steps: [
+          at(0, doc(p(t('a')))),
+          at(0, update(select(['2', 1, 'text']))),
+          type(1000, 'b'),
+          type(2000, 'c'),
+          undo(2100),
+          {dispatch: 'CLEAR_HISTORY_COMMAND', now: 2200},
+          undo(2300),
+          redo(2400),
+          type(3000, 'd'),
+          type(4000, 'e'),
+          // History clears, but nothing handles the command.
+          {dispatch: 'CLEAR_EDITOR_COMMAND', now: 4100},
+          undo(4200),
         ],
       },
     ],

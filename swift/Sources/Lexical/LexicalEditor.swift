@@ -406,7 +406,10 @@ public final class Editor {
   /// Where a caret moves by a character, word or line, which only text
   /// layout knows: the text view sets it. In JS this is the DOM's
   /// `Selection.modify`. When `nil`, as headless, moves within text stop
-  /// where JS stops without a DOM.
+  /// where JS stops without a DOM, so `DELETE_CHARACTER_COMMAND` deletes
+  /// nothing. A test without a view gets the views' movement from a
+  /// `TextKitInputController(editor:)` (`LexicalTextKit`, which builds on
+  /// Linux); keep the controller alive, since this reference is weak.
   public weak var selectionMovement: (any SelectionMovement)?
   /// The node-structure registration (`INTERNAL_registerNodeStructure`),
   /// which JS keeps in a `WeakMap` keyed by editor.

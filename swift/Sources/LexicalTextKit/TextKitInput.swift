@@ -25,6 +25,11 @@ public struct TextKitRange: Equatable, Sendable {
 
 /// Drives an editor from a text view: input in, edits to the rendered text
 /// and selection out.
+///
+/// It works without a view too: creating one sets the editor's
+/// `selectionMovement`, so a test can move and delete by a character or a
+/// word over the rendered text as the views do. Keep it alive for as long
+/// as the editor needs the movement.
 public final class TextKitInputController {
   public let editor: Editor
   public let movement = TextKitMovement()

@@ -50,6 +50,11 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "fuzz/core",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "property/documents",
             variant: Some("JSON and text"),
             check: property::check_document,

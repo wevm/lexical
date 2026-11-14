@@ -22,6 +22,7 @@ updated with each milestone.
 | Selection reading | `LexicalSelection.ts`: `Point.isBefore`, `isBackward` across nodes, `RangeSelection.getNodes` (`$getNodesFromCaretRangeCompat`) and `getTextContent`, `NodeSelection.getNodes` and `getTextContent`, the `_cachedNodes` cache | `selection` | `scripts/caret`; a unit test against JS's output |
 | Carets | `caret/LexicalCaret.ts`: sibling, child and text point carets in both directions and their methods (`getAdjacentCaret`, `getNodeAtCaret`, `getFlipped`, `getParentCaret`, `getChildCaret`, `insert`, `remove`, `replaceOrInsert`, `splice`, iteration), `$getSiblingCaret`, `$getChildCaret`, `$getTextPointCaret`, `$getTextNodeOffset`, text slices, caret ranges (`$getCaretRange`, `iterNodeCarets`, `getTextSlices`, `isCollapsed`), `$getAdjacentChildCaret`, `$getCaretInDirection`, `$extendCaretToRange`, `$comparePointCaretNext`, `$getCommonAncestor`, `makeStepwiseIterator` | `caret` | `scripts/caret` |
 | Caret utilities | `caret/LexicalCaretUtils.ts`: `$caretFromPoint`, `$setPointFromCaret`, `$caretRangeFromSelection`, `$setSelectionFromCaretRange`, `$updateRangeSelectionFromCaretRange`, `$rewindSiblingCaret`, `$removeTextFromCaretRange` (block merges, empty-container repair), `$normalizeCaret`, `$isExtendableTextPointCaret`, `$getCaretRangeInDirection`, `$getChildCaretAtIndex`, `$getAdjacentSiblingOrParentSiblingCaret`, `$getTextPointCaretSliceForNode`; with `$getNodeByKeyOrThrow`, `$removeFromParent`, `$restoreEmptyContainerParagraph`, `$isShadowRootNode` and `INTERNAL_$isBlock` from `LexicalUtils.ts` | `caret_utils`, `utils` | `scripts/caret` |
+| Selection editing | `LexicalSelection.ts`: `insertText` (`$insertText`, `$insertTextAtPoint`), `insertRawText` (`tokenizeRawText`, `$generateNodesFromRawText`), `insertNodes` for both selection kinds (`$removeTextAndSplitBlock`, `$splitNodeAtPoint`, `$wrapInlineNodes`), `insertParagraph`, `insertLineBreak`, `removeText`, `formatText` (`$updateTextFormat`, `$setTextFormat`, `$getCharacterOffsets`), `toggleFormat`, `setFormat`, `setStyle`, `deleteCharacter`, `deleteWord` and `deleteLine` up to `Selection.modify` (`forwardDeletion`, `$extendSelectionForDeletion`, `$modifySelectionAroundDecoratorsAndBlocks`, `$collapseAtStart`, `$removeSegment`), `$insertNodes`, `$selectAll`; `$splitTextPointCaretSlice` and `$isBlockFullySelected`; `ParagraphNode.insertNewAfter`, `canInsertTextBefore`/`After` | `selection_editing`, `selection_insert_text`, `selection_insert_nodes`, `selection_format`, `selection_deletion` | `scripts/selection`, `fuzz/core`; unit tests against JS's output for paths no vector covers |
 | Update cycle | `LexicalUpdates.ts` (`$beginUpdate`, nested and queued updates, `$applyAllTransforms`, `$commitPendingUpdates`, `$discardPendingUpdate`, listeners, `triggerCommandListeners`, `updateEditorSync`), `LexicalNormalization.ts` (`$normalizeTextNode`), `LexicalGC.ts` (nodes) | `updates`, `normalization`, `gc` | `scripts/updates`, `scripts/listeners`, `scripts/transforms`, `scripts/commands` |
 | Editor state | `LexicalEditorState.ts` (`toJSON`, `read`, `isEmpty`, `_parsed`) | `editor_state` | `serialization/core` |
 | Parsing | `parseEditorState`, `$parseSerializedNode` (`LexicalUpdates.ts`) | `updates` | `serialization/core`, `property/documents` |
@@ -36,13 +37,15 @@ touches:
 
 - **NodeState** (`"$"`) and **slots** (`"$slots"`): a document that carries
   either fails to parse with an error naming it, rather than losing them.
-- `RangeSelection` editing (`insertText`, `insertParagraph`,
-  `deleteCharacter`, `formatText`, ...), `$selectAll` and `$insertNodes`.
-  `scripts/selection` cases, and the one case each of `scripts/listeners`
-  and `scripts/transforms` that types text, are counted as waiting on them.
+- Deletion past the model: JS's `deleteCharacter`, `deleteWord` and
+  `deleteLine` extend the selection with the DOM's `Selection.modify`. A
+  headless JS editor has no window and throws (`window object not found`),
+  and so does this port; the vectors record that. `RangeSelection.modify`,
+  `extract`, and `$selectAll(selection)`'s scoping aren't ported, nor
+  `insertNodes`' CASE 3a (blocks with no block ancestor, which needs
+  `$insertNodeToNearestRootAtCaret`).
 - The caret utilities that split or insert (`$splitTextPointCaret`,
-  `$splitTextPointCaretSlice`, `$splitAtPointCaretNext`,
-  `$insertNodeToNearestRootAtCaret`), `$isBlockFullySelected`, and the
+  `$splitAtPointCaretNext`, `$insertNodeToNearestRootAtCaret`), and the
   slot-aware caret comparisons (`$comparePointCaretNextAcrossSlots`,
   `$getCommonAncestorAcrossSlots`). Without slots, NodeState or the text
   edit log, `$removeTextFromCaretRange` never meets a slot host and carries

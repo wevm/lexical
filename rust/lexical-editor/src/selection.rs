@@ -1,7 +1,7 @@
 //! `LexicalSelection.ts`: points, `RangeSelection` and `NodeSelection`
 //! (with `getNodes` and `getTextContent`), and the helpers node methods use
 //! to keep a selection valid while they change the tree. Selection editing
-//! (`insertText`, `deleteCharacter`, ...) comes next (rust/DESIGN.md, M1).
+//! (`insertText`, `deleteCharacter`, ...) is in the `selection_*` modules.
 
 use crate::LexicalError;
 use crate::caret::{
@@ -231,6 +231,16 @@ impl SelectionRef {
             Selection::Node(n) => Some(f(n)),
             Selection::Range(_) => None,
         }
+    }
+
+    /// `nodeSelection.add(key)`; nothing on a range selection.
+    pub fn add(&self, key: &str) {
+        self.with_node(|n| n.add(key));
+    }
+
+    /// `nodeSelection.delete(key)`; nothing on a range selection.
+    pub fn delete(&self, key: &str) {
+        self.with_node(|n| n.delete(key));
     }
 
     /// A node selection's keys, in the order added; empty for a range

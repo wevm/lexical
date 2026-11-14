@@ -59,6 +59,11 @@ pub mod nodes;
 mod normalization;
 mod ordered;
 mod selection;
+mod selection_deletion;
+mod selection_editing;
+mod selection_format;
+mod selection_insert_nodes;
+mod selection_insert_text;
 mod serialized_export;
 mod updates;
 pub mod utf16;
@@ -96,6 +101,7 @@ pub use selection::{
     NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
     create_node_selection, create_range_selection, get_selection, set_selection,
 };
+pub use selection_insert_nodes::{insert_nodes, select_all};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
 pub use updates::parse_serialized_node;
 pub use utils::{get_node_by_key, get_root, reset_random_key};

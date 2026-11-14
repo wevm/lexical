@@ -85,6 +85,50 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         true
     }
 
+    /// `ElementNode.canMergeWhenEmpty()`: whether the element, when empty,
+    /// takes the children of the first block `insertNodes` inserts.
+    fn can_merge_when_empty(&self) -> bool {
+        false
+    }
+
+    /// `isParentRequired()`: whether the node needs a parent of a certain
+    /// kind ([`create_parent_element_node`](Self::create_parent_element_node)).
+    fn is_parent_required(&self) -> bool {
+        false
+    }
+
+    /// `createParentElementNode()`: a new parent for the node, a paragraph
+    /// by default.
+    fn create_parent_element_node(&self) -> NodeRef {
+        crate::nodes::paragraph::create_paragraph_node()
+    }
+
+    /// `ElementNode.insertNewAfter(selection, restoreSelection)` on the
+    /// element `this` (this node's handle): inserts the block that splitting
+    /// the element creates after it, and returns it. `None` (the default)
+    /// means the element can't be split.
+    fn insert_new_after(
+        &self,
+        this: &NodeRef,
+        selection: &SelectionRef,
+        restore_selection: bool,
+    ) -> Result<Option<NodeRef>, LexicalError> {
+        let _ = (this, selection, restore_selection);
+        Ok(None)
+    }
+
+    /// `canInsertTextBefore()` (`TextNode` and `ElementNode`): whether text
+    /// typed at the node's start goes into it.
+    fn can_insert_text_before(&self) -> bool {
+        true
+    }
+
+    /// `canInsertTextAfter()` (`TextNode` and `ElementNode`): whether text
+    /// typed at the node's end goes into it.
+    fn can_insert_text_after(&self) -> bool {
+        true
+    }
+
     /// `getTextContent()`.
     fn get_text_content(&self) -> String {
         if let Some(text) = self.text() {
@@ -316,6 +360,31 @@ impl NodeRef {
     /// `ElementNode.canBeEmpty()`.
     pub fn can_be_empty(&self) -> bool {
         self.get_latest().can_be_empty()
+    }
+
+    /// `ElementNode.canMergeWhenEmpty()`.
+    pub fn can_merge_when_empty(&self) -> bool {
+        self.get_latest().can_merge_when_empty()
+    }
+
+    /// `isParentRequired()`.
+    pub fn is_parent_required(&self) -> bool {
+        self.get_latest().is_parent_required()
+    }
+
+    /// `createParentElementNode()`.
+    pub fn create_parent_element_node(&self) -> NodeRef {
+        self.get_latest().create_parent_element_node()
+    }
+
+    /// `ElementNode.insertNewAfter(selection, restoreSelection)`.
+    pub fn insert_new_after(
+        &self,
+        selection: &SelectionRef,
+        restore_selection: bool,
+    ) -> Result<Option<NodeRef>, LexicalError> {
+        self.get_latest()
+            .insert_new_after(self, selection, restore_selection)
     }
 
     /// `isSelected()` for a node selection. Range selections come with

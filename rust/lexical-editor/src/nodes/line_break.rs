@@ -2,7 +2,12 @@
 
 use crate::generated_json::{export_compact_line_break_node, export_line_break_node};
 use crate::json::Object;
-use crate::node::{LexicalNode, NodeBase};
+use crate::node::{LexicalNode, NodeBase, NodeRef};
+
+/// `$createLineBreakNode()`.
+pub fn create_line_break_node() -> NodeRef {
+    crate::utils::set_node_key(Box::new(LineBreakNode::default()))
+}
 
 /// A soft line break (Shift+Enter).
 #[derive(Clone, Debug, Default)]

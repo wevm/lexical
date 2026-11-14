@@ -28,6 +28,8 @@ zbugs-gpui is. macOS.
 - **The toolbar.** Bold, italic, underline, strikethrough, code, highlight,
   subscript and superscript follow the selection's format. Select all, and
   Reset.
+- **Light and dark.** The window follows the Mac's appearance and switches
+  live when it changes, as the Rune playground does.
 - **The side panel.**
   - **Tree:** the node tree with keys.
   - **JSON:** the editor state's JSON.

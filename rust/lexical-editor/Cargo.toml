@@ -58,6 +58,9 @@ hashtag = ["text"]
 # DecoratorTextNode (an inline one). The rest of the package, the extension
 # API, isn't ported.
 extension = []
+# @lexical/markdown: import, export and the transformers, with a JS RegExp
+# engine of its own (no `regex`).
+markdown = ["rich-text", "list", "link", "code"]
 
 [dependencies]
 # Without `perf-literal`, which would add aho-corasick and memchr.

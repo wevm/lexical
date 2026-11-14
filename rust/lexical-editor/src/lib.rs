@@ -69,6 +69,8 @@ mod lexical_utils;
 pub mod link;
 #[cfg(feature = "list")]
 pub mod list;
+#[cfg(feature = "markdown")]
+pub mod markdown;
 mod node;
 mod node_state;
 pub mod nodes;

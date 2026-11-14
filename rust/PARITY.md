@@ -46,6 +46,7 @@ updated with each milestone.
 | `@lexical/extension`'s decorators (the `extension` feature) | `packages/lexical-extension/src/HorizontalRuleExtension.ts` (`HorizontalRuleNode`: a block decorator whose text is `\n`; `$createHorizontalRuleNode`, `$isHorizontalRuleNode`), `DecoratorTextExtension.ts` (`DecoratorTextNode`: inline, `__isInlineFormattable`, `getFormat`, `hasFormat`, `setFormat`, `toggleFormat`, its `format` as a flat NodeState; `$isDecoratorTextNode`), with `LexicalNode`'s generated JSON | `extension` | `scripts/decorator` |
 | `registerLexicalTextEntity` (the `text` feature) | `packages/lexical-text/src/registerLexicalTextEntity.ts`: `EntityMatch`, `registerLexicalTextEntity` (the `TextNode` transform and `$reverseNodeTransform`, `$replaceWithSimpleText`, `$wasTurnedIntoText`, `getFirstMatchAfter`, `isNextTextEntity`, `isTextAfterOutsideSource`, `isEntityAfter`, `$checkNextSibling`, `$moveSelectionIntoEntity`, `$wouldMerge`, `MAX_MATCHES_PASSED`, `MAX_TURNED_INTO_TEXT`, the per-update `markedInUpdate` and `turnedIntoTextInUpdate`); from the core `INTERNAL_getActiveEditorState` | `text`, `updates` | `entities/hashtag-documents`, `entities/hashtag-typing` |
 | `$setBlocksType` (the `selection` feature) | `packages/lexical-selection/src/range-selection.ts` (`$setBlocksType`, with its default `$afterCreateElement`, `$copyBlockFormatIndent`, and `$isPointAtBlockEdge`), through `LexicalNode.replace` and `ListItemNode.replace` | `selection` | `scripts/set-blocks-type`, the block-decorator case of `scripts/decorator` |
+| Markdown (the `markdown` feature) | `packages/lexical-markdown/src`: `MarkdownTransformers.ts` (the four transformer types; `HEADING`, `QUOTE`, `CODE`, `UNORDERED_LIST`, `ORDERED_LIST`, `CHECK_LIST`, the text formats, `LINK`, `TRANSFORMERS` and the groups by type; the list marker, code fence, code meta and hard line break NodeStates; `normalizeMarkdown`, `isTableRowDivider`), `MarkdownImport.ts` (`createMarkdownImport`, `$importMultiline`, `$importBlocks`), `importTextTransformers.ts`, `importTextFormatTransformer.ts`, `importTextMatchTransformer.ts`, `MarkdownExport.ts` (`createMarkdownExport`, with selection), `utils.ts`; `$convertFromMarkdownString`, `$convertToMarkdownString` and `$convertSelectionToMarkdownString` (`index.ts`) | `markdown` | `markdown/import-export`, `property/documents` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -238,6 +239,20 @@ touches:
   `false` where JS passes `editor.isComposing()`, as a headless JS editor
   does; the `composition-start` and `composition-end` tags work as in JS.
 
+- Of `@lexical/markdown` (the `markdown` feature): `registerMarkdownShortcuts`,
+  which comes next; `$generateNodesFromMarkdownString`, which imports into
+  an `ArtificialNode__DO_NOT_USE` the core doesn't have; and the mdast
+  converter, which Swift doesn't port either. `markdown/import-export`'s
+  export cases read the state JS built from each case's HTML from its
+  `exportState` JSON, as `$generateNodesFromDOM` comes with `html`, and its
+  `importHtml` (what `$generateHtmlFromNodes` renders of the import) is
+  checked once `html` is ported; the imported state, the absence of a
+  selection after importing and the exported markdown are checked in every
+  case. The transformers are `Rc`s of structs with public fields, so a
+  variant of a built-in is a copy with fields replaced, where JS spreads
+  the object; `replace` returns `false` for JS's `false` and `true` for
+  its `true` and `undefined`, and a text match transformer's `export` is
+  `None` for an unset one.
 How `getHashtagMatch`'s regular expression runs without one (the
 `hashtag` feature): JS builds it with `i` and without `u`, so it matches
 UTF-16 code units, and the matcher works on the text's code units too.
@@ -284,6 +299,28 @@ How `registerAutoLink`'s regular expressions run on the `regex` crate (the
   `text[i]` (half a surrogate pair as U+FFFD, under the unpaired surrogate
   exception below), or on the string `undefined` past either end of a text,
   as JS does.
+
+How `@lexical/markdown`'s regular expressions run (the `markdown`
+feature): its transformers are JS `RegExp`s whose sources and flags are
+public API (custom transformers bring their own, and import rebuilds them
+with `new RegExp(regExp.source, flags)`), and the `regex` crate has no
+lookaround or backreferences, so `markdown::RegExp` is the module's own
+backtracking engine. It follows ECMA-262's pattern semantics on UTF-16
+code units: offsets are code units, a pattern without `u` reads a
+character outside the BMP as two, and one with `u` as one code point. It
+has groups (capturing, non-capturing and named), lookahead and lookbehind,
+backreferences, greedy and lazy quantifiers with the spec's capture reset
+and empty-iteration check, classes, `\p{..}` and `\P{..}` for the general
+categories `rust/scripts/generate-reg-exp-tables.mjs` reads from Node
+(Unicode 17), and the flags `d g i m s u y`; not the `v` flag, nor Annex
+B's legacy octal escapes and `\c` in classes, which fail to compile. Two
+approximations, which no upstream pattern reaches: with both `u` and `i`
+characters fold with the `Canonicalize` of `i` without `u` (JS uses
+Unicode simple case folding there), and a lookbehind is matched forwards
+from each earlier position, so it matches when JS's does but may capture a
+different substring inside it. `split` leaves out a separator's groups
+that did not participate, which JS splices in as `undefined`. Swift's port
+runs the same patterns on `NSRegularExpression` (`JSRegExp.swift`).
 
 ## Documented exceptions
 

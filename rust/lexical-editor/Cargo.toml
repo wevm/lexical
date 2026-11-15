@@ -31,6 +31,10 @@ plain-text = []
 # registerCheckList. Upstream it also depends on @lexical/extension and
 # @lexical/html, for ListExtension and the DOM import, which aren't ported.
 list = ["utils"]
+# @lexical/link: LinkNode, AutoLinkNode, $toggleLink and registerLink. Upstream
+# it also depends on @lexical/extension and @lexical/html, for LinkExtension
+# and the DOM import, which aren't ported.
+link = ["utils"]
 
 [lints]
 workspace = true

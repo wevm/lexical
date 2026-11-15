@@ -213,6 +213,22 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         let _ = (this, original);
     }
 
+    /// `ElementNode.extractWithChild(child, selection, destination)` on the
+    /// element `this`: whether copying `child` (to `"clone"` or `"html"`)
+    /// takes this element with it. `ElementNode` returns false. Nothing in
+    /// the core calls it; `@lexical/html`'s copy does, and the overrides of
+    /// `ParagraphNode` and `HeadingNode` come with it.
+    fn extract_with_child(
+        &self,
+        this: &NodeRef,
+        child: &NodeRef,
+        selection: Option<&SelectionRef>,
+        destination: &str,
+    ) -> Result<bool, LexicalError> {
+        let _ = (this, child, selection, destination);
+        Ok(false)
+    }
+
     /// `canInsertTextBefore()` (`TextNode` and `ElementNode`): whether text
     /// typed at the node's start goes into it.
     fn can_insert_text_before(&self) -> bool {
@@ -491,6 +507,33 @@ impl NodeRef {
     /// `ElementNode.collapseAtStart(selection)`.
     pub fn collapse_at_start(&self, selection: &SelectionRef) -> Result<bool, LexicalError> {
         self.get_latest().collapse_at_start(self, selection)
+    }
+
+    /// `ElementNode.extractWithChild(child, selection, destination)`.
+    pub fn extract_with_child(
+        &self,
+        child: &NodeRef,
+        selection: Option<&SelectionRef>,
+        destination: &str,
+    ) -> Result<bool, LexicalError> {
+        self.get_latest()
+            .extract_with_child(self, child, selection, destination)
+    }
+
+    /// `isParentOf(targetNode)`: whether this node is an ancestor of
+    /// `target`.
+    pub fn is_parent_of(&self, target: &NodeRef) -> bool {
+        if self == target {
+            return false;
+        }
+        let mut node = target.get_parent();
+        while let Some(n) = node {
+            if &n == self {
+                return true;
+            }
+            node = n.get_parent();
+        }
+        false
     }
 
     /// `isSelected()` for a node selection. Range selections come with

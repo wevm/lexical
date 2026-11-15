@@ -1583,3 +1583,338 @@ test('scripts/list', () => {
     ],
   );
 });
+
+function a(url: string, ...children: Node[]): Node {
+  return {
+    children,
+    direction: null,
+    format: '',
+    indent: 0,
+    rel: null,
+    target: null,
+    title: null,
+    type: 'link',
+    url,
+    version: 1,
+  } as Node;
+}
+
+function autolink(url: string, ...children: Node[]): Node {
+  return {...a(url, ...children), isUnlinked: false, type: 'autolink'} as Node;
+}
+
+test('scripts/link', () => {
+  // `@lexical/link`'s nodes and `registerLink`'s TOGGLE_LINK_COMMAND
+  // handler and `$linkNodeTransform`, dispatched outside an update as an
+  // input layer does, with rich text's handlers for typing and Enter.
+  const richText = true;
+  const link = true;
+  const url = 'https://lexical.dev';
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const toggle = (payload: Json): Step => run('TOGGLE_LINK_COMMAND', payload);
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  emit(
+    'link',
+    "@lexical/link's LinkNode and AutoLinkNode, $toggleLink through registerLink's TOGGLE_LINK_COMMAND handler, and $linkNodeTransform: linking, changing and unlinking, typing at a link's edges, Enter in a link, autolinks and undo.",
+    [
+      {
+        link,
+        name: 'linking part of one text node, then changing and removing it',
+        richText,
+        steps: [
+          doc(p(t('Hello world'))),
+          update(select(['2', 6, 'text'], ['2', 11, 'text'])),
+          toggle(url),
+          // The selection now covers the link's text: the link changes.
+          toggle('https://example.com'),
+          toggle(null),
+          // Backward, in the middle of the text.
+          update(select(['2', 4, 'text'], ['2', 1, 'text'])),
+          toggle(url),
+        ],
+      },
+      {
+        link,
+        name: 'linking across text nodes and blocks',
+        richText,
+        steps: [
+          doc(
+            p(t('one '), t('bold', {format: 1}), t(' two')),
+            p(t('three')),
+            h('h2', t('four')),
+          ),
+          update(select(['2', 2, 'text'], ['8', 2, 'text'])),
+          toggle(url),
+          // Over the same blocks, a new URL updates every link.
+          run('SELECT_ALL_COMMAND'),
+          toggle('https://example.com'),
+          toggle(null),
+        ],
+      },
+      {
+        link,
+        name: 'linking a range with element points, forward and backward',
+        richText,
+        steps: [
+          doc(
+            p(t('a'), t('b', {format: 1}), t('c')),
+            p(t('d'), t('e', {format: 2})),
+          ),
+          update(select(['1', 0, 'element'], ['1', 2, 'element'])),
+          toggle(url),
+          update(select(['5', 2, 'element'], ['5', 0, 'element'])),
+          toggle('https://example.com'),
+          // From inside the first paragraph's link to the end of the
+          // second's: the two links join one URL.
+          update(select(['1', 0, 'element'], ['5', 2, 'element'])),
+          toggle('https://lexical.dev/docs'),
+        ],
+      },
+      {
+        link,
+        name: 'link attributes',
+        richText,
+        steps: [
+          doc(p(t('abc def'))),
+          update(select(['2', 0, 'text'], ['2', 3, 'text'])),
+          toggle({rel: 'noopener', target: '_blank', title: 'Lexical', url}),
+          // A string keeps the target and title, and rel goes back to
+          // noreferrer.
+          toggle('https://example.com'),
+          // An object sets only what it carries; null clears it.
+          toggle({target: null, title: 'Example', url: 'https://example.com'}),
+          // Over the link and the text after it, both get the attributes
+          // given.
+          run('SELECT_ALL_COMMAND'),
+          toggle({rel: null, title: 'All', url}),
+        ],
+      },
+      {
+        link,
+        name: 'changing the URL of an existing link at a caret',
+        richText,
+        steps: [
+          doc(
+            p(t('a '), a('https://old.example', t('link')), t(' b')),
+            p(a('https://old.example', t('c')), a(url, t('d'))),
+          ),
+          update(select(['4', 2, 'text'])),
+          toggle('https://new.example'),
+          // At the caret, null removes the whole link.
+          toggle(null),
+          // Now equal to the next link, which isn't dirty: the transform
+          // merges it in.
+          update(select(['8', 1, 'text'])),
+          toggle({rel: null, url}),
+        ],
+      },
+      {
+        link,
+        name: 'unlinking part of a link, at its start, middle and end',
+        richText,
+        steps: [
+          doc(
+            p(a(url, t('abcdef'))),
+            p(a(url, t('ghijkl'))),
+            p(a(url, t('mnopqr'))),
+          ),
+          update(select(['3', 2, 'text'], ['3', 4, 'text'])),
+          toggle(null),
+          update(select(['6', 0, 'text'], ['6', 2, 'text'])),
+          toggle(null),
+          update(select(['9', 4, 'text'], ['9', 6, 'text'])),
+          toggle(null),
+        ],
+      },
+      {
+        link,
+        name: 'unlinking across links, and a range that only touches one',
+        richText,
+        steps: [
+          doc(
+            p(
+              a(url, t('one')),
+              t(' and '),
+              a('https://example.com', t('two'), t('2', {format: 1})),
+            ),
+            p(t('x'), a(url, t('three'))),
+            p(autolink(url, t('auto'))),
+          ),
+          update(select(['3', 1, 'text'], ['6', 2, 'text'])),
+          toggle(null),
+          // Ending at the start of the link's text: nothing to unlink.
+          update(select(['9', 0, 'text'], ['11', 0, 'text'])),
+          toggle(null),
+          // A collapsed caret in an autolink: only LinkNodes are removed.
+          update(select(['14', 2, 'text'])),
+          toggle(null),
+        ],
+      },
+      {
+        link,
+        name: 'typing at the start and end of a link',
+        richText,
+        steps: [
+          doc(p(a(url, t('link'))), p(t('x'), a(url, t('two')), t('y'))),
+          // Text typed at a link's edge goes outside it.
+          update(select(['3', 0, 'text'])),
+          type('a'),
+          update(select(['3', 4, 'text'])),
+          type('b'),
+          update(select(['7', 0, 'text'])),
+          type('c'),
+          update(select(['7', 3, 'text'])),
+          type('d'),
+          // Inside, it goes in.
+          update(select(['7', 1, 'text'])),
+          type('e'),
+          // Replacing all of a link's text.
+          update(select(['3', 0, 'text'], ['3', 4, 'text'])),
+          type('f'),
+        ],
+      },
+      {
+        link,
+        name: 'Enter in a link',
+        richText,
+        steps: [
+          doc(p(t('x'), a(url, t('hello world')), t('y'))),
+          update(select(['4', 5, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          type('z'),
+          // At the end of the link and at its start.
+          update(select(['4', 5, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          update(select(['root', 0, 'element'])),
+          update({do: 'selection', method: 'insertParagraph'}),
+        ],
+      },
+      {
+        link,
+        name: 'a link over formatted text',
+        richText,
+        steps: [
+          doc(
+            p(t('plain '), t('bold', {format: 1}), t(' italic', {format: 2})),
+          ),
+          update(select(['2', 2, 'text'], ['4', 4, 'text'])),
+          toggle(url),
+          run('FORMAT_TEXT_COMMAND', 'underline'),
+          // Typing inside stays in the link.
+          update(select(['3', 2, 'text'])),
+          type('B'),
+          // Unlinking the bold text before it only.
+          update(select(['3', 0, 'text'], ['3', 2, 'text'])),
+          toggle(null),
+        ],
+      },
+      {
+        link,
+        name: 'an autolink in a parsed document',
+        richText,
+        steps: [
+          doc(
+            p(t('see '), autolink(url, t('lexical.dev')), t(' now')),
+            p({
+              ...autolink('https://example.com', t('example.com')),
+              isUnlinked: true,
+              rel: 'noreferrer',
+            } as Node),
+          ),
+          // Typing at an autolink's edges goes outside it too.
+          update(select(['4', 11, 'text'])),
+          type('!'),
+          update(select(['4', 0, 'text'])),
+          type('>'),
+          update(select(['4', 3, 'text'])),
+          type('x'),
+          // Enter in an autolink copies it.
+          update(select(['9', 7, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          // Linking a range in an autolink updates the autolink.
+          update(select(['4', 0, 'text'], ['4', 3, 'text'])),
+          toggle('https://example.org'),
+        ],
+      },
+      {
+        link,
+        name: 'the link transform merges adjacent links and lifts blocks',
+        richText,
+        steps: [
+          doc(
+            p(a(url, t('a')), a(url, t('b', {format: 1}))),
+            p(a(url, t('c')), a('https://example.com', t('d'))),
+            p(autolink(url, t('e')), autolink(url, t('f'))),
+          ),
+          update(select(['3', 1, 'text'])),
+          // Linking text between two equal links joins the three.
+          update(
+            {do: 'clearSelection'},
+            {
+              do: 'append',
+              key: 'root',
+              nodes: [p(a(url, t('g')), t('h'), a(url, t('i')))],
+            },
+          ),
+          update(select(['19', 0, 'text'], ['19', 1, 'text'])),
+          toggle({rel: null, url}),
+          // A block in a link is lifted out, keeping its text linked.
+          update(
+            {do: 'clearSelection'},
+            {
+              do: 'append',
+              key: 'root',
+              nodes: [p(a(url, t('j'), p(t('k')), t('l')))],
+            },
+          ),
+        ],
+      },
+      {
+        link,
+        name: 'node selections and no selection',
+        richText,
+        steps: [
+          doc(p(t('a'), t('b', {format: 1})), p(a(url, t('c')))),
+          {update: [{do: 'selectNodes', keys: ['3']}]},
+          toggle('https://example.com'),
+          {update: [{do: 'selectNodes', keys: ['6']}]},
+          toggle('https://example.org'),
+          {update: [{do: 'selectNodes', keys: ['3', '6']}]},
+          toggle(null),
+          update({do: 'clearSelection'}),
+          toggle(url),
+        ],
+      },
+      {
+        link,
+        name: 'Backspace after a link',
+        richText,
+        steps: [
+          doc(p(a(url, t('link')), t('x'))),
+          // Collapsed inside text, headless JS needs the DOM and throws.
+          update(select(['4', 0, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          update(select(['3', 1, 'text'], ['4', 1, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+        ],
+      },
+      {
+        history: {delay: 300},
+        link,
+        name: 'undoing a toggle',
+        richText,
+        steps: [
+          doc(p(t('one two'))),
+          {...update(select(['2', 0, 'text'], ['2', 3, 'text'])), now: 1000},
+          {...toggle(url), now: 2000},
+          {...run('UNDO_COMMAND'), now: 3000},
+          {...run('REDO_COMMAND'), now: 4000},
+          {...toggle(null), now: 5000},
+          {...run('UNDO_COMMAND'), now: 6000},
+        ],
+      },
+    ],
+  );
+});

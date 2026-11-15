@@ -3,11 +3,14 @@ use lexical::json::Value;
 use lexical::{CreateEditorArgs, create_editor};
 
 /// `serialization/*.json`: the document parses from both forms and writes
-/// both back byte for byte.
+/// both back byte for byte. The editor has the list nodes, for
+/// `serialization/list`.
 pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let legacy = case.str("legacy")?;
     let compact = case.str("compact")?;
-    let editor = create_editor(CreateEditorArgs::default());
+    let editor = create_editor(CreateEditorArgs {
+        nodes: lexical::list::list_nodes(),
+    });
     for (form, input) in [("legacy", legacy), ("compact", compact)] {
         let state = editor
             .parse_editor_state(input)

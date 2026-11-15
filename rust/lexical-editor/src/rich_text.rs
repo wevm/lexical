@@ -506,8 +506,8 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
             &INDENT_CONTENT_COMMAND,
             |_, _| {
                 handle_indent_and_outdent(|block| {
-                    let indent = block.element_data().get_indent();
-                    block.set_indent(indent + 1.0);
+                    let indent = block.get_indent()?;
+                    block.set_indent(indent + 1.0)
                 })
             },
             COMMAND_PRIORITY_EDITOR,
@@ -516,10 +516,11 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
             &OUTDENT_CONTENT_COMMAND,
             |_, _| {
                 handle_indent_and_outdent(|block| {
-                    let indent = block.element_data().get_indent();
+                    let indent = block.get_indent()?;
                     if indent > 0.0 {
-                        block.set_indent((indent - 1.0).max(0.0));
+                        block.set_indent((indent - 1.0).max(0.0))?;
                     }
+                    Ok(())
                 })
             },
             COMMAND_PRIORITY_EDITOR,

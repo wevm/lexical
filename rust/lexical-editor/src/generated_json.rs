@@ -84,11 +84,11 @@ fn string_or(v: Option<&Value>, d: &str) -> String {
     v.and_then(Value::as_str).unwrap_or(d).to_owned()
 }
 
-fn element_format_name(e: &ElementData) -> Value {
+pub(crate) fn element_format_name(e: &ElementData) -> Value {
     name_of(ELEMENT_TYPE_TO_FORMAT, e.format).map_or(Value::Undefined, Value::from)
 }
 
-fn direction_value(e: &ElementData) -> Value {
+pub(crate) fn direction_value(e: &ElementData) -> Value {
     e.dir.map_or(Value::Null, |d| d.as_str().into())
 }
 

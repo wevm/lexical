@@ -1247,3 +1247,339 @@ test('scripts/plain-text', () => {
     ],
   );
 });
+
+function li(...children: Node[]): Node {
+  return {
+    children,
+    direction: null,
+    format: '',
+    indent: 0,
+    type: 'listitem',
+    value: 1,
+    version: 1,
+  } as Node;
+}
+
+function list(listType: 'number' | 'bullet' | 'check', ...items: Node[]): Node {
+  return {
+    children: items,
+    direction: null,
+    format: '',
+    indent: 0,
+    listType,
+    start: 1,
+    tag: listType === 'number' ? 'ol' : 'ul',
+    type: 'list',
+    version: 1,
+  } as Node;
+}
+
+test('scripts/list', () => {
+  // `@lexical/list`'s nodes and `registerList`'s and `registerCheckList`'s
+  // model command handlers, dispatched outside an update as an input layer
+  // does, with rich text's handlers where Enter, Backspace and indenting need
+  // them.
+  const richText = true;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  emit(
+    'list',
+    "@lexical/list's ListNode and ListItemNode, registerList's and registerCheckList's command handlers and transforms: inserting and removing lists, Enter and Backspace in items, indenting, check items, numbering and merging.",
+    [
+      {
+        list: true,
+        name: 'inserting lists over paragraphs and a heading',
+        richText,
+        steps: [
+          doc(
+            p(t('one')),
+            p(t('two')),
+            {...h('h2', t('three')), format: 'center', indent: 1} as Node,
+            p(t('four')),
+          ),
+          update(select(['2', 1, 'text'])),
+          run('INSERT_ORDERED_LIST_COMMAND'),
+          update(select(['4', 0, 'text'], ['6', 2, 'text'])),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+          // Next to a bullet list, the new item joins it.
+          update(select(['8', 4, 'text'])),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+          // Lists become check lists, and the transform merges them.
+          run('SELECT_ALL_COMMAND'),
+          run('INSERT_CHECK_LIST_COMMAND'),
+          run('INSERT_ORDERED_LIST_COMMAND'),
+        ],
+      },
+      {
+        list: true,
+        name: 'inserting a list at an element point and in an empty item',
+        richText,
+        steps: [
+          doc(p(), p(t('x'))),
+          update(select(['1', 0, 'element'])),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+          // In an empty item, its list changes type.
+          run('INSERT_ORDERED_LIST_COMMAND'),
+          // At the root, the first block's start.
+          update(select(['root', 1, 'element'])),
+          run('INSERT_CHECK_LIST_COMMAND'),
+          // No selection: nothing changes, but the command is handled.
+          update({do: 'clearSelection'}),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+          run('REMOVE_LIST_COMMAND'),
+        ],
+      },
+      {
+        list: true,
+        name: 'removing a list',
+        richText,
+        steps: [
+          doc(
+            list(
+              'bullet',
+              {
+                ...li(t('a')),
+                direction: 'rtl',
+                format: 'center',
+                style: 'color: red',
+              } as Node,
+              li(t('b')),
+            ),
+            p(t('c')),
+            list('number', li(t('d')), li(list('number', li(t('e'))))),
+            list('bullet', li()),
+          ),
+          update(select(['3', 1, 'text'])),
+          run('REMOVE_LIST_COMMAND'),
+          // A nested item's whole list goes.
+          update(select(['14', 1, 'text'])),
+          run('REMOVE_LIST_COMMAND'),
+          // An empty item, at its element point.
+          update(select(['16', 0, 'element'])),
+          run('REMOVE_LIST_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'f'),
+        ],
+      },
+      {
+        list: true,
+        name: 'Enter in a list item',
+        richText,
+        steps: [
+          doc(list('number', li(t('first')), li(t('second'))), p(t('after'))),
+          update(select(['3', 5, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'x'),
+          update(select(['5', 3, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          // In the empty item Enter left, Enter leaves the list.
+          update(select(['5', 3, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          run('CONTROLLED_TEXT_INSERTION_COMMAND', 'out'),
+        ],
+      },
+      {
+        list: true,
+        name: 'Enter in an empty item, a blank one and a nested one',
+        richText,
+        steps: [
+          doc(
+            list('bullet', li(t('a')), li(), li(t('c'))),
+            list('bullet', li(t('d')), li(list('bullet', li())), li(t('f'))),
+            list('number', li(t('g')), li(t('  ')), li(t('i'))),
+          ),
+          update(select(['4', 0, 'element'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          update(select(['12', 0, 'element'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          update(select(['19', 1, 'text'])),
+          {...run('FORMAT_TEXT_COMMAND', 'bold')},
+          run('INSERT_PARAGRAPH_COMMAND'),
+        ],
+      },
+      {
+        list: true,
+        name: 'Backspace at the start of an item',
+        richText,
+        steps: [
+          doc(
+            p(t('p')),
+            list('bullet', li(t('a')), li(t('b')), li(t('c'))),
+            list('bullet', li(t('d')), li(list('bullet', li(t('e'))))),
+          ),
+          // From a text point: the item becomes a paragraph between two
+          // lists.
+          update(select(['7', 0, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          // From the first item's element point.
+          update(select(['4', 0, 'element'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          // A nested item outdents.
+          update(select(['16', 0, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          // Expanded, across items.
+          update(select(['9', 0, 'text'], ['12', 1, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          // Collapsed inside text, headless JS needs the DOM and throws.
+          update(select(['12', 1, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+        ],
+      },
+      {
+        list: true,
+        name: "Backspace at the start of the document's first item",
+        richText,
+        steps: [
+          doc(
+            list('bullet', li(list('bullet', li(t('a')))), li(t('b'))),
+            p(t('c')),
+          ),
+          // With nothing before the item, the deletion needs the DOM's
+          // Selection.modify before it gets to ListItemNode.collapseAtStart,
+          // so headless JS throws, from a text point and from an empty
+          // item's element point.
+          update(select(['5', 0, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          update({do: 'clearSelection'}, node('root', 'clear'), {
+            do: 'append',
+            key: 'root',
+            nodes: [list('number', li())],
+          }),
+          update(select(['11', 0, 'element'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+        ],
+      },
+      {
+        list: true,
+        name: 'indenting and outdenting items',
+        richText,
+        steps: [
+          doc(
+            list('bullet', li(t('a')), li(t('b')), li(t('c')), li(t('d'))),
+            p(t('p')),
+          ),
+          update(select(['5', 0, 'text'])),
+          run('INDENT_CONTENT_COMMAND'),
+          // Next to the nested list, the item joins it.
+          update(select(['7', 0, 'text'])),
+          run('INDENT_CONTENT_COMMAND'),
+          update(select(['5', 0, 'text'], ['11', 1, 'text'])),
+          run('INDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          // The first item, with nothing before it.
+          update(select(['3', 0, 'text'])),
+          run('INDENT_CONTENT_COMMAND'),
+          run('OUTDENT_CONTENT_COMMAND'),
+          // setIndent nests an item and unwraps it again.
+          update(node('8', 'setIndent', 2)),
+          update(node('8', 'setIndent', 0)),
+        ],
+      },
+      {
+        list: true,
+        name: 'check items',
+        richText,
+        steps: [
+          doc(
+            list(
+              'check',
+              {...li(t('done')), checked: true} as Node,
+              {...li(t('todo')), checked: false} as Node,
+            ),
+          ),
+          update(node('4', 'toggleChecked')),
+          update(node('2', 'toggleChecked'), node('2', 'toggleChecked')),
+          // A new item after a checked one starts unchecked.
+          update(select(['3', 4, 'text'])),
+          run('INSERT_PARAGRAPH_COMMAND'),
+          // In a bullet list the transform clears `checked`.
+          update(select(['5', 0, 'text'])),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+          run('INSERT_CHECK_LIST_COMMAND'),
+        ],
+      },
+      {
+        list: true,
+        name: 'list start, numbering and merging adjacent lists',
+        steps: [
+          doc(
+            {...list('number', li(t('a')), li(t('b'))), start: 3} as Node,
+            list('number', li(t('c'))),
+            list('bullet', li(t('d'))),
+            list('bullet', li(t('e'))),
+          ),
+          run('UPDATE_LIST_START_COMMAND', {listNodeKey: '1', newStart: 10}),
+          // A bullet list keeps its start, and a key that is no list is
+          // not handled.
+          run('UPDATE_LIST_START_COMMAND', {listNodeKey: '9', newStart: 5}),
+          run('UPDATE_LIST_START_COMMAND', {listNodeKey: '3', newStart: 2}),
+          // Nested lists at the seam of two merged lists join.
+          update(
+            {do: 'clearSelection'},
+            {
+              do: 'append',
+              key: 'root',
+              nodes: [
+                list('bullet', li(t('f')), li(list('bullet', li(t('g'))))),
+                list('bullet', li(list('bullet', li(t('h')))), li(t('i'))),
+              ],
+            },
+          ),
+        ],
+      },
+      {
+        list: true,
+        name: 'appending to, replacing in and splitting lists',
+        richText,
+        steps: [
+          // A list wraps what isn't an item; an item takes a paragraph's
+          // children.
+          doc(
+            list('bullet', p(t('wrapped')), li(p(t('merged')), t('x'))),
+            p(t('end')),
+          ),
+          // An item outside a list gets one.
+          update({do: 'append', key: 'root', nodes: [li(t('orphan'))]}),
+          update(node('1', 'append', [li(t('b')), li(t('c')), li(t('d'))])),
+          // Replacing a middle item splits the list.
+          update(node('16', 'replace', p(t('replaced')))),
+          // A block after an item splits the list too.
+          update(node('5', 'insertAfter', p(t('between')))),
+          update(node('4', 'remove')),
+          // Removing an item between two nested lists joins them.
+          update({
+            do: 'append',
+            key: 'root',
+            nodes: [
+              list(
+                'bullet',
+                li(list('bullet', li(t('x')))),
+                li(t('y')),
+                li(list('bullet', li(t('z')))),
+              ),
+            ],
+          }),
+          update(node('31', 'remove')),
+        ],
+      },
+      {
+        history: {delay: 300},
+        list: true,
+        name: 'undoing a list insert',
+        richText,
+        steps: [
+          doc(p(t('one')), p(t('two'))),
+          {...update(select(['2', 0, 'text'], ['4', 3, 'text'])), now: 1000},
+          {...run('INSERT_ORDERED_LIST_COMMAND'), now: 2000},
+          {...run('UNDO_COMMAND'), now: 3000},
+          {...run('REDO_COMMAND'), now: 4000},
+          {...run('REMOVE_LIST_COMMAND'), now: 5000},
+          {...run('UNDO_COMMAND'), now: 6000},
+        ],
+      },
+    ],
+  );
+});

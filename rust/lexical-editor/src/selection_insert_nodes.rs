@@ -2,9 +2,9 @@
 //! `insertRawText` from `LexicalSelection.ts`, for both selection kinds,
 //! with `$insertNodes`, `$generateNodesFromRawText` and `$selectAll`.
 //!
-//! `CodeNode` and declared node structure (`NodeStructureExtension`) are
-//! not ported here, so the branches for a code block and a declared block
-//! container do nothing.
+//! A declared block container (`$isBlockContainer`, a class whose
+//! `$config` declares `children: 'block'` in an editor that enforces node
+//! structure) is taken where JS takes the root and shadow roots.
 
 use crate::LexicalError;
 use crate::caret::CaretDirection;
@@ -433,11 +433,9 @@ fn is_clone_not_needed(node: &NodeRef) -> bool {
         .is_some_and(|n| Rc::strong_count(n) == 1)
 }
 
-/// `$isBlockContainer(node)`: the root or a shadow root. A block element
-/// whose class declares `children: 'block'` counts too in an editor that
-/// enforces node structure, once that is ported.
+/// `$isBlockContainer(node)` ([`crate::is_block_container`]).
 pub(crate) fn is_block_container(node: &NodeRef) -> bool {
-    node.is_element() && is_root_or_shadow_root(&*node.get_latest())
+    crate::structure::is_block_container(node)
 }
 
 /// `$findMatchingParent(startingNode, findFn)`: the node or its nearest

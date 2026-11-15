@@ -1,6 +1,9 @@
 //! `LexicalListNode.ts`: `ListNode`, `$createListNode` and `$isListNode`.
 
-use super::format_list::{merge_next_sibling_list_if_same_type, update_children_list_item_value};
+use super::format_list::{
+    merge_nested_lists_at_seam, merge_next_sibling_list_if_same_type,
+    update_children_list_item_value,
+};
 use super::generated_json::{export_compact_list_node, export_list_node, update_list_node};
 use super::list_item_node::{create_list_item_node, is_list_item_node};
 use crate::LexicalError;
@@ -137,6 +140,27 @@ impl ListNode {
 }
 
 impl LexicalNode for ListNode {
+    /// The `$config()` of `ListNode`: `children: [ListItemNode]` and
+    /// `mergeAdjacent: {by: ['listType']}`, what
+    /// `mergeNextSiblingListIfSameType` compares (`start` is not).
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        use crate::structure::{
+            MergeAdjacentDeclaration, MergeAdjacentEntry, NodeChildEntry, NodeChildrenConfig,
+            NodeClassRef, NodeConfigLink, StaticNodeConfig,
+        };
+        vec![NodeConfigLink::new(
+            "list",
+            StaticNodeConfig {
+                children: Some(NodeChildrenConfig::List(vec![NodeChildEntry::Class(
+                    NodeClassRef::of::<super::ListItemNode>(),
+                )])),
+                merge_adjacent: Some(MergeAdjacentDeclaration::By(vec![
+                    MergeAdjacentEntry::Field("listType"),
+                ])),
+                ..StaticNodeConfig::default()
+            },
+        )]
+    }
     /// `ListNode.updateDOM(prevNode)`: a list of another tag or type is
     /// made again (the tag follows the type here).
     fn update_dom(&self, prev_node: &dyn LexicalNode) -> bool {
@@ -226,12 +250,57 @@ impl LexicalNode for ListNode {
     }
 
     /// The `$transform` of `ListNode.$config()`: merges the next list of the
-    /// same type into this one, then renumbers the items.
-    /// (`NodeStructureExtension`, which merges lists itself where it
-    /// enforces structure, isn't ported.)
+    /// same type into this one, then renumbers the items. Where
+    /// `NodeStructureExtension` enforces declared structure, it merges
+    /// adjacent lists itself (by `mergeAdjacent`, joining nested lists at the
+    /// seam as `mergeLists` does), the same way whichever list is dirty.
     fn transform(&self, this: &NodeRef) -> Result<(), LexicalError> {
-        merge_next_sibling_list_if_same_type(this)?;
+        let structure_merges = this
+            .get_next_sibling()
+            .is_some_and(|next| crate::structure::structure_merges(this, &next));
+        if !structure_merges {
+            merge_next_sibling_list_if_same_type(this)?;
+        }
         update_children_list_item_value(this);
+        Ok(())
+    }
+
+    /// `ListNode.INTERNAL_$afterStructureMerge(last, first)`: joins nested
+    /// lists at the seam, as `mergeLists` does, but only items whose only
+    /// child is the nested list, so that nothing else in them is removed or
+    /// moved.
+    fn internal_after_structure_merge(
+        &self,
+        _: &NodeRef,
+        last: &NodeRef,
+        first: &NodeRef,
+    ) -> Result<bool, LexicalError> {
+        merge_nested_lists_at_seam(Some(last.clone()), Some(first.clone()), true)?;
+        Ok(true)
+    }
+
+    /// `ListNode.INTERNAL_$afterStructureSplit(original, preceding)`: an
+    /// ordered list part continues the numbering of the items that precede
+    /// it, so it starts at the next number.
+    fn internal_after_structure_split(
+        &self,
+        this: &NodeRef,
+        original: &NodeRef,
+        preceding: &[NodeRef],
+    ) -> Result<(), LexicalError> {
+        if self.list_type == ListType::Number {
+            let mut start = original.get_list_start().unwrap_or(1.0);
+            for node in preceding {
+                // As updateChildrenListItemValue counts: an item that only
+                // wraps a nested list has no number of its own.
+                if is_list_item_node(node)
+                    && !node.get_first_child().is_some_and(|c| is_list_node(&c))
+                {
+                    start += 1.0;
+                }
+            }
+            this.set_list_start(start);
+        }
         Ok(())
     }
 }

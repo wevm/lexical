@@ -234,9 +234,9 @@ fn insert_new_after(selection: &SelectionRef) -> Result<Option<NodeRef>, Lexical
 }
 
 impl LexicalNode for CodeNode {
-    /// `children: 'inline'` in its `$config()`.
-    fn declares_inline_children(&self) -> bool {
-        true
+    /// The `$config()` of `CodeNode`: `children: 'inline'`.
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        crate::structure::inline_holder_chain(self.get_type())
     }
 
     fn get_type(&self) -> &'static str {

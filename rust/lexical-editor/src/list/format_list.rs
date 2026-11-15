@@ -1,11 +1,11 @@
 //! `formatList.ts`: inserting and removing lists, merging them, numbering
 //! their items, indenting and outdenting items, and Enter in an empty item.
 //!
-//! What JS does differently where `NodeStructureExtension` enforces node
-//! structure (`$keptTops`, `$listTarget`, joining only items whose only
-//! child is a nested list) isn't ported, as `NodeStructureExtension` isn't;
-//! nor is `$insertList`'s skipping of a named slot's value, which no vector
-//! covers yet.
+//! Where `NodeStructureExtension` enforces node structure, `$insertList`
+//! keeps a block that holds what a list item cannot (`$keptTops`,
+//! `$listTarget`), and the normalization joins nested lists at a seam only
+//! where an item's only child is the nested list. `$insertList`'s skipping
+//! of a named slot's value isn't ported, as no vector covers it yet.
 
 use super::ListItemNode;
 use super::list_item_node::{create_list_item_node, is_list_item_node};
@@ -26,6 +26,7 @@ use crate::nodes::paragraph::create_paragraph_node;
 use crate::selection_deletion::is_js_whitespace;
 use crate::selection_insert_nodes::is_block_container;
 use crate::utils::get_nearest_node_of_type;
+use std::collections::HashMap;
 
 /// `$isLeafNode(node)`: text, a line break or a decorator.
 fn is_leaf_node(node: &NodeRef) -> bool {
@@ -100,6 +101,7 @@ pub fn insert_list(list_type: ListType) -> Result<(), LexicalError> {
     }
 
     let mut handled: Vec<String> = Vec::new();
+    let mut kept = kept_tops(&nodes);
     for node in &nodes {
         if node.is_element()
             && node.is_empty()
@@ -136,9 +138,11 @@ pub fn insert_list(list_type: ListType) -> Result<(), LexicalError> {
             }
             let next_parent = p.get_parent();
             if next_parent.as_ref().is_some_and(is_block_container) {
-                if !handled.contains(&parent_key) {
-                    handled.push(parent_key);
-                    create_list_or_merge(&p, list_type)?;
+                if let Some(target) = list_target(&p, node, &mut kept)
+                    && !handled.iter().any(|k| k == target.get_key())
+                {
+                    handled.push(target.get_key().to_owned());
+                    create_list_or_merge(&target, list_type)?;
                 }
                 break;
             }
@@ -146,6 +150,70 @@ pub fn insert_list(list_type: ListType) -> Result<(), LexicalError> {
         }
     }
     Ok(())
+}
+
+/// `$isListItemContent(node)`: whether a list item can hold `node` where
+/// `NodeStructureExtension` enforces declared structure: inline content as
+/// the normalization counts it, a list, or a plain paragraph (which becomes a
+/// line of the item). Anything else is lifted out of the item.
+fn is_list_item_content(node: &NodeRef) -> bool {
+    crate::internal_is_inline_content(node)
+        || is_list_node(node)
+        || (node
+            .get_latest()
+            .is::<crate::nodes::paragraph::ParagraphNode>()
+            && !node.get_latest().is_shadow_root())
+}
+
+/// `$keptTops(nodes)`: where `NodeStructureExtension` enforces declared
+/// structure, for the node in the nearest block container that holds each
+/// selected node, whether it stays and only the blocks holding the selected
+/// text inside it become lists (see [`list_target`]). Decided for the whole
+/// command before anything is converted.
+fn kept_tops(nodes: &[NodeRef]) -> HashMap<String, bool> {
+    let mut kept = HashMap::new();
+    if !crate::structure::is_structure_enforced_on_active_editor() {
+        return kept;
+    }
+    for node in nodes {
+        let mut top = Some(node.clone());
+        while let Some(t) = top.clone() {
+            if t.get_parent().is_some_and(|p| is_block_container(&p)) {
+                break;
+            }
+            top = t.get_parent();
+        }
+        if let Some(top) = top.filter(|t| t.is_element() && !is_block_container(t))
+            && !kept.contains_key(top.get_key())
+        {
+            let keep = !top.get_children().iter().all(is_list_item_content);
+            kept.insert(top.get_key().to_owned(), keep);
+        }
+    }
+    kept
+}
+
+/// `$listTarget(top, leaf, kept)`: the node `$insertList` turns into a list
+/// item for the selected `leaf`, where `top` is its ancestor in the nearest
+/// block container, or `None` for none. Usually `top`; where
+/// `NodeStructureExtension` enforces declared structure and `top` also holds
+/// a block a list item cannot hold, `top` stays, and the block holding the
+/// selected text becomes the list instead, in place, inside `top`.
+fn list_target(top: &NodeRef, leaf: &NodeRef, kept: &mut HashMap<String, bool>) -> Option<NodeRef> {
+    if !crate::structure::is_structure_enforced_on_active_editor() {
+        return Some(top.clone());
+    }
+    let keep = *kept
+        .entry(top.get_key().to_owned())
+        .or_insert_with(|| !top.get_children().iter().all(is_list_item_content));
+    if !keep {
+        return Some(top.clone());
+    }
+    // The block that holds the selected text, never inline content.
+    crate::selection_insert_nodes::find_matching_parent(leaf, |n| {
+        crate::lexical_utils::is_block(n) && !crate::internal_is_inline_content(n)
+    })
+    .filter(NodeRef::is_element)
 }
 
 /// `$createListOrMerge(node, listType)`: the block becomes an item of the
@@ -215,12 +283,12 @@ fn create_list_or_merge(node: &NodeRef, list_type: ListType) -> Result<NodeRef, 
 /// first's, joining nested lists of the same type where they meet, and
 /// removes the second.
 pub fn merge_lists(list1: &NodeRef, list2: &NodeRef) -> Result<(), LexicalError> {
-    join_lists(list1, list2)
+    join_lists(list1, list2, false)
 }
 
-/// `joinLists(list1, list2, onlyChild)` with `onlyChild` false.
-fn join_lists(list1: &NodeRef, list2: &NodeRef) -> Result<(), LexicalError> {
-    merge_nested_lists_at_seam(list1.get_last_child(), list2.get_first_child())?;
+/// `joinLists(list1, list2, onlyChild)`.
+fn join_lists(list1: &NodeRef, list2: &NodeRef, only_child: bool) -> Result<(), LexicalError> {
+    merge_nested_lists_at_seam(list1.get_last_child(), list2.get_first_child(), only_child)?;
     let to_merge = list2.get_children();
     if !to_merge.is_empty() {
         list1.append(&to_merge)?;
@@ -228,12 +296,15 @@ fn join_lists(list1: &NodeRef, list2: &NodeRef) -> Result<(), LexicalError> {
     list2.remove(false)
 }
 
-/// `mergeNestedListsAtSeam(listItem1, listItem2, onlyChild)` with
-/// `onlyChild` false: two items, one at the end of a list and one at the
-/// start of the next, that wrap nested lists of the same type become one.
-fn merge_nested_lists_at_seam(
+/// `mergeNestedListsAtSeam(listItem1, listItem2, onlyChild)`: two items,
+/// one at the end of a list and one at the start of the next, that wrap
+/// nested lists of the same type become one. With `only_child` (the node
+/// structure normalization), an item counts as one that only wraps a nested
+/// list when that list is its only child.
+pub(super) fn merge_nested_lists_at_seam(
     list_item1: Option<NodeRef>,
     list_item2: Option<NodeRef>,
+    only_child: bool,
 ) -> Result<(), LexicalError> {
     let (Some(list_item1), Some(list_item2)) = (list_item1, list_item2) else {
         return Ok(());
@@ -241,13 +312,22 @@ fn merge_nested_lists_at_seam(
     if !is_nested_list_node(&list_item1) || !is_nested_list_node(&list_item2) {
         return Ok(());
     }
+    if only_child && (list_item1.get_children_size() != 1 || list_item2.get_children_size() != 1) {
+        return Ok(());
+    }
     let inner1 = list_item1.get_first_child().expect("a nested list");
     let inner2 = list_item2.get_first_child().expect("a nested list");
     // A nested <ul> must not swallow a nested <ol>, same rule as
     // mergeNextSiblingListIfSameType applies at the top level.
     if inner1.get_list_type() == inner2.get_list_type() {
-        join_lists(&inner1, &inner2)?;
-        list_item2.remove(false)?;
+        join_lists(&inner1, &inner2, only_child)?;
+        if !only_child {
+            return list_item2.remove(false);
+        }
+        // ElementNode's own remove. The normalization calls this once the
+        // second list's items are already in the first, so
+        // ListItemNode.remove would also join the item after this one.
+        crate::node::remove(&list_item2, false)?;
     }
     Ok(())
 }

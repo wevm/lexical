@@ -7506,3 +7506,330 @@ test('scripts/table-of-contents', () => {
     ],
   );
 });
+
+test('scripts/node-structure', () => {
+  // The node structure classes declare in `$config()` (`inline`, `children`,
+  // `mergeAdjacent`, derived values), read along the config chain, and the
+  // normalization `NodeStructureExtension` (@lexical/extension) runs in the
+  // same update as each change: blocks lifted out of what holds inline
+  // content (the holder split around them, a plain paragraph joined as
+  // lines), inline content wrapped where blocks belong, equal adjacent
+  // siblings merged, with ListNode's merge and split hooks and
+  // ListItemNode's lift hook, the selection kept among its content, and the
+  // structural commands stopping at a declared block container. The test
+  // classes (ops.ts) are `test-box` (`children: 'block'`), `test-sub-box`
+  // (inherits it), `test-tag` (inline, merged by `tag` and its `color`
+  // NodeState, with a derived `label` field and `count` state) and
+  // `test-sub-tag` (inherits it, never merged). Each session's editor starts
+  // with a paragraph (key 1), which `start` clears, so the blocks it appends
+  // get keys 2, 3... in document order.
+  const act = (action: Record<string, unknown>): Action => action as Action;
+  const structure = (...types: string[]): Action =>
+    act({do: 'logNodeStructure', types});
+  const container = (...keys: string[]): Action =>
+    act({do: 'logBlockContainer', keys});
+  const enforced = act({do: 'logStructureEnforced'});
+  const normalize = (key: string): Action =>
+    act({do: 'normalizeNodeStructure', key});
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const start = (blocks: Node[], ...actions: Action[]): Step =>
+    update(
+      node('root', 'clear'),
+      {do: 'append', key: 'root', nodes: blocks},
+      ...actions,
+    );
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const box = (...children: Node[]): Node =>
+    ({
+      children,
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'test-box',
+      version: 1,
+    }) as Node;
+  const subBox = (...children: Node[]): Node =>
+    ({...box(...children), type: 'test-sub-box'}) as Node;
+  const tag = (name: string, color: string | null, ...children: Node[]): Node =>
+    ({
+      children,
+      direction: null,
+      format: '',
+      indent: 0,
+      label: `label ${name}`,
+      tag: name,
+      type: 'test-tag',
+      version: 1,
+      ...(color === null ? {} : {$: {color}}),
+    }) as Node;
+  const subTag = (name: string, ...children: Node[]): Node =>
+    ({...tag(name, null, ...children), type: 'test-sub-tag'}) as Node;
+  const ol = (first: number, ...items: Node[]): Node =>
+    ({...list('number', ...items), start: first}) as Node;
+  const url = 'https://a.test';
+  const nodes: ExtensionSpec = {
+    name: 'test/structure-nodes',
+    nodes: [
+      'autolink',
+      'horizontalrule',
+      'mark',
+      'overflow',
+      'test-box',
+      'test-sub-box',
+      'test-tag',
+      'test-sub-tag',
+    ],
+    phases: [],
+  };
+  const base: ExtensionArg[] = [
+    'RichTextExtension',
+    'ListExtension',
+    'LinkExtension',
+    'nodes',
+  ];
+  const extensionDefs = {nodes};
+  const enforcing = (
+    name: string,
+    steps: Step[],
+  ): {
+    extensionDefs: typeof extensionDefs;
+    extensions: ExtensionArg[];
+    name: string;
+    steps: Step[];
+  } => ({
+    extensionDefs,
+    extensions: [...base, 'NodeStructureExtension'],
+    name,
+    steps,
+  });
+  emit(
+    'node-structure',
+    "Node structure (LexicalStructure.ts) and @lexical/extension's NodeStructureExtension: the declarations of the packages' nodes and of test classes read along the config chain (inline, children, mergeAdjacent, derived, declaredBy), and the normalization: blocks lifted out of holders of inline content (paragraphs, quotes, links, marks, list items) with the holder split around them, paragraphs joined as lines, inline content wrapped in a container's paragraph, empty inline elements removed, equal adjacent links, lists and test elements merged (by schema field and NodeState), ListNode's merge and split hooks and ListItemNode's lift hook, the selection kept among its content (text outside the BMP included), $isBlockContainer and $insertList in a declared container, INTERNAL_$normalizeNodeStructure, registerNodeStructure's counted registrations, the extension's disabled signal and disposal, and BlockIdExtension's peer dependency on it.",
+    [
+      enforcing('declarations', [
+        update(
+          structure(
+            'root',
+            'paragraph',
+            'text',
+            'heading',
+            'quote',
+            'list',
+            'listitem',
+            'link',
+            'autolink',
+            'mark',
+            'overflow',
+            'horizontalrule',
+            'test-box',
+            'test-sub-box',
+            'test-tag',
+            'test-sub-tag',
+          ),
+        ),
+      ]),
+      {
+        extensionDefs,
+        extensions: base,
+        name: 'off by default: the declarations change nothing',
+        steps: [
+          start([p(t('a'), hr(), t('b')), box(t('c'))]),
+          update(enforced, container('root', '2', '6')),
+          // The box is no container here: the list replaces it.
+          start([box(p(t('x')))], select(['10', 0, 'text'])),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+        ],
+      },
+      enforcing('a block in a paragraph is lifted out, the paragraph split', [
+        // Keys: the paragraph 2, "a😀" 3, the rule 4, "😀b" 5.
+        start(
+          [p(t('a😀'), hr(), t('😀b'))],
+          select(['2', 1, 'element'], ['5', 2, 'text']),
+        ),
+        update(enforced),
+        type('Z'),
+      ]),
+      enforcing('a block put in a paragraph later is lifted the same way', [
+        // Keys: the paragraph 2, "x😀y" 3, then "y" 4.
+        start([p(t('x😀y'))], select(['3', 3, 'text'])),
+        update(node('3', 'splitText', 3), node('4', 'insertBefore', hr())),
+      ]),
+      enforcing(
+        'paragraphs in a quote become lines; an empty one keeps its line',
+        [
+          // Keys: the quote 2, its paragraphs 3, 5 and 6, "one" 4, "two😀" 7.
+          start(
+            [q(p(t('one')), p(), p(t('two😀')))],
+            select(['5', 0, 'element'], ['7', 2, 'text']),
+          ),
+          type('Z'),
+          start([q(t('lead'), p(t('one')), p(t('two')), t('tail'))]),
+        ],
+      ),
+      enforcing('a heading in a quote is lifted out and keeps its type', [
+        start([q(t('a'), h('h2', t('b')), t('c'))], select(['5', 1, 'text'])),
+      ]),
+      enforcing(
+        'a heading in a link holds the link; a block in a mark keeps the mark',
+        [
+          start([p(a(url, t('x'), h('h1', t('y')), t('z')))]),
+          start([p(mark(['m'], t('x'), q(t('y'))))]),
+        ],
+      ),
+      enforcing(
+        'equal adjacent links merge; different ones and autolinks do not',
+        [
+          start([
+            p(
+              a(url, t('one')),
+              a(url, t('two', {format: 1})),
+              a('https://b.test', t('three')),
+              autolink('https://c.test', t('four')),
+              autolink('https://c.test', t('five')),
+            ),
+          ]),
+          // Keys: the paragraph 13, the links 14 and 16, "one😀" 15, "two"
+          // 17. The texts merge once the links do, so the caret's offset
+          // in "two" moves past "one😀", which is 5 UTF-16 code units.
+          start(
+            [p(a(url, t('one😀')), a(url, t('two')))],
+            select(['17', 1, 'text']),
+          ),
+          type('Z'),
+        ],
+      ),
+      enforcing('links made adjacent by a change merge', [
+        // Keys: the paragraph 2, the links 3 and 6, " " 5, "b" 7.
+        start(
+          [p(a(url, t('a')), t(' '), a(url, t('b')))],
+          select(['7', 1, 'text']),
+        ),
+        update(node('5', 'remove')),
+      ]),
+      enforcing(
+        'test elements merge by field and NodeState; a subclass that inherits it does not',
+        [
+          start([
+            p(
+              tag('x', 'red', t('a')),
+              tag('x', 'red', t('b')),
+              tag('x', 'blue', t('c')),
+              tag('y', 'blue', t('d')),
+              subTag('z', t('e')),
+              subTag('z', t('f')),
+            ),
+          ]),
+        ],
+      ),
+      enforcing(
+        'an empty inline element is removed; an OverflowNode stays in its paragraph',
+        [
+          start(
+            [p(t('a'), tag('x', null), t('b')), p(t('c'), overflow(t('d')))],
+            select(['4', 0, 'element']),
+          ),
+          update(act({do: 'appendNew', key: '6', type: 'test-tag'})),
+        ],
+      ),
+      enforcing(
+        'inline content in a box is wrapped in a paragraph; a sub-box inherits the rule',
+        [
+          start(
+            [box(t('a'), p(t('b')), t('c')), subBox(t('d'))],
+            select(['3', 1, 'text']),
+          ),
+          update(container('root', '2', '7', '4')),
+        ],
+      ),
+      enforcing(
+        '$insertList in a declared container converts the block inside it',
+        [
+          // Keys: the box 2, its paragraph 3, "x" 4.
+          start([box(p(t('x')))], select(['4', 0, 'text'])),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+        ],
+      ),
+      enforcing(
+        'adjacent lists of one type merge whatever their start; nested lists join at the seam',
+        [
+          start([
+            ol(1, li(t('a')), li(list('bullet', li(t('a1'))))),
+            ol(5, li(list('bullet', li(t('b1')))), li(t('b'))),
+            list('bullet', li(t('c'))),
+          ]),
+        ],
+      ),
+      enforcing(
+        'a block decorator splits an ordered list; numbering continues',
+        [start([ol(3, li(t('a')), li(t('b'), hr(), t('c')), li(t('d')))])],
+      ),
+      enforcing(
+        'paragraphs in a list item become lines; a nested list beside content is lifted',
+        [
+          // Keys: the list 2, the item 3, "x😀" 4.
+          start([list('bullet', li(t('x😀')))], select(['4', 3, 'text'])),
+          update(node('3', 'splice', 1, 0, [p(t('a')), p(t('b'))])),
+          update(node('3', 'splice', 1, 0, [list('number', li(t('n')))])),
+        ],
+      ),
+      {
+        extensionDefs,
+        extensions: base,
+        name: 'INTERNAL_$normalizeNodeStructure normalizes a subtree without the extension',
+        steps: [
+          start([p(t('a'), hr(), t('b')), q(p(t('c')), p(t('d')))]),
+          update(normalize('2')),
+          update(normalize('6')),
+        ],
+      },
+      {
+        extensionDefs,
+        extensions: base,
+        name: 'registerNodeStructure: counted registrations',
+        steps: [
+          start([p(t('a'), hr(), t('b'))]),
+          {registerNodeStructure: 'one'},
+          {registerNodeStructure: 'two'},
+          update(enforced),
+          {disposeNodeStructure: 'one'},
+          update(enforced),
+          start([p(t('c'), hr(), t('d'))]),
+          {disposeNodeStructure: 'two'},
+          update(enforced),
+          start([p(t('e'), hr(), t('f'))]),
+        ],
+      },
+      {
+        extensionDefs,
+        extensions: [...base, ['NodeStructureExtension', {disabled: true}]],
+        name: 'disabled: the declarations are only read; enabling normalizes the document',
+        steps: [
+          start([p(t('a'), hr(), t('b')), box(t('c'))]),
+          update(enforced, container('6')),
+          {setSignals: [['NodeStructureExtension', 'disabled', false]]},
+          update(enforced, container('6')),
+          {setSignals: [['NodeStructureExtension', 'disabled', true]]},
+          start([p(t('c'), hr(), t('d'))]),
+          {dispose: true},
+        ],
+      },
+      {
+        extensionDefs,
+        extensions: [
+          'RichTextExtension',
+          ['BlockIdExtension', {generateId: 'counter'}],
+          'nodes',
+          'NodeStructureExtension',
+        ],
+        name: 'BlockIdExtension registers after NodeStructureExtension, its peer',
+        steps: [
+          start([p(t('a'), hr(), t('b'))]),
+          update(act({do: 'logBlockIds', keys: ['2', '4', '6']})),
+        ],
+      },
+    ],
+  );
+});

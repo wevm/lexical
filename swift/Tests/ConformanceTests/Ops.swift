@@ -113,6 +113,110 @@ final class TestDecoratorBlockNode: DecoratorBlockNode {
   }
 }
 
+// The node classes of scripts/node-structure (ops.ts), for the structure
+// rules the packages' own nodes don't declare: a block container, an inline
+// element merged by a schema field and a NodeState, derived values, and
+// subclasses that inherit those declarations.
+
+/// `testTagColorState`: a NodeState that `TestTagNode`'s `mergeAdjacent`
+/// names.
+nonisolated(unsafe) private let testTagColorState = createState(
+  "color", parse: { value -> String in value?.stringValue ?? "" })
+
+/// `testTagCountState`: a derived NodeState of `TestTagNode`.
+nonisolated(unsafe) private let testTagCountState = createState(
+  "count", parse: { value -> Double in value?.numberValue ?? 0 }, derived: true)
+
+/// `TestBoxNode`: a block that holds blocks (`children: 'block'`).
+class TestBoxNode: ElementNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(TestBoxNode.self, type: "test-box", extends: ElementNode.self, children: .block)
+  }
+}
+
+/// `TestSubBoxNode`: a `TestBoxNode` that declares nothing of its own.
+final class TestSubBoxNode: TestBoxNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(TestSubBoxNode.self, type: "test-sub-box", extends: TestBoxNode.self)
+  }
+}
+
+/// `TestTagNode`: an inline element holding inline content, which cannot
+/// be empty; equal adjacent ones (same `tag`, same `color` state) merge. Its
+/// `label` field and `count` state are derived.
+class TestTagNode: ElementNode {
+  var __tag = ""
+  var __label = ""
+  override class func config() throws -> NodeConfig? {
+    try NodeConfig(
+      TestTagNode.self, type: "test-tag", extends: ElementNode.self,
+      json: [
+        SchemaField("label", stringValue(), field: \TestTagNode.__label, derived: true),
+        SchemaField("tag", stringValue(), field: \TestTagNode.__tag),
+      ],
+      stateConfigs: [
+        RequiredNodeStateConfig(testTagColorState), RequiredNodeStateConfig(testTagCountState),
+      ], inline: true, children: .inline,
+      mergeAdjacent: .by([.field("tag"), .state(testTagColorState)]))
+  }
+  override func canBeEmpty() throws -> Bool { false }
+}
+
+/// `TestSubTagNode`: a `TestTagNode` that inherits its declarations, so the
+/// normalization never merges two of them.
+final class TestSubTagNode: TestTagNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(TestSubTagNode.self, type: "test-sub-tag", extends: TestTagNode.self)
+  }
+}
+
+/// `STRUCTURE_JSON(klass)` in ops.ts: what `logNodeStructure` logs.
+private func structureJSON(_ klass: LexicalNode.Type) -> JSONValue {
+  let declared = getDeclaredNodeStructure(klass)
+  var out = JSONObject()
+  if let inline = declared.inline {
+    out["inline"] = .bool(inline)
+  }
+  if let children = declared.children {
+    switch children {
+    case .inline: out["children"] = .string("inline")
+    case .block: out["children"] = .string("block")
+    case .list(let entries):
+      out["children"] = .array(
+        entries.map { entry -> JSONValue in
+          switch entry {
+          case .inline: return .string("inline")
+          case .klass(let k): return .string(k.getType())
+          }
+        })
+    }
+  }
+  if let merge = declared.mergeAdjacent {
+    out["mergeAdjacent"] = .array(
+      merge.by.map { entry -> JSONValue in
+        switch entry {
+        case .field(let name): return .string(name)
+        case .state(let state): return .object(JSONObject([("state", .string(state.key))]))
+        }
+      })
+  }
+  out["derived"] = .array(declared.derived.sorted().map { .string($0) })
+  var by = JSONObject()
+  if let k = declared.declaredBy.inline { by["inline"] = .string(k.getType()) }
+  if let k = declared.declaredBy.children { by["children"] = .string(k.getType()) }
+  if let k = declared.declaredBy.mergeAdjacent { by["mergeAdjacent"] = .string(k.getType()) }
+  out["declaredBy"] = .object(by)
+  return .object(out)
+}
+
+/// The class the active editor registers under `type`.
+private func registeredClass(_ type: String) throws -> LexicalNode.Type {
+  guard let klass = try getEditor()._nodes.get(type)?.klass else {
+    throw ScriptError("unknown node type \(type)")
+  }
+  return klass
+}
+
 /// The session's root element (`sessionDOM(ctx).root` in ops.ts): a root
 /// that is not in its document, as ops.ts's `div` is not, whose document's
 /// body hosts `AriaLiveRegionExtension`'s regions.
@@ -283,6 +387,8 @@ private final class ScriptContext {
   var handles: [String: JSMap<String, String>] = [:]
   /// What `characterLimit` and `tableOfContents` mounted, to unmount.
   var mounted: [String: () -> Void] = [:]
+  /// The disposers `registerNodeStructure` returned, by name.
+  var structures: [String: () -> Void] = [:]
   /// The session's root element, made on first use (`setRootElement`).
   private var root: SessionRoot?
 
@@ -811,6 +917,26 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
   case "setBlockId":
     try setState(
       node(action["key"]?.stringValue ?? ""), blockIdState, action["id"]?.stringValue)
+  case "logNodeStructure":
+    for type in action["types"]?.arrayValue ?? [] {
+      let type = type.stringValue ?? ""
+      ctx.log.append(
+        .array([.string("nodeStructure"), .string(type), structureJSON(try registeredClass(type))]))
+    }
+  case "logBlockContainer":
+    for key in action["keys"]?.arrayValue ?? [] {
+      let key = key.stringValue ?? ""
+      ctx.log.append(
+        .array([.string("blockContainer"), .string(key), .bool(try isBlockContainer(node(key)))]))
+    }
+  case "logStructureEnforced":
+    ctx.log.append(
+      .array([.string("structureEnforced"), .bool(INTERNAL_isNodeStructureEnforced(ctx.editor))]))
+  case "normalizeNodeStructure":
+    try INTERNAL_normalizeNodeStructure(node(action["key"]?.stringValue ?? ""))
+  case "appendNew":
+    let klass = try registeredClass(action["type"]?.stringValue ?? "")
+    try element(node(action["key"]?.stringValue ?? "")).append(try create(klass))
   case "logBlockIds":
     let keys = action["keys"]?.arrayValue ?? []
     ctx.log.append(
@@ -1616,6 +1742,13 @@ private func runSteps(
         }
       } else if step["characterLimit"] != nil || step["tableOfContents"] != nil {
         try mountStep(step, ctx)
+      } else if let name = step["registerNodeStructure"]?.stringValue {
+        ctx.structures[name] = try registerNodeStructure(editor)
+      } else if let name = step["disposeNodeStructure"]?.stringValue {
+        guard let dispose = ctx.structures.removeValue(forKey: name) else {
+          throw ScriptError("no registration \(name)")
+        }
+        dispose()
       } else if let name = step["unmount"]?.stringValue {
         guard let unmount = ctx.mounted.removeValue(forKey: name) else {
           throw ScriptError("nothing mounted as \(name)")

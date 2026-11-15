@@ -40,13 +40,11 @@ impl<V> OrderedMap<V> {
     }
 
     /// `map.get(key)`.
-    #[cfg(feature = "extension")]
     pub(crate) fn get(&self, key: &str) -> Option<&V> {
         let &i = self.index.get(key)?;
         self.entries[i].as_ref().map(|(_, v)| v)
     }
 
-    #[cfg(feature = "extension")]
     pub(crate) fn get_mut(&mut self, key: &str) -> Option<&mut V> {
         let &i = self.index.get(key)?;
         self.entries[i].as_mut().map(|(_, v)| v)

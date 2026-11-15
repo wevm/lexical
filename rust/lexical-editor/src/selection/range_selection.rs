@@ -219,16 +219,9 @@ fn is_leaf_node(node: &NodeRef) -> bool {
     node.is_text() || node.get_latest().is::<LineBreakNode>() || node.is_decorator()
 }
 
-/// `INTERNAL_isInlineContent(node)`: what the node structure normalization
-/// treats as inline content: text, line breaks, the character limit's
-/// `OverflowNode` (an element whose `isInline()` is false), and any node
-/// whose `isInline()` is true. JS tells an `OverflowNode` by its class's
-/// `$config` (type `overflow`, extending `ElementNode`); the port by its type.
+/// `INTERNAL_isInlineContent(node)` ([`crate::internal_is_inline_content`]).
 fn is_inline_content(node: &NodeRef) -> bool {
-    node.is_text()
-        || node.get_latest().is::<LineBreakNode>()
-        || (node.is_element() && node.get_type() == "overflow")
-        || node.is_inline()
+    crate::internal_is_inline_content(node)
 }
 
 /// `$removeParentEmptyElements(startingNode)`: removes the node and each

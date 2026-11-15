@@ -51,6 +51,30 @@ pub struct NodeBase {
     /// The id of the editor state this version was made writable (or
     /// created) in: with the key, which version of the node this is.
     pub(crate) written_in: u64,
+    /// What the node structure normalization recorded of this version's
+    /// rule inputs (JS's `ruleInputs` `WeakMap`, keyed by the node object):
+    /// a new version starts without.
+    pub(crate) structure_rule_inputs: StructureRuleInputs,
+}
+
+/// [`NodeBase::structure_rule_inputs`]: kept by this version only, so a
+/// clone (the next version) starts without one.
+#[derive(Debug, Default)]
+pub(crate) struct StructureRuleInputs(std::cell::Cell<Option<u8>>);
+
+impl Clone for StructureRuleInputs {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+impl StructureRuleInputs {
+    pub(crate) fn get(&self) -> Option<u8> {
+        self.0.get()
+    }
+    pub(crate) fn set(&self, value: Option<u8>) {
+        self.0.set(value);
+    }
 }
 
 /// What every node implements. JS's class hierarchy (`LexicalNode`,
@@ -108,9 +132,18 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
     }
 
     /// `isInline()`: false for an element, true for text and a decorator
-    /// (false for a `DecoratorBlockNode`).
+    /// (false for a `DecoratorBlockNode`). A class whose config chain
+    /// declares `inline` ([`static_node_config_chain`](Self::static_node_config_chain))
+    /// returns the nearest declaration, as the `isInline()` JS synthesizes
+    /// for a class that declares it does.
     fn is_inline(&self) -> bool {
-        self.text().is_some() || (self.is_decorator() && !is_decorator_block(self))
+        if self.text().is_some() {
+            return true;
+        }
+        if let Some(inline) = crate::structure::declared_inline(self.as_node()) {
+            return inline;
+        }
+        self.is_decorator() && !is_decorator_block(self)
     }
 
     /// Whether the node extends `DecoratorNode` (`$isDecoratorNode`): a leaf
@@ -334,9 +367,64 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
 
     /// Whether the `children` the class declares in its `$config()`
     /// (`getDeclaredNodeStructure(klass).children`) is `'inline'` or a list
-    /// that includes `'inline'`: a block that holds text. False by default.
+    /// that includes `'inline'`: a block that holds text. By default, what
+    /// [`static_node_config_chain`](Self::static_node_config_chain)
+    /// declares.
     fn declares_inline_children(&self) -> bool {
-        false
+        use crate::structure::{NodeChildEntry, NodeChildrenConfig};
+        match crate::structure::get_declared_node_structure(self.as_node()).children {
+            Some(NodeChildrenConfig::Inline) => true,
+            Some(NodeChildrenConfig::List(entries)) => entries.contains(&NodeChildEntry::Inline),
+            _ => false,
+        }
+    }
+
+    /// The node-structure keys of the class's `$config()` and of the classes
+    /// it extends (`iterStaticNodeConfigChain(klass)`), most derived first:
+    /// `inline`, `children`, `mergeAdjacent` and the values it declares
+    /// `derived` (`@experimental node-structure`). A class that extends
+    /// another returns its own link followed by that class's chain. None by
+    /// default: the class declares nothing.
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        Vec::new()
+    }
+
+    /// `INTERNAL_$afterStructureMerge(last, first)` on the element `this`
+    /// (internal, for the node structure normalization): `this` has just
+    /// merged its next sibling, and `last` (its last child before) and
+    /// `first` (the sibling's first child) meet at the seam. Returns whether
+    /// the class has the hook (`ListNode` joins nested lists there). False by
+    /// default.
+    fn internal_after_structure_merge(
+        &self,
+        this: &NodeRef,
+        last: &NodeRef,
+        first: &NodeRef,
+    ) -> Result<bool, LexicalError> {
+        let _ = (this, last, first);
+        Ok(false)
+    }
+
+    /// `INTERNAL_$afterStructureSplit(original, preceding)` on `this`, a
+    /// copy of `original` that the node structure normalization split off
+    /// it, after the content `preceding` (an ordered list continues its
+    /// numbering). Nothing by default.
+    fn internal_after_structure_split(
+        &self,
+        this: &NodeRef,
+        original: &NodeRef,
+        preceding: &[NodeRef],
+    ) -> Result<(), LexicalError> {
+        let _ = (this, original, preceding);
+        Ok(())
+    }
+
+    /// `INTERNAL_$liftsFromStructure`: the holder's hook for a child its
+    /// declared `children` allow that the node structure normalization must
+    /// still lift out, given what else it holds (a list item lifts a nested
+    /// list that is not all it holds). None by default.
+    fn internal_lifts_from_structure(&self) -> Option<crate::structure::LiftsFromStructure> {
+        None
     }
 
     /// `TextNode.isTextEntity()`: whether `registerLexicalTextEntity` (the

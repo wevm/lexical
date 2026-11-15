@@ -148,10 +148,104 @@ impl ListItemNode {
     }
 }
 
+/// `ListItemNode.INTERNAL_$liftsFromStructure(child, explicit)`: a nested
+/// list may only be all a list item holds; next to other content it is
+/// lifted out, the item split around it. In an update's normalization, only
+/// an item the update creates or changes itself is lifted (one that already
+/// held such a list keeps it through an edit elsewhere); the normalization of
+/// what code changed without transforms (`explicit`) lifts every such item.
+fn lifts_from_structure(
+    this: &NodeRef,
+    child: &NodeRef,
+    explicit: bool,
+) -> Result<bool, LexicalError> {
+    if !is_list_node(child) || this.get_children_size() <= 1 {
+        return Ok(false);
+    }
+    if explicit {
+        return Ok(true);
+    }
+    let Some(editor) = crate::updates::get_active_editor() else {
+        return Ok(true);
+    };
+    let committed = editor.get_editor_state();
+    // `editor._cloneNotNeeded.has(key)`: the node was made writable (or
+    // created) in this update.
+    let written_now =
+        this.get_latest().base().written_in == crate::updates::get_active_editor_state().0.id;
+    Ok(!committed.0.node_map.borrow().contains_key(this.get_key()) || written_now)
+}
+
+/// `$pointsAround(parent, items)`: for the selection's element points in
+/// `parent`, which holds the consecutive `items`, what puts each of them
+/// back once the items are moved into a list inserted in their place (a
+/// point before or after them stays so in `parent`; one between two of them
+/// goes to the end of the first).
+#[allow(clippy::type_complexity)]
+fn points_around(
+    parent: &NodeRef,
+    items: &[NodeRef],
+) -> Result<Option<Box<dyn FnOnce() -> Result<(), LexicalError>>>, LexicalError> {
+    let Some(selection) = get_selection().filter(SelectionRef::is_range) else {
+        return Ok(None);
+    };
+    let parent_key = parent.get_key().to_owned();
+    let first = items[0].get_index_within_parent().unwrap_or(0);
+    let saved: Vec<(Which, usize)> = [Which::Anchor, Which::Focus]
+        .into_iter()
+        .filter_map(|which| {
+            let point = selection.point(which).expect("a range selection");
+            (point.point_type == PointType::Element && point.key == parent_key)
+                .then_some((which, point.offset))
+        })
+        .collect();
+    if saved.is_empty() {
+        return Ok(None);
+    }
+    let items = items.to_vec();
+    Ok(Some(Box::new(move || {
+        for (which, offset) in saved {
+            if offset <= first {
+                selection.point_set(which, &parent_key, offset, PointType::Element)?;
+            } else if offset < first + items.len() {
+                let item = &items[offset - first - 1];
+                selection.point_set(
+                    which,
+                    item.get_key(),
+                    item.get_children_size(),
+                    PointType::Element,
+                )?;
+            } else {
+                selection.point_set(
+                    which,
+                    &parent_key,
+                    offset - items.len() + 1,
+                    PointType::Element,
+                )?;
+            }
+        }
+        Ok(())
+    })))
+}
+
 impl LexicalNode for ListItemNode {
-    /// `children: ['inline', ListNode]` in its `$config()`.
-    fn declares_inline_children(&self) -> bool {
-        true
+    /// The `$config()` of `ListItemNode`: `children: ['inline', ListNode]`,
+    /// and its schema's derived `indent` and `value`.
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        use crate::structure::{
+            NodeChildEntry, NodeChildrenConfig, NodeClassRef, NodeConfigLink, StaticNodeConfig,
+        };
+        vec![NodeConfigLink::new(
+            "listitem",
+            StaticNodeConfig {
+                children: Some(NodeChildrenConfig::List(vec![
+                    NodeChildEntry::Inline,
+                    NodeChildEntry::Class(NodeClassRef::of::<super::ListNode>()),
+                ])),
+                derived: vec!["indent", "value"],
+                ..StaticNodeConfig::default()
+            },
+        )]
     }
 
     fn get_type(&self) -> &'static str {
@@ -448,11 +542,17 @@ impl LexicalNode for ListItemNode {
         Ok(())
     }
 
+    /// `ListItemNode.INTERNAL_$liftsFromStructure(child, explicit)`.
+    fn internal_lifts_from_structure(&self) -> Option<crate::structure::LiftsFromStructure> {
+        Some(lifts_from_structure)
+    }
+
     /// The `$transform` of `ListItemNode.$config()`: an item outside a list
     /// is wrapped, with the items beside it, in the list
     /// `createParentElementNode` makes, lifted out of blocks to the nearest
-    /// root. (`NodeStructureExtension`, which lifts it itself where it
-    /// enforces structure, isn't ported.)
+    /// root. Where `NodeStructureExtension` enforces declared structure, it
+    /// lifts the new list itself, and the selection's element points in the
+    /// parent move with the items (`$pointsAround`).
     fn transform(&self, this: &NodeRef) -> Result<(), LexicalError> {
         let Some(parent) = this.get_parent() else {
             return Ok(());
@@ -490,9 +590,28 @@ impl LexicalNode for ListItemNode {
                 children.push(origin);
             }
         }
+        let enforced = crate::structure::is_structure_enforced_on_active_editor();
+        let points = if enforced {
+            points_around(&parent, &children)?
+        } else {
+            None
+        };
         this.insert_before(&new_parent, true)?;
         new_parent.splice(0, 0, &children)?;
-        if !is_root_or_shadow_root(&*parent.get_latest()) {
+        if let Some(points) = points {
+            points()?;
+        }
+        if enforced {
+            // The ancestors' own transforms run on the result (a list that
+            // holds the parent renumbers its items), as after a repair of
+            // the normalization.
+            let mut n = Some(parent.clone());
+            while let Some(current) = n.filter(|n| !is_root_or_shadow_root(&*n.get_latest())) {
+                current.mark_dirty();
+                n = current.get_parent();
+            }
+        }
+        if !is_root_or_shadow_root(&*parent.get_latest()) && !enforced {
             insert_node_to_nearest_root_at_caret(
                 &new_parent,
                 &rewind_sibling_caret(&get_sibling_caret(&new_parent, CaretDirection::Next))?,

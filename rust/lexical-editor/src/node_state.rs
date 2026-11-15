@@ -240,6 +240,11 @@ impl AnyStateConfig {
     pub fn is(&self, other: &AnyStateConfig) -> bool {
         std::ptr::addr_eq(Rc::as_ptr(&self.0), Rc::as_ptr(&other.0))
     }
+
+    /// `isEqual(a, b)` of two values of the config's type.
+    pub(crate) fn is_equal_erased(&self, a: &dyn Any, b: &dyn Any) -> bool {
+        self.0.is_equal_any(a, b)
+    }
 }
 
 impl fmt::Debug for AnyStateConfig {
@@ -767,6 +772,15 @@ pub(crate) fn get_writable_node_state(node: &NodeRef) -> Result<NodeStateRef, Le
     };
     mutate(node.get_key(), |n| n.base_mut().state = Some(state.clone()));
     Ok(state)
+}
+
+/// [`get_state_any`], for the node structure normalization's
+/// `mergeAdjacent` comparison.
+pub(crate) fn get_state_erased(
+    node: &dyn LexicalNode,
+    config: &AnyStateConfig,
+) -> Result<Rc<dyn Any>, LexicalError> {
+    get_state_any(node, config)
 }
 
 /// `$getState(node, stateConfig, NODE_STATE_DIRECT)` without its value type.

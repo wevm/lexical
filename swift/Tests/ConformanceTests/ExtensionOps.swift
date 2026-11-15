@@ -7,6 +7,7 @@ import LexicalHashtag
 import LexicalHistory
 import LexicalLink
 import LexicalList
+import LexicalMark
 import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
@@ -54,6 +55,7 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "HashtagExtension": HashtagExtension
   case "LinkExtension": LinkExtension
   case "ListExtension": ListExtension
+  case "NodeStructureExtension": NodeStructureExtension
   case "NormalizeInlineElementsExtension": NormalizeInlineElementsExtension
   case "OverflowExtension": OverflowExtension
   case "PlainTextExtension": PlainTextExtension
@@ -331,6 +333,16 @@ final class TestExtensions {
           }
           return true
         })
+    case "NodeStructureExtension":
+      return try configured(
+        NodeStructureExtension,
+        partials(key, configs) { (p: inout Partial<NodeStructureConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          default: return false
+          }
+          return true
+        })
     case "BlockIdExtension":
       return try configured(
         BlockIdExtension,
@@ -479,6 +491,9 @@ final class TestExtensions {
     case ("BlockIdExtension", "disabled"):
       try getExtensionDependencyFromEditor(editor, BlockIdExtension).output.disabled.set(
         try bool(value))
+    case ("NodeStructureExtension", "disabled"):
+      try getExtensionDependencyFromEditor(editor, NodeStructureExtension).output.disabled.set(
+        try bool(value))
     case ("SelectBlockExtension", "disabled"):
       try getExtensionDependencyFromEditor(editor, SelectBlockExtension).output.disabled.set(
         try bool(value))
@@ -564,6 +579,13 @@ final class TestExtensions {
       switch type {
       case "decorator-text": nodes.append(.klass(DecoratorTextNode.self))
       case "horizontalrule": nodes.append(.klass(HorizontalRuleNode.self))
+      case "autolink": nodes.append(.klass(AutoLinkNode.self))
+      case "mark": nodes.append(.klass(MarkNode.self))
+      case "overflow": nodes.append(.klass(OverflowNode.self))
+      case "test-box": nodes.append(.klass(TestBoxNode.self))
+      case "test-sub-box": nodes.append(.klass(TestSubBoxNode.self))
+      case "test-tag": nodes.append(.klass(TestTagNode.self))
+      case "test-sub-tag": nodes.append(.klass(TestSubTagNode.self))
       default: throw ScriptError("unknown node type \(type)")
       }
     }

@@ -68,7 +68,9 @@ import {
   LexicalBuilder,
   namedSignals,
   type NamedSignalsOutput,
+  NodeStructureExtension,
   NormalizeInlineElementsExtension,
+  registerNodeStructure,
   SelectBlockExtension,
   TabIndentationExtension,
   untracked,
@@ -211,12 +213,14 @@ import {
 import {
   $caretRangeFromSelection,
   $cloneWithProperties,
+  $create,
   $createNodeSelection,
   $createParagraphNode,
   $createRangeSelection,
   $createTextNode,
   $getCaretRange,
   $getChildCaret,
+  $getEditor,
   $getNodeByKey,
   $getRoot,
   $getSelection,
@@ -230,6 +234,7 @@ import {
   $getStateChange,
   $getTextPointCaret,
   $insertNodes,
+  $isBlockContainer,
   $isElementNode,
   $isNodeSelection,
   $isRangeSelection,
@@ -265,20 +270,26 @@ import {
   DELETE_LINE_COMMAND,
   DELETE_WORD_COMMAND,
   type EditorState,
-  type ElementNode,
+  ElementNode,
   FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
+  getDeclaredNodeStructure,
   getStyleObjectFromCSS,
   INDENT_CONTENT_COMMAND,
   INSERT_LINE_BREAK_COMMAND,
   INSERT_PARAGRAPH_COMMAND,
   INSERT_TAB_COMMAND,
+  INTERNAL_$normalizeNodeStructure,
+  INTERNAL_isNodeStructureEnforced,
+  type Klass,
   type LexicalCommand,
   type LexicalEditor,
   type LexicalEditorWithDispose,
   type LexicalExtension,
   type LexicalNode,
   type NodeCaret,
+  type NodeChildrenConfig,
+  nodeSchema,
   OUTDENT_CONTENT_COMMAND,
   ParagraphNode,
   type PointCaret,
@@ -292,8 +303,10 @@ import {
   type SerializedLexicalNode,
   SET_TEXT_FORMAT_COMMAND,
   shallowMergeConfig,
+  stringValue,
   TextNode,
   UNDO_COMMAND,
+  withField,
 } from 'lexical';
 import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -640,6 +653,26 @@ export type Action =
    */
   | {do: 'logBlockIds'; keys: string[]}
   /**
+   * Logs `['nodeStructure', type, structure]` for each type:
+   * `getDeclaredNodeStructure` of the class the editor registers under it,
+   * as STRUCTURE_JSON writes it.
+   */
+  | {do: 'logNodeStructure'; types: string[]}
+  /** Logs `['blockContainer', key, $isBlockContainer(node)]` for each key. */
+  | {do: 'logBlockContainer'; keys: string[]}
+  /**
+   * Logs `['structureEnforced', INTERNAL_isNodeStructureEnforced(editor)]`.
+   */
+  | {do: 'logStructureEnforced'}
+  /** `INTERNAL_$normalizeNodeStructure(node)` of the node `key`. */
+  | {do: 'normalizeNodeStructure'; key: string}
+  /**
+   * `$create(klass)` of the class the editor registers under `type`,
+   * appended to the element `key` (the test classes of scripts/node-structure
+   * have no `$create...` function of their own).
+   */
+  | {do: 'appendNew'; key: string; type: string}
+  /**
    * Logs `['blockById', id, key]`: the key of `$getBlockById(id)`, or
    * `null`.
    */
@@ -853,6 +886,13 @@ export type Step = (
    * unregisters the highlighting transforms and the indent handlers.
    */
   | {unregisterCodeHighlighting: true}
+  /**
+   * `registerNodeStructure(editor)` (@lexical/extension), its disposer kept
+   * under this name.
+   */
+  | {registerNodeStructure: string}
+  /** Calls the disposer `registerNodeStructure` kept under this name. */
+  | {disposeNodeStructure: string}
 ) & {now?: number};
 
 /**
@@ -1158,6 +1198,8 @@ type Context = {
   dom: {window: ReturnType<typeof browserWindow>; root: HTMLElement} | null;
   /** What `characterLimit` and `tableOfContents` mounted, to unmount. */
   mounted: Map<string, () => void>;
+  /** The disposers `registerNodeStructure` returned, by name. */
+  structures: Map<string, () => void>;
 };
 
 /**
@@ -1198,6 +1240,117 @@ export class TestDecoratorBlockNode extends DecoratorBlockNode {
   decorate(): never {
     return null as never;
   }
+}
+
+// The node classes of scripts/node-structure, for the structure rules the
+// packages' own nodes don't declare: a block container (`children:
+// 'block'`), an inline element merged by a schema field and a NodeState,
+// derived values, and subclasses that inherit those declarations.
+
+/** `color`: a NodeState that `TestTagNode`'s `mergeAdjacent` names. */
+const testTagColorState = createState('color', {
+  parse: (v: unknown) => (typeof v === 'string' ? v : ''),
+});
+
+/** `count`: a derived NodeState of `TestTagNode`. */
+const testTagCountState = createState('count', {
+  derived: true,
+  parse: (v: unknown) => (typeof v === 'number' ? v : 0),
+});
+
+const testTagSchema = nodeSchema<TestTagNode>()({
+  label: withField(stringValue(), {derived: true, field: '__label'}),
+  tag: withField(stringValue(), {field: '__tag'}),
+});
+
+/** `test-box`: a block that holds blocks (`children: 'block'`), a callout. */
+export class TestBoxNode extends ElementNode {
+  $config() {
+    return this.config('test-box', {children: 'block', extends: ElementNode});
+  }
+}
+
+/** `test-sub-box`: a `TestBoxNode` that declares nothing of its own. */
+export class TestSubBoxNode extends TestBoxNode {
+  $config() {
+    return this.config('test-sub-box', {extends: TestBoxNode});
+  }
+}
+
+/**
+ * `test-tag`: an inline element holding inline content, which cannot be
+ * empty; equal adjacent ones (same `tag`, same `color` state) merge. Its
+ * `label` field and `count` state are derived.
+ */
+export class TestTagNode extends ElementNode {
+  __tag: string = '';
+  __label: string = '';
+  $config() {
+    return this.config('test-tag', {
+      children: 'inline',
+      extends: ElementNode,
+      inline: true,
+      json: testTagSchema,
+      mergeAdjacent: {by: ['tag', testTagColorState]},
+      stateConfigs: [testTagColorState, testTagCountState],
+    });
+  }
+  canBeEmpty(): false {
+    return false;
+  }
+}
+
+/**
+ * `test-sub-tag`: a `TestTagNode` that inherits its declarations, so the
+ * normalization never merges two of them (a subclass merges by its own code).
+ */
+export class TestSubTagNode extends TestTagNode {
+  $config() {
+    return this.config('test-sub-tag', {extends: TestTagNode});
+  }
+}
+
+/**
+ * `getDeclaredNodeStructure(klass)` as `logNodeStructure` logs it: `inline`,
+ * `children` (`'inline'`, `'block'`, or the list with each class as its
+ * type), `mergeAdjacent` (its `by`, a NodeState as `{state: key}`), each when
+ * declared, then `derived` (sorted) and `declaredBy` (each class as its type).
+ */
+function STRUCTURE_JSON(klass: Klass<LexicalNode>): Json {
+  const declared = getDeclaredNodeStructure(klass);
+  const children = (c: NodeChildrenConfig): Json =>
+    typeof c === 'string' ? c : c.map(e => (e === 'inline' ? e : e.getType()));
+  const out: {[key: string]: Json} = {};
+  if (declared.inline !== undefined) {
+    out.inline = declared.inline;
+  }
+  if (declared.children !== undefined) {
+    out.children = children(declared.children);
+  }
+  if (declared.mergeAdjacent !== undefined) {
+    out.mergeAdjacent = declared.mergeAdjacent.by.map(e =>
+      typeof e === 'string' ? e : {state: e.key},
+    );
+  }
+  out.derived = [...declared.derived].sort();
+  const by: {[key: string]: Json} = {};
+  for (const key of ['inline', 'children', 'mergeAdjacent'] as const) {
+    const k = declared.declaredBy[key];
+    if (k !== undefined) {
+      by[key] = k.getType();
+    }
+  }
+  out.declaredBy = by;
+  return out;
+}
+
+/** The class `editor` registers under `type`. */
+function $registeredClass(type: string): Klass<LexicalNode> {
+  const registered = $getEditor()._nodes.get(type);
+  if (registered === undefined) {
+    throw new Error(`unknown node type ${type}`);
+  }
+  return registered.klass;
 }
 
 /**
@@ -2631,6 +2784,32 @@ function $runAction(action: Action, ctx: Context): void {
     case 'setBlockId':
       $setState($node(action.key), blockIdState, action.id ?? undefined);
       return;
+    case 'logNodeStructure':
+      for (const type of action.types) {
+        ctx.log.push([
+          'nodeStructure',
+          type,
+          STRUCTURE_JSON($registeredClass(type)),
+        ]);
+      }
+      return;
+    case 'logBlockContainer':
+      for (const key of action.keys) {
+        ctx.log.push(['blockContainer', key, $isBlockContainer($node(key))]);
+      }
+      return;
+    case 'logStructureEnforced':
+      ctx.log.push([
+        'structureEnforced',
+        INTERNAL_isNodeStructureEnforced(ctx.editor),
+      ]);
+      return;
+    case 'normalizeNodeStructure':
+      INTERNAL_$normalizeNodeStructure($node(action.key));
+      return;
+    case 'appendNew':
+      element($node(action.key)).append($create($registeredClass(action.type)));
+      return;
     case 'logBlockIds':
       ctx.log.push([
         'blockIds',
@@ -2961,6 +3140,7 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['HistoryExtension', HistoryExtension],
   ['LinkExtension', LinkExtension],
   ['ListExtension', ListExtension],
+  ['NodeStructureExtension', NodeStructureExtension],
   ['NormalizeInlineElementsExtension', NormalizeInlineElementsExtension],
   ['OverflowExtension', OverflowExtension],
   ['PlainTextExtension', PlainTextExtension],
@@ -3064,9 +3244,16 @@ function realConfig(ctx: Context, config: ExtensionConfig): ExtensionConfig {
 }
 
 /** The node classes an `ExtensionSpec`'s `nodes` names, by type. */
-const NODES = new Map<string, typeof LexicalNode>([
+const NODES = new Map<string, Klass<LexicalNode>>([
+  ['autolink', AutoLinkNode],
   ['decorator-text', DecoratorTextNode],
   ['horizontalrule', HorizontalRuleNode],
+  ['mark', MarkNode],
+  ['overflow', OverflowNode],
+  ['test-box', TestBoxNode],
+  ['test-sub-box', TestSubBoxNode],
+  ['test-tag', TestTagNode],
+  ['test-sub-tag', TestSubTagNode],
 ]);
 
 const EXTENSION_PHASES: ExtensionPhase[] = [
@@ -3348,6 +3535,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     log: [],
     mounted: new Map(),
     saved: new Map(),
+    structures: new Map(),
   };
   let build: BuildResult | undefined;
   if (script.extensions !== undefined) {
@@ -3594,6 +3782,17 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
         });
       } else if ('characterLimit' in step || 'tableOfContents' in step) {
         mountStep(step, ctx);
+      } else if ('registerNodeStructure' in step) {
+        ctx.structures.set(
+          step.registerNodeStructure,
+          registerNodeStructure(editor),
+        );
+      } else if ('disposeNodeStructure' in step) {
+        const dispose = ctx.structures.get(step.disposeNodeStructure);
+        if (dispose === undefined) {
+          throw new Error(`no registration ${step.disposeNodeStructure}`);
+        }
+        dispose();
       } else if ('unmount' in step) {
         const unmount = ctx.mounted.get(step.unmount);
         if (unmount === undefined) {
@@ -3671,6 +3870,8 @@ function runExtensionStep(
     | {tableOfContents: true}
     | {unmount: string}
     | {unregisterCodeHighlighting: true}
+    | {registerNodeStructure: string}
+    | {disposeNodeStructure: string}
   >,
   ctx: Context,
 ): void {

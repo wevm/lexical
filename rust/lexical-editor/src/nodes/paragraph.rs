@@ -22,9 +22,9 @@ pub struct ParagraphNode {
 }
 
 impl LexicalNode for ParagraphNode {
-    /// `children: 'inline'` in its `$config()`.
-    fn declares_inline_children(&self) -> bool {
-        true
+    /// The `$config()` of `ParagraphNode`: `children: 'inline'`.
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        crate::structure::inline_holder_chain(self.get_type())
     }
 
     fn get_type(&self) -> &'static str {

@@ -12,7 +12,8 @@
 //! exports them, and any other name is a command the script makes.
 //!
 //! A script with `richText: true` registers `@lexical/rich-text`'s nodes
-//! (`HeadingNode`, `QuoteNode`) and `registerRichText`'s handlers.
+//! (`HeadingNode`, `QuoteNode`) and `registerRichText`'s handlers, and one
+//! with `plainText: true` registers `registerPlainText`'s.
 //!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
@@ -725,6 +726,9 @@ impl Session {
         let ctx = Rc::new(Ctx::default());
         if rich_text {
             let _unregister = lexical::rich_text::register_rich_text(&editor);
+        }
+        if script.get("plainText").and_then(Value::as_bool) == Some(true) {
+            let _unregister = lexical::plain_text::register_plain_text(&editor);
         }
         for name in script
             .get("transforms")

@@ -32,10 +32,22 @@ pub struct NodeClass {
     pub(crate) import_json: fn(&Object) -> Result<NodeRef, LexicalError>,
     /// The `stateConfigs` of the class's `$config`.
     pub(crate) state_configs: fn() -> Vec<RequiredNodeStateConfig>,
+    /// Whether the class is an `ElementNode` with an `isInline` of its own
+    /// (`klass.prototype.isInline !== ElementNode.prototype.isInline`,
+    /// which `NormalizeInlineElementsExtension` asks). A trait method can't
+    /// tell an override, so this asks a fresh node whether it is an inline
+    /// element; every ported class answers the same for all its nodes.
+    #[cfg_attr(not(feature = "extension"), allow(dead_code))]
+    pub(crate) is_inline_element: fn() -> bool,
 }
 
 fn state_configs_of<T: LexicalNode + Default>() -> Vec<RequiredNodeStateConfig> {
     T::default().state_configs()
+}
+
+fn is_inline_element_of<T: LexicalNode + Default>() -> bool {
+    let node = T::default();
+    node.element().is_some() && node.is_inline()
 }
 
 /// The `importJSON` a class gets when it declares none
@@ -54,10 +66,12 @@ impl NodeClass {
             node_type: T::default().get_type(),
             import_json: import_default::<T>,
             state_configs: state_configs_of::<T>,
+            is_inline_element: is_inline_element_of::<T>,
         }
     }
 
-    /// A class with its own `importJSON`, which declares no NodeState.
+    /// A class with its own `importJSON`, which declares no NodeState and
+    /// is not an inline element.
     pub fn with_import_json(
         node_type: &'static str,
         import_json: fn(&Object) -> Result<NodeRef, LexicalError>,
@@ -66,6 +80,7 @@ impl NodeClass {
             node_type,
             import_json,
             state_configs: Vec::new,
+            is_inline_element: || false,
         }
     }
 
@@ -478,6 +493,21 @@ impl Editor {
         node_type: &'static str,
         transform: impl Fn(&NodeRef) -> Result<(), LexicalError> + 'static,
     ) -> Unregister {
+        let unregister = self.add_node_transform(node_type, transform);
+        mark_nodes_with_types_as_dirty(self, &[node_type]);
+        unregister
+    }
+
+    /// `registeredNode.transforms.add(transform)`: what
+    /// [`register_node_transform`](Self::register_node_transform) does
+    /// before marking the type's nodes dirty, for callers that add to a
+    /// class's transforms directly, as `NormalizeInlineElementsExtension`
+    /// does.
+    pub(crate) fn add_node_transform(
+        &self,
+        node_type: &'static str,
+        transform: impl Fn(&NodeRef) -> Result<(), LexicalError> + 'static,
+    ) -> Unregister {
         let id = self.next_id();
         self.0
             .transforms
@@ -485,7 +515,6 @@ impl Editor {
             .entry(node_type)
             .or_default()
             .push((id, Rc::new(transform)));
-        mark_nodes_with_types_as_dirty(self, &[node_type]);
         let weak = self.weak();
         Box::new(move || {
             if let Some(inner) = weak.upgrade()

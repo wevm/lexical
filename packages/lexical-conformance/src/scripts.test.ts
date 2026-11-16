@@ -3035,3 +3035,369 @@ test('scripts/set-blocks-type', () => {
     ],
   );
 });
+
+test('scripts/decorator', () => {
+  // DecoratorNode (LexicalDecoratorNode.ts) and the places the model treats
+  // decorators specially, with @lexical/extension's two decorators: a
+  // HorizontalRuleNode (a block decorator whose text is '\n') and a
+  // DecoratorTextNode (an inline one, formattable, with a flat `format`
+  // state). Commands are dispatched outside an update, as an input layer
+  // does; a headless editor has no `Selection.modify`, so a deletion or move
+  // the model does not resolve around a decorator or block throws.
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const dt = (format?: number): Node =>
+    ({
+      type: 'decorator-text',
+      version: 1,
+      ...(format === undefined ? {} : {format}),
+    }) as Node;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const backspace = run('DELETE_CHARACTER_COMMAND', true);
+  const del = run('DELETE_CHARACTER_COMMAND', false);
+  const enter = run('INSERT_PARAGRAPH_COMMAND');
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const selectNodes = (...keys: string[]): Action => ({
+    do: 'selectNodes',
+    keys,
+  });
+  const selectionText: Action = {do: 'logSelectionText'};
+  const setBlocksType = (
+    block: 'paragraph' | 'quote' | `h${1 | 2 | 3 | 4 | 5 | 6}`,
+  ): Action => ({
+    block,
+    do: 'setBlocksType',
+  });
+  const modify = (alter: string, isBackward: boolean, granularity: string) =>
+    call('modify', alter, isBackward, granularity);
+  const extension = true;
+  const richText = true;
+  // Keys: the paragraph 1, "ab" 2, the inline decorator 3, "cd" 4, the rule
+  // 5, the paragraph 6, "ef" 7.
+  const start = doc(p(t('ab'), dt(), t('cd')), hr(), p(t('ef')));
+  emit(
+    'decorator',
+    "DecoratorNode, with @lexical/extension's HorizontalRuleNode (block) and DecoratorTextNode (inline): their JSON and text content, inserting them, typing and Enter around them, a NodeSelection of one, Backspace and Delete next to one (and the headless editor's throw where the model does not resolve the deletion), modify around them, removing text over them, formatting, $setBlocksType across a block decorator, and undo.",
+    [
+      {
+        extension,
+        name: 'JSON and text content',
+        richText,
+        steps: [
+          doc(p(t('ab'), dt(3), t('cd')), hr(), p(dt(), br(), t('ef')), hr()),
+          update(select(['2', 0, 'text'], ['9', 2, 'text']), selectionText),
+          update(select(['2', 1, 'text'], ['4', 1, 'text']), selectionText),
+          update(selectNodes('5'), selectionText),
+          update(selectNodes('3', '5', '7'), selectionText),
+          update(
+            select(['root', 1, 'element'], ['root', 2, 'element']),
+            selectionText,
+          ),
+        ],
+      },
+      {
+        extension,
+        name: 'inserting inline and block decorators',
+        richText,
+        steps: [
+          doc(p(t('hello world')), p()),
+          update(select(['2', 5, 'text']), call('insertNodes', [dt()])),
+          update(select(['2', 2, 'text']), call('insertNodes', [hr()])),
+          update(select(['3', 0, 'element']), call('insertNodes', [dt(1)])),
+          update(select(['3', 1, 'element']), call('insertNodes', [hr()])),
+          update(call('insertNodes', [hr(), p(t('x'))])),
+          update(select(['root', 0, 'element']), call('insertNodes', [hr()])),
+          update(select(['root', 1, 'element']), call('insertNodes', [dt()])),
+        ],
+      },
+      {
+        extension,
+        name: 'inserting decorators at the end of a block and in a node selection',
+        richText,
+        steps: [
+          doc(p(t('one')), p(t('two'))),
+          update(select(['2', 3, 'text']), call('insertNodes', [hr()])),
+          update(select(['4', 0, 'text']), call('insertNodes', [hr()])),
+          update(selectNodes('5'), call('insertNodes', [dt()])),
+        ],
+      },
+      {
+        extension,
+        name: 'inserting a block in a node selection of a decorator',
+        richText,
+        steps: [
+          start,
+          update(selectNodes('5'), call('insertNodes', [p(t('new'))])),
+        ],
+      },
+      {
+        extension,
+        name: 'inserting a block decorator in a node selection of an inline one',
+        richText,
+        steps: [start, update(selectNodes('3'), call('insertNodes', [hr()]))],
+      },
+      {
+        extension,
+        name: 'typing around decorators',
+        richText,
+        steps: [
+          start,
+          update(select(['1', 1, 'element'])),
+          type('x'),
+          update(select(['1', 2, 'element'])),
+          type('y'),
+          update(select(['root', 1, 'element'])),
+          type('z'),
+          update(select(['root', 2, 'element'])),
+          type('w'),
+        ],
+      },
+      {
+        extension,
+        name: 'typing in a paragraph that holds only a decorator',
+        richText,
+        steps: [
+          doc(p(dt()), p(dt())),
+          update(select(['1', 0, 'element'])),
+          type('a'),
+          update(select(['3', 1, 'element'])),
+          type('b'),
+        ],
+      },
+      {
+        extension,
+        name: 'Enter around decorators',
+        richText,
+        steps: [
+          start,
+          update(select(['1', 2, 'element'])),
+          enter,
+          update(select(['root', 1, 'element'])),
+          enter,
+          update(select(['root', 3, 'element'])),
+          enter,
+        ],
+      },
+      {
+        extension,
+        name: 'a node selection of a decorator',
+        richText,
+        steps: [
+          start,
+          update(selectNodes('3')),
+          type('q'),
+          update(selectNodes('5')),
+          backspace,
+          update(selectNodes('3')),
+          del,
+          update(node('7', 'selectStart'), selectNodes('7')),
+          update(node('7', 'remove')),
+        ],
+      },
+      {
+        extension,
+        name: 'selecting next to a decorator',
+        richText,
+        steps: [
+          start,
+          update(node('3', 'selectNext')),
+          update(node('3', 'selectPrevious')),
+          update(node('5', 'selectNext')),
+          update(node('5', 'selectPrevious')),
+          update(node('5', 'selectStart')),
+          update(node('3', 'selectEnd')),
+        ],
+      },
+      {
+        extension,
+        name: 'Backspace and Delete next to an inline decorator',
+        richText,
+        steps: [
+          // Keys: "ab" 2, decorators 3, 5 and 7, "cd" 4, "ef" 6.
+          doc(p(t('ab'), dt(), t('cd'), dt(), t('ef'), dt())),
+          update(select(['6', 0, 'text'])),
+          backspace,
+          update(select(['2', 2, 'text'])),
+          del,
+          update(select(['1', 2, 'element'])),
+          backspace,
+          // In the middle of text: headless JS has no Selection.modify.
+          update(select(['2', 1, 'text'])),
+          backspace,
+        ],
+      },
+      {
+        extension,
+        name: 'Backspace and Delete next to a block decorator',
+        richText,
+        steps: [
+          doc(p(t('ab')), hr(), p(t('cd')), hr(), p(), hr()),
+          update(select(['2', 2, 'text'])),
+          del,
+          update(select(['5', 0, 'text'])),
+          backspace,
+          update(select(['7', 0, 'element'])),
+          backspace,
+        ],
+      },
+      {
+        extension,
+        name: 'Backspace and Delete in an empty paragraph next to a block decorator',
+        richText,
+        steps: [
+          doc(hr(), p(), p(t('x')), p(), hr()),
+          update(select(['2', 0, 'element'])),
+          backspace,
+          update(select(['5', 0, 'element'])),
+          del,
+          update(select(['root', 0, 'element'])),
+          del,
+        ],
+      },
+      {
+        extension,
+        name: 'modify around decorators',
+        richText,
+        steps: [
+          start,
+          update(select(['2', 2, 'text']), modify('move', false, 'character')),
+          update(select(['4', 0, 'text']), modify('move', true, 'character')),
+          update(
+            select(['2', 2, 'text']),
+            modify('extend', false, 'character'),
+          ),
+          update(select(['4', 2, 'text']), modify('move', false, 'character')),
+          update(select(['7', 0, 'text']), modify('move', true, 'character')),
+          update(
+            select(['4', 2, 'text']),
+            modify('extend', false, 'character'),
+          ),
+          update(
+            select(['2', 2, 'text']),
+            modify('move', false, 'lineboundary'),
+          ),
+          update(select(['2', 1, 'text']), modify('move', false, 'character')),
+          update(
+            select(['2', 0, 'text'], ['4', 1, 'text']),
+            modify('move', false, 'character'),
+          ),
+        ],
+      },
+      {
+        extension,
+        name: 'removing text over decorators',
+        richText,
+        steps: [
+          start,
+          update(
+            select(['2', 1, 'text'], ['4', 1, 'text']),
+            call('removeText'),
+          ),
+          update(
+            select(['2', 1, 'text'], ['7', 1, 'text']),
+            call('removeText'),
+          ),
+        ],
+      },
+      {
+        extension,
+        name: 'removing a block decorator with element points',
+        richText,
+        steps: [
+          doc(p(t('ab')), hr(), hr(), p(t('cd'))),
+          update(
+            select(['root', 1, 'element'], ['root', 2, 'element']),
+            call('removeText'),
+          ),
+          update(
+            select(['2', 2, 'text'], ['root', 2, 'element']),
+            call('removeText'),
+          ),
+        ],
+      },
+      {
+        extension,
+        name: 'formatting over an inline decorator',
+        richText,
+        steps: [
+          start,
+          update(select(['2', 1, 'text'], ['4', 1, 'text'])),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          update(selectNodes('3')),
+          run('FORMAT_TEXT_COMMAND', 'italic'),
+          update(selectNodes('5')),
+          run('FORMAT_TEXT_COMMAND', 'italic'),
+        ],
+      },
+      {
+        extension,
+        name: '$setBlocksType across a block decorator',
+        richText,
+        steps: [
+          start,
+          update(
+            select(['2', 1, 'text'], ['7', 1, 'text']),
+            setBlocksType('h1'),
+          ),
+          update(selectNodes('5'), setBlocksType('quote')),
+          update(selectNodes('3'), setBlocksType('quote')),
+          update(
+            select(['root', 1, 'element'], ['root', 2, 'element']),
+            setBlocksType('paragraph'),
+          ),
+          update(
+            select(['root', 2, 'element'], ['root', 1, 'element']),
+            setBlocksType('quote'),
+          ),
+        ],
+      },
+      {
+        extension,
+        name: 'Backspace removing the last block decorator of a shadow root quote',
+        richText,
+        steps: [
+          // Keys: the quote 1, the rule 2, the paragraph 3, "x" 4.
+          doc({...q(hr()), shadowRoot: true} as Node, p(t('x'))),
+          update(select(['1', 1, 'element'])),
+          backspace,
+        ],
+      },
+      {
+        extension,
+        list: true,
+        name: 'a list over a block decorator',
+        richText,
+        steps: [
+          start,
+          update(select(['2', 1, 'text'], ['7', 1, 'text'])),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+        ],
+      },
+      {
+        extension,
+        list: true,
+        name: 'a list from a node selection of a block decorator',
+        richText,
+        steps: [
+          start,
+          update(selectNodes('5')),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+        ],
+      },
+      {
+        extension,
+        history: {delay: 0},
+        name: 'undo a decorator deleted by a node selection',
+        richText,
+        steps: [
+          start,
+          update(selectNodes('5')),
+          backspace,
+          run('UNDO_COMMAND'),
+          run('REDO_COMMAND'),
+        ],
+      },
+    ],
+  );
+});

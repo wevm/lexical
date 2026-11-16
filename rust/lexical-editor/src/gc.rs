@@ -1,5 +1,7 @@
-//! `LexicalGC.ts`: dropping the nodes an update detached. Decorators and
-//! slots come with their ports.
+//! `LexicalGC.ts`: dropping the nodes an update detached. Slots come with
+//! their port. `$garbageCollectDetachedDecorators` prunes
+//! `editor._decorators`, which only the DOM reconciler fills, so it comes
+//! with the DOM.
 
 use crate::editor_state::NodeMap;
 use crate::ordered::OrderedMap;

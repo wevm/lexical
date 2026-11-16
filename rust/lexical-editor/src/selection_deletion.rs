@@ -20,8 +20,9 @@
 //! of that resolution is ported. Without one, this port throws where
 //! headless JS does.
 //!
-//! Decorators, slots and shadow roots other than the root are not ported,
-//! so the branches for them are no-ops (each is noted where JS has it).
+//! Slots and shadow roots other than the root are not ported, so the
+//! branches for them are no-ops (each is noted where JS has it), as are the
+//! parts that read a decorator's DOM.
 
 use crate::LexicalError;
 use crate::caret::{
@@ -36,7 +37,8 @@ use crate::caret_utils::{
 };
 use crate::error::invariant;
 use crate::lexical_selection::{
-    Point, PointType, RangeSelection, SelectionRef, Which, get_selection,
+    Point, PointType, RangeSelection, SelectionRef, Which, create_node_selection, get_selection,
+    set_selection,
 };
 use crate::lexical_utils::{
     get_root, is_block, is_shadow_root_node, restore_empty_container_paragraph,
@@ -196,8 +198,37 @@ impl SelectionRef {
                             }
                             continue;
                         }
-                        // `$isDecoratorNode(caret.origin)`: decorators are
-                        // not ported.
+                        if origin.is_decorator() {
+                            if origin.is_isolated() {
+                                // do nothing, shouldn't delete an isolated
+                                // decorator
+                            } else if matches!(state, MergeState::MergeNextBlock(_))
+                                && (origin.is_keyboard_selectable() || !origin.is_inline())
+                                && anchor_origin.is_element()
+                                && anchor_origin.is_empty()
+                            {
+                                // If the anchor is an empty element that is
+                                // adjacent to a decorator then we remove the
+                                // paragraph and select the decorator
+                                anchor_origin.remove(false)?;
+                                let node_selection = create_node_selection();
+                                node_selection.add(origin.get_key());
+                                set_selection(Some(node_selection));
+                            } else {
+                                // When the anchor is not an empty element
+                                // then the adjacent decorator is removed
+                                let container = origin.get_parent();
+                                origin.remove(false)?;
+                                if let Some(restored) = restore_empty_container_paragraph(
+                                    container.as_ref(),
+                                    Some(&origin),
+                                )? {
+                                    restored.select_start()?;
+                                }
+                            }
+                            // always stop when a decorator is encountered
+                            return Ok(());
+                        }
                         if origin.get_latest().is::<LineBreakNode>() {
                             // A LineBreakNode is a single deletable unit.
                             origin.remove(false)?;
@@ -590,7 +621,8 @@ fn extend_selection_for_deletion(
     let was_collapsed = range.is_collapsed();
     let landed = landed_point(&*movement, &range.focus, is_backward, granularity)?;
     // JS resolves a line boundary that lands in an inline decorator's
-    // private text at the decorator's edge; decorators are not ported.
+    // private DOM text at the decorator's edge; a movement lands on model
+    // points, never in a decorator's DOM.
 
     // The movement may not cross inline-grid/flex span boundaries (#7301).
     // When at the deletion-side edge of an unmergeable TextNode, extend into
@@ -689,8 +721,8 @@ fn apply_range(selection: &SelectionRef, start: &Point, end: &Point) -> Result<(
         .and_then(|s| s.range());
     let mut anchor = resolve_selection_point(start, last_selection.as_ref().map(|r| &r.anchor))?;
     let mut focus = resolve_selection_point(end, last_selection.as_ref().map(|r| &r.focus))?;
-    // JS ignores a range whose element points are both inside decorators;
-    // decorators are not ported.
+    // JS ignores a range whose element points are both inside decorators'
+    // DOM; model points are never inside one.
     normalize_selection_points_for_boundaries(&mut anchor, &mut focus)?;
     selection.point_set(Which::Anchor, &anchor.key, anchor.offset, anchor.point_type)?;
     selection.point_set(Which::Focus, &focus.key, focus.offset, focus.point_type)?;
@@ -917,11 +949,11 @@ fn get_nearest_root_or_shadow_root(node: &NodeRef) -> Result<NodeRef, LexicalErr
 }
 
 /// `$modifySelectionAroundDecoratorsAndBlocks(selection, alter, isBackward,
-/// granularity, mode)`: resolves in the model a move or extension that
-/// leaves the caret's block (`decorators_only` is the `'decorators'` mode,
-/// which doesn't look for blocks), and returns true when that handled it;
-/// false when the native measurement has to resolve the move. Decorators
-/// are not ported, so the steps over them are no-ops.
+/// granularity, mode)`: resolves in the model a move or extension over a
+/// decorator or out of the caret's block (`decorators_only` is the
+/// `'decorators'` mode, which doesn't look for blocks), and returns true
+/// when that handled it; false when the native measurement has to resolve
+/// the move.
 fn modify_selection_around_decorators_and_blocks(
     selection: &SelectionRef,
     alter: SelectionAlter,
@@ -947,15 +979,30 @@ fn modify_selection_around_decorators_and_blocks(
     let initial_focus = caret_from_point(&range.focus, direction(is_backward))?;
     let is_line_boundary = granularity == SelectionGranularity::LineBoundary;
     let collapse = alter == SelectionAlter::Move;
-    // `focus === initialFocus` in JS: whether a new caret was chosen.
+    // `focus === initialFocus` in JS: `None` until another caret is chosen.
     let mut focus: Option<PointCaret> = None;
     let mut check_for_block = !decorators_only;
+    // An isolated decorator stops the caret.
+    let mut isolated = false;
     if !is_extendable_text_point_caret(&initial_focus) {
-        if initial_focus.iter().next().is_some() {
-            // The first sibling in the direction ends the scan; JS steps
-            // over it (or stops at it when isolated) only when it is a
-            // decorator.
+        for sibling_caret in initial_focus.iter() {
             check_for_block = false;
+            let origin = sibling_caret.origin().clone();
+            if origin.is_decorator() {
+                if origin.is_isolated() {
+                    isolated = true;
+                    break;
+                }
+                focus = Some(sibling_caret);
+                if is_line_boundary && origin.is_inline() {
+                    continue;
+                }
+            }
+            break;
+        }
+        if isolated {
+            // Handled, with the selection deliberately left where it is.
+            return Ok(true);
         }
         if check_for_block {
             let root_mode = match alter {
@@ -969,9 +1016,9 @@ fn modify_selection_around_decorators_and_blocks(
                     }
                 } else if next_caret.origin().is_element() {
                     continue;
+                } else if next_caret.origin().is_decorator() && !next_caret.origin().is_inline() {
+                    focus = Some(next_caret);
                 }
-                // A block decorator would be the focus too; decorators are
-                // not ported.
                 break;
             }
         }
@@ -980,9 +1027,19 @@ fn modify_selection_around_decorators_and_blocks(
         return Ok(false);
     };
     // After this point checkForBlock is true if and only if we moved to a
-    // different block, so we should stop regardless of the granularity.
-    // (Moving onto a keyboard-selectable decorator selects it; decorators
-    // are not ported.)
+    // different block, so we should stop regardless of the granularity
+    if collapse
+        && !is_line_boundary
+        && focus.origin().is_decorator()
+        && focus.origin().is_keyboard_selectable()
+    {
+        // Make it possible to move selection from range selection to node
+        // selection on the node.
+        let node_selection = create_node_selection();
+        node_selection.add(focus.origin().get_key());
+        set_selection(Some(node_selection));
+        return Ok(true);
+    }
     let focus = normalize_caret(&focus);
     if collapse {
         set_point_from_caret(selection, Which::Anchor, &focus)?;
@@ -992,11 +1049,14 @@ fn modify_selection_around_decorators_and_blocks(
 }
 
 /// `$needsBlockCursorBeside(node)`: whether a caret beside the node needs a
-/// block cursor, as a top-level shadow root and an element that can't be
-/// empty do (and a block decorator, once decorators are ported).
+/// block cursor, as a block decorator, a top-level shadow root and an
+/// element that can't be empty do.
 fn needs_block_cursor_beside(node: &NodeRef) -> bool {
     if node.is_inline() {
         return false;
+    }
+    if node.is_decorator() {
+        return true;
     }
     if node.is_element() {
         if node.get_latest().is_shadow_root() {

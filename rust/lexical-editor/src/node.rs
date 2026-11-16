@@ -52,6 +52,13 @@ pub struct NodeBase {
 /// Methods that JS subclasses override call `super`; here the base class's
 /// behavior is a free function in that class's module (such as
 /// `nodes::element::get_text_content`) that an override can call.
+///
+/// A node that extends `DecoratorNode` (`nodes/LexicalDecoratorNode.ts`)
+/// returns true from [`is_decorator`](Self::is_decorator) and may override
+/// the decorator's hooks: [`decorate`](Self::decorate),
+/// [`is_isolated`](Self::is_isolated) and
+/// [`is_keyboard_selectable`](Self::is_keyboard_selectable). A decorator is
+/// inline unless it overrides [`is_inline`](Self::is_inline).
 pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
     /// `getType()`: the type the node serializes as.
     fn get_type(&self) -> &'static str;
@@ -75,9 +82,57 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         None
     }
 
-    /// `isInline()`: false for an element, true for text.
+    /// `isInline()`: false for an element, true for text and a decorator.
     fn is_inline(&self) -> bool {
+        self.text().is_some() || self.is_decorator()
+    }
+
+    /// Whether the node extends `DecoratorNode` (`$isDecoratorNode`): a leaf
+    /// whose content an app renders ([`decorate`](Self::decorate)), which
+    /// the editor moves, selects and deletes as one unit.
+    fn is_decorator(&self) -> bool {
+        false
+    }
+
+    /// `DecoratorNode.decorate(editor, config)`: the value an app's renderer
+    /// shows for the decorator, or `None` (the default). JS's reconciler
+    /// collects these in `editor._decorators`; with no DOM, nothing in the
+    /// port calls it, and an app's own renderer may.
+    fn decorate(&self, editor: &crate::Editor) -> Option<Rc<dyn Any>> {
+        let _ = editor;
+        None
+    }
+
+    /// `DecoratorNode.isIsolated()`: whether the decorator is isolated from
+    /// caret interaction (not traversed, extended over, selected as a node
+    /// or deleted by an adjacent caret operation). False by default.
+    fn is_isolated(&self) -> bool {
+        false
+    }
+
+    /// `DecoratorNode.isKeyboardSelectable()`: whether moving the caret onto
+    /// the decorator selects it as a node. True by default.
+    fn is_keyboard_selectable(&self) -> bool {
+        true
+    }
+
+    /// `$isInlineFormattable(node)`: whether the node carries a text format
+    /// that formatting the selection changes (`InlineFormattableNode`): text,
+    /// and a node with the `__isInlineFormattable` brand.
+    fn is_inline_formattable(&self) -> bool {
         self.text().is_some()
+    }
+
+    /// `InlineFormattableNode.getFormat()`.
+    fn get_inline_format(&self) -> f64 {
+        self.text().map_or(0.0, |t| t.format)
+    }
+
+    /// `InlineFormattableNode.setFormat(format)` on `this`: a text node's
+    /// [`set_format`](Self::set_format).
+    fn set_inline_format(&self, this: &NodeRef, format: f64) -> Result<(), LexicalError> {
+        self.set_format(this, format);
+        Ok(())
     }
 
     /// `ElementNode.isShadowRoot()`.
@@ -386,6 +441,21 @@ impl NodeRef {
     /// `$isTextNode(node)`.
     pub fn is_text(&self) -> bool {
         self.get_latest().text().is_some()
+    }
+
+    /// `$isDecoratorNode(node)`.
+    pub fn is_decorator(&self) -> bool {
+        self.get_latest().is_decorator()
+    }
+
+    /// `DecoratorNode.isIsolated()`.
+    pub fn is_isolated(&self) -> bool {
+        self.get_latest().is_isolated()
+    }
+
+    /// `DecoratorNode.isKeyboardSelectable()`.
+    pub fn is_keyboard_selectable(&self) -> bool {
+        self.get_latest().is_keyboard_selectable()
     }
 
     /// `$isRootNode(node)`.

@@ -14,7 +14,7 @@ use super::utils::{
     character_at, character_before, get_delimiter_run_edge, get_emphasis_sides, unescape_text,
     unit_at, units,
 };
-use crate::{LexicalError, NodeRef};
+use crate::{LexicalError, NodeRef, utf16};
 use std::rc::Rc;
 
 /// `canContainTransformableMarkdown(node)`: a text node without the code
@@ -91,11 +91,10 @@ struct Deferred {
 }
 
 /// `TextScan`: the formats and text matches found in a text, for what is
-/// left of it, `rest`.
+/// left of it.
 struct TextScan {
     formats: FormatScan,
     matches: TextMatches,
-    rest: String,
 }
 
 /// `TextRest`.
@@ -103,6 +102,10 @@ struct TextRest {
     node: NodeRef,
     before: Option<u32>,
     after: Option<u32>,
+    /// The node's text when the rest was made, with its UTF-16 code units,
+    /// read from the text it was cut from rather than encoded again.
+    text: Option<(String, Vec<u16>)>,
+    /// `scan`, which holds for `text`.
     scan: Option<TextScan>,
 }
 
@@ -124,6 +127,7 @@ pub(crate) fn import_text_transformers(
         before,
         node: text_node.clone(),
         scan: None,
+        text: None,
     });
     while let Some(r) = rest {
         rest = import_outermost(r, index, text_match_transformers, &mut deferred)?;
@@ -162,6 +166,17 @@ fn import_text_part(
     Ok(())
 }
 
+/// The UTF-16 code units of `rest`: a copy of the end of `text`, the units
+/// of `text_string`, when `rest` is how `text_string` ends, as the text
+/// after a match is; else encoded. Encoding what is left of a long line
+/// after each of its matches made importing it quadratic.
+fn suffix_units(text: &[u16], text_string: &str, rest: &str) -> Vec<u16> {
+    match text_string.strip_suffix(rest) {
+        Some(before) => text[utf16::len(before)..].to_vec(),
+        None => units(rest),
+    }
+}
+
 /// `importOutermost(rest, ...)`: applies the outermost transformer, defers
 /// the import of the text before and inside its match, and returns the
 /// text after it.
@@ -175,30 +190,33 @@ fn import_outermost(
         node: text_node,
         before,
         after,
+        text: previous_text,
         scan: previous_scan,
     } = rest_in;
-    let text_string = text_node.get_text_content();
-    let text = units(&text_string);
-    let mut scan = match previous_scan {
-        Some(s) if s.rest == text_string => s,
-        _ => TextScan {
-            formats: scan_text_formats(&text, index, before, after),
-            matches: TextMatches::default(),
-            rest: text_string.clone(),
-        },
+    let current = text_node.get_text_content();
+    let (text_string, text, previous_scan) = match previous_text {
+        Some((text_string, text)) if text_string == current => (text_string, text, previous_scan),
+        _ => {
+            let text = units(&current);
+            (current, text, None)
+        }
     };
-    let mut found_text_format = find_outermost_text_format_transformer(&text, index, &scan.formats);
-    let code_spans = if index.transformer("`").is_some() {
-        Some(scan.formats.code_spans.clone())
-    } else {
-        None
-    };
+    let mut scan = previous_scan.unwrap_or_else(|| TextScan {
+        formats: scan_text_formats(&text, index, before, after),
+        matches: TextMatches::default(),
+    });
+    let mut found_text_format =
+        find_outermost_text_format_transformer(&text, &text_string, index, &scan.formats);
+    let code_spans = index
+        .transformer("`")
+        .is_some()
+        .then_some(scan.formats.code_spans.as_slice());
     let mut found_text_match = find_outermost_text_match_transformer(
         &text_node,
         text_match_transformers,
         &mut scan.matches,
         scan.formats.offset,
-        code_spans.as_deref(),
+        code_spans,
     )?;
 
     if let (Some(format), Some(text_match)) = (&found_text_format, &found_text_match) {
@@ -254,6 +272,7 @@ fn import_outermost(
         });
         let node_after = node_after.filter(|n| can_contain_transformable_markdown(Some(n)))?;
         let rest = node_after.get_text_content();
+        let rest_units = suffix_units(&text, &text_string, &rest);
         if let Some(text_after) = &text_after
             && text_after.as_deref() != Some(rest.as_str())
         {
@@ -261,6 +280,7 @@ fn import_outermost(
                 after: None,
                 before: None,
                 node: node_after,
+                text: Some((rest, rest_units)),
                 scan: None,
             });
         }
@@ -271,7 +291,6 @@ fn import_outermost(
         // it opens.
         let offset = scan.formats.offset + end_index;
         let mut is_reusable = advance_format_scan(&mut scan.formats, offset, !is_text_match);
-        let rest_units = units(&rest);
         if is_reusable
             && is_text_match
             && rest_before.is_none()
@@ -286,11 +305,11 @@ fn import_outermost(
         {
             is_reusable = find_pair_at_edge(&mut scan.formats, &rest_units, index);
         }
-        scan.rest = rest;
         Some(TextRest {
             after,
             before: rest_before,
             node: node_after,
+            text: Some((rest, rest_units)),
             scan: is_reusable.then_some(scan),
         })
     };

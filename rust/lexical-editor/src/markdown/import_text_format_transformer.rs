@@ -239,10 +239,11 @@ pub(crate) struct FoundTextFormat {
 }
 
 /// `findOutermostTextFormatTransformer(text, index, scan)`: the outermost
-/// format match in `text`, what is left after the scan's offset of the
-/// text it scanned.
+/// format match in `text` (whose string is `input`), what is left after
+/// the scan's offset of the text it scanned.
 pub(crate) fn find_outermost_text_format_transformer(
     text: &[u16],
+    input: &str,
     index: &TextFormatTransformersIndex,
     scan: &FormatScan,
 ) -> Option<FoundTextFormat> {
@@ -267,7 +268,7 @@ pub(crate) fn find_outermost_text_format_transformer(
             Some(result.content.clone()),
         ],
         start_index,
-        &string(text),
+        input,
     );
     Some(FoundTextFormat {
         start_index,

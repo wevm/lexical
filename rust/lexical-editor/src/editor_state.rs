@@ -5,13 +5,13 @@ use crate::lexical_selection::SelectionRef;
 use crate::lexical_utils::get_root;
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::nodes::root::RootNode;
+use crate::ordered::KeyMap;
 use crate::serialized_export::{export_node_json, with_compact_export};
 use crate::updates::read_editor_state;
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
 use std::rc::Rc;
 
-pub(crate) type NodeMap = HashMap<NodeKey, Rc<dyn LexicalNode>>;
+pub(crate) type NodeMap = KeyMap<NodeKey, Rc<dyn LexicalNode>>;
 
 /// An editor state: the node map and the selection. A handle; cloning it
 /// shares the same state. Once read-only (committed or parsed), nothing
@@ -61,7 +61,7 @@ fn new_editor_state(node_map: NodeMap) -> EditorState {
 
 /// `createEmptyEditorState()`.
 pub(crate) fn create_empty_editor_state() -> EditorState {
-    let mut node_map = NodeMap::new();
+    let mut node_map = NodeMap::default();
     node_map.insert("root".to_owned(), Rc::new(RootNode::new()));
     new_editor_state(node_map)
 }

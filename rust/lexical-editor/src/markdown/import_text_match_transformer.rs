@@ -83,7 +83,7 @@ fn match_link(
     let last_closer = last_index_of(&u, &units("](")).map_or(-1, |i| i as isize);
     let open = u16::from(b'[');
     while (search.last_index() as isize) < last_closer {
-        let m = search.exec(text)?;
+        let m = search.exec_units(&u, text)?;
         if let Some(opener_span) = code_span_at(m.index) {
             // No link can open inside this code span.
             search.set_last_index(spans[opener_span].1 - span_offset);

@@ -25,7 +25,8 @@
 //! and a change handler that logs `['autoLink', url, prevUrl]`. One with
 //! `code: true` registers `@lexical/code-core`'s nodes (`CodeNode`,
 //! `CodeHighlightNode`), `CodeExtension`'s transform and
-//! `registerCodeIndentation`.
+//! `registerCodeIndentation`, and one with `overflow: true`
+//! `@lexical/overflow`'s `OverflowNode`.
 //!
 //! A script that uses an action the port can't run yet (selection editing)
 //! is counted as waiting on that part of `lexical`, never as passing.
@@ -842,6 +843,7 @@ impl Session {
         let with_list = script.get("list").and_then(Value::as_bool) == Some(true);
         let with_link = script.get("link").and_then(Value::as_bool) == Some(true);
         let with_code = script.get("code").and_then(Value::as_bool) == Some(true);
+        let with_overflow = script.get("overflow").and_then(Value::as_bool) == Some(true);
         let mut nodes = Vec::new();
         if rich_text {
             nodes.extend(lexical::rich_text::rich_text_nodes());
@@ -854,6 +856,9 @@ impl Session {
         }
         if with_code {
             nodes.extend(lexical::code::code_nodes());
+        }
+        if with_overflow {
+            nodes.extend(lexical::overflow::overflow_nodes());
         }
         let editor = create_editor(CreateEditorArgs { nodes });
         let ctx = Rc::new(Ctx::default());

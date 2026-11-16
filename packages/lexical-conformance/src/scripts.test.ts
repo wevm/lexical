@@ -2372,3 +2372,167 @@ test('scripts/code', () => {
     ],
   );
 });
+
+function overflow(...children: Node[]): Node {
+  return {
+    children,
+    direction: null,
+    format: '',
+    indent: 0,
+    type: 'overflow',
+    version: 1,
+  } as Node;
+}
+
+test('scripts/overflow', () => {
+  // `@lexical/overflow`'s OverflowNode in a paragraph, as `@lexical/react`'s
+  // character limit leaves it, with rich text's handlers dispatched outside
+  // an update as an input layer does. Keys: the paragraph 1, "within " 2,
+  // the overflow node 3, "past" (italic, so it doesn't merge) 4, " the
+  // limit" 5.
+  const richText = true;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const enter = run('INSERT_PARAGRAPH_COMMAND');
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const start = doc(
+    p(t('within '), overflow(t('past', {format: 2}), t(' the limit'))),
+  );
+  emit(
+    'overflow',
+    "@lexical/overflow's OverflowNode: Enter in it (its insertNewAfter is its parent's), typing at its edges, the $transform that removes it once empty and where that leaves the selection, removing text across it, formatting, Backspace at its start, and inserting one.",
+    [
+      {
+        name: 'Enter in an overflow node',
+        overflow: true,
+        richText,
+        steps: [
+          start,
+          // In the middle of its first text.
+          update(select(['4', 2, 'text'])),
+          enter,
+          // At its end.
+          update(select(['5', 10, 'text'])),
+          enter,
+          // At its start.
+          update(select(['4', 0, 'text'])),
+          enter,
+        ],
+      },
+      {
+        name: 'Enter with an element point in an overflow node',
+        overflow: true,
+        richText,
+        steps: [
+          start,
+          update(select(['3', 1, 'element'])),
+          enter,
+          update(select(['3', 0, 'element'])),
+          run('INSERT_LINE_BREAK_COMMAND', false),
+        ],
+      },
+      {
+        name: "typing at an overflow node's edges",
+        overflow: true,
+        richText,
+        steps: [
+          start,
+          update(select(['2', 7, 'text'])),
+          type('a'),
+          update(select(['4', 0, 'text'])),
+          type('b'),
+          update(select(['5', 10, 'text'])),
+          type('c'),
+          update(select(['1', 2, 'element'])),
+          type('d'),
+        ],
+      },
+      {
+        name: 'an emptied overflow node removes itself',
+        overflow: true,
+        richText,
+        steps: [
+          start,
+          // All its text, with a range in it.
+          update(select(['4', 0, 'text'], ['5', 10, 'text'])),
+          run('REMOVE_TEXT_COMMAND'),
+          type('e'),
+        ],
+      },
+      {
+        name: 'removing the last child of an overflow node',
+        overflow: true,
+        richText,
+        steps: [
+          doc(p(t('a'), overflow(t('b'))), p(t('c'))),
+          update(select(['4', 1, 'text']), node('4', 'remove')),
+          // An empty one appended in an update goes too.
+          update(
+            node('1', 'append', [overflow()]),
+            node('5', 'append', [overflow(t('x'))]),
+          ),
+          update(select(['9', 0, 'text'], ['9', 1, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+        ],
+      },
+      {
+        name: 'removing text across an overflow node',
+        overflow: true,
+        richText,
+        steps: [
+          doc(
+            p(t('one '), overflow(t('two', {format: 2}), t(' three'))),
+            p(overflow(t('four')), t(' five')),
+          ),
+          update(select(['2', 2, 'text'], ['5', 3, 'text'])),
+          run('REMOVE_TEXT_COMMAND'),
+          update(select(['2', 2, 'text'], ['9', 2, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', false),
+        ],
+      },
+      {
+        name: 'formatting across an overflow node',
+        overflow: true,
+        richText,
+        steps: [
+          start,
+          update(select(['2', 3, 'text'], ['4', 2, 'text'])),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('SELECT_ALL_COMMAND'),
+          run('FORMAT_TEXT_COMMAND', 'italic'),
+          run('FORMAT_ELEMENT_COMMAND', 'center'),
+          run('INDENT_CONTENT_COMMAND'),
+        ],
+      },
+      {
+        name: 'Backspace at the start of an overflow node',
+        overflow: true,
+        richText,
+        steps: [
+          start,
+          update(select(['4', 0, 'text'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+          update(select(['3', 0, 'element'])),
+          run('DELETE_CHARACTER_COMMAND', true),
+        ],
+      },
+      {
+        name: 'inserting an overflow node',
+        overflow: true,
+        richText,
+        steps: [
+          doc(p(t('abcd'))),
+          update(
+            select(['2', 2, 'text']),
+            call('insertNodes', [overflow(t('x'))]),
+          ),
+          update(select(['root', 1, 'element']), {
+            do: 'insertNodes',
+            nodes: [overflow(t('y'))],
+          }),
+        ],
+      },
+    ],
+  );
+});

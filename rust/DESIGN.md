@@ -380,7 +380,14 @@ top:
   `rust/.github/sts/mirror.sts.yaml` and the `rust-release` environment),
   tags the version there, creates a GitHub release from the version's
   `CHANGELOG.md` section, then publishes the crate with `cargo publish`
-  when the `CARGO_REGISTRY_TOKEN` secret exists. Each step is skipped when
+  through crates.io's trusted publishing: `rust-lang/crates-io-auth-action`
+  trades the job's GitHub OIDC token for a crates.io token that lasts 30
+  minutes and is revoked when the job ends, so no crates.io secret is
+  stored. The crate's trusted publisher on crates.io names wevm/lexical,
+  `rust-release.yml` and the `rust-release` environment, so renaming the
+  workflow file or the environment needs the same change there. Trusted
+  publishing can't create a crate, so until the first publish the step is
+  skipped with a notice. Each step is skipped when
   it has happened, so a failed run can be rerun. `rust.yml` packages the
   crate on every run (`cargo publish --dry-run --all-features`).
 - **The first release** (0.1.0, from `rust/.changeset/first-release.md`)
@@ -395,15 +402,18 @@ top:
      `git clone https://github.com/wevm/lexical.git && cd lexical && git subtree split --prefix=rust -b rust-mirror && git push git@github.com:wevm/lexical-rust.git rust-mirror:main`.
   4. Then the version pull request merges, and the workflow tags 0.1.0 on
      the mirror and creates its release; the crate step is skipped with a
-     notice, as there's no token yet. Until step 2 is done, the workflow
-     fails with an error naming the missing mirror.
-  5. Publish 0.1.0 by hand, so the crate is registered to tmm. `cargo
-     login` takes a crates.io API token with the `publish-new` scope (and
-     crates.io needs a verified email):
+     notice, as the crate doesn't exist yet. Until step 2 is done, the
+     workflow fails with an error naming the missing mirror.
+  5. Publish 0.1.0 by hand, so the crate is registered to tmm. crates.io
+     only creates a crate from an API token, so `cargo login` takes one with
+     the `publish-new` scope (and crates.io needs a verified email); revoke
+     it afterwards, as CI needs none:
      `git clone --branch 0.1.0 https://github.com/wevm/lexical-rust.git && cd lexical-rust && cargo login && cargo publish -p lexical-editor --locked`.
-  6. Create a crates.io API token (Account Settings, API Tokens) with the
-     `publish-update` scope for the crate `lexical-editor`, and add it as
-     the `CARGO_REGISTRY_TOKEN` secret of the `rust-release` environment.
-     From then on, CI publishes each release.
+  6. On crates.io, open the crate's Settings → Trusted Publishing, Add,
+     GitHub, with repository owner `wevm`, repository name `lexical`,
+     workflow filename `rust-release.yml` and environment `rust-release`,
+     and save. From then on, CI publishes each release. Once one release
+     has published from CI, the crate settings' "Trusted Publishing only"
+     setting can turn off publishing with API tokens.
 
   A rename comes before step 5 (see The name).

@@ -15,10 +15,12 @@ name: Rust Release
 #     workspace's Cargo.toml at its root.
 #   - creates a GitHub release on the mirror from the version's section of
 #     rust/CHANGELOG.md.
-#   - publishes the crate to crates.io with the CARGO_REGISTRY_TOKEN secret,
-#     once it exists: tmm publishes the first version by hand, so the crate
-#     is registered to him (rust/DESIGN.md, Releases). Without the secret
-#     the step is skipped with a notice.
+#   - publishes the crate to crates.io with trusted publishing (a
+#     short-lived token from rust-lang/crates-io-auth-action, through
+#     GitHub's OIDC; no stored secret). crates.io can't create a crate that
+#     way, so tmm publishes the first version by hand and then adds this
+#     workflow as the crate's trusted publisher (rust/DESIGN.md, Releases);
+#     until the crate exists the step is skipped with a notice.
 # The rust-release environment only limits deployments to main; no one
 # approves them, so merging the version pull request is the release. Each
 # step is skipped when its release already exists, so a failed run can be
@@ -101,6 +103,7 @@ jobs:
       mirror: ${{ steps.plan.outputs.mirror }}
       release: ${{ steps.plan.outputs.release }}
       crate: ${{ steps.plan.outputs.crate }}
+      first: ${{ steps.plan.outputs.first }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -119,6 +122,7 @@ jobs:
             echo "mirror=false" >> "$GITHUB_OUTPUT"
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "crate=false" >> "$GITHUB_OUTPUT"
+            echo "first=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           status="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
@@ -140,7 +144,8 @@ jobs:
             *) echo "Looking up the $version release returned HTTP $status." >&2; exit 1 ;;
           esac
           # The crate's versions, from crates.io's sparse index (one JSON
-          # object per version; 404 until the first publish).
+          # object per version; 404 until the first publish, which `first`
+          # marks).
           status="$(curl -s -o "$RUNNER_TEMP/index" -w '%{http_code}' \
             "https://index.crates.io/${CRATE:0:2}/${CRATE:2:2}/$CRATE")"
           case "$status" in
@@ -150,8 +155,12 @@ jobs:
               else
                 echo "crate=true" >> "$GITHUB_OUTPUT"
               fi
+              echo "first=false" >> "$GITHUB_OUTPUT"
               ;;
-            404) echo "crate=true" >> "$GITHUB_OUTPUT" ;;
+            404)
+              echo "crate=true" >> "$GITHUB_OUTPUT"
+              echo "first=true" >> "$GITHUB_OUTPUT"
+              ;;
             *) echo "Looking up $CRATE in the crates.io index returned HTTP $status." >&2; exit 1 ;;
           esac
 
@@ -211,6 +220,9 @@ jobs:
             --title "$VERSION" --notes-file "$RUNNER_TEMP/notes.md"
 
   # After the mirror, so crates.io never has a version the mirror lacks.
+  # The crate's trusted publisher on crates.io names this workflow file and
+  # the rust-release environment; renaming either breaks publishing until the
+  # crates.io configuration matches.
   crate:
     name: Publish crate
     runs-on: ubuntu-latest
@@ -219,29 +231,35 @@ jobs:
       always() && needs.plan.outputs.crate == 'true' &&
       (needs.mirror.result == 'success' || needs.mirror.result == 'skipped')
     environment: rust-release
+    permissions:
+      contents: read
+      id-token: write # For crates.io's trusted publishing token exchange.
     env:
-      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
       VERSION: ${{ needs.plan.outputs.version }}
     defaults:
       run:
         working-directory: rust
     steps:
+      - name: Wait for the first publish
+        if: needs.plan.outputs.first == 'true'
+        run: echo "::notice::lexical-editor isn't on crates.io yet. Trusted publishing can't create a crate, so tmm publishes $VERSION by hand and adds this workflow as its trusted publisher (rust/DESIGN.md, Releases)."
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        if: needs.plan.outputs.first == 'false'
         with:
           persist-credentials: false
-      - name: Check for the token
-        id: token
-        run: |
-          if [ -n "$CARGO_REGISTRY_TOKEN" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::lexical-editor $VERSION isn't on crates.io and there's no CARGO_REGISTRY_TOKEN secret, so it wasn't published. Until tmm's first publish, he publishes by hand (rust/DESIGN.md, Releases); with the secret set, rerun this workflow."
-          fi
       # rustup is preinstalled; rust-toolchain.toml picks the version.
       - name: Install the toolchain
-        if: steps.token.outputs.present == 'true'
+        if: needs.plan.outputs.first == 'false'
         run: rustup show active-toolchain || rustup toolchain install
+      # A token valid for 30 minutes, revoked when the job ends. Fails until
+      # the crate's trusted publisher names wevm/lexical, rust-release.yml
+      # and the rust-release environment.
+      - name: Authenticate to crates.io
+        if: needs.plan.outputs.first == 'false'
+        id: auth
+        uses: rust-lang/crates-io-auth-action@3268eb413133e2960fa4ae0e963ca76380c54cd9 # v1.0.6
       - name: Publish
-        if: steps.token.outputs.present == 'true'
+        if: needs.plan.outputs.first == 'false'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: cargo publish -p lexical-editor --locked

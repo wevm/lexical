@@ -45,7 +45,7 @@ struct EquationComponent: View {
       } else {
         KatexRenderer(equation: equation, inline: inline, onSize: { _ in relayout() })
           .contentShape(Rectangle())
-          .onTapGesture(count: 2) {
+          .onDoubleClick {
             guard editor.isEditable() else { return }
             value = equation
             isEditing = true
@@ -338,4 +338,41 @@ extension View {
       autocorrectionDisabled()
     #endif
   }
+
+  /// `onDoubleClick`: a browser's `dblclick` comes from the clicks' count,
+  /// which the system takes from the events' own times.
+  fileprivate func onDoubleClick(perform action: @escaping () -> Void) -> some View {
+    #if os(iOS)
+      gesture(SecondTapGesture(action: action))
+    #else
+      onTapGesture(count: 2, perform: action)
+    #endif
+  }
 }
+
+#if os(iOS)
+  /// A tap whose touch is the second in a row (`UITouch.tapCount`). UIKit
+  /// counts the taps from the touches' own times; `onTapGesture(count: 2)`
+  /// times them on the main thread, so a first tap that keeps it busy past
+  /// the double tap's interval (selecting the equation, and the keyboard
+  /// work that follows) made the second tap a new one.
+  private struct SecondTapGesture: UIGestureRecognizerRepresentable {
+    let action: () -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> SecondTapRecognizer { SecondTapRecognizer() }
+
+    func handleUIGestureRecognizerAction(_ recognizer: SecondTapRecognizer, context: Context) {
+      if recognizer.state == .ended { action() }
+    }
+  }
+
+  private final class SecondTapRecognizer: UIGestureRecognizer {
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+      state = touches.first?.tapCount == 2 ? .ended : .failed
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+      state = .failed
+    }
+  }
+#endif

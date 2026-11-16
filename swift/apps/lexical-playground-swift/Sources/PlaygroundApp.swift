@@ -132,7 +132,7 @@ struct PlaygroundView: View {
         get: { model.comments.showCommentInput && !isWide },
         set: { if !$0 && model.comments.showCommentInput { model.comments.cancelAddComment() } })
     ) {
-      CommentInputBox(comments: model.comments)
+      CommentInputBox(comments: model.comments, isInline: false)
         .padding()
         .presentationDetents([.height(commentSheetHeight)])
     }

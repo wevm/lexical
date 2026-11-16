@@ -2934,6 +2934,594 @@
     "reason": "deviation",
     "note": "tab_size is an Option<usize> in Rust, so a fractional tabSize such as 2.5 cannot be configured."
   },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"# Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"## Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"#### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"##### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"###### Hello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello\\nworld\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"> Hello\\n> world!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- Hello\\n- world\\n!\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- Hello\\n- world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- Level 1\\n    - Level 2\\n        - Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- Level 1\\n\t- Level 2\\n  \t  - Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"* Level 1\\n    * Level 2\\n        * Level 3\\n\\nHello world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- 1\\. foo\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. Hello\\n2. world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"25. Hello\\n26. world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. item one\\n2. item two\\n    - sublist\\n    1. sublist\\n    - [ ] checklist\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n    * b\\n    * c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. a\\n   - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. item one\\n2. item two\\n   - sublist\\n   1. sublist\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"100. a\\n    - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n  - b\\n    - c\\n      - d\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. a\\n   1. b\\n      1. c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n    - b\\n    - c\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"9. a\\n   - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"10. a\\n    - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n\\ntext\\n\\n1. c\\n   - d\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. First\\n\\n   - detail\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n\\ntext\\n\\n  - b\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- bullet1\\n    1. ordered1\\n    2. ordered2\\n- bullet2\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. ordered1\\n    - bullet1\\n    - bullet2\\n2. ordered2\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"- a\\n    1. b\\n        - c\\n        - d\\n    2. e\\n- f\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"1. item one\\n2. item two\\n    - sublist bullet\\n    1. sublist ordered\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*Hello* world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Hello** world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold label:** Following paragraph text.\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"***Hello*** world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`Hello` world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`Backtick\\` after backslash\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`Backtick`\\\\ before backslash\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"~~Hello~~ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`hello$`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`$$hello`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`$a` `$b`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[x *a* `y](z)`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*a [b* `c](d)`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*a**`x`*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Here: `` a`b ``\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Code: ``` a``b ```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`` `x ``\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**`` a`b ``**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[Hello](https://lexical.dev) world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[Hello](https://lexical.dev \"Hello world\") world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[Hello](https://lexical.dev \"Title with \\\" escaped character\") world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello ***~~world~~***!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Hello ~~world~~**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**~~Hello *world*~~**~~!~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*Hello **world**!*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"hello\\nworld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"hello\\nworld\" #2": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"hello\\nworld\" #3": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"# Hello\\n\\n\\n\\n**world**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"# Hello\\nhi\\n\\n**world**\\n\\nhi\\n> hello\\n> hello\\n\\n# hi\\n\\nhi\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"_Hello_ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"__Hello__ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"___Hello___ world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello ~~__*world*__~~!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```Single line Code```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```javascript Incomplete tag\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```javascript Incomplete multiline\\n\\nTag\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```javascript\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```unknown\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\t```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"   ```\\nCode\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"### Code blocks\\n\\n```javascript\\n1 + 1 = 2;\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello\\n\\n\\n\\nworld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"> Hello\\nworld\\n!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello [world](https://lexical.dev)! Hello $world$! [Hello](https://lexical.dev) world! Hello $world$!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Some HTML in mdx:\\n\\n<MyComponent>Some Text</MyComponent>\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Some HTML in mdx:\\n\\n<MyComponent>Line 1\\nSome Text</MyComponent>\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"```ts\\nCode\\n```ts\\nSub Code\\n```\\n```\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello <MyTag>One <MyTag>Two</MyTag></MyTag> there\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[text](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`text`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[`text`](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold** [`text`](https://lexical.dev) **Bold 2**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold** [`text` **Bold 2**](https://lexical.dev) **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold** [`text **Bold in code**`](https://lexical.dev) **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Bold** `[text](https://lexical.dev)` **Bold 3**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Text **boldstart [text](https://lexical.dev) boldend** text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Text **boldstart [`text`](https://lexical.dev) boldend** text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"It ~~___works [with links](https://lexical.io)___~~ too\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"It ~~___works [with links](https://lexical.io) too___~~!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[link](https://lexical.dev)[link2](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](https://a.example.com) [b](https://b.example.com)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[foo [bar](/uri)](/uri)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[Ruby](https://en.wikipedia.org/wiki/Ruby_(programming_language))\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](https://example.com/a(b)c) and [d](https://example.com/d)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](https://example.com/a\\)b)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](<https://example.com/a b>)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](<https://example.com/a b> \"t\")\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[a](</uri>)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Multiple [`TextMatchTransformer`s](https://lexical.dev)~~$ with formatting$~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**`Bold Code`**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"This is a backslash: \\\\\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`C:\\$MFT`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"`C:\\$MFT` and more\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**a\\\\\\*b**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"a\\\\\\* **b**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"This is an asterisk: \\*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Backtick and asterisk: \\`\\*\\*\\`\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Backtick and asterisk: \\`\\*\\*\\`**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**\\*test\\***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**some bold text with an escaped star: \\*** normal text\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\*This text should **not** be italic*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\*some text*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[text **bold** \\*normal\\*](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\*Hello\\* world\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**&#160;**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[[h]ello](https://lexical.dev)[h[e]llo](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[h[e[ll]]o](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[hello]](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[h[ello](https://lexical.dev)[world](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*[h[ello](https://lexical.dev)*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[](https://lexical.dev)\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"[**link**](https://lexical.dev)**text**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**text [link](https://lexical.dev)**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*text**text***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**text*text***\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*foo**bar*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**foo [*bar*](/url)**\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*foo *bar baz*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*a `*` b `x`*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"_foo_bar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**Hello&#32;~~world~~**!\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"*Hello&#32;**world**!*\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"**~~Hello&#32;*world*~~**~~!~~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"\\→\\A\\a\\ \\3\\φ\\«\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"foo\\\\nbar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"foo  \\nbar\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"foo [bar](https://lexical.dev)\tbaz\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"foo\t \tbar\\n\tbaz\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"Hello\t\tWorld\"": {
+    "reason": "covered-by-vector",
+    "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json (markdown/import-export), replayed by rust/conformance (src/suites/markdown.rs), which imports the case's md and compares the state JSON and the HTML $generateHtmlFromNodes renders from it (importHtml) with what JS made."
+  },
   "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can export \"# Hello world\"": {
     "reason": "covered-by-vector",
     "note": "An IMPORT_AND_EXPORT case: vectors/markdown/import-export.json, replayed by rust/conformance (src/suites/markdown.rs), which exports the state JS built from the case's HTML (its exportState) and compares the markdown."

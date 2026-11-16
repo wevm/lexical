@@ -111,6 +111,7 @@ pub mod plain_text;
 mod reconciler;
 #[cfg(feature = "rich-text")]
 pub mod rich_text;
+pub mod schema;
 #[cfg(feature = "selection")]
 pub mod selection;
 mod selection_deletion;

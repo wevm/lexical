@@ -13,6 +13,7 @@ updated with each milestone.
 | Constants | `LexicalConstants.ts` (flags and name tables) | `constants` | through the nodes |
 | Export form | `LexicalSerializedExport.ts` | `serialized_export` | `serialization/core` |
 | Generated JSON of the core nodes | `LexicalGeneratedJSON.ts` | `generated_json` | `serialization/core`, `property/documents` |
+| Node schemas | `LexicalSchema.ts`: `SerializationSchemaMeta`, `NumberValueOptions`, `isSchemaEqual`, `isSchemaDefault`, `declaredAccepts`, the builders (`stringValue`, `numberValue` with integer bounds rounded inward and clamping, `booleanValue`, `enumValue` with SameValueZero, `nullable` with `defaultAsNull`, `optional` with `omitDefault`, `unionValue` with `$bestUnionMember`, `$fitOf`, `$metaFitOf` and the catch-all rule, `aliasedValue`, `transformValue`, `rawValue`, `arrayValue`, `arraySetValue` in UTF-16 order without duplicates, `objectValue`), their refusals with JS's messages (`undeclared`, `notNestedSet`, the `Object.prototype` field names), `nodeSchema`, `withField` (with `when` and `derived`), `withAccessors`; and from `LexicalUtils.ts` the composed schema (`getComposedSchemaFields`, flat states first), `$exportNodeJSONOnce`'s walk (most derived first, `when`, the compact form's defaults and import-derived properties left out), `$applyJSONSetters`'s walk (flat states, then setters base first); the `$config` `json` schemas of `ElementNode`, `TextNode`, `TabNode`, `HeadingNode`, `LinkNode`, `AutoLinkNode`, `ListNode`, `ListItemNode`, `CodeNode`, `CodeHighlightNode`, `MarkNode` and `DecoratorBlockNode`; the structure's `derived` values read from them (`derivedNamesOf`) | `schema`, `LexicalNode::json_schema_chain`, `export_json`, `update_from_json` | `serialization/schema`, `serialization/schema-node`; every `serialization/*` and `property/*` case checks each node's generated JSON against the walk; a unit test does for hostile values |
 | Core nodes | `nodes/LexicalRootNode.ts`, `LexicalParagraphNode.ts`, `LexicalTextNode.ts`, `LexicalTabNode.ts`, `LexicalLineBreakNode.ts`, `LexicalElementNode.ts` (fields, `getTextContent`, `shouldSerializeTextStyles`) | `nodes::*` | `serialization/core`, `property/documents` |
 | Node methods | `LexicalNode.ts` (`getLatest`, `getWritable`, `isAttached`, `getIndexWithinParent`, `remove`/`$removeNode`, `replace`, `insertBefore`, `insertAfter`, `select*`, `markDirty`) | `node`, `utils` | `scripts/updates`, `scripts/transforms` |
 | Element methods | `LexicalElementNode.ts` (`splice` with selection repair, `append`, `clear`, `select`, children and descendants, the setters), `RootNode.splice` and its other overrides | `nodes::element`, `node` | `scripts/updates` |
@@ -96,6 +97,25 @@ updated with each milestone.
 Everything else; [DESIGN.md](DESIGN.md) has the order. Within what M0
 touches:
 
+- Of the schema facility: `SchemaFieldBase.method` and
+  `resolveSchemaField`, the prototype lookup that abandons a field access
+  for an accessor a subclass overrides (a Rust class has no methods to look
+  up; it gives its base's schema with `NodeSchema::with_setter` instead, as
+  `CodeHighlightNode` does for `format`); `getterTable` and `setterTable`
+  as data, and `getterTableOf`, `setterTableOf`, `aliasTableOf` and
+  `setterDefaultOf` (a field's conversion is its `SchemaValue` or its
+  accessor closures, as for `TextNode`'s `mode` and `ElementNode`'s
+  `format`); the conventional `get<Prop>`/`set<Prop>` names a plain schema
+  stands for, and the registration checks of them (every property names its
+  accessors); `@lexical/compiler`'s `SchemaJsonCodegen.ts` and
+  `verifyCompiledParse` (the generated code is ported by hand and checked
+  against the walk); the freezing of derived defaults (`deepFreeze`,
+  `markCallerOwned`), which a Rust value that is cloned on every read does
+  not need; and `validateOwnFields`. Containers compare by content, as in
+  Swift, where a JS array or object without `isEqual` compares by
+  identity; no vector tells them apart, since JS parses a fresh container
+  each time. The schemas of the packages not ported yet (`@lexical/table`,
+  the playground's nodes) come with them.
 - Of slots: the `'deletion'` mode of `$setPointAtSlotBoundary`, where JS
   lets `Selection.modify` carry a deletion into another slot frame and
   pulls it back to the boundary; a headless editor's `SelectionMovement`
@@ -175,11 +195,8 @@ touches:
   (`hmrRestoreCount`) isn't ported. A config's functions
   (`validateUrl`, `createInitialHistoryState`, `$canIndent`, the matchers)
   are `Rc` closures, which compare by identity as JS's do.
-- Of NodeState: the `SerializationSchema` builders as `parse` functions
-  (with them `canonicalValue`'s `arraySetValue` form and a config's
-  `derived` and `schema`), which come with the schema facility;
-  `$getStateChange`'s use in `updateDOM`, which comes with the DOM; and the
-  check that a flat key is not an `Object.prototype` property, which has no
+- Of NodeState: `$getStateChange`'s use in `updateDOM`, which comes with
+  the DOM; and the check that a flat key is not an `Object.prototype` property, which has no
   counterpart in the port's own JSON object. JS tells the version of a node
   that owns a NodeState by object identity; a node version here is its key
   and the editor state it was made writable in. `StateConfig` values are
@@ -298,11 +315,10 @@ touches:
   and `PASTE_COMMAND` recorders). Rendering (`$decorateMarkIDs`,
   `isMarkIDShown` and its rerender, `exportIDsToHTML`) and the HTML import
   rule (`data-lexical-mark-ids`) come with `html` and the DOM.
-  JS's `markIds` state is an `arraySetValue`; the port has no schema
-  builders yet, so its config is a `StateValueConfig` with the same parse,
-  JSON and equality, and the canonical form `$setState` gives a set-valued
-  state is applied where the module writes it. Ids sort by UTF-16 code
-  units, as JS's `sort()` does. In a headless editor,
+  JS's `markIds` state is an `arraySetValue`, and so is the port's
+  (`StateValueConfig::from_schema`), whose canonical form `$setState`
+  gives the value it is set to. Ids sort by UTF-16 code units, as JS's
+  `sort()` does. In a headless editor,
   `MarkNode.canInsertTextBefore` and `canInsertTextAfter` change nothing a
   vector can see, as for `LinkNode`: `$insertText` puts text typed at the
   edge of an inline parent's text outside it either way. `extractWithChild`

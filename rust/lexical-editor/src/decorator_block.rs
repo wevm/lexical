@@ -17,6 +17,8 @@
 use crate::json::{Object, Value};
 use crate::lexical_utils::with_writable;
 use crate::node::{LexicalNode, NodeRef};
+use crate::schema::{NodeSchema, enum_value, node_schema, with_accessors};
+use std::rc::Rc;
 
 /// The formats `decoratorBlockNodeSchema`'s `enumValue` takes, `''` (the
 /// default) first.
@@ -47,6 +49,35 @@ impl DecoratorBlockData {
 /// `enumValue([...])`'s parse: the format, or `''` for anything else.
 fn parse_format(format: &str) -> &'static str {
     FORMATS.into_iter().find(|f| *f == format).unwrap_or("")
+}
+
+thread_local! {
+    static DECORATOR_BLOCK_NODE_SCHEMA: NodeSchema = node_schema(vec![(
+        "format",
+        with_accessors(
+            enum_value(FORMATS.map(Value::from).to_vec(), None).expect("the formats"),
+            Some(Rc::new(|node| {
+                node.decorator_block()
+                    .expect("a DecoratorBlockNode")
+                    .format
+                    .into()
+            })),
+            Some(Rc::new(|node, value| {
+                node.decorator_block_mut()
+                    .expect("a DecoratorBlockNode")
+                    .format = value.as_str().map_or("", parse_format);
+            })),
+        )
+        .expect("a field"),
+    )])
+    .expect("DecoratorBlockNode's schema");
+}
+
+/// `decoratorBlockNodeSchema`: the `format` field, which every node that
+/// extends `DecoratorBlockNode` composes with its own
+/// ([`LexicalNode::json_schema_chain`]'s default for one).
+pub fn decorator_block_node_schema() -> NodeSchema {
+    DECORATOR_BLOCK_NODE_SCHEMA.with(Clone::clone)
 }
 
 /// `exportJSON(compact)` of a node that extends `DecoratorBlockNode` and

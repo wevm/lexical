@@ -43,12 +43,22 @@ impl LexicalNode for ParagraphNode {
         Some(&mut self.element)
     }
 
-    fn export_json(&self, compact: bool) -> Object {
-        let mut json = if compact {
+    /// `GENERATED_PARAGRAPH`: ElementNode's.
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_element_node(self)
         } else {
             export_element_node(self)
-        };
+        })
+    }
+
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
+        update_element_node(&mut self.element, json);
+        true
+    }
+
+    fn export_json(&self, compact: bool) -> Object {
+        let mut json = crate::schema::export_node_json_once(self, compact);
         // Provide backwards compatible values, see #7971.
         let absent = |json: &Object, key: &str| json.get(key).is_none_or(Value::is_undefined);
         if absent(&json, "textFormat") || absent(&json, "textStyle") {
@@ -72,10 +82,6 @@ impl LexicalNode for ParagraphNode {
             }
         }
         json
-    }
-
-    fn update_from_json(&mut self, json: &Object) {
-        update_element_node(&mut self.element, json);
     }
 
     /// `ParagraphNode.insertNewAfter`: a paragraph with the selection's

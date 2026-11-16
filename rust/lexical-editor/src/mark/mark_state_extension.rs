@@ -21,6 +21,7 @@ use crate::node_state::{
     StateConfig, StateValueConfig, create_state_with, get_state, set_state_with,
 };
 use crate::nodes::line_break::LineBreakNode;
+use crate::schema::{SerializationSchema, SerializationSchemaMeta, array_set_value};
 use crate::{LexicalError, NodeKey};
 use std::cmp::Ordering;
 use std::collections::HashSet;
@@ -58,36 +59,34 @@ fn js_cmp(a: &str, b: &str) -> Ordering {
     a.encode_utf16().cmp(b.encode_utf16())
 }
 
-/// `arraySetValue(markIDValue())`'s parse of strings: the valid ids,
-/// sorted as JS sorts them, without duplicates.
-fn canonical_ids(ids: impl IntoIterator<Item = String>) -> Vec<String> {
-    let mut members: Vec<String> = ids.into_iter().filter(|id| is_valid_mark_id(id)).collect();
-    members.sort_by(|a, b| js_cmp(a, b));
-    members.dedup();
-    members
-}
-
-/// `arraySetValue(markIDValue())`'s parse: anything but an array is `[]`,
-/// and a member that is not a valid id is dropped.
-fn parse_ids(value: &Value) -> Vec<String> {
-    value.as_array().map_or_else(Vec::new, |items| {
-        canonical_ids(items.iter().filter_map(|v| v.as_str().map(str::to_owned)))
-    })
+/// `markIDValue()`: the item schema of the ids, a string that
+/// `isValidMarkID` accepts (`''` otherwise), hand-rolled with its own
+/// `accepts`.
+fn mark_id_value() -> SerializationSchema {
+    SerializationSchema::new(
+        SerializationSchemaMeta::String,
+        "".into(),
+        None,
+        Some(Rc::new(|value: &Value| {
+            value.as_str().is_some_and(is_valid_mark_id)
+        })),
+        |value| match value.as_str() {
+            Some(id) if is_valid_mark_id(id) => value.clone(),
+            _ => "".into(),
+        },
+    )
 }
 
 thread_local! {
-    /// `createMarkIDsState(MARK_STATE_KEY)`: `MarkStateExtension`'s state.
+    /// `createMarkIDsState(MARK_STATE_KEY)`: `MarkStateExtension`'s state,
+    /// `arraySetValue(markIDValue())`: the valid ids, sorted as JS sorts
+    /// strings, without duplicates, which `$setState` also makes of a value
+    /// it is given.
     static MARK_IDS_STATE: StateConfig<Vec<String>> = create_state_with(
         MARK_STATE_KEY,
-        StateValueConfig {
-            parse: Rc::new(parse_ids),
-            unparse: Rc::new(|ids: &Vec<String>| {
-                Value::Array(ids.iter().map(|id| id.as_str().into()).collect())
-            }),
-            // `isArraySetEqual`.
-            is_equal: Rc::new(|a: &Vec<String>, b: &Vec<String>| a == b),
-            reset_on_copy_node: false,
-        },
+        StateValueConfig::from_schema(
+            array_set_value(mark_id_value()).expect("a set of strings"),
+        ),
     );
 }
 
@@ -128,14 +127,14 @@ pub fn get_node_mark_ids(node: &NodeRef) -> Result<Vec<String>, LexicalError> {
     read_node_mark_ids(node)
 }
 
-/// `$setState(node, state, updater)` for the set-valued state: the value
-/// the updater returns is made canonical (`canonicalValue`) before it is
+/// `$setState(node, state, updater)` for the set-valued state, which makes
+/// the value the updater returns canonical (`canonicalValue`) before it is
 /// compared and stored.
 fn update_node_mark_ids(
     node: &NodeRef,
     updater: impl FnOnce(&Vec<String>) -> Vec<String>,
 ) -> Result<(), LexicalError> {
-    set_state_with(node, &mark_ids_state(), |prev| canonical_ids(updater(prev))).map(|_| ())
+    set_state_with(node, &mark_ids_state(), updater).map(|_| ())
 }
 
 /// `$addNodeMarkIDs(flavor, node, ids)`.
@@ -452,15 +451,14 @@ mod tests {
     #[test]
     fn ids_sort_by_utf16_code_units() {
         // U+FF01 comes before U+1F600 by code point, after it by code unit.
-        assert_eq!(
-            canonical_ids([
-                "\u{ff01}".into(),
-                "\u{1f600}".into(),
-                "b".into(),
-                "b".into()
-            ]),
-            ["b", "\u{1f600}", "\u{ff01}"]
-        );
+        let ids = Value::Array(vec![
+            "\u{ff01}".into(),
+            "\u{1f600}".into(),
+            "b".into(),
+            "b".into(),
+            "not valid".into(),
+        ]);
+        assert_eq!(mark_ids_state().parse(&ids), ["b", "\u{1f600}", "\u{ff01}"]);
         assert!(!is_valid_mark_id("a\u{feff}b"));
         assert!(is_valid_mark_id("a\u{85}b"));
     }

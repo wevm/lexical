@@ -73,6 +73,7 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let compact = state.to_json(true).to_string();
     same("legacy", legacy.as_str(), case.str("legacy")?)?;
     same("compact", compact.as_str(), case.str("compact")?)?;
+    super::serialization::generated_agrees_with_schema(&state)?;
 
     // Parsing each form again gives `reparsed` when JS recorded it, and the
     // same two texts otherwise.

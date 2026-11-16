@@ -4,6 +4,7 @@
 use crate::caret_tree::{detach_node, detach_sibling_range, insert_node_between};
 use crate::constants::{DOUBLE_LINE_BREAK, ELEMENT_TYPE_TO_FORMAT, lookup, name_of};
 use crate::error::invariant;
+use crate::json::Value;
 use crate::lexical_selection::{
     Point, PointType, SelectionRef, Which, get_selection, internal_make_range_selection,
     move_selection_point_to_sibling,
@@ -11,9 +12,14 @@ use crate::lexical_selection::{
 use crate::lexical_utils::{get_writable, mutate, with_writable};
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::nodes::root::RootNode;
+use crate::schema::{
+    NodeSchema, NumberValueOptions, enum_value, node_schema, number_value, string_value,
+    with_accessors,
+};
 use crate::updates::error_on_read_only;
 use crate::{LexicalError, utf16};
 use std::collections::HashSet;
+use std::rc::Rc;
 
 /// `ElementNode`'s text direction (`'ltr' | 'rtl'`; `null` is `None`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -358,6 +364,109 @@ impl NodeRef {
         self.get_latest()
             .splice(self, start, delete_count, nodes_to_insert)
     }
+}
+
+thread_local! {
+    static ELEMENT_NODE_SCHEMA: NodeSchema = build_element_node_schema()
+        .expect("ElementNode's schema");
+}
+
+/// `elementNodeSchema`: the properties every element's JSON has.
+/// `direction`, `format` (the name of its alignment flag, through the
+/// tables `FORMAT_GETTER_TABLE` and `FORMAT_SETTER_TABLE`) and `indent` (a
+/// whole number at least 0) are its fields; `textFormat` and `textStyle`
+/// are written only for an element whose text doesn't give them
+/// (`when: 'shouldSerializeTextStyles'`).
+pub fn element_node_schema() -> NodeSchema {
+    ELEMENT_NODE_SCHEMA.with(Clone::clone)
+}
+
+fn element_of(node: &dyn LexicalNode) -> &ElementData {
+    node.element().expect("an element")
+}
+
+fn element_of_mut(node: &mut dyn LexicalNode) -> &mut ElementData {
+    node.element_mut().expect("an element")
+}
+
+fn build_element_node_schema() -> Result<NodeSchema, LexicalError> {
+    let element_formats = ["", "left", "start", "center", "right", "end", "justify"];
+    let serialize_text_styles = |node: &dyn LexicalNode| node.should_serialize_text_styles();
+    node_schema(vec![
+        (
+            "direction",
+            with_accessors(
+                enum_value(vec![Value::Null, "ltr".into(), "rtl".into()], None)?,
+                Some(Rc::new(|node| {
+                    element_of(node)
+                        .dir
+                        .map_or(Value::Null, |d| d.as_str().into())
+                })),
+                Some(Rc::new(|node, value| {
+                    element_of_mut(node).dir = match value.as_str() {
+                        Some("ltr") => Some(Direction::Ltr),
+                        Some("rtl") => Some(Direction::Rtl),
+                        _ => None,
+                    };
+                })),
+            )?,
+        ),
+        (
+            "format",
+            with_accessors(
+                enum_value(element_formats.map(Value::from).to_vec(), None)?,
+                Some(Rc::new(|node| {
+                    name_of(ELEMENT_TYPE_TO_FORMAT, element_of(node).format)
+                        .map_or(Value::Undefined, Value::from)
+                })),
+                Some(Rc::new(|node, value| {
+                    element_of_mut(node).format = value
+                        .as_str()
+                        .and_then(|name| lookup(ELEMENT_TYPE_TO_FORMAT, name))
+                        .unwrap_or(0);
+                })),
+            )?,
+        ),
+        (
+            "indent",
+            with_accessors(
+                number_value(
+                    0.0,
+                    NumberValueOptions {
+                        integer: true,
+                        min: Some(0.0),
+                        ..NumberValueOptions::default()
+                    },
+                )?,
+                Some(Rc::new(|node| element_of(node).indent.into())),
+                Some(Rc::new(|node, value| {
+                    element_of_mut(node).indent = value.as_f64().unwrap_or(0.0);
+                })),
+            )?,
+        ),
+        (
+            "textFormat",
+            with_accessors(
+                number_value(0.0, NumberValueOptions::default())?,
+                Some(Rc::new(|node| element_of(node).text_format.into())),
+                Some(Rc::new(|node, value| {
+                    element_of_mut(node).text_format = value.as_f64().unwrap_or(0.0);
+                })),
+            )?
+            .when(serialize_text_styles),
+        ),
+        (
+            "textStyle",
+            with_accessors(
+                string_value(""),
+                Some(Rc::new(|node| element_of(node).text_style.as_str().into())),
+                Some(Rc::new(|node, value| {
+                    element_of_mut(node).text_style = value.as_str().unwrap_or("").to_owned();
+                })),
+            )?
+            .when(serialize_text_styles),
+        ),
+    ])
 }
 
 /// `ElementNode.exportJSON(compact)`, which a node that extends

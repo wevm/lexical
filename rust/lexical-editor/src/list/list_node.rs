@@ -11,6 +11,10 @@ use crate::json::Object;
 use crate::lexical_utils::{set_node_key, with_writable};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::{self, ElementData};
+use crate::schema::{
+    NodeSchema, NumberValueOptions, aliased_value, enum_value, node_schema, number_value,
+    schema_getter, schema_setter, with_accessors, with_field,
+};
 
 /// `ListType`: `'number'`, `'bullet'` or `'check'`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -139,7 +143,58 @@ impl ListNode {
     }
 }
 
+thread_local! {
+    static LIST_NODE_SCHEMA: NodeSchema = build_list_node_schema().expect("ListNode's schema");
+}
+
+/// `listNodeSchema`: `listType` (with the legacy tags `ol` and `ul` as the
+/// types they stand for), applied with `setListType`, which also keeps the
+/// tag; `start`; and `tag`, written and derived on import.
+pub fn list_node_schema() -> NodeSchema {
+    LIST_NODE_SCHEMA.with(Clone::clone)
+}
+
+fn build_list_node_schema() -> Result<NodeSchema, LexicalError> {
+    node_schema(vec![
+        (
+            "listType",
+            with_accessors(
+                aliased_value(
+                    enum_value(vec!["number".into(), "bullet".into(), "check".into()], None)?,
+                    vec![
+                        ("ol".to_owned(), "number".into()),
+                        ("ul".to_owned(), "bullet".into()),
+                    ],
+                )?,
+                Some(schema_getter(|n: &ListNode| n.list_type.as_str().into())),
+                Some(schema_setter(|n: &mut ListNode, value| {
+                    n.list_type = value.as_str().and_then(ListType::parse).unwrap_or_default();
+                })),
+            )?,
+        ),
+        (
+            "start",
+            with_field(
+                number_value(1.0, NumberValueOptions::default())?,
+                |n: &ListNode| &n.start,
+                |n: &mut ListNode| &mut n.start,
+            )?,
+        ),
+        (
+            "tag",
+            with_accessors(
+                enum_value(vec!["ul".into(), "ol".into()], None)?,
+                Some(schema_getter(|n: &ListNode| n.list_type.tag().into())),
+                None,
+            )?,
+        ),
+    ])
+}
+
 impl LexicalNode for ListNode {
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        vec![list_node_schema(), element::element_node_schema()]
+    }
     /// The `$config()` of `ListNode`: `children: [ListItemNode]` and
     /// `mergeAdjacent: {by: ['listType']}`, what
     /// `mergeNextSiblingListIfSameType` compares (`start` is not).
@@ -228,17 +283,18 @@ impl LexicalNode for ListNode {
     }
 
     /// `exportListNode` and `exportCompactListNode`.
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_list_node(self)
         } else {
             export_list_node(self)
-        }
+        })
     }
 
     /// `updateListNode`.
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_list_node(self, json);
+        true
     }
 
     /// `ListNode.splice(start, deleteCount, nodesToInsert)`: what isn't a

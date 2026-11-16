@@ -1,9 +1,10 @@
 use crate::case::{Case, Outcome, same};
 use lexical::json::Value;
-use lexical::{CreateEditorArgs, create_editor};
+use lexical::{CreateEditorArgs, EditorState, NodeRef, create_editor, get_root};
 
 /// `serialization/*.json`: the document parses from both forms and writes
-/// both back byte for byte. The editor has the list, link, code, overflow,
+/// both back byte for byte, and each node's generated JSON is what the
+/// walk of its class's schema writes ([`generated_agrees_with_schema`]). The editor has the list, link, code, overflow,
 /// hashtag and mark nodes and `TestDecoratorBlockNode`, for the `serialization/*` file of each package.
 pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let legacy = case.str("legacy")?;
@@ -35,6 +36,33 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
             state.to_json(true).to_string().as_str(),
             compact,
         )?;
+        generated_agrees_with_schema(&state).map_err(|e| format!("from {form}: {e}"))?;
     }
     Ok(Outcome::Pass)
+}
+
+/// Whether the generated JSON of every node of `state` (the class's own
+/// `exportJSON` code, `LexicalGeneratedJSON.ts` and its counterparts) is
+/// what the walk of its schema writes, in both forms, as
+/// `LexicalGeneratedJSON.test.ts` asserts in JS.
+pub fn generated_agrees_with_schema(state: &EditorState) -> Result<(), String> {
+    fn visit(node: &NodeRef) -> Result<(), String> {
+        let latest = node.get_latest();
+        for compact in [false, true] {
+            if let Some(generated) = latest.generated_export_json(compact) {
+                let walked = lexical::schema::walk_export_json(&*latest, compact);
+                same(
+                    format_args!(
+                        "the {} schema of {} (compact: {compact})",
+                        latest.get_type(),
+                        node.get_key()
+                    ),
+                    Value::Object(walked).to_string(),
+                    Value::Object(generated).to_string(),
+                )?;
+            }
+        }
+        node.get_children().iter().try_for_each(visit)
+    }
+    state.read(|| visit(&get_root()))
 }

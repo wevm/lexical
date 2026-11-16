@@ -6,6 +6,7 @@ use crate::lexical_selection::SelectionRef;
 use crate::lexical_utils::{set_node_key, with_writable};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
+use crate::schema::{NodeSchema, array_value, node_schema, string_value, with_field};
 use crate::{LexicalError, utf16};
 
 /// `MarkNode`: an inline element over the content that one or more ids
@@ -88,7 +89,32 @@ impl NodeRef {
     }
 }
 
+thread_local! {
+    static MARK_NODE_SCHEMA: NodeSchema = node_schema(vec![(
+        "ids",
+        with_field(
+            array_value(string_value("")).expect("an array of strings"),
+            |n: &MarkNode| &n.ids,
+            |n: &mut MarkNode| &mut n.ids,
+        )
+        .expect("a field"),
+    )])
+    .expect("MarkNode's schema");
+}
+
+/// `markNodeSchema`: `ids`, read with `getIDs` (a copy of the field) and
+/// written to the field.
+pub fn mark_node_schema() -> NodeSchema {
+    MARK_NODE_SCHEMA.with(Clone::clone)
+}
+
 impl LexicalNode for MarkNode {
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        vec![
+            mark_node_schema(),
+            crate::nodes::element::element_node_schema(),
+        ]
+    }
     /// The `$config()` of `MarkNode`: `inline: true`, `children: 'inline'`.
     fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
         use crate::structure::{NodeChildrenConfig, NodeConfigLink, StaticNodeConfig};
@@ -211,17 +237,18 @@ impl LexicalNode for MarkNode {
     }
 
     /// `exportMarkNode` and `exportCompactMarkNode`.
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_mark_node(self)
         } else {
             export_mark_node(self)
-        }
+        })
     }
 
     /// `updateMarkNode`.
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_mark_node(self, json);
+        true
     }
 }
 

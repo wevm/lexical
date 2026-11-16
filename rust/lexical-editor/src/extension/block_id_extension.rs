@@ -86,6 +86,8 @@ thread_local! {
             }),
             is_equal: Rc::new(|a: &Option<String>, b: &Option<String>| a == b),
             reset_on_copy_node: true,
+            derived: false,
+            schema: None,
         },
     );
 }

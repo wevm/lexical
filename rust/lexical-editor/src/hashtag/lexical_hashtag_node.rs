@@ -79,16 +79,17 @@ impl LexicalNode for HashtagNode {
     }
 
     /// `exportTextNode` and `exportCompactTextNode`, with its type.
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_text_node(self.get_type(), &self.text)
         } else {
             export_text_node(self.get_type(), &self.text)
-        }
+        })
     }
 
     /// `updateTextNode`.
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_text_node(&mut self.text, json);
+        true
     }
 }

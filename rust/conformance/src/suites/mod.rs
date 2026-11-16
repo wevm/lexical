@@ -9,6 +9,7 @@ mod html;
 mod markdown;
 mod meta;
 mod property;
+mod schema;
 mod serialization;
 
 use crate::Suite;
@@ -154,6 +155,16 @@ pub fn all() -> Vec<Suite> {
             file: "serialization/overflow",
             variant: None,
             check: serialization::check,
+        },
+        Suite {
+            file: "serialization/schema",
+            variant: None,
+            check: schema::check,
+        },
+        Suite {
+            file: "serialization/schema-node",
+            variant: None,
+            check: schema::check_node,
         },
         Suite {
             file: "scripts/character-limit",

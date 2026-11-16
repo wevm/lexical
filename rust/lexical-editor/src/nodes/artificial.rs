@@ -55,15 +55,16 @@ impl LexicalNode for ArtificialNode {
         Ok(crate::lexical_dom::get_document().create_element("div"))
     }
 
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_element_node(self)
         } else {
             export_element_node(self)
-        }
+        })
     }
 
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_element_node(&mut self.element, json);
+        true
     }
 }

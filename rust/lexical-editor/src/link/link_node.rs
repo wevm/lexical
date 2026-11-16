@@ -14,16 +14,22 @@ use crate::caret_utils::{
 use crate::editor::LexicalCommand;
 use crate::error::invariant;
 use crate::json::Object;
+use crate::json::Value;
 use crate::lexical_selection::{
     Point, PointType, SelectionRef, Which, get_selection, set_selection,
 };
 use crate::lexical_utils::{copy_node, set_node_key, with_writable};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
+use crate::schema::{
+    NodeSchema, SchemaField, boolean_value, node_schema, nullable, string_value, with_accessors,
+    with_field,
+};
 use crate::selection_insert_nodes::normalize_selection;
 use crate::utils::find_matching_parent;
 use crate::{LexicalError, NodeKey};
 use std::collections::HashSet;
+use std::rc::Rc;
 
 /// `LinkAttributes`: a link's `rel`, `target` and `title`. Each is `None`
 /// where JS's is `undefined` (left as it is, or `null` on a new link),
@@ -313,12 +319,88 @@ fn link_node_config_chain() -> Vec<crate::structure::NodeConfigLink> {
                 MergeAdjacentEntry::Field("rel"),
                 MergeAdjacentEntry::Field("title"),
             ])),
-            ..StaticNodeConfig::default()
         },
     )]
 }
 
+thread_local! {
+    static LINK_NODE_SCHEMA: NodeSchema = build_link_node_schema().expect("LinkNode's schema");
+    static AUTO_LINK_NODE_SCHEMA: NodeSchema = node_schema(vec![(
+        "isUnlinked",
+        with_field(
+            boolean_value(false),
+            |n: &AutoLinkNode| &n.is_unlinked,
+            |n: &mut AutoLinkNode| &mut n.is_unlinked,
+        )
+        .expect("a field"),
+    )])
+    .expect("AutoLinkNode's schema");
+}
+
+/// The `LinkNode` fields of a schema accessor's link.
+fn schema_link_of(node: &dyn LexicalNode) -> &LinkNode {
+    link_of(node).expect("a link")
+}
+
+fn link_of_mut(node: &mut dyn LexicalNode) -> &mut LinkNode {
+    if node.is::<LinkNode>() {
+        return node.downcast_mut::<LinkNode>().expect("a link");
+    }
+    &mut node.downcast_mut::<AutoLinkNode>().expect("a link").link
+}
+
+/// `linkNodeSchema`: `rel`, `target` and `title` (an empty string imports
+/// as `null`) and `url`, each the field it names.
+pub fn link_node_schema() -> NodeSchema {
+    LINK_NODE_SCHEMA.with(Clone::clone)
+}
+
+/// `autoLinkNodeSchema`: the `isUnlinked` field.
+pub fn auto_link_node_schema() -> NodeSchema {
+    AUTO_LINK_NODE_SCHEMA.with(Clone::clone)
+}
+
+fn build_link_node_schema() -> Result<NodeSchema, LexicalError> {
+    fn nullable_field(
+        get: fn(&LinkNode) -> &Option<String>,
+        set: fn(&mut LinkNode) -> &mut Option<String>,
+    ) -> Result<SchemaField, LexicalError> {
+        with_accessors(
+            nullable(string_value(""), true)?,
+            Some(Rc::new(move |node| {
+                get(schema_link_of(node))
+                    .as_deref()
+                    .map_or(Value::Null, Value::from)
+            })),
+            Some(Rc::new(move |node, value| {
+                *set(link_of_mut(node)) = value.as_str().map(str::to_owned);
+            })),
+        )
+    }
+    node_schema(vec![
+        ("rel", nullable_field(|l| &l.rel, |l| &mut l.rel)?),
+        ("target", nullable_field(|l| &l.target, |l| &mut l.target)?),
+        ("title", nullable_field(|l| &l.title, |l| &mut l.title)?),
+        (
+            "url",
+            with_accessors(
+                string_value(""),
+                Some(Rc::new(|node| schema_link_of(node).url.as_str().into())),
+                Some(Rc::new(|node, value| {
+                    link_of_mut(node).url = value.as_str().unwrap_or("").to_owned();
+                })),
+            )?,
+        ),
+    ])
+}
+
 impl LexicalNode for LinkNode {
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        vec![
+            link_node_schema(),
+            crate::nodes::element::element_node_schema(),
+        ]
+    }
     /// The `$config()` of `LinkNode`: `inline: true`, `children: 'inline'`
     /// and `mergeAdjacent: {by: ['url', 'target', 'rel', 'title']}`, what
     /// `shouldMergeAdjacentLink` compares. The method stays the authority:
@@ -401,17 +483,18 @@ impl LexicalNode for LinkNode {
     }
 
     /// `exportLinkNode` and `exportCompactLinkNode`.
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_link_node(self)
         } else {
             export_link_node(self)
-        }
+        })
     }
 
     /// `updateLinkNode`.
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_link_node(self, json);
+        true
     }
 }
 
@@ -419,6 +502,13 @@ impl LexicalNode for LinkNode {
 /// `canInsertTextAfter` either, whatever its class comment says), so each
 /// hook is `LinkNode`'s.
 impl LexicalNode for AutoLinkNode {
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        vec![
+            auto_link_node_schema(),
+            link_node_schema(),
+            crate::nodes::element::element_node_schema(),
+        ]
+    }
     /// The `$config()` of `AutoLinkNode`: `extends: LinkNode` and
     /// `mergeAdjacent: false` (adjacent autolinks never merge, see
     /// `shouldMergeAdjacentLink`).
@@ -515,17 +605,18 @@ impl LexicalNode for AutoLinkNode {
     }
 
     /// `exportAutoLinkNode` and `exportCompactAutoLinkNode`.
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_auto_link_node(self)
         } else {
             export_auto_link_node(self)
-        }
+        })
     }
 
     /// `updateAutoLinkNode`.
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_auto_link_node(self, json);
+        true
     }
 }
 

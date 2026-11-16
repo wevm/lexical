@@ -13,9 +13,12 @@
 //! version that owns a NodeState by object identity; here a node version is
 //! its key and the editor state it was made writable in.
 //!
-//! Not ported: the `SerializationSchema` builders as `parse` functions (and
-//! with them `canonicalValue`'s `arraySetValue` form, `derived` and
-//! `schema`), `$getStateChange`'s use in `updateDOM`, which comes with the
+//! A config's value may be described by a schema (`createState(key,
+//! {parse: schema})`, [`StateValueConfig::from_schema`]), which then gives
+//! its equality and default, and a set-valued one (`arraySetValue`) puts a
+//! value written with `$setState` in its canonical form.
+//!
+//! Not ported: `$getStateChange`'s use in `updateDOM`, which comes with the
 //! DOM, and the `Object.prototype` check on flat keys (rust/PARITY.md).
 
 use crate::LexicalError;
@@ -23,6 +26,7 @@ use crate::error::invariant;
 use crate::json::{Object, Value, array_index};
 use crate::lexical_utils::{get_writable, mutate};
 use crate::node::{LexicalNode, NodeKey, NodeRef};
+use crate::schema::{SchemaValue, SerializationSchema, SerializationSchemaMeta, is_schema_equal};
 use crate::updates::{error_on_read_only, get_active_editor_state, get_registry_editor};
 use std::any::Any;
 use std::cell::RefCell;
@@ -86,12 +90,16 @@ pub type StateIsEqual<V> = Rc<dyn Fn(&V, &V) -> bool>;
 
 /// `StateValueConfig`: how a state's value parses from JSON (`parse`, which
 /// gives the default for `undefined`), writes back (`unparse`) and compares
-/// (`isEqual`), and whether `$copyNode` resets it (`resetOnCopyNode`).
+/// (`isEqual`), whether `$copyNode` resets it (`resetOnCopyNode`), whether
+/// the node's own code recomputes it (`derived`, `@experimental`), and the
+/// schema `parse` was given as (`StateConfig.schema`), when it was one.
 pub struct StateValueConfig<V> {
     pub parse: Rc<dyn Fn(&Value) -> V>,
     pub unparse: Rc<dyn Fn(&V) -> Value>,
     pub is_equal: StateIsEqual<V>,
     pub reset_on_copy_node: bool,
+    pub derived: bool,
+    pub schema: Option<SerializationSchema>,
 }
 
 impl<V> Clone for StateValueConfig<V> {
@@ -101,6 +109,8 @@ impl<V> Clone for StateValueConfig<V> {
             unparse: self.unparse.clone(),
             is_equal: self.is_equal.clone(),
             reset_on_copy_node: self.reset_on_copy_node,
+            derived: self.derived,
+            schema: self.schema.clone(),
         }
     }
 }
@@ -114,6 +124,32 @@ impl<V: StateValue> StateValueConfig<V> {
             unparse: Rc::new(StateValue::to_json),
             is_equal: Rc::new(StateValue::object_is),
             reset_on_copy_node: false,
+            derived: false,
+            schema: None,
+        }
+    }
+}
+
+impl<V: SchemaValue + 'static> StateValueConfig<V> {
+    /// `{parse: schema}`: a state whose value `schema` describes, which also
+    /// gives it its equality (`isSchemaEqual`) and default, written back as
+    /// the value it parsed to. `V` holds the values the schema parses to
+    /// (`Value` holds any).
+    pub fn from_schema(schema: SerializationSchema) -> Self {
+        let parse_schema = schema.clone();
+        let equal_schema = schema.clone();
+        Self {
+            parse: Rc::new(move |value| {
+                V::from_schema_value(&parse_schema.parse(value))
+                    .expect("a value of the type the schema parses to")
+            }),
+            unparse: Rc::new(V::to_schema_value),
+            is_equal: Rc::new(move |a, b| {
+                is_schema_equal(&equal_schema, &a.to_schema_value(), &b.to_schema_value())
+            }),
+            reset_on_copy_node: false,
+            derived: false,
+            schema: Some(schema),
         }
     }
 }
@@ -174,6 +210,16 @@ impl<V: Clone + 'static> StateConfig<V> {
         self.0.config.reset_on_copy_node
     }
 
+    /// `derived` (`@experimental`).
+    pub fn derived(&self) -> bool {
+        self.0.config.derived
+    }
+
+    /// `schema`: the schema `parse` was given as, when it was one.
+    pub fn schema(&self) -> Option<SerializationSchema> {
+        self.0.config.schema.clone()
+    }
+
     /// This config without its value type (`AnyStateConfig`).
     pub fn erased(&self) -> AnyStateConfig {
         AnyStateConfig(self.0.clone())
@@ -196,6 +242,8 @@ trait ErasedStateConfig {
     fn is_equal_any(&self, a: &dyn Any, b: &dyn Any) -> bool;
     fn default_any(&self) -> Rc<dyn Any>;
     fn reset_on_copy_node(&self) -> bool;
+    fn derived(&self) -> bool;
+    fn schema(&self) -> Option<SerializationSchema>;
 }
 
 impl<V: 'static> ErasedStateConfig for StateConfigInner<V> {
@@ -224,6 +272,12 @@ impl<V: 'static> ErasedStateConfig for StateConfigInner<V> {
     fn reset_on_copy_node(&self) -> bool {
         self.config.reset_on_copy_node
     }
+    fn derived(&self) -> bool {
+        self.config.derived
+    }
+    fn schema(&self) -> Option<SerializationSchema> {
+        self.config.schema.clone()
+    }
 }
 
 /// `AnyStateConfig`: a [`StateConfig`] of any value type.
@@ -239,6 +293,30 @@ impl AnyStateConfig {
     /// Whether `self` and `other` are the same config (`===`).
     pub fn is(&self, other: &AnyStateConfig) -> bool {
         std::ptr::addr_eq(Rc::as_ptr(&self.0), Rc::as_ptr(&other.0))
+    }
+
+    /// `derived` (`@experimental`).
+    pub fn derived(&self) -> bool {
+        self.0.derived()
+    }
+
+    /// `schema`.
+    pub fn schema(&self) -> Option<SerializationSchema> {
+        self.0.schema()
+    }
+
+    /// `canonicalValue(stateConfig, value)`: what `$setState` stores. A
+    /// set-valued state (`arraySetValue`) stores what its parse makes of the
+    /// value, so a value set directly is stored, read back and compared
+    /// like one loaded from JSON; any other state stores the value as
+    /// given.
+    fn canonical_value(&self, value: Rc<dyn Any>) -> Rc<dyn Any> {
+        match self.0.schema() {
+            Some(schema) if matches!(schema.meta(), SerializationSchemaMeta::Set { .. }) => {
+                self.0.parse_any(&self.0.unparse_any(&*value))
+            }
+            _ => value,
+        }
     }
 
     /// `isEqual(a, b)` of two values of the config's type.
@@ -851,7 +929,7 @@ fn set_state_any_with(
 ) -> Result<NodeRef, LexicalError> {
     error_on_read_only();
     let prev_value = get_state_any(&*node.get_latest(), config)?;
-    let value = updater(&prev_value);
+    let value = config.canonical_value(updater(&prev_value));
     if config.0.is_equal_any(&*prev_value, &*value) {
         return Ok(node.clone());
     }
@@ -867,7 +945,9 @@ pub fn set_state<V: Clone + 'static>(
     value: V,
 ) -> Result<NodeRef, LexicalError> {
     error_on_read_only();
-    write_state(node, &config.erased(), Rc::new(value))
+    let config = config.erased();
+    let value = config.canonical_value(Rc::new(value));
+    write_state(node, &config, value)
 }
 
 /// `$setState(node, stateConfig, updater)`: sets the state to what

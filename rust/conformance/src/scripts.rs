@@ -103,6 +103,7 @@ use std::rc::Rc;
 
 mod code_highlight;
 mod extensions;
+mod schema_node;
 mod structure;
 
 /// What `ops.ts`'s `Context` holds besides the editor.
@@ -224,13 +225,16 @@ impl LexicalNode for TestDecoratorBlockNode {
     fn decorator_block_mut(&mut self) -> Option<&mut DecoratorBlockData> {
         Some(&mut self.block)
     }
-    fn export_json(&self, compact: bool) -> Object {
-        export_decorator_block(self, compact)
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(export_decorator_block(self, compact))
     }
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_decorator_block_from_json(&mut self.block, json);
+        true
     }
 }
+
+pub(crate) use schema_node::test_schema_nodes;
 
 /// `TestDecoratorBlockNode`'s class.
 pub(crate) fn test_decorator_block_nodes() -> Vec<lexical::NodeClass> {
@@ -383,6 +387,8 @@ impl Default for States {
                     unparse: Rc::new(|v| Value::from(v.join(" "))),
                     is_equal: Rc::new(|a, b| a == b),
                     reset_on_copy_node: false,
+                    derived: false,
+                    schema: None,
                 },
             ),
         }

@@ -544,13 +544,65 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         None
     }
 
+    /// The `json` of the node's `$config()` and of the classes it extends
+    /// (`iterStaticNodeConfigChain`), most derived first: the serialization
+    /// schemas `composeSchema` composes, a subclass's declaration of a key
+    /// winning. By default ElementNode's for an element
+    /// ([`element::element_node_schema`]), TextNode's for a text node and
+    /// DecoratorBlockNode's for one; a class that declares its own returns
+    /// it followed by those of the class it extends. The composed schema is
+    /// compiled once per Rust type, so it must not differ between nodes.
+    fn json_schema_chain(&self) -> Vec<crate::schema::NodeSchema> {
+        if self.element().is_some() {
+            return vec![element::element_node_schema()];
+        }
+        if self.text().is_some() {
+            return vec![crate::nodes::text::text_node_schema()];
+        }
+        #[cfg(feature = "decorator-block")]
+        if self.decorator_block().is_some() {
+            return vec![crate::decorator_block::decorator_block_node_schema()];
+        }
+        Vec::new()
+    }
+
+    /// The class's generated `exportJSON` (`$config`'s `generated`,
+    /// `LexicalGeneratedJSON.ts` and the packages' counterparts, ported by
+    /// hand): the same JSON as the walk of its schema, written faster.
+    /// `None` (the default) for a class without one, which the walk
+    /// serves.
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        let _ = compact;
+        None
+    }
+
+    /// The class's generated `updateFromJSON` on a writable node, which
+    /// applies what the walk of its schema would; false (the default) for a
+    /// class without one.
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
+        let _ = json;
+        false
+    }
+
     /// `exportJSON(compact)`: the node's own properties, with an empty
-    /// `children` array for an element (the export walk fills it).
-    fn export_json(&self, compact: bool) -> Object;
+    /// `children` array for an element (the export walk fills it), without
+    /// its NodeState. By default `$exportNodeJSONOnce`: the class's
+    /// [generated code](Self::generated_export_json), or the walk of its
+    /// schema ([`crate::schema::walk_export_json`]). A class that adds to
+    /// its JSON overrides it, calling [`crate::schema::export_node_json_once`]
+    /// for what JS's `super.exportJSON` returns.
+    fn export_json(&self, compact: bool) -> Object {
+        crate::schema::export_node_json_once(self.as_node(), compact)
+    }
 
     /// `updateFromJSON(json)` on a writable node: applies every property the
-    /// node's schema declares, a missing one as its default.
-    fn update_from_json(&mut self, json: &Object);
+    /// node's schema declares, a missing one as its default
+    /// (`$applyJSONSetters`, the class's
+    /// [generated code](Self::generated_update_from_json) or the walk); the
+    /// caller applies the NodeState first.
+    fn update_from_json(&mut self, json: &Object) {
+        crate::schema::apply_json_setters(self.as_node_mut(), json);
+    }
 
     /// The model half of `updateDOM(prevNode, dom, config)`: whether the
     /// reconciler makes the node's DOM again (what JS's returns), which
@@ -581,6 +633,7 @@ pub trait NodeClone {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn as_node(&self) -> &dyn LexicalNode;
+    fn as_node_mut(&mut self) -> &mut dyn LexicalNode;
 }
 
 impl<T: LexicalNode + Clone> NodeClone for T {
@@ -594,6 +647,9 @@ impl<T: LexicalNode + Clone> NodeClone for T {
         self
     }
     fn as_node(&self) -> &dyn LexicalNode {
+        self
+    }
+    fn as_node_mut(&mut self) -> &mut dyn LexicalNode {
         self
     }
 }

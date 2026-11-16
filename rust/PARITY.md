@@ -541,9 +541,9 @@ touches:
 - Of `@lexical/markdown` (the `markdown` feature): the mdast converter,
   which Swift doesn't port either. `markdown/import-export`'s
   export cases read the state JS built from each case's HTML from its
-  `exportState` JSON, as `$generateNodesFromDOM` comes with `html`, and its
-  `importHtml` (what `$generateHtmlFromNodes` renders of the import) is
-  checked once `html` is ported; the imported state, the absence of a
+  `exportState` JSON instead of building it with `$generateNodesFromDOM`
+  (which `html/import` checks); the imported state, the HTML
+  `$generateHtmlFromNodes` renders of it (`importHtml`), the absence of a
   selection after importing and the exported markdown are checked in every
   case. The transformers are `Rc`s of structs with public fields, so a
   variant of a built-in is a copy with fields replaced, where JS spreads

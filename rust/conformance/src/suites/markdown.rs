@@ -1,4 +1,5 @@
 use crate::case::{Case, Outcome, same};
+use lexical::html::generate_html_from_nodes;
 use lexical::json::Value;
 use lexical::link::{LinkAttributes, create_link_node};
 use lexical::markdown::{
@@ -14,15 +15,15 @@ use std::rc::Rc;
 
 /// `markdown/import-export.json`, upstream LexicalMarkdown.test.ts's
 /// `IMPORT_AND_EXPORT` table. Each `md` imports, in a discrete update, to
-/// the editor state JS made from it, without selecting ("should not select
-/// when importing"), and `$generateNodesFromMarkdownString` makes the
-/// nodes JS made of it (`importNodes`). Each `exportState`, the state JS built from the
-/// table's `html`, exports to the markdown JS wrote from it.
+/// the editor state JS made from it, which `$generateHtmlFromNodes`
+/// renders as the HTML JS rendered of it (`importHtml`, upstream's "can
+/// import" assertion), without selecting ("should not select when
+/// importing"), and `$generateNodesFromMarkdownString` makes the nodes JS
+/// made of it (`importNodes`). Each `exportState`, the state JS built from
+/// the table's `html`, exports to the markdown JS wrote from it.
 ///
-/// JS built that state with `$generateNodesFromDOM`, and checks the
-/// `importHtml` it rendered with `$generateHtmlFromNodes`; both wait for
-/// `@lexical/html` (rust/PARITY.md), so this reads the state from its JSON
-/// and leaves `importHtml` unchecked.
+/// JS built that state with `$generateNodesFromDOM`; this reads it from
+/// its JSON (rust/PARITY.md).
 pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let custom = custom_transformers(case)?;
     let flag = |key: &str| case.get(key).and_then(Value::as_bool).unwrap_or(false);
@@ -61,6 +62,13 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
                 .as_str(),
             import_state,
         )?;
+        if let Some(import_html) = case.get("importHtml").and_then(Value::as_str) {
+            let html = editor
+                .read(|| generate_html_from_nodes(&editor, None))
+                .and_then(|html| html)
+                .map_err(|e| format!("generating HTML: {e}"))?;
+            same("imported HTML", html.as_str(), import_html)?;
+        }
         let selected = editor
             .read(|| get_selection().is_some())
             .map_err(|e| format!("reading the selection: {e}"))?;

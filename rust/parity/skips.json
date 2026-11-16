@@ -7099,5 +7099,65 @@
   "lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not offer to embed a link with a pending URL change when parsing resolves": {
     "reason": "deviation",
     "note": "Resolves a pending parseUrl promise in the same act as an uncommitted URL change; the Rust EmbedConfig::parse_url is synchronous (rust/PARITY.md, auto-embed), so parsing never resolves after the paste's commit."
+  },
+  "lexical-text/src/__tests__/unit/registerLexicalTextEntityEquivalence.test.ts::the edge cases where a change of the calls would differ > strict setter, not recording": {
+    "reason": "deviation",
+    "note": "Its TagNode overrides setTextContent to throw when the helper would clear it, and checks no error is reported. In Rust set_text_content is a NodeRef method, not a LexicalNode hook a node class can override (as MarkGeneratedJSON's setIDs skip), so the guard this case exists for can't be written; the range, node selection and shortened cases are ported."
+  },
+  "lexical-list/src/__tests__/unit/ListNodeDepthThemeClass.test.ts::ListNode depth theme classes > the previous depth class is removed when a list changes depth": {
+    "reason": "dom-only",
+    "note": "Reads the className of the element the DOM reconciler keeps for the list (getElementByKey) after updateDOM swaps depth-1 for depth-2 on it. The Rust reconciler is its model half only and keeps no DOM per node; ListNode's updateDOM is not ported (rust/PARITY.md, @lexical/list's DOM parts)."
+  },
+  "lexical-list/src/__tests__/unit/formatList.test.ts::$handleListInsertParagraph > splits list when the empty element is not the last one": {
+    "reason": "deviation",
+    "note": "Builds its lists from ExtendedTestListNode and ExtendedTestListItemNode, subclasses of ListNode and ListItemNode, and checks that the split-off list is an instance of the same subclass. Rust has no class inheritance: a node class is a struct of its own, and ListNode's and ListItemNode's fields and methods are bound to their structs (is_list_node and get_list_type downcast to ListNode), so a subclass of them can't be written (rust/DESIGN.md, Schemas). The same operations on ListNode and ListItemNode are ported in formatList.test.ts' other tests."
+  },
+  "lexical-list/src/__tests__/unit/formatList.test.ts::$handleIndent > creates a new nested sublist": {
+    "reason": "deviation",
+    "note": "Builds its lists from ExtendedTestListNode and ExtendedTestListItemNode, subclasses of ListNode and ListItemNode, and checks that the item and nested list $handleIndent makes are of those subclasses. Rust has no class inheritance: a node class is a struct of its own, and ListNode's and ListItemNode's fields and methods are bound to their structs (is_list_node and get_list_type downcast to ListNode), so a subclass of them can't be written (rust/DESIGN.md, Schemas). The same operations on ListNode and ListItemNode are ported in formatList.test.ts' other tests."
+  },
+  "lexical-list/src/__tests__/unit/formatList.test.ts::$handleOutdent > removes the nested list and replaces list item": {
+    "reason": "deviation",
+    "note": "Builds its lists from ExtendedTestListNode and ExtendedTestListItemNode, subclasses of ListNode and ListItemNode, and checks $handleOutdent on an item of them. Rust has no class inheritance: a node class is a struct of its own, and ListNode's and ListItemNode's fields and methods are bound to their structs (is_list_node and get_list_type downcast to ListNode), so a subclass of them can't be written (rust/DESIGN.md, Schemas). The same operations on ListNode and ListItemNode are ported in formatList.test.ts' other tests."
+  },
+  "lexical-list/src/__tests__/unit/LexicalListNode.test.ts::LexicalListNode subclassing tests ($config) > ListNodeConfig (no replacement) > applies transform": {
+    "reason": "deviation",
+    "note": "Builds its list from ListNodeConfig, a subclass of ListNode registered with $config('list-$config', {extends: ListNode}), and checks ListNode's transform runs on it. Rust has no class inheritance: a node class is a struct of its own, and ListNode's fields, methods and transform are bound to its struct (is_list_node and get_list_type downcast to ListNode), so a subclass of it can't be written (rust/DESIGN.md, Schemas). The same transform on ListNode is ported in 'ListNode as-is > applies transform'."
+  },
+  "lexical-list/src/__tests__/unit/LexicalListNode.test.ts::LexicalListNode subclassing tests ($config) > ListNodeSubclass (no replacement) > applies transform": {
+    "reason": "deviation",
+    "note": "Builds its list from ListNodeSubclass, a subclass of ListNode registered with $config('list-subclass', {extends: ListNode}), and checks ListNode's transform runs on it. Rust has no class inheritance: a node class is a struct of its own, and ListNode's fields, methods and transform are bound to its struct (is_list_node and get_list_type downcast to ListNode), so a subclass of it can't be written (rust/DESIGN.md, Schemas). The same transform on ListNode is ported in 'ListNode as-is > applies transform'."
+  },
+  "lexical-list/src/__tests__/unit/LexicalListItemNode.test.ts::LexicalListItemNode tests > ListItemNode.updateDOM() > nested list": {
+    "reason": "deviation",
+    "note": "Checks that ListItemNode.updateDOM adds the theme's nested listitem class to the element it is given once the item holds a nested list. Rust's update_dom is the reconciler's model half only (whether the DOM is made again), and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/list's DOM parts). The result half is checked by the 'updateDOM() > base' port, and createDOM's nested class by the other createDOM-rendering ports."
+  },
+  "lexical-list/src/__tests__/unit/ListImportExtension.test.ts::ListImportExtension > wrapper items come from ListNode.createListItemNode()": {
+    "reason": "deviation",
+    "note": "Registers CustomListNode and CustomListItemNode, subclasses of ListNode and ListItemNode, with a node replacement of ListNode, and checks the import's wrapper items come from the subclass's createListItemNode override. Rust has no class inheritance: a node class is a struct of its own, and ListNode's fields and methods are bound to its struct (is_list_node and get_list_type downcast to ListNode), so a subclass of it, and an override of createListItemNode, can't be written (rust/DESIGN.md, Schemas). $normalizeListChildren's two wrapping branches on ListNode are ported in 'stray text inside <ul> gets wrapped' and 'preserves a nested list instead of flattening it'."
+  },
+  "lexical-link/src/__tests__/unit/LexicalAutoLinkNode.test.ts::LexicalAutoAutoLinkNode tests > AutoLinkNode.updateDOM()": {
+    "reason": "deviation",
+    "note": "Checks that AutoLinkNode.updateDOM (LinkNode's updateLinkDOM) rewrites the href, target, rel and title of the element it is given, and returns false. Rust's update_dom is the reconciler's model half only (whether the DOM is made again), and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/link's DOM parts, updateDOM). The result half is checked by the 'updateDOM() with isUnlinked \"true\"' port, and the element createDOM makes by the createDOM ports."
+  },
+  "lexical-link/src/__tests__/unit/LexicalAutoLinkNode.test.ts::LexicalAutoAutoLinkNode tests > AutoLinkNode.updateDOM() with target, rel and title": {
+    "reason": "deviation",
+    "note": "Checks that AutoLinkNode.updateDOM (LinkNode's updateLinkDOM) rewrites the href, target, rel and title of the element it is given, and returns false. Rust's update_dom is the reconciler's model half only (whether the DOM is made again), and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/link's DOM parts, updateDOM). The result half is checked by the 'updateDOM() with isUnlinked \"true\"' port, and the element createDOM makes by the createDOM ports."
+  },
+  "lexical-link/src/__tests__/unit/LexicalAutoLinkNode.test.ts::LexicalAutoAutoLinkNode tests > AutoLinkNode.updateDOM() with undefined target, undefined rel and undefined title": {
+    "reason": "deviation",
+    "note": "Checks that AutoLinkNode.updateDOM (LinkNode's updateLinkDOM) rewrites the href, target, rel and title of the element it is given, and returns false. Rust's update_dom is the reconciler's model half only (whether the DOM is made again), and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/link's DOM parts, updateDOM). The result half is checked by the 'updateDOM() with isUnlinked \"true\"' port, and the element createDOM makes by the createDOM ports."
+  },
+  "lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::LexicalLinkNode tests > LinkNode.updateDOM()": {
+    "reason": "deviation",
+    "note": "Checks that LinkNode.updateDOM (updateLinkDOM) rewrites the href, target, rel and title of the element it is given, and returns false. Rust's update_dom is the reconciler's model half only (whether the DOM is made again), and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/link's DOM parts, updateDOM). The element createDOM makes, with the same attributes, is checked by the createDOM ports."
+  },
+  "lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::LexicalLinkNode tests > LinkNode.updateDOM() with target, rel and title": {
+    "reason": "deviation",
+    "note": "Checks that LinkNode.updateDOM (updateLinkDOM) rewrites the href, target, rel and title of the element it is given, and returns false. Rust's update_dom is the reconciler's model half only (whether the DOM is made again), and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/link's DOM parts, updateDOM). The element createDOM makes, with the same attributes, is checked by the createDOM ports."
+  },
+  "lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::LexicalLinkNode tests > LinkNode.updateDOM() with undefined target, undefined rel and undefined title": {
+    "reason": "deviation",
+    "note": "Checks that LinkNode.updateDOM (updateLinkDOM) rewrites the href, target, rel and title of the element it is given, and returns false. Rust's update_dom is the reconciler's model half only (whether the DOM is made again), and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/link's DOM parts, updateDOM). The element createDOM makes, with the same attributes, is checked by the createDOM ports."
   }
 }

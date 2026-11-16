@@ -4,8 +4,8 @@
 //! Where `NodeStructureExtension` enforces node structure, `$insertList`
 //! keeps a block that holds what a list item cannot (`$keptTops`,
 //! `$listTarget`), and the normalization joins nested lists at a seam only
-//! where an item's only child is the nested list. `$insertList`'s skipping
-//! of a named slot's value isn't ported, as no vector covers it yet.
+//! where an item's only child is the nested list. Like upstream, neither
+//! `$insertList` nor `$removeList` converts a named slot's value.
 
 use super::ListItemNode;
 use super::list_item_node::{create_list_item_node, is_list_item_node};
@@ -92,9 +92,15 @@ pub fn insert_list(list_type: ListType) -> Result<(), LexicalError> {
                 list.append(&[list_item])?;
             } else if is_list_item_node(&anchor_node) {
                 let parent = anchor_node.get_parent_or_throw()?;
-                let list = new_list_from(&parent, list_type);
-                append(&list, &parent.get_children())?;
-                parent.replace(&list, false)?;
+                // A named-slot value has no __parent (its up-link is
+                // __slotHost); its slot assignment is managed by the node or
+                // extension that owns the slot, so converting it is a no-op
+                // rather than a replace (which would throw).
+                if crate::slot::get_slot_host(&parent).is_none() {
+                    let list = new_list_from(&parent, list_type);
+                    append(&list, &parent.get_children())?;
+                    parent.replace(&list, false)?;
+                }
             }
             return Ok(());
         }
@@ -108,6 +114,10 @@ pub fn insert_list(list_type: ListType) -> Result<(), LexicalError> {
             && !is_list_item_node(node)
             // An empty container the selection passes over stays a container.
             && !is_block_container(node)
+            // A named-slot value's slot assignment is managed by the node or
+            // extension that owns the slot, so it is not eligible for list
+            // conversion (see $setBlocksType).
+            && crate::slot::get_slot_host(node).is_none()
             && !handled.iter().any(|k| k == node.get_key())
         {
             create_list_or_merge(node, list_type)?;
@@ -128,7 +138,10 @@ pub fn insert_list(list_type: ListType) -> Result<(), LexicalError> {
             }
             let parent_key = p.get_key().to_owned();
             if is_list_node(&p) {
-                if !handled.contains(&parent_key) {
+                // A list occupying a named slot is left as-is: its slot
+                // assignment is managed by the node or extension that owns
+                // the slot.
+                if !handled.contains(&parent_key) && crate::slot::get_slot_host(&p).is_none() {
                     let new_list_node = new_list_from(&p, list_type);
                     append(&new_list_node, &p.get_children())?;
                     p.replace(&new_list_node, false)?;

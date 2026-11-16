@@ -141,3 +141,35 @@ pub const COPY_COMMAND: LexicalCommand<Option<Rc<DataTransfer>>> =
 /// [`COPY_COMMAND`]'s.
 pub const CUT_COMMAND: LexicalCommand<Option<Rc<DataTransfer>>> =
     LexicalCommand::constant(u64::MAX - 29, "CUT_COMMAND");
+
+/// The parts of a DOM `KeyboardEvent` that key command handlers read: the
+/// modifier keys, and `preventDefault()`, which a handler calls when it
+/// takes over the key. An app without a DOM makes one from its own key
+/// event.
+#[derive(Debug, Default)]
+pub struct KeyboardEvent {
+    pub shift_key: bool,
+    pub alt_key: bool,
+    pub ctrl_key: bool,
+    pub meta_key: bool,
+    default_prevented: std::cell::Cell<bool>,
+}
+
+impl KeyboardEvent {
+    /// `event.preventDefault()`.
+    pub fn prevent_default(&self) {
+        self.default_prevented.set(true);
+    }
+
+    /// `event.defaultPrevented`.
+    pub fn default_prevented(&self) -> bool {
+        self.default_prevented.get()
+    }
+}
+
+/// `KEY_ENTER_COMMAND`: dispatched when Enter is pressed, with the key
+/// event, or `None` (JS `null`) when there is none. Rich and plain text's
+/// handlers turn it into `INSERT_PARAGRAPH_COMMAND` or
+/// `INSERT_LINE_BREAK_COMMAND`.
+pub const KEY_ENTER_COMMAND: LexicalCommand<Option<KeyboardEvent>> =
+    LexicalCommand::constant(u64::MAX - 31, "KEY_ENTER_COMMAND");

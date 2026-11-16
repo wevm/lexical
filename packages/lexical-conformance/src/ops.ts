@@ -125,6 +125,7 @@ import {
   $wrapSelectionInMarkNode,
   MarkNode,
 } from '@lexical/mark';
+import {registerMarkdownShortcuts, TRANSFORMERS} from '@lexical/markdown';
 import {
   $isOverflowNode,
   OverflowExtension,
@@ -281,6 +282,7 @@ import {
   INSERT_TAB_COMMAND,
   INTERNAL_$normalizeNodeStructure,
   INTERNAL_isNodeStructureEnforced,
+  KEY_ENTER_COMMAND,
   type Klass,
   type LexicalCommand,
   type LexicalEditor,
@@ -1145,6 +1147,12 @@ export type Script = {
    * element.
    */
   liveRegion?: boolean;
+  /**
+   * `registerMarkdownShortcuts(editor, TRANSFORMERS)` (@lexical/markdown),
+   * after the hashtag, as `MarkdownShortcutPlugin` does. `TRANSFORMERS`
+   * needs the nodes of `richText`, `list`, `link` and `code`.
+   */
+  markdown?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -3007,6 +3015,7 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['INSERT_LINE_BREAK_COMMAND', INSERT_LINE_BREAK_COMMAND],
   ['INSERT_PARAGRAPH_COMMAND', INSERT_PARAGRAPH_COMMAND],
   ['INSERT_TAB_COMMAND', INSERT_TAB_COMMAND],
+  ['KEY_ENTER_COMMAND', KEY_ENTER_COMMAND],
   ['OUTDENT_CONTENT_COMMAND', OUTDENT_CONTENT_COMMAND],
   ['REDO_COMMAND', REDO_COMMAND],
   ['REMOVE_TEXT_COMMAND', REMOVE_TEXT_COMMAND],
@@ -3634,6 +3643,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
   }
   if (script.hashtag) {
     registerLexicalHashtag(editor);
+  }
+  if (script.markdown) {
+    registerMarkdownShortcuts(editor, TRANSFORMERS);
   }
   for (const name of script.transforms ?? []) {
     const transform = TRANSFORMS[name];

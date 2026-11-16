@@ -35,7 +35,9 @@
 //! and `codeHighlight` registers `registerCodeHighlighting` in place of
 //! `registerCodeIndentation`, over `ops.ts`'s conformance tokenizer
 //! (`code_highlight`) or tokens it recorded from Prism, and the step
-//! `unregisterCodeHighlighting` unregisters it.
+//! `unregisterCodeHighlighting` unregisters it. One with
+//! `markdown: true` registers `registerMarkdownShortcuts` with
+//! `TRANSFORMERS`, after the hashtag; `KEY_ENTER_COMMAND` takes `null`.
 //!
 //! `setState`, `updateState`, `logState` and `logStateChange` name the
 //! NodeState configs of `ops.ts`'s `STATES` and its `UPDATERS`, made here
@@ -72,15 +74,15 @@ use lexical::{
     COMMAND_PRIORITY_EDITOR, CONTROLLED_TEXT_INSERTION_COMMAND, CaretDirection, CreateEditorArgs,
     DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, DataTransfer, Direction,
     Editor, EditorState, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
-    INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, LexicalCommand,
-    LexicalError, NodeRef, OUTDENT_CONTENT_COMMAND, PointCaret, PointType, REDO_COMMAND,
-    REMOVE_TEXT_COMMAND, RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
-    SelectionAlter, SelectionGranularity, SelectionRef, SliceMode, StateConfig, StateValueConfig,
-    TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
-    caret_range_from_selection, clone_with_properties, create_command, create_editor,
-    create_node_selection, create_paragraph_node, create_range_selection, create_state,
-    create_state_with, export_node_json, get_caret_range, get_child_caret, get_node_by_key,
-    get_root, get_selection, get_sibling_caret, get_state, get_state_change,
+    INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, KEY_ENTER_COMMAND,
+    KeyboardEvent, LexicalCommand, LexicalError, NodeRef, OUTDENT_CONTENT_COMMAND, PointCaret,
+    PointType, REDO_COMMAND, REMOVE_TEXT_COMMAND, RangeSelection, SELECT_ALL_COMMAND,
+    SET_TEXT_FORMAT_COMMAND, SelectionAlter, SelectionGranularity, SelectionRef, SliceMode,
+    StateConfig, StateValueConfig, TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister,
+    UpdateOptions, Which, caret_range_from_selection, clone_with_properties, create_command,
+    create_editor, create_node_selection, create_paragraph_node, create_range_selection,
+    create_state, create_state_with, export_node_json, get_caret_range, get_child_caret,
+    get_node_by_key, get_root, get_selection, get_sibling_caret, get_state, get_state_change,
     get_style_object_from_css, get_text_point_caret, insert_nodes, is_block_fully_selected,
     normalize_caret, parse_serialized_node, remove_text_from_caret_range, reset_random_key,
     select_all, set_selection, set_selection_from_caret_range, set_state, set_state_with,
@@ -462,6 +464,7 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
         "INSERT_LINE_BREAK_COMMAND" => ScriptCommand::Bool(INSERT_LINE_BREAK_COMMAND),
         "INSERT_PARAGRAPH_COMMAND" => ScriptCommand::Void(INSERT_PARAGRAPH_COMMAND),
         "INSERT_TAB_COMMAND" => ScriptCommand::Void(INSERT_TAB_COMMAND),
+        "KEY_ENTER_COMMAND" => ScriptCommand::Key(KEY_ENTER_COMMAND),
         "OUTDENT_CONTENT_COMMAND" => ScriptCommand::Void(OUTDENT_CONTENT_COMMAND),
         "REDO_COMMAND" => ScriptCommand::Void(REDO_COMMAND),
         "REMOVE_TEXT_COMMAND" => ScriptCommand::Void(REMOVE_TEXT_COMMAND),
@@ -487,6 +490,8 @@ pub(crate) enum ScriptCommand {
     Bool(LexicalCommand<bool>),
     Str(LexicalCommand<String>),
     Formats(LexicalCommand<Vec<(String, bool)>>),
+    /// A key command: `null`, as a script can't make a `KeyboardEvent`.
+    Key(LexicalCommand<Option<KeyboardEvent>>),
     /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
     ListStart(LexicalCommand<list::UpdateListStartPayload>),
     /// `TOGGLE_LINK_COMMAND`: `null`, a URL, or `{url, target, rel, title}`.
@@ -584,6 +589,9 @@ impl ScriptCommand {
             ScriptCommand::Formats(command) if formats_of(&payload).is_some() => {
                 editor.dispatch_command(command, formats_of(&payload).unwrap_or_default())
             }
+            ScriptCommand::Key(command) if payload.is_null() => {
+                editor.dispatch_command(command, None)
+            }
             ScriptCommand::ListStart(command) => match list_start_of(&payload) {
                 Some(payload) => editor.dispatch_command(command, payload),
                 None => Err(err(format!(
@@ -636,6 +644,11 @@ impl ScriptCommand {
                     }
                     listener(&formats.into(), editor)
                 },
+                priority,
+            ),
+            ScriptCommand::Key(command) => editor.register_command(
+                command,
+                move |_, editor| listener(&Value::Null, editor),
                 priority,
             ),
             ScriptCommand::ListStart(command) => editor.register_command(
@@ -2610,6 +2623,13 @@ impl Session {
                 &editor,
                 lexical::hashtag::HashtagConfig::default(),
             );
+        }
+        if script.get("markdown").and_then(Value::as_bool) == Some(true) {
+            let _unregister = lexical::markdown::register_markdown_shortcuts(
+                &editor,
+                &lexical::markdown::transformers(),
+            )
+            .map_err(|e| e.to_string())?;
         }
         for name in script
             .get("transforms")

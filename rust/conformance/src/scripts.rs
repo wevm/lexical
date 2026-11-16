@@ -104,6 +104,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 mod code_highlight;
+mod core_api;
 mod extensions;
 mod schema_node;
 mod structure;
@@ -111,7 +112,9 @@ mod structure;
 /// What `ops.ts`'s `Context` holds besides the editor.
 #[derive(Default)]
 struct Ctx {
-    log: RefCell<Vec<Value>>,
+    /// `ctx.log`, shared with what logs after the action that made it
+    /// (`$onUpdate`'s callbacks).
+    log: Rc<RefCell<Vec<Value>>>,
     commands: RefCell<HashMap<String, LexicalCommand<Value>>>,
     states: States,
     /// The test extensions made so far, by key.
@@ -985,7 +988,7 @@ impl ScriptCommand {
         &self,
         editor: &Editor,
         listener: impl Fn(&Value, &Editor) -> Result<bool, LexicalError> + 'static,
-        priority: u8,
+        priority: i8,
     ) -> Unregister {
         match self {
             ScriptCommand::Void(command) => editor.register_command(
@@ -1195,7 +1198,16 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "logSingleTokenPaste"
             | "findOffset"
             | "wrapOverflowedNodes"
-            | "mergePrevious",
+            | "mergePrevious"
+            | "addUpdateTag"
+            | "logHasUpdateTag"
+            | "onUpdate"
+            | "logHasNodes"
+            | "logNodesOfType"
+            | "logAdjacentNode"
+            | "logGetters"
+            | "appendText"
+            | "logEditable",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -2344,6 +2356,92 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             let offset = number(action.get("offset").unwrap_or(&Value::Null))?;
             lexical::overflow::wrap_overflowed_nodes(offset as usize)
         }
+        Some("addUpdateTag") => {
+            lexical::add_update_tag(action.str("tag").map_err(err)?);
+            Ok(())
+        }
+        Some("logHasUpdateTag") => {
+            let tag = action.str("tag").map_err(err)?;
+            ctx.log(vec![
+                "hasUpdateTag".into(),
+                tag.into(),
+                lexical::has_update_tag(tag).into(),
+            ]);
+            Ok(())
+        }
+        Some("onUpdate") => {
+            let log = ctx.log.clone();
+            lexical::on_update(move || {
+                log.borrow_mut()
+                    .push(Value::Array(vec!["$onUpdate".into()]));
+            });
+            Ok(())
+        }
+        Some("logHasNodes") => {
+            let editor = lexical::get_editor();
+            let types = types(action.get("types"));
+            let mut entries = Vec::new();
+            let mut classes = Vec::new();
+            for node_type in &types {
+                let class = core_api::known_class(node_type)?;
+                entries.push(Value::Array(vec![
+                    node_type.as_str().into(),
+                    editor.has_node(class).into(),
+                ]));
+                classes.push(class);
+            }
+            ctx.log(vec![
+                "hasNodes".into(),
+                Value::Array(entries),
+                editor.has_nodes(&classes).into(),
+            ]);
+            Ok(())
+        }
+        Some("logNodesOfType") => {
+            let node_type = action.str("type").map_err(err)?;
+            if lexical::get_editor()
+                .get_registered_node(node_type)
+                .is_none()
+            {
+                return Err(err(format!("unknown node type {node_type}")));
+            }
+            ctx.log(vec![
+                "nodesOfType".into(),
+                node_type.into(),
+                keys(lexical::nodes_of_type(node_type)),
+            ]);
+            Ok(())
+        }
+        Some("logAdjacentNode") => {
+            let is_backward = action
+                .get("isBackward")
+                .and_then(Value::as_bool)
+                .ok_or_else(|| err("isBackward"))?;
+            let adjacent = lexical::get_adjacent_node(&sel()?.focus, is_backward)?;
+            ctx.log(vec![
+                "adjacentNode".into(),
+                is_backward.into(),
+                adjacent.map_or(Value::Null, |n| n.get_key().into()),
+            ]);
+            Ok(())
+        }
+        Some("logGetters") => {
+            let key = action.str("key").map_err(err)?;
+            let getters = core_api::getters(&node(key)?);
+            ctx.log(vec!["getters".into(), key.into(), getters]);
+            Ok(())
+        }
+        Some("appendText") => {
+            let parent = element(node(action.str("key").map_err(err)?)?)?;
+            parent.append(&[lexical::create_text_node(action.str("text").map_err(err)?)])
+        }
+        Some("logEditable") => {
+            ctx.log(vec![
+                "editable".into(),
+                lexical::get_editor().is_editable().into(),
+            ]);
+            Ok(())
+        }
         Some("mergePrevious") => {
             let overflow_node = node(action.str("key").map_err(err)?)?;
             if !lexical::overflow::is_overflow_node(&overflow_node) {
@@ -2876,6 +2974,8 @@ pub struct Session {
     unregister_history: Option<Unregister>,
     /// `script.liveRegion`.
     live_region: bool,
+    /// `script.warnings`: log each warning (`withWarnings`).
+    warnings: bool,
     /// Whether the script has `codeHighlight`.
     code_highlight: bool,
     /// What `registerCodeHighlighting` returned, until the step
@@ -2959,19 +3059,22 @@ impl Session {
                 *ctx.extension_defs.borrow_mut() = defs.clone();
             }
             let parent_read = script.get("parentRead").and_then(Value::as_bool) != Some(false);
-            let built = match script.get("parent").and_then(Value::as_array) {
-                None => extensions::build(&ctx, extensions),
-                Some(parent_extensions) => {
-                    extensions::build(&ctx, parent_extensions).and_then(|parent| {
-                        *ctx.parent.borrow_mut() = Some(parent.clone());
-                        if parent_read {
-                            parent.read(|| extensions::build(&ctx, extensions))?
-                        } else {
-                            extensions::build(&ctx, extensions)
-                        }
-                    })
+            let warnings = script.get("warnings").and_then(Value::as_bool) == Some(true);
+            let built = core_api::with_warnings(&ctx, warnings, || {
+                match script.get("parent").and_then(Value::as_array) {
+                    None => extensions::build(&ctx, extensions),
+                    Some(parent_extensions) => {
+                        extensions::build(&ctx, parent_extensions).and_then(|parent| {
+                            *ctx.parent.borrow_mut() = Some(parent.clone());
+                            if parent_read {
+                                parent.read(|| extensions::build(&ctx, extensions))?
+                            } else {
+                                extensions::build(&ctx, extensions)
+                            }
+                        })
+                    }
                 }
-            };
+            });
             return match built {
                 Err(e) => {
                     let mut build = Object::new();
@@ -3037,11 +3140,24 @@ impl Session {
         if script.get("decoratorBlock").and_then(Value::as_bool) == Some(true) {
             nodes.extend(test_decorator_block_nodes());
         }
-        let editor = create_editor(CreateEditorArgs {
+        let flag = |key: &str| script.get(key).and_then(Value::as_bool) == Some(true);
+        if flag("testText") || flag("replaceText") {
+            nodes.push(core_api::test_text_node());
+        }
+        if flag("replaceText") {
+            nodes.push(core_api::text_replacement(false));
+        }
+        let args = CreateEditorArgs {
             nodes,
             namespace: NAMESPACE.to_owned(),
+            editable: script.get("editable").and_then(Value::as_bool),
             ..Default::default()
-        });
+        };
+        let editor = if flag("headless") {
+            lexical::create_headless_editor(args)
+        } else {
+            create_editor(args)
+        };
         let ctx = Rc::new(Ctx::default());
         Self::start_on(script, editor, ctx)
     }
@@ -3142,7 +3258,7 @@ impl Session {
             let priority = handler
                 .get("priority")
                 .and_then(Value::as_f64)
-                .map_or(COMMAND_PRIORITY_EDITOR, |p| p as u8);
+                .map_or(COMMAND_PRIORITY_EDITOR, |p| p as i8);
             let result = handler
                 .get("result")
                 .and_then(Value::as_bool)
@@ -3259,6 +3375,34 @@ impl Session {
                 log.log(vec!["textContent".into(), text.into()]);
             });
         }
+        if flag("mutatedNodes") {
+            let log = ctx.clone();
+            let _unregister = editor.register_update_listener(move |payload| {
+                let mutated = payload.mutated_nodes.as_ref().map_or(Value::Null, |m| {
+                    Value::Array(
+                        m.iter()
+                            .map(|(node_type, mutations)| {
+                                Value::Array(vec![
+                                    (*node_type).into(),
+                                    Value::Array(
+                                        mutations
+                                            .iter()
+                                            .map(|(key, mutation)| {
+                                                Value::Array(vec![
+                                                    key.as_str().into(),
+                                                    mutation.as_str().into(),
+                                                ])
+                                            })
+                                            .collect(),
+                                    ),
+                                ])
+                            })
+                            .collect(),
+                    )
+                });
+                log.log(vec!["mutatedNodes".into(), mutated]);
+            });
+        }
         // `registerHistory(editor, createEmptyHistoryState(), delay)` on the
         // session's clock.
         let clock = ctx.clock.clone();
@@ -3287,6 +3431,7 @@ impl Session {
             clock,
             unregister_history,
             live_region: flag("liveRegion"),
+            warnings: flag("warnings"),
             code_highlight: code_highlight.is_some(),
             unregister_code_highlighting: RefCell::new(unregister_code_highlighting),
         })
@@ -3306,15 +3451,18 @@ impl Session {
             self.clock.set(now);
         }
         ctx.log.borrow_mut().clear();
+        core_api::set_selection_transform_ctx(ctx);
         let parent = ctx.parent.borrow().clone();
-        let outcome = if step.get("inParent").and_then(Value::as_bool) == Some(true) {
-            match &parent {
-                Some(parent) => self.run_on(parent, Some(parent), step),
-                None => Err(err("the script has no parent editor")),
+        let outcome = core_api::with_warnings(ctx, self.warnings, || {
+            if step.get("inParent").and_then(Value::as_bool) == Some(true) {
+                match &parent {
+                    Some(parent) => self.run_on(parent, Some(parent), step),
+                    None => Err(err("the script has no parent editor")),
+                }
+            } else {
+                self.run_on(&self.editor, self.built.as_ref(), step)
             }
-        } else {
-            self.run_on(&self.editor, self.built.as_ref(), step)
-        };
+        });
         let editor = &self.editor;
         if self.live_region {
             let entry = ctx.live_region_entry();
@@ -3370,8 +3518,34 @@ impl Session {
                 UpdateOptions {
                     discrete: true,
                     tags,
+                    on_update: (step.get("onUpdate").and_then(Value::as_bool) == Some(true)).then(
+                        || {
+                            let log = ctx.log.clone();
+                            Rc::new(move || {
+                                log.borrow_mut().push(Value::Array(vec!["onUpdate".into()]));
+                            }) as Rc<dyn Fn()>
+                        },
+                    ),
                     ..UpdateOptions::default()
                 },
+            )
+        } else if let Some(name) = step.get("readDispatch").and_then(Value::as_str) {
+            let payload = step.get("payload").cloned().unwrap_or(Value::Null);
+            let command = ctx.command(name);
+            editor
+                .read(|| command.dispatch(editor, payload))?
+                .map(|dispatched| log_dispatched(|entry| ctx.log(entry), name, dispatched))
+        } else if let Some(focus) = step.get("focus") {
+            let options = match focus.get("defaultSelection").and_then(Value::as_str) {
+                Some("rootStart") => lexical::EditorFocusOptions::RootStart,
+                _ => lexical::EditorFocusOptions::RootEnd,
+            };
+            let log = ctx.log.clone();
+            editor.focus(
+                Some(Box::new(move || {
+                    log.borrow_mut().push(Value::Array(vec!["focused".into()]));
+                })),
+                options,
             )
         } else if let Some(name) = step.get("dispatch").and_then(Value::as_str) {
             let payload = step.get("payload").cloned().unwrap_or(Value::Null);

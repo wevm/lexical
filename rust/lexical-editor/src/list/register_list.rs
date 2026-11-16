@@ -9,7 +9,7 @@ use super::list_item_node::is_list_item_node;
 use super::list_node::{ListType, is_list_node};
 use super::utils::get_list_depth;
 use crate::commands::{INSERT_PARAGRAPH_COMMAND, KEY_BACKSPACE_COMMAND};
-use crate::editor::{COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_LOW, LexicalCommand};
+use crate::editor::{COMMAND_PRIORITY_BEFORE_EDITOR, COMMAND_PRIORITY_LOW, LexicalCommand};
 use crate::lexical_selection::{SelectionRef, Which, get_selection};
 use crate::lexical_utils::get_node_by_key;
 use crate::node::{NodeKey, NodeRef};
@@ -118,7 +118,7 @@ pub fn register_list(editor: &Editor, options: RegisterListOptions) -> Unregiste
             move |_, _| handle_list_insert_paragraph(options.restore_numbering),
             COMMAND_PRIORITY_LOW,
         ),
-        editor.register_command_before(
+        editor.register_command(
             &KEY_BACKSPACE_COMMAND,
             |event, _| {
                 let Some(range) = get_selection().and_then(|s| s.range()) else {
@@ -144,7 +144,7 @@ pub fn register_list(editor: &Editor, options: RegisterListOptions) -> Unregiste
                 }
                 Ok(false)
             },
-            COMMAND_PRIORITY_EDITOR,
+            COMMAND_PRIORITY_BEFORE_EDITOR,
         ),
         editor.register_node_transform("listitem", |node| {
             match node.get_first_child() {

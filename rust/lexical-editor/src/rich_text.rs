@@ -153,10 +153,10 @@ pub struct HeadingNode {
 
 /// `$createHeadingNode(headingTag = 'h1')`.
 pub fn create_heading_node(tag: HeadingTagType) -> NodeRef {
-    set_node_key(Box::new(HeadingNode {
+    crate::lexical_utils::replaced(set_node_key(Box::new(HeadingNode {
         tag,
         ..HeadingNode::default()
-    }))
+    })))
 }
 
 /// `$isHeadingNode(node)`.
@@ -412,7 +412,7 @@ pub fn quote_shadow_root_state() -> StateConfig<bool> {
 
 /// `$createQuoteNode({shadowRoot})`.
 pub fn create_quote_node(shadow_root: bool) -> NodeRef {
-    let node = set_node_key(Box::new(QuoteNode::default()));
+    let node = crate::lexical_utils::replaced(set_node_key(Box::new(QuoteNode::default())));
     if shadow_root {
         set_state(&node, &quote_shadow_root_state(), true)
             .expect("a new quote has no other shadowRoot state");

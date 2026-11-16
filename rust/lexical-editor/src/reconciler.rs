@@ -14,15 +14,14 @@
 //! no mutation.
 
 use crate::Editor;
-use crate::editor::{DirtyType, NodeMutation, NodeMutations};
+use crate::editor::{DirtyType, NodeMutation};
 use crate::editor_state::{EditorState, NodeMap};
 use crate::node::{LexicalNode, NodeKey};
 use crate::ordered::{OrderedMap, OrderedSet};
 use std::collections::HashSet;
 use std::rc::Rc;
 
-/// `MutatedNodes`: by node type, in the order the walk first reached one.
-pub(crate) type MutatedNodes = Vec<(&'static str, NodeMutations)>;
+pub(crate) use crate::editor::MutatedNodes;
 
 struct Reconciler<'a> {
     /// `treatAllNodesAsDirty`.

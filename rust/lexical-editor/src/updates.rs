@@ -506,50 +506,53 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
     *editor.0.editor_state.borrow_mut() = pending.clone();
     // The reconciler's model half, with a root element: which nodes it
     // creates, updates and destroys, for the mutation listeners.
-    let mutated_nodes = if editor.get_root_element().is_some() && needs_update {
-        let dirty = editor.0.dirty.borrow();
-        let mutated = with_active(
-            Active {
-                editor: Some(editor.clone()),
-                editor_state: Some(pending.clone()),
-                read_only: false,
-                registry: None,
-            },
-            || {
-                with_updating(editor, || {
-                    let mutated = crate::reconciler::reconcile_root(
-                        &current,
-                        &pending,
-                        editor,
-                        dirty.dirty_type,
-                        &dirty.elements,
-                        &dirty.leaves,
-                    );
-                    (mutated, get_root().get_text_content())
-                })
-            },
-        );
-        drop(dirty);
-        let (mutated, text) = mutated;
-        // The end of `$reconcileNode('root')`: the root caches its text
-        // content (`__cachedText`). A stale cache (a root not reconciled
-        // since it was cloned or made) is written through `getWritable()`,
-        // which marks the root dirty, as the update listeners then see.
-        let root = pending.0.node_map.borrow().get("root").cloned();
-        if let Some(root) = root {
-            let mut cache = editor.0.root_text_cache.borrow_mut();
-            let fresh = cache.as_ref().is_some_and(|(cached, cached_text)| {
-                Rc::ptr_eq(cached, &root) && *cached_text == text
-            });
-            if !fresh {
-                editor.0.dirty.borrow_mut().elements.set("root", true);
-                *cache = Some((root, text));
+    let mutated_nodes =
+        if !editor.is_headless() && editor.get_root_element().is_some() && needs_update {
+            let dirty = editor.0.dirty.borrow();
+            let mutated = with_active(
+                Active {
+                    editor: Some(editor.clone()),
+                    editor_state: Some(pending.clone()),
+                    read_only: false,
+                    registry: None,
+                },
+                || {
+                    with_updating(editor, || {
+                        let mutated = crate::reconciler::reconcile_root(
+                            &current,
+                            &pending,
+                            editor,
+                            dirty.dirty_type,
+                            &dirty.elements,
+                            &dirty.leaves,
+                        );
+                        (mutated, get_root().get_text_content())
+                    })
+                },
+            );
+            drop(dirty);
+            let (mutated, text) = mutated;
+            // The end of `$reconcileNode('root')`: the root caches its text
+            // content (`__cachedText`). A stale cache (a root not reconciled
+            // since it was cloned or made) is written through `getWritable()`,
+            // which marks the root dirty, as the update listeners then see;
+            // not in a committed state (`activeEditorStateReadOnly`), such as
+            // the one `setRootElement` reconciles.
+            let root = pending.0.node_map.borrow().get("root").cloned();
+            if let Some(root) = root.filter(|_| !pending.0.read_only.get()) {
+                let mut cache = editor.0.root_text_cache.borrow_mut();
+                let fresh = cache.as_ref().is_some_and(|(cached, cached_text)| {
+                    Rc::ptr_eq(cached, &root) && *cached_text == text
+                });
+                if !fresh {
+                    editor.0.dirty.borrow_mut().elements.set("root", true);
+                    *cache = Some((root, text));
+                }
             }
-        }
-        Some(mutated)
-    } else {
-        None
-    };
+            Some(mutated)
+        } else {
+            None
+        };
     pending.0.read_only.set(true);
 
     let (dirty_elements, dirty_leaves, normalized_nodes) = {
@@ -603,6 +606,7 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
             tags,
             editor_state: pending.clone(),
             prev_editor_state: current.clone(),
+            mutated_nodes: mutated_nodes.clone(),
         };
         for listener in editor.update_listeners() {
             listener(&payload);
@@ -652,10 +656,13 @@ fn trigger_enqueued_updates(editor: &Editor) -> Result<(), LexicalError> {
         .cascade_count
         .replace(editor.0.cascade_count.get() + 1);
     if count > 99 {
-        // JS warns through onWarn.
         editor.0.updates.borrow_mut().clear();
         editor.0.cascade_count.set(0);
-        return Ok(());
+        // Reported through `onWarn` after breaking the cascade.
+        return editor.on_warn(LexicalError::new(format!(
+            "One or more update listeners are endlessly enqueueing more updates. May have encountered infinite recursion caused by update listeners that trigger additional updates without a stop condition. Editor namespace: {}",
+            editor.get_namespace()
+        )));
     }
     let queued = editor.0.updates.borrow_mut().pop_front();
     match queued {
@@ -674,6 +681,14 @@ fn process_nested_updates(editor: &Editor, initial_skip: bool) -> Result<bool, L
         let pending = editor.pending();
         if queued.options.skip_transforms {
             skip_transforms = true;
+        }
+        if let Some(on_update) = &queued.options.on_update {
+            let on_update = on_update.clone();
+            editor
+                .0
+                .deferred
+                .borrow_mut()
+                .push(Box::new(move || on_update()));
         }
         if queued.options.discrete {
             invariant!(
@@ -716,6 +731,14 @@ pub(crate) fn begin_update(
     options: &UpdateOptions,
 ) -> Result<(), LexicalError> {
     editor.add_tags(&options.tags);
+    if let Some(on_update) = &options.on_update {
+        let on_update = on_update.clone();
+        editor
+            .0
+            .deferred
+            .borrow_mut()
+            .push(Box::new(move || on_update()));
+    }
     let mut skip_transforms = options.skip_transforms;
     let current = editor.get_editor_state();
     let mut was_cloned = false;
@@ -759,6 +782,7 @@ pub(crate) fn begin_update(
             }
             update_fn()?;
             skip_transforms = process_nested_updates(editor, skip_transforms)?;
+            crate::lexical_selection::apply_selection_transforms(&pending, editor)?;
             if editor.dirty_type() != DirtyType::None {
                 if skip_transforms {
                     normalize_all_dirty_text_nodes(editor)?;
@@ -848,7 +872,17 @@ pub(crate) fn update_editor_sync(
     });
     match options {
         None if in_update && !read_only => f(),
-        None => begin_update(editor, f, &UpdateOptions::default()),
+        None => {
+            if in_update {
+                // An update started from a read of the same editor (a
+                // command dispatched in `read`) runs as a fresh writable
+                // update, with JS's development warning.
+                crate::warnings::console_warn(
+                    "updateEditorSync: an editor update (e.g. a command listener that mutates the editor) ran while a read-only context was on the stack. This most commonly happens when a command is dispatched from inside editor.read(). The update has been deferred to a fresh writable update so it still applies, but dispatching mutations from a read-only context is an anti-pattern — dispatch after editor.read() returns, or via queueMicrotask.",
+                );
+            }
+            begin_update(editor, f, &UpdateOptions::default())
+        }
         Some(options) => begin_update(editor, f, options),
     }
 }

@@ -216,10 +216,14 @@ pub fn trim_text_content_from_anchor(
     Ok(())
 }
 
-/// `$addNodeStyle(node)`: does nothing. JS warns once that the calls should
-/// be removed, as node styles are parsed on demand; the port has no console.
+/// `$addNodeStyle(node)`: does nothing but warn, once, that the calls
+/// should be removed, as node styles are parsed on demand.
 #[deprecated(note = "a no-op: node styles are parsed on demand")]
-pub fn add_node_style(_node: &NodeRef) {}
+pub fn add_node_style(_node: &NodeRef) {
+    crate::warnings::warn_only_once(
+        "$addNodeStyle is a deprecated no-op and calls should be removed",
+    );
+}
 
 /// What `$patchStyle` applies a patch to, as a patch function receives it:
 /// a text node, a collapsed range selection or an element (its text style).

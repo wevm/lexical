@@ -131,12 +131,12 @@ impl AutoLinkNode {
 
 /// `$createLinkNode(url, attributes)`.
 pub fn create_link_node(url: &str, attributes: &LinkAttributes) -> NodeRef {
-    set_node_key(Box::new(LinkNode::new(
+    crate::lexical_utils::replaced(set_node_key(Box::new(LinkNode::new(
         url,
         &attributes.rel,
         &attributes.target,
         &attributes.title,
-    )))
+    ))))
 }
 
 /// `$isLinkNode(node)`: a `LinkNode` or an `AutoLinkNode`.
@@ -146,10 +146,10 @@ pub fn is_link_node(node: &NodeRef) -> bool {
 
 /// `$createAutoLinkNode(url, attributes)`.
 pub fn create_auto_link_node(url: &str, attributes: &AutoLinkAttributes) -> NodeRef {
-    set_node_key(Box::new(AutoLinkNode {
+    crate::lexical_utils::replaced(set_node_key(Box::new(AutoLinkNode {
         link: LinkNode::new(url, &attributes.rel, &attributes.target, &attributes.title),
         is_unlinked: attributes.is_unlinked.unwrap_or(false),
-    }))
+    })))
 }
 
 /// `$isAutoLinkNode(node)`.

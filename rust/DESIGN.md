@@ -162,7 +162,9 @@ Names may change as packages land; this table is updated with them.
   `Set` (`ordered.rs`), including iteration that sees entries added
   meanwhile. Without a root element nothing reconciles, so mutation
   listeners and selection-change notifications never fire, as in JS's
-  headless editor; with one (`set_root_element`), the reconciler's model
+  headless editor (`create_headless_editor` and `HeadlessExtension` refuse
+  a root element, and their editor never reconciles); with one
+  (`set_root_element`), the reconciler's model
   half (`reconciler.rs`) reports created, updated and destroyed nodes to
   mutation listeners.
   JS commits a non-discrete update in a microtask; with no event loop, Rust

@@ -27,10 +27,10 @@ impl MarkNode {
 
 /// `$createMarkNode(ids)`.
 pub fn create_mark_node(ids: &[String]) -> NodeRef {
-    set_node_key(Box::new(MarkNode {
+    crate::lexical_utils::replaced(set_node_key(Box::new(MarkNode {
         ids: ids.to_vec(),
         ..MarkNode::default()
-    }))
+    })))
 }
 
 /// `$isMarkNode(node)`.

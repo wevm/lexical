@@ -18,9 +18,9 @@ use crate::menu::{MenuOption, MenuSelectOption, NodeMenu};
 use crate::merge_register::merge_register;
 use crate::updates::on_update;
 use crate::{
-    COMMAND_PRIORITY_EDITOR, Editor, LexicalCommand, LexicalError, MutationListenerOptions,
-    NodeKey, NodeMutation, NodeRef, PASTE_COMMAND, PASTE_TAG, PasteCommandType, Unregister,
-    UpdateOptions, get_node_by_key,
+    COMMAND_PRIORITY_BEFORE_EDITOR, COMMAND_PRIORITY_EDITOR, Editor, LexicalCommand, LexicalError,
+    MutationListenerOptions, NodeKey, NodeMutation, NodeRef, PASTE_COMMAND, PASTE_TAG,
+    PasteCommandType, Unregister, UpdateOptions, get_node_by_key,
 };
 use std::any::Any;
 use std::cell::{Cell, RefCell};
@@ -197,7 +197,7 @@ pub struct AutoEmbedConfig {
     pub disable_menu_for: Option<DisableMenuFor>,
     /// `menuCommandPriority`: the priority of the menu's keyboard commands
     /// (`COMMAND_PRIORITY_LOW` in JS's default).
-    pub menu_command_priority: u8,
+    pub menu_command_priority: i8,
 }
 
 /// `EmbedMatch`.
@@ -380,7 +380,7 @@ pub fn register_auto_embed(
         }
     }));
     let pasting = Rc::downgrade(&state);
-    let mut unregisters = vec![editor.register_command_before(
+    let mut unregisters = vec![editor.register_command(
         &PASTE_COMMAND,
         move |payload, _| {
             let Some(state) = pasting.upgrade() else {
@@ -404,7 +404,7 @@ pub fn register_auto_embed(
             }
             Ok(false)
         },
-        COMMAND_PRIORITY_EDITOR,
+        COMMAND_PRIORITY_BEFORE_EDITOR,
     )];
     for node_type in ["link", "autolink"] {
         let listening = Rc::downgrade(&state);

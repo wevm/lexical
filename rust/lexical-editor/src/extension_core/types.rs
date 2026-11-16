@@ -77,16 +77,25 @@ pub enum InitialEditorStateType {
 /// editor.
 pub type InitialEditorStateFn = Rc<dyn Fn(&Editor) -> Result<(), LexicalError>>;
 
+/// `InitialEditorConfig`'s `onWarn`: a warning and the editor that warned;
+/// what it returns is what the call that warned returns.
+pub type ExtensionWarningHandler = Rc<dyn Fn(LexicalError, &Editor) -> Result<(), LexicalError>>;
+
 /// `InitialEditorConfig`: the editor configuration an extension contributes,
 /// and what `init` may change. Of JS's fields, the ones the port has: the
-/// node classes, `$initialEditorState`, `theme`, `parentEditor`, and (with
-/// the `html` feature) `html` and `dom`. `namespace`, `editable`,
-/// `onError`, `onWarn` and `disableEvents` aren't wired through the builder
-/// yet.
+/// node classes and replacements, `$initialEditorState`, `theme`,
+/// `parentEditor`, `editable`, `onWarn`, and (with the `html` feature)
+/// `html` and `dom`. `namespace` and `disableEvents` aren't wired through
+/// the builder yet, and `onError` has no counterpart (an update's error is
+/// returned from [`Editor::update`]).
 #[derive(Clone, Default)]
 pub struct InitialEditorConfig {
     /// `nodes`.
     pub nodes: Vec<NodeClass>,
+    /// `editable`; `None` is JS's `undefined`.
+    pub editable: Option<bool>,
+    /// `onWarn`.
+    pub on_warn: Option<ExtensionWarningHandler>,
     /// `theme`: the extensions' themes merged (`deepThemeMergeInPlace`);
     /// `None` (JS's `undefined`) when that is empty.
     pub theme: Option<Object>,
@@ -152,8 +161,14 @@ pub struct LexicalExtension<
     pub config: Config,
     /// `mergeConfig`; without it, [`ExtensionConfigBase::shallow_merge`].
     pub merge_config: Option<ExtensionMergeConfigFn<Config>>,
-    /// `nodes`.
+    /// `nodes`: node classes, and node replacements as `NodeClass`es
+    /// ([`LexicalNodeReplacement`](crate::LexicalNodeReplacement)).
     pub nodes: Vec<NodeClass>,
+    /// `editable`: whether the editor starts editable; the last extension
+    /// that sets it wins.
+    pub editable: Option<bool>,
+    /// `onWarn`: the last extension that sets it wins.
+    pub on_warn: Option<ExtensionWarningHandler>,
     /// `$initialEditorState`.
     pub initial_editor_state: Option<InitialEditorStateType>,
     /// `theme`, merged into the themes of the extensions before it.
@@ -182,6 +197,8 @@ impl<Config: ExtensionConfigBase, Output: 'static, Init: 'static>
             config,
             merge_config: None,
             nodes: Vec::new(),
+            editable: None,
+            on_warn: None,
             initial_editor_state: None,
             theme: None,
             parent_editor: None,
@@ -210,6 +227,8 @@ pub trait AnyLexicalExtension: sealed::Sealed + 'static {
     fn dependencies(&self) -> &[AnyLexicalExtensionArgument];
     fn peer_dependencies(&self) -> &[NormalizedPeerDependency];
     fn nodes(&self) -> &[NodeClass];
+    fn editable(&self) -> Option<bool>;
+    fn on_warn(&self) -> Option<&ExtensionWarningHandler>;
     fn initial_editor_state(&self) -> Option<&InitialEditorStateType>;
     fn theme(&self) -> Option<&Object>;
     fn parent_editor(&self) -> Option<&Editor>;
@@ -268,6 +287,12 @@ impl<C: ExtensionConfigBase, O: 'static, I: 'static> AnyLexicalExtension
     }
     fn nodes(&self) -> &[NodeClass] {
         &self.nodes
+    }
+    fn editable(&self) -> Option<bool> {
+        self.editable
+    }
+    fn on_warn(&self) -> Option<&ExtensionWarningHandler> {
+        self.on_warn.as_ref()
     }
     fn initial_editor_state(&self) -> Option<&InitialEditorStateType> {
         self.initial_editor_state.as_ref()

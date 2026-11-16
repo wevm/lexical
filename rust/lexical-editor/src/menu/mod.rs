@@ -211,7 +211,7 @@ struct MenuInner<O> {
 pub struct MenuState<O> {
     editor: Editor,
     inner: Rc<RefCell<MenuInner<O>>>,
-    command_priority: u8,
+    command_priority: i8,
     preselect_first_item: bool,
     should_split_node_with_query: bool,
     on_select_option: MenuSelectOption<O>,
@@ -255,7 +255,7 @@ impl<O> MenuState<O> {
 /// A [`MenuState`] without its editor.
 struct DetachedMenu<O> {
     inner: Rc<RefCell<MenuInner<O>>>,
-    command_priority: u8,
+    command_priority: i8,
     preselect_first_item: bool,
     should_split_node_with_query: bool,
     on_select_option: MenuSelectOption<O>,
@@ -330,7 +330,7 @@ pub struct MenuCallbacks {
 impl<O: MenuOption + 'static> MenuState<O> {
     fn new(
         editor: &Editor,
-        command_priority: u8,
+        command_priority: i8,
         preselect_first_item: bool,
         should_split_node_with_query: bool,
         on_select_option: MenuSelectOption<O>,
@@ -400,7 +400,7 @@ impl<O: MenuOption + 'static> MenuState<O> {
 
     /// The command priority its keyboard commands are registered at (JS's
     /// `commandPriority`, `COMMAND_PRIORITY_LOW` by default).
-    pub fn command_priority(&self) -> u8 {
+    pub fn command_priority(&self) -> i8 {
         self.command_priority
     }
 
@@ -679,7 +679,7 @@ impl<O: MenuOption + 'static> MenuState<O> {
 pub struct TypeaheadMenuOptions {
     /// `commandPriority` (`COMMAND_PRIORITY_LOW`): the priority of the
     /// menu's keyboard commands.
-    pub command_priority: u8,
+    pub command_priority: i8,
     /// `preselectFirstItem` (true).
     pub preselect_first_item: bool,
     /// `ignoreEntityBoundary` (false): a match right after a text entity
@@ -809,7 +809,7 @@ impl<O: MenuOption + 'static> NodeMenu<O> {
     pub fn new(
         editor: &Editor,
         on_select_option: MenuSelectOption<O>,
-        command_priority: u8,
+        command_priority: i8,
     ) -> Self {
         NodeMenu {
             menu: MenuState::new(editor, command_priority, true, false, on_select_option),

@@ -146,9 +146,178 @@ pub(crate) fn restore_empty_container_paragraph(
 }
 
 /// `$create(klass)`: a new node of the class `T`, with a key, in the active
-/// editor state.
+/// editor state; or, where the editor replaces the class
+/// ([`LexicalNodeReplacement`](crate::LexicalNodeReplacement)), a node of
+/// the class its `with_klass` chain ends at, or (for a replacement without
+/// `with_klass`) what its `with` makes of the new node. Where no editor
+/// registers `T` (outside an editor, or while parsing for one without it)
+/// the node is `T`'s, where JS throws.
 pub fn create<T: LexicalNode + Default>() -> NodeRef {
+    let node_type = T::default().get_type();
+    if let Some(editor) = crate::updates::get_registry_editor()
+        && let Ok(resolved) = editor.resolve_registered_node_after_replacements(node_type)
+        && let Some(class) = editor.get_registered_node(resolved)
+        && let Some(node) = class.construct()
+    {
+        // The resolve follows `withKlass` as far as it goes, so a `replace`
+        // still set on the class it stopped at is a deprecated one, whose
+        // `with` can only be given a constructed node.
+        return if class.replacement.is_some() {
+            replaced(node)
+        } else {
+            node
+        };
+    }
     set_node_key(Box::new(T::default()))
+}
+
+/// `$applyNodeReplacement(node)`: what the active editor's replacement of
+/// the node's class (`{replace, with, withKlass}`) makes of the new node,
+/// or the node itself when the class has none. Fails as JS's invariants
+/// do: for a type the editor doesn't register, or a replacement that isn't
+/// of `withKlass` (or, without it, of a class extending the node's), or
+/// that kept the node's key.
+pub fn apply_node_replacement(node: &NodeRef) -> Result<NodeRef, LexicalError> {
+    let editor = crate::editor::get_editor();
+    let node_type = node.get_type();
+    let Some(registered_node) = editor.get_registered_node(node_type) else {
+        return Err(LexicalError::new(format!(
+            "$applyNodeReplacement node {node_type} with type {node_type} must be registered to the editor. You can do this by passing the node class via the \"nodes\" array in the editor config."
+        )));
+    };
+    let Some(replacement) = registered_node.replacement else {
+        return Ok(node.clone());
+    };
+    let replacement_node = (replacement.with)(node)?;
+    let replacement_type = replacement_node.get_type();
+    let latest = replacement_node.get_latest();
+    let is_instance_of =
+        |base: &str| replacement_type == base || latest.super_types().contains(&base);
+    match &replacement.with_klass {
+        Some(with_klass) => invariant!(
+            is_instance_of(with_klass.node_type()),
+            "$applyNodeReplacement failed. Expected replacement node to be an instance of {} with type {} but returned {} with type {} from original node {} with type {}",
+            with_klass.node_type(),
+            with_klass.node_type(),
+            replacement_type,
+            replacement_type,
+            node_type,
+            node_type
+        ),
+        None => invariant!(
+            replacement_type != node_type && is_instance_of(node_type),
+            "$applyNodeReplacement failed. Ensure replacement node {} with type {} is a subclass of the original node {} with type {}.",
+            replacement_type,
+            replacement_type,
+            node_type,
+            node_type
+        ),
+    }
+    invariant!(
+        replacement_node.get_key() != node.get_key(),
+        "$applyNodeReplacement failed. Ensure that the key argument is *not* used in your replace function (from node {} with type {} to node {} with type {}), Node keys must never be re-used except by the static clone method.",
+        node_type,
+        node_type,
+        replacement_type,
+        replacement_type
+    );
+    Ok(replacement_node)
+}
+
+/// `$applyNodeReplacement(node)` as the `$create*` functions call it: the
+/// node itself where no editor is active or the editor doesn't register its
+/// class (where JS throws), and a panic where a replacement breaks an
+/// invariant (a bug in the app's `with`, as a node implementation's would
+/// be).
+pub(crate) fn replaced(node: NodeRef) -> NodeRef {
+    let Some(editor) = crate::updates::get_registry_editor() else {
+        return node;
+    };
+    if editor
+        .get_registered_node(node.get_type())
+        .is_none_or(|class| class.replacement.is_none())
+    {
+        return node;
+    }
+    apply_node_replacement(&node).unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// `$nodesOfType(klass)`, by the node type: the nodes of exactly that type
+/// in the active editor state, in its node map's order; in a state still
+/// being updated, only those attached to the root.
+pub fn nodes_of_type(node_type: &str) -> Vec<NodeRef> {
+    let editor_state = get_active_editor_state();
+    let read_only = editor_state.0.read_only.get();
+    let keys: Vec<String> = {
+        let node_map = editor_state.0.node_map.borrow();
+        editor_state
+            .keys_in_creation_order()
+            .into_iter()
+            .filter(|key| node_map[key].get_type() == node_type)
+            .collect()
+    };
+    keys.into_iter()
+        .map(NodeRef::new)
+        .filter(|node| read_only || node.is_attached())
+        .collect()
+}
+
+/// `$getAdjacentNode(focus, isBackward)`: the node next to the point in the
+/// direction, or `None` at a boundary.
+pub fn get_adjacent_node(
+    focus: &crate::Point,
+    is_backward: bool,
+) -> Result<Option<NodeRef>, LexicalError> {
+    /// `resolveElement(element, isBackward, focusOffset)`.
+    fn resolve_element(
+        element: &NodeRef,
+        is_backward: bool,
+        focus_offset: usize,
+    ) -> Option<NodeRef> {
+        let parent = element.get_parent();
+        let mut offset = focus_offset;
+        let mut block = element.clone();
+        if let Some(parent) = parent {
+            if is_backward && focus_offset == 0 {
+                offset = block.get_index_within_parent().unwrap_or(0);
+                block = parent;
+            } else if !is_backward && focus_offset == block.get_children_size() {
+                offset = block.get_index_within_parent().unwrap_or(0) + 1;
+                block = parent;
+            }
+        }
+        if is_backward {
+            offset
+                .checked_sub(1)
+                .and_then(|i| block.get_child_at_index(i))
+        } else {
+            block.get_child_at_index(offset)
+        }
+    }
+    let focus_offset = focus.offset;
+    let focus_node = focus.get_node()?;
+    if focus.point_type == crate::PointType::Element {
+        return Ok(resolve_element(&focus_node, is_backward, focus_offset));
+    }
+    if (is_backward && focus_offset == 0)
+        || (!is_backward && focus_offset == focus_node.get_text_content_size())
+    {
+        let possible_node = if is_backward {
+            focus_node.get_previous_sibling()
+        } else {
+            focus_node.get_next_sibling()
+        };
+        if possible_node.is_none() {
+            let index = focus_node.get_index_within_parent().unwrap_or(0);
+            return Ok(resolve_element(
+                &focus_node.get_parent_or_throw()?,
+                is_backward,
+                index + usize::from(!is_backward),
+            ));
+        }
+        return Ok(possible_node);
+    }
+    Ok(None)
 }
 
 /// `$copyNode(node)`: a copy of the node with a new key and all its
@@ -186,6 +355,14 @@ pub fn is_root_or_shadow_root(node: &NodeRef) -> bool {
 /// state.
 pub fn clone_with_properties(latest_node: &NodeRef) -> Rc<dyn LexicalNode> {
     Rc::from(latest_node.get_latest().clone_node())
+}
+
+/// `$cloneWithPropertiesEphemeral(latestNode)`: a clone that can't join an
+/// editor state, for changing in place while serializing a slice. A clone
+/// from [`clone_with_properties`] is already outside every editor state, so
+/// it is the same clone.
+pub fn clone_with_properties_ephemeral(latest_node: &NodeRef) -> Rc<dyn LexicalNode> {
+    clone_with_properties(latest_node)
 }
 
 /// `$splitNode(node, offset)`: splits the element at its child `offset`

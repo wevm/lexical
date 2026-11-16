@@ -241,6 +241,8 @@ pub(super) fn create_test_node(node_type: &str) -> Result<NodeRef, LexicalError>
         "test-sub-box" => lexical::create::<TestSubBoxNode>(),
         "test-tag" => lexical::create::<TestTagNode>(),
         "test-sub-tag" => lexical::create::<TestSubTagNode>(),
+        "text" => lexical::create::<lexical::nodes::text::TextNode>(),
+        "test-text" => lexical::create::<super::core_api::TestTextNode>(),
         other => return Err(err(format!("no $create for {other}"))),
     })
 }

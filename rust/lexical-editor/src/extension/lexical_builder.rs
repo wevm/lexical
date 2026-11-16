@@ -472,10 +472,13 @@ impl LexicalBuilder {
                     }
                     replaced_nodes.push((node.node_type(), extension.name().to_owned()));
                     nodes.push(node.clone());
-                } else if !nodes
-                    .iter()
-                    .any(|n| n.replacement.is_none() && n.node_type() == node.node_type())
-                {
+                } else if !nodes.iter().any(|n| {
+                    // `nodes.add(node)`: a `Set` of classes, so another class
+                    // of the same type is added (and registered last).
+                    n.replacement.is_none()
+                        && n.node_type() == node.node_type()
+                        && n.class_name == node.class_name
+                }) {
                     nodes.push(node.clone());
                 }
             }

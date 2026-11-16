@@ -18,7 +18,7 @@ use crate::editor_state::{clone_editor_state, create_empty_editor_state};
 use crate::error::invariant;
 use crate::gc::garbage_collect_detached_nodes;
 use crate::json::Value;
-use crate::lexical_selection::has_dirty_selection;
+use crate::lexical_selection::{SelectionRef, has_dirty_selection};
 use crate::lexical_utils::{get_editors_to_propagate, get_node_by_key, get_root};
 use crate::node::NodeRef;
 use crate::node_state::{apply_flat_states, update_state_from_json};
@@ -46,6 +46,14 @@ struct Active {
 thread_local! {
     static ACTIVE: RefCell<Active> = RefCell::new(Active::default());
     static INFINITE_TRANSFORM_COUNT: Cell<u32> = const { Cell::new(0) };
+    /// `isCommittingPendingUpdates`: true for the whole of
+    /// `$commitPendingUpdates`, so commands dispatched by the commit (the
+    /// selection notification, mutation listeners) don't reset the update
+    /// cascade budget.
+    static IS_COMMITTING_PENDING_UPDATES: Cell<bool> = const { Cell::new(false) };
+    /// `editorsWithPendingSelectionChange`, by the editors' addresses.
+    static EDITORS_WITH_PENDING_SELECTION_CHANGE: RefCell<HashSet<usize>> =
+        RefCell::new(HashSet::new());
 }
 
 /// Runs `f` with `active` in place, restoring the previous one afterwards,
@@ -383,11 +391,14 @@ fn parse_serialized_node_impl(
         )));
     };
     let node = (registered.import_json)(object)?;
-    // What `updateFromJSON` applies besides the class's own properties:
-    // the nested NodeState (`$updateStateFromJSON`), then the flat states
-    // the class declares (`$applyFlatStates`).
-    update_state_from_json(&node, object)?;
-    apply_flat_states(&node, object)?;
+    // A class's own `importJSON` calls `updateFromJSON`, which applies what
+    // the synthesized one does besides the class's own properties: the
+    // nested NodeState (`$updateStateFromJSON`), then the flat states the
+    // class declares (`$applyFlatStates`).
+    if !registered.imports_node_state() {
+        update_state_from_json(&node, object)?;
+        apply_flat_states(&node, object)?;
+    }
     if let Some(Value::Array(children)) = object.get("children")
         && node.is_element()
     {
@@ -447,6 +458,7 @@ pub fn parse_serialized_node(serialized_node: &Value) -> Result<NodeRef, Lexical
 pub(crate) fn parse_editor_state(
     serialized_editor_state: &Value,
     editor: &Editor,
+    update_fn: Option<Box<dyn FnOnce() -> Result<(), LexicalError> + '_>>,
 ) -> Result<EditorState, LexicalError> {
     let editor_state = create_empty_editor_state();
     let active = Active {
@@ -462,6 +474,9 @@ pub(crate) fn parse_editor_state(
             "Cannot read properties of undefined (reading 'type')"
         );
         parse_serialized_node_impl(serialized_node.unwrap(), editor.registered_nodes())?;
+        if let Some(update_fn) = update_fn {
+            update_fn()?;
+        }
         Ok(())
     })?;
     // Make the editor state immutable.
@@ -488,10 +503,100 @@ fn with_updating<R>(editor: &Editor, f: impl FnOnce() -> R) -> R {
     f()
 }
 
-/// `$commitPendingUpdates(editor)`: makes the pending state the editor's
-/// state, notifies the text content and update listeners, and runs the
-/// first update queued meanwhile.
+/// `$commitPendingUpdates(editor)`: announces a changed selection with
+/// `SELECTION_CHANGE_COMMAND` in the pending update, makes the pending
+/// state the editor's state, notifies the text content and update
+/// listeners, and runs the first update queued meanwhile.
 pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError> {
+    struct Restore(bool);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            IS_COMMITTING_PENDING_UPDATES.with(|c| c.set(self.0));
+        }
+    }
+    let _restore = Restore(IS_COMMITTING_PENDING_UPDATES.with(|c| c.replace(true)));
+    let notification_result = notify_pending_selection_change(editor)?;
+    commit_pending_updates_impl(editor)?;
+    if notification_result {
+        // Reported only after the pending edit is kept.
+        editor.on_warn(LexicalError::new(
+            "Selection change listeners are endlessly changing the selection.",
+        ))?;
+    }
+    Ok(())
+}
+
+/// `hasSelectionChanged(editor, selection)`: whether `selection` differs
+/// from the one last announced.
+fn has_selection_changed(editor: &Editor, selection: Option<&SelectionRef>) -> bool {
+    let previous = editor.0.last_notified_selection.borrow();
+    match selection {
+        None => previous.is_some(),
+        Some(selection) => previous.as_ref().is_none_or(|p| !selection.get().is(p)),
+    }
+}
+
+/// `$notifyPendingSelectionChange(editor)`: while the pending selection
+/// differs from the one last announced, dispatches `SELECTION_CHANGE_COMMAND`
+/// in the pending update (its listeners' edits join it), up to 100 times.
+/// A range selection, or none, is not announced by an editor without a
+/// connected root element. Returns true when the listeners hit the limit.
+fn notify_pending_selection_change(editor: &Editor) -> Result<bool, LexicalError> {
+    let id = Rc::as_ptr(&editor.0) as usize;
+    if !EDITORS_WITH_PENDING_SELECTION_CHANGE.with(|s| s.borrow_mut().insert(id)) {
+        return Ok(false);
+    }
+    struct Remove(usize);
+    impl Drop for Remove {
+        fn drop(&mut self) {
+            EDITORS_WITH_PENDING_SELECTION_CHANGE.with(|s| s.borrow_mut().remove(&self.0));
+        }
+    }
+    let _remove = Remove(id);
+    let mut count = 0;
+    while let Some(pending) = editor.pending() {
+        let selection = pending.selection();
+        if !has_selection_changed(editor, selection.as_ref()) {
+            return Ok(false);
+        }
+        let root_connected = editor
+            .get_root_element()
+            .is_some_and(|root| root.0.is_connected());
+        let skip_notification = selection.as_ref().is_none_or(SelectionRef::is_range)
+            && (editor.is_headless() || !root_connected);
+        if skip_notification || count == 100 {
+            // Skipped notifications are not replayed once the root
+            // reconnects, nor after stopping a listener loop.
+            *editor.0.last_notified_selection.borrow_mut() = selection.map(|s| s.get());
+            return Ok(!skip_notification);
+        }
+        // Extends the pending update, with its error handling; the caller
+        // owns the commit, so the listeners' edits and transforms join it.
+        let e = editor.clone();
+        begin_update_with(
+            editor,
+            move || {
+                e.dispatch_command(&crate::commands::SELECTION_CHANGE_COMMAND, ())
+                    .map(|_| ())
+            },
+            &UpdateOptions::default(),
+            true,
+        )?;
+        count += 1;
+    }
+    Ok(false)
+}
+
+/// Whether a commit ([`commit_pending_updates`]) is running on this thread
+/// (`isCommittingPendingUpdates`): the commands dispatched and the updates
+/// begun meanwhile are part of it, not a new action, so they don't reset
+/// the cascade budget.
+pub(crate) fn is_committing_pending_updates() -> bool {
+    IS_COMMITTING_PENDING_UPDATES.with(Cell::get)
+}
+
+/// The commit itself (`$commitPendingUpdatesImpl`).
+fn commit_pending_updates_impl(editor: &Editor) -> Result<(), LexicalError> {
     let pending = editor.0.pending.borrow_mut().take();
     let Some(pending) = pending else {
         // Even without a pending state, flush the deferred callbacks a
@@ -579,27 +684,25 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
     };
     crate::reconciler::garbage_collect_detached_decorators(editor, &pending);
     let previously_dispatching = editor.0.dispatching_commit_listeners.replace(true);
+    // The mutation listeners run as the editor was updating before the
+    // commit (not, at the top level), so an update one starts begins at
+    // once, as in JS; the other listeners run as updating.
+    if let Some(mutated_nodes) = &mutated_nodes {
+        let leaves: &Vec<String> = &dirty_leaves;
+        trigger_mutation_listeners(editor, mutated_nodes, &tags, leaves, &current);
+    }
     with_updating(editor, || {
-        if let Some(mutated_nodes) = &mutated_nodes {
-            let leaves: &Vec<String> = &dirty_leaves;
-            trigger_mutation_listeners(editor, mutated_nodes, &tags, leaves, &current);
-        }
         // The decorators the reconciler and the GC changed.
         let pending_decorators = editor.0.pending_decorators.borrow_mut().take();
         if let Some(pending_decorators) = pending_decorators {
             *editor.0.decorators.borrow_mut() = pending_decorators.clone();
-            for listener in editor.decorator_listeners() {
-                listener(&pending_decorators);
-            }
+            editor.trigger_decorator_listeners(&pending_decorators);
         }
-        let listeners = editor.text_content_listeners();
-        if !listeners.is_empty() {
+        if editor.has_text_content_listeners() {
             let current_text = editor_state_text_content(&current);
             let latest_text = editor_state_text_content(&pending);
             if current_text != latest_text {
-                for listener in &listeners {
-                    listener(&latest_text);
-                }
+                editor.trigger_text_content_listeners(&latest_text);
             }
         }
         let payload = UpdateListenerPayload {
@@ -611,9 +714,7 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
             prev_editor_state: current.clone(),
             mutated_nodes: mutated_nodes.clone(),
         };
-        for listener in editor.update_listeners() {
-            listener(&payload);
-        }
+        editor.trigger_update_listeners(&payload);
     });
     editor
         .0
@@ -713,7 +814,12 @@ fn process_nested_updates(editor: &Editor, initial_skip: bool) -> Result<bool, L
 /// `$discardPendingUpdate(editor, queuedBefore)`: the editor goes back to
 /// its committed state; the updates the failed one queued are dropped.
 fn discard_pending_update(editor: &Editor, queued_before: &HashSet<u64>) {
-    *editor.0.pending.borrow_mut() = Some(editor.get_editor_state());
+    let committed = editor.get_editor_state();
+    // A notification in the rejected update must not suppress a later
+    // retry or make up a selection change while restoring the committed
+    // state.
+    *editor.0.last_notified_selection.borrow_mut() = committed.selection().map(|s| s.get());
+    *editor.0.pending.borrow_mut() = Some(committed);
     {
         let mut dirty = editor.0.dirty.borrow_mut();
         dirty.dirty_type = DirtyType::FullReconcile;
@@ -732,6 +838,18 @@ pub(crate) fn begin_update(
     editor: &Editor,
     update_fn: impl FnOnce() -> Result<(), LexicalError>,
     options: &UpdateOptions,
+) -> Result<(), LexicalError> {
+    begin_update_with(editor, update_fn, options, false)
+}
+
+/// `$beginUpdate(editor, updateFn, options, skipCommit)`: with
+/// `skip_commit`, the update extends one that is about to commit, whose
+/// caller owns the commit.
+fn begin_update_with(
+    editor: &Editor,
+    update_fn: impl FnOnce() -> Result<(), LexicalError>,
+    options: &UpdateOptions,
+    skip_commit: bool,
 ) -> Result<(), LexicalError> {
     editor.add_tags(&options.tags);
     if let Some(on_update) = &options.on_update {
@@ -758,6 +876,7 @@ pub(crate) fn begin_update(
     // The updates queued before this one (see discard_pending_update).
     let queued_before: HashSet<u64> = editor.0.updates.borrow().iter().map(|u| u.id).collect();
     let previous_active_state = ACTIVE.with(|a| a.borrow().editor_state.clone());
+    let previously_notified_selection = editor.0.last_notified_selection.borrow().clone();
 
     struct Restore<'a>(&'a Editor, bool);
     impl Drop for Restore<'_> {
@@ -836,6 +955,9 @@ pub(crate) fn begin_update(
     drop(restore);
     result?;
 
+    if skip_commit {
+        return Ok(());
+    }
     let should_update = editor.dirty_type() != DirtyType::None
         || !editor.0.deferred.borrow().is_empty()
         || has_dirty_selection(
@@ -854,6 +976,10 @@ pub(crate) fn begin_update(
             *editor.0.tags.borrow_mut() = OrderedSet::new();
             editor.0.deferred.borrow_mut().clear();
             *editor.0.pending.borrow_mut() = None;
+            // A notification in the dropped update recorded a selection
+            // that never commits, which would suppress the next
+            // notification of it.
+            *editor.0.last_notified_selection.borrow_mut() = previously_notified_selection;
         }
     }
     Ok(())
@@ -907,11 +1033,39 @@ pub(crate) fn trigger_command_listeners<P: 'static>(
     let editors = get_editors_to_propagate(editor);
     let mut updating_parent_editor: Option<Editor> = None;
     // A command dispatched from outside an update starts a new action, in
-    // each editor it reaches that isn't updating.
-    for e in &editors {
-        if !e.0.updating.get() {
-            e.0.cascade_count.set(0);
+    // each editor it reaches that isn't updating, unless the commit
+    // dispatched it (the selection notification, a mutation listener).
+    if !is_committing_pending_updates() {
+        for e in &editors {
+            if !e.0.updating.get() {
+                e.0.cascade_count.set(0);
+            }
         }
+    }
+    if command.id() == crate::commands::SELECTION_CHANGE_COMMAND.id() {
+        let (in_update, read_only) = ACTIVE.with(|a| {
+            let a = a.borrow();
+            (
+                a.editor.as_ref().is_some_and(|e| e.ptr_eq(editor)),
+                a.read_only,
+            )
+        });
+        if !in_update || read_only {
+            let mut handled = false;
+            update_editor_sync(
+                editor,
+                || {
+                    handled = trigger_command_listeners(editor, command, payload, from_editor)?;
+                    Ok(())
+                },
+                None,
+            )?;
+            return Ok(handled);
+        }
+        // Every dispatch counts, an application's too; recorded before the
+        // listeners run, so their selection changes notify in turn.
+        *editor.0.last_notified_selection.borrow_mut() =
+            get_active_editor_state().selection().map(|s| s.get());
     }
     for priority in (0..=4).rev() {
         for (e, current_editor) in editors.iter().enumerate() {

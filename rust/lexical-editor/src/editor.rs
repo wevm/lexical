@@ -154,14 +154,18 @@ fn import_default<T: LexicalNode + Default>(json: &Object) -> Result<NodeRef, Le
             .get_registered_node(node_type)
             .is_some_and(|class| class.replacement.is_some())
     });
-    if has_replacement {
-        let node = crate::lexical_utils::create::<T>();
-        crate::lexical_utils::mutate(node.get_key(), |n| n.update_from_json(json));
-        return Ok(node);
-    }
-    let mut node = T::default();
-    node.update_from_json(json);
-    Ok(set_node_key(Box::new(node)))
+    let node = if has_replacement {
+        crate::lexical_utils::create::<T>()
+    } else {
+        set_node_key(Box::new(T::default()))
+    };
+    // `updateFromJSON`: the nested NodeState (`$updateStateFromJSON`), then
+    // `$applyJSONSetters`, which applies the flat states before the class's
+    // own properties.
+    crate::node_state::update_state_from_json(&node, json)?;
+    crate::node_state::apply_flat_states(&node, json)?;
+    crate::lexical_utils::mutate(node.get_key(), |n| n.update_from_json(json));
+    Ok(node)
 }
 
 impl NodeClass {
@@ -219,10 +223,11 @@ impl NodeClass {
         self.node_type
     }
 
-    /// Whether the class is `node_type`'s class or extends it
-    /// (`klass === Base || klass.prototype instanceof Base`).
-    pub(crate) fn extends(&self, node_type: &str) -> bool {
-        self.node_type == node_type || (self.super_types)().contains(&node_type)
+    /// Whether the class's `importJSON` is the synthesized one
+    /// ([`NodeClass::of`]), which applies the NodeState in the JSON, rather
+    /// than one of its own ([`NodeClass::with_import_json`]).
+    pub(crate) fn imports_node_state(&self) -> bool {
+        self.new_node.is_some()
     }
 
     /// `new klass()`, with a key in the active editor state.
@@ -461,9 +466,6 @@ pub struct MutationListenerOptions {
     pub skip_initialization: bool,
 }
 
-/// A decorator listener (`DecoratorListener`).
-pub(crate) type DecoratorListener = Rc<dyn Fn(&Decorators)>;
-
 /// A mutation listener.
 pub(crate) type MutationListener = Rc<dyn Fn(&NodeMutations, &MutationListenerPayload)>;
 
@@ -520,7 +522,22 @@ pub trait RootElement: Any {
     fn computed_style(&self, _key: &str) -> Option<crate::selection::ComputedStyle> {
         None
     }
+
+    /// Whether the root is attached, as a DOM element's `isConnected` says
+    /// (for a view: whether it is in a window). The commit announces a
+    /// range selection (or none) with `SELECTION_CHANGE_COMMAND` only while
+    /// the root is connected. `true` by default.
+    fn is_connected(&self) -> bool {
+        true
+    }
 }
+
+/// A stored update listener, which may return a clean-up.
+type UpdateListenerFn = dyn Fn(&UpdateListenerPayload) -> Option<Unregister>;
+/// A stored text content listener, which may return a clean-up.
+type TextContentListenerFn = dyn Fn(&str) -> Option<Unregister>;
+/// A stored decorator listener, which may return a clean-up.
+type DecoratorListenerFn = dyn Fn(&Decorators) -> Option<Unregister>;
 
 /// A root element, compared by identity.
 #[derive(Clone)]
@@ -551,6 +568,34 @@ type RootListenerEntry = (u64, RootListener, Rc<RefCell<Option<Unregister>>>);
 /// Calling it removes what was registered, as the function JS's `register*`
 /// methods return. Dropping it without calling it keeps the registration.
 pub type Unregister = Box<dyn FnOnce()>;
+
+/// What an update, text content, decorator or editable listener returns:
+/// nothing (`()`), or a clean-up function (an [`Unregister`], or an
+/// `Option` of one), which runs before the listener's next call, or when
+/// it is unregistered. JS takes a returned function as the clean-up and
+/// ignores any other value (`triggerListeners`).
+pub trait ListenerCleanup {
+    /// The clean-up, if there is one.
+    fn into_cleanup(self) -> Option<Unregister>;
+}
+
+impl ListenerCleanup for () {
+    fn into_cleanup(self) -> Option<Unregister> {
+        None
+    }
+}
+
+impl ListenerCleanup for Unregister {
+    fn into_cleanup(self) -> Option<Unregister> {
+        Some(self)
+    }
+}
+
+impl ListenerCleanup for Option<Unregister> {
+    fn into_cleanup(self) -> Option<Unregister> {
+        self
+    }
+}
 
 /// A command (`createCommand`), compared by identity: two commands made
 /// with the same name are different commands.
@@ -685,9 +730,9 @@ impl PartialEq for Editor {
 
 impl Eq for Editor {}
 
-type Listeners<F> = RefCell<Vec<(u64, Rc<F>)>>;
-type UpdateListener = Rc<dyn Fn(&UpdateListenerPayload)>;
-type TextContentListener = Rc<dyn Fn(&str)>;
+/// A listener map (`ListenerMap`): each listener with its id and what its
+/// last call returned.
+type Listeners<F> = RefCell<Vec<(u64, Rc<F>, Rc<RefCell<Option<Unregister>>>)>>;
 /// A command's listeners by priority, each a `CommandListener<P>` of the
 /// command's payload type.
 type CommandListeners = [Vec<(u64, Rc<dyn Any>)>; 5];
@@ -708,8 +753,8 @@ pub(crate) struct EditorInner {
     pub(crate) updates: RefCell<VecDeque<QueuedUpdate>>,
     pub(crate) cascade_count: Cell<u32>,
     transforms: RefCell<HashMap<&'static str, Vec<(u64, Transform)>>>,
-    update_listeners: Listeners<dyn Fn(&UpdateListenerPayload)>,
-    text_content_listeners: Listeners<dyn Fn(&str)>,
+    pub(crate) update_listeners: Listeners<UpdateListenerFn>,
+    text_content_listeners: Listeners<TextContentListenerFn>,
     commands: RefCell<HashMap<u64, CommandListeners>>,
     next_id: Cell<u64>,
     /// Stands in for the DOM's `Selection.modify` (no JS field).
@@ -755,9 +800,9 @@ pub(crate) struct EditorInner {
     /// they were registered.
     mutation_listeners: RefCell<Vec<(u64, MutationListener, &'static str)>>,
     /// `_listeners.editable`.
-    editable_listeners: Listeners<dyn Fn(bool)>,
+    pub(crate) editable_listeners: Listeners<dyn Fn(bool) -> Option<Unregister>>,
     /// `_listeners.root`, each with what its last call returned.
-    root_listeners: RefCell<Vec<RootListenerEntry>>,
+    pub(crate) root_listeners: RefCell<Vec<RootListenerEntry>>,
     /// `_deferred`: the `$onUpdate` callbacks of the pending update.
     pub(crate) deferred: RefCell<Vec<Box<dyn FnOnce()>>>,
     /// `_compositionKey`: the node an input method is composing in.
@@ -765,6 +810,10 @@ pub(crate) struct EditorInner {
     /// `_compositionMergeHeld`: the composed node a merge was held back
     /// for (`DEFER_COMPOSITION_MERGE_TAG`).
     pub(crate) composition_merge_held: RefCell<Option<NodeKey>>,
+    /// `_lastNotifiedSelection`: the selection `SELECTION_CHANGE_COMMAND`
+    /// last announced (a clone), which the commit compares the pending
+    /// selection with.
+    pub(crate) last_notified_selection: RefCell<Option<crate::lexical_selection::Selection>>,
     /// `_inputState`, the part the model reads.
     pub(crate) input_state: RefCell<crate::events::InputState>,
     /// `_keyDownShortcuts`: the compiled key-down bindings.
@@ -780,7 +829,7 @@ pub(crate) struct EditorInner {
     /// `_pendingDecorators`.
     pub(crate) pending_decorators: RefCell<Option<Decorators>>,
     /// `_listeners.decorator`.
-    decorator_listeners: Listeners<dyn Fn(&Decorators)>,
+    decorator_listeners: Listeners<DecoratorListenerFn>,
     /// The `LexicalBuilder` that built the editor (JS's
     /// `editor[builderSymbol]`).
     #[cfg(feature = "extension")]
@@ -831,7 +880,8 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         if let Some(replacement) = &class.replacement {
             match &replacement.with_klass {
                 Some(with_klass) => assert!(
-                    with_klass.node_type != class.node_type && with_klass.extends(class.node_type),
+                    // `replaceWithKlass.prototype instanceof klass`.
+                    (with_klass.super_types)().contains(&class.node_type),
                     "{} doesn't extend the {}",
                     with_klass.class_name,
                     class.class_name
@@ -907,6 +957,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         deferred: RefCell::new(Vec::new()),
         composition_key: RefCell::new(None),
         composition_merge_held: RefCell::new(None),
+        last_notified_selection: RefCell::new(None),
         input_state: RefCell::new(crate::events::InputState::default()),
         key_down_shortcuts: RefCell::new(None),
         root_text_cache: RefCell::new(None),
@@ -1044,38 +1095,24 @@ impl Editor {
     pub fn set_editable(&self, editable: bool) {
         if self.0.editable.get() != editable {
             self.0.editable.set(editable);
-            let listeners: Vec<_> = self
-                .0
-                .editable_listeners
-                .borrow()
-                .iter()
-                .map(|(_, l)| l.clone())
-                .collect();
             with_updating(self, true, || {
-                for listener in listeners {
-                    listener(editable);
-                }
+                trigger_listeners(&self.0.editable_listeners, |listener| listener(editable));
             });
         }
     }
 
     /// `registerEditableListener(listener)`: `listener` hears each change of
     /// [`is_editable`](Self::is_editable).
-    pub fn register_editable_listener(&self, listener: impl Fn(bool) + 'static) -> Unregister {
-        let id = self.next_id();
-        self.0
-            .editable_listeners
-            .borrow_mut()
-            .push((id, Rc::new(listener)));
-        let weak = self.weak();
-        Box::new(move || {
-            if let Some(inner) = weak.upgrade() {
-                inner
-                    .editable_listeners
-                    .borrow_mut()
-                    .retain(|(i, _)| *i != id);
-            }
-        })
+    pub fn register_editable_listener<R: ListenerCleanup>(
+        &self,
+        listener: impl Fn(bool) -> R + 'static,
+    ) -> Unregister {
+        register_listener(
+            self,
+            |inner| &inner.editable_listeners,
+            Rc::new(move |editable| listener(editable).into_cleanup())
+                as Rc<dyn Fn(bool) -> Option<Unregister>>,
+        )
     }
 
     /// `getDecorators()`: what each decorator decorated to
@@ -1088,33 +1125,21 @@ impl Editor {
     /// `registerDecoratorListener(listener)`: `listener` hears each commit
     /// that changed [`get_decorators`](Self::get_decorators), with the new
     /// decorators.
-    pub fn register_decorator_listener(
+    pub fn register_decorator_listener<R: ListenerCleanup>(
         &self,
-        listener: impl Fn(&Decorators) + 'static,
+        listener: impl Fn(&Decorators) -> R + 'static,
     ) -> Unregister {
-        let id = self.next_id();
-        self.0
-            .decorator_listeners
-            .borrow_mut()
-            .push((id, Rc::new(listener)));
-        let weak = self.weak();
-        Box::new(move || {
-            if let Some(inner) = weak.upgrade() {
-                inner
-                    .decorator_listeners
-                    .borrow_mut()
-                    .retain(|(i, _)| *i != id);
-            }
-        })
+        register_listener(
+            self,
+            |inner| &inner.decorator_listeners,
+            Rc::new(move |decorators: &Decorators| listener(decorators).into_cleanup())
+                as Rc<DecoratorListenerFn>,
+        )
     }
 
-    pub(crate) fn decorator_listeners(&self) -> Vec<DecoratorListener> {
-        self.0
-            .decorator_listeners
-            .borrow()
-            .iter()
-            .map(|(_, l)| l.clone())
-            .collect()
+    /// `triggerListeners('decorator', ...)`'s loop.
+    pub(crate) fn trigger_decorator_listeners(&self, decorators: &Decorators) {
+        trigger_listeners(&self.0.decorator_listeners, |listener| listener(decorators));
     }
 
     /// `getRootElement()`.
@@ -1376,6 +1401,20 @@ impl Editor {
         self.0.pending.borrow().clone()
     }
 
+    /// `toJSON()`: `{editorState}`, this editor's committed state in the
+    /// form the export around it is writing
+    /// ([`is_compact_export`](crate::is_compact_export)), which is how a
+    /// nested editor stays in the form of the document containing it.
+    pub fn to_json(&self) -> Value {
+        let mut json = crate::json::Object::new();
+        json.insert(
+            "editorState",
+            self.get_editor_state()
+                .to_json(crate::serialized_export::is_compact_export()),
+        );
+        Value::Object(json)
+    }
+
     /// `parseEditorState(json)` from the JSON text.
     pub fn parse_editor_state(&self, json: &str) -> Result<EditorState, LexicalError> {
         let value = json::parse(json).map_err(|e| LexicalError::new(e.to_string()))?;
@@ -1384,7 +1423,19 @@ impl Editor {
 
     /// `parseEditorState(serializedEditorState)` from parsed JSON.
     pub fn parse_editor_state_json(&self, json: &Value) -> Result<EditorState, LexicalError> {
-        parse_editor_state(json, self)
+        parse_editor_state(json, self, None)
+    }
+
+    /// `parseEditorState(serializedEditorState, updateFn)`: runs `update_fn`
+    /// on the parsed state before it is made read-only, as an update of
+    /// that state (`$getRoot()` is its root); nothing it changes is marked
+    /// dirty in this editor, nor in an update running here.
+    pub fn parse_editor_state_json_with(
+        &self,
+        json: &Value,
+        update_fn: impl FnOnce() -> Result<(), LexicalError>,
+    ) -> Result<EditorState, LexicalError> {
+        parse_editor_state(json, self, Some(Box::new(update_fn)))
     }
 
     /// `update(updateFn, options)`. Inside another update of this editor (or
@@ -1409,6 +1460,14 @@ impl Editor {
             });
             Ok(())
         } else {
+            // `scheduleCascadeReset`: JS resets the cascade budget in a
+            // macrotask, once control returns to the event loop. An update
+            // begun outside any update or commit of this editor is the
+            // host's next turn, so separate actions don't accumulate
+            // toward the limit; a runaway cascade continues from commits.
+            if !crate::updates::is_committing_pending_updates() {
+                self.0.cascade_count.set(0);
+            }
             begin_update(self, update_fn, &options)
         }
     }
@@ -1589,60 +1648,43 @@ impl Editor {
     }
 
     /// `registerUpdateListener(listener)`.
-    pub fn register_update_listener(
+    pub fn register_update_listener<R: ListenerCleanup>(
         &self,
-        listener: impl Fn(&UpdateListenerPayload) + 'static,
+        listener: impl Fn(&UpdateListenerPayload) -> R + 'static,
     ) -> Unregister {
-        let id = self.next_id();
-        self.0
-            .update_listeners
-            .borrow_mut()
-            .push((id, Rc::new(listener)));
-        let weak = self.weak();
-        Box::new(move || {
-            if let Some(inner) = weak.upgrade() {
-                inner
-                    .update_listeners
-                    .borrow_mut()
-                    .retain(|(i, _)| *i != id);
-            }
-        })
+        register_listener(
+            self,
+            |inner| &inner.update_listeners,
+            Rc::new(move |payload: &UpdateListenerPayload| listener(payload).into_cleanup())
+                as Rc<UpdateListenerFn>,
+        )
     }
 
     /// `registerTextContentListener(listener)`.
-    pub fn register_text_content_listener(&self, listener: impl Fn(&str) + 'static) -> Unregister {
-        let id = self.next_id();
-        self.0
-            .text_content_listeners
-            .borrow_mut()
-            .push((id, Rc::new(listener)));
-        let weak = self.weak();
-        Box::new(move || {
-            if let Some(inner) = weak.upgrade() {
-                inner
-                    .text_content_listeners
-                    .borrow_mut()
-                    .retain(|(i, _)| *i != id);
-            }
-        })
+    pub fn register_text_content_listener<R: ListenerCleanup>(
+        &self,
+        listener: impl Fn(&str) -> R + 'static,
+    ) -> Unregister {
+        register_listener(
+            self,
+            |inner| &inner.text_content_listeners,
+            Rc::new(move |text: &str| listener(text).into_cleanup()) as Rc<TextContentListenerFn>,
+        )
     }
 
-    pub(crate) fn update_listeners(&self) -> Vec<UpdateListener> {
-        self.0
-            .update_listeners
-            .borrow()
-            .iter()
-            .map(|(_, l)| l.clone())
-            .collect()
+    /// `triggerListeners('update', ...)`'s loop.
+    pub(crate) fn trigger_update_listeners(&self, payload: &UpdateListenerPayload) {
+        trigger_listeners(&self.0.update_listeners, |listener| listener(payload));
     }
 
-    pub(crate) fn text_content_listeners(&self) -> Vec<TextContentListener> {
-        self.0
-            .text_content_listeners
-            .borrow()
-            .iter()
-            .map(|(_, l)| l.clone())
-            .collect()
+    /// Whether a text content listener is registered.
+    pub(crate) fn has_text_content_listeners(&self) -> bool {
+        !self.0.text_content_listeners.borrow().is_empty()
+    }
+
+    /// `triggerListeners('textcontent', ...)`'s loop.
+    pub(crate) fn trigger_text_content_listeners(&self, text: &str) {
+        trigger_listeners(&self.0.text_content_listeners, |listener| listener(text));
     }
 
     /// `registerCommand(command, listener, priority)`, `priority` being one
@@ -1674,12 +1716,23 @@ impl Editor {
         }
         let weak = self.weak();
         Box::new(move || {
-            if let Some(inner) = weak.upgrade()
-                && let Some(lists) = inner.commands.borrow_mut().get_mut(&command_id)
-            {
-                lists[priority].retain(|(i, _)| *i != id);
+            if let Some(inner) = weak.upgrade() {
+                let mut commands = inner.commands.borrow_mut();
+                if let Some(lists) = commands.get_mut(&command_id) {
+                    lists[priority].retain(|(i, _)| *i != id);
+                    // The command leaves the map with its last listener.
+                    if lists.iter().all(Vec::is_empty) {
+                        commands.remove(&command_id);
+                    }
+                }
             }
         })
+    }
+
+    /// `editor._commands.has(command)`.
+    #[cfg(test)]
+    pub(crate) fn has_command<P>(&self, command: &LexicalCommand<P>) -> bool {
+        self.0.commands.borrow().contains_key(&command.id())
     }
 
     pub(crate) fn command_listeners<P: 'static>(
@@ -1776,6 +1829,57 @@ fn with_updating<R>(editor: &Editor, updating: bool, f: impl FnOnce() -> R) -> R
     }
     let _restore = Restore(editor, editor.0.updating.replace(updating));
     f()
+}
+
+/// `registerListener(listenerMap, listener)`: `unregisterListener` removes
+/// the listener and runs what its last call returned.
+fn register_listener<F: ?Sized + 'static>(
+    editor: &Editor,
+    listeners: fn(&EditorInner) -> &Listeners<F>,
+    listener: Rc<F>,
+) -> Unregister {
+    let id = editor.next_id();
+    listeners(&editor.0)
+        .borrow_mut()
+        .push((id, listener, Rc::default()));
+    let weak = editor.weak();
+    Box::new(move || {
+        let Some(inner) = weak.upgrade() else { return };
+        let removed = {
+            let mut list = listeners(&inner).borrow_mut();
+            list.iter()
+                .position(|(i, _, _)| *i == id)
+                .map(|at| list.remove(at))
+        };
+        let last = removed.and_then(|(_, _, cleanup)| cleanup.borrow_mut().take());
+        if let Some(last) = last {
+            last();
+        }
+    })
+}
+
+/// `triggerListeners(type, ...)`'s loop over the listeners registered when
+/// it starts: each one's last clean-up runs, then the listener; what it
+/// returns is kept for its next call, or runs at once if the listener was
+/// unregistered meanwhile.
+fn trigger_listeners<F: ?Sized>(listeners: &Listeners<F>, call: impl Fn(&F) -> Option<Unregister>) {
+    let snapshot: Vec<_> = listeners
+        .borrow()
+        .iter()
+        .map(|(id, l, cleanup)| (*id, l.clone(), cleanup.clone()))
+        .collect();
+    for (id, listener, cleanup) in snapshot {
+        let last = cleanup.borrow_mut().take();
+        if let Some(last) = last {
+            last();
+        }
+        let next = call(&listener);
+        if listeners.borrow().iter().any(|(i, _, _)| *i == id) {
+            *cleanup.borrow_mut() = next;
+        } else if let Some(next) = next {
+            next();
+        }
+    }
 }
 
 /// `triggerListener(listenerMap, listener, args)` of a root listener: what

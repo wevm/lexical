@@ -111,6 +111,21 @@ pub fn get_text_content(node: &dyn LexicalNode) -> String {
     text_content
 }
 
+/// `ElementNode.getTextContentSize()`: the slots' size first, then the
+/// children's.
+pub fn get_text_content_size(node: &dyn LexicalNode) -> usize {
+    let children = NodeRef::new(node.get_key()).get_children();
+    let length = children.len();
+    let mut size = crate::slot::get_slots_text_content_size(node);
+    for (i, child) in children.iter().enumerate() {
+        size += child.get_text_content_size();
+        if child.is_element() && i != length - 1 && !child.is_inline() {
+            size += utf16::len(DOUBLE_LINE_BREAK);
+        }
+    }
+    size
+}
+
 /// `ElementNode.shouldSerializeTextStyles()`: whether the element has no
 /// text to derive its text format and style from, so they are written.
 pub fn should_serialize_text_styles(node: &dyn LexicalNode) -> bool {
@@ -250,20 +265,6 @@ impl NodeRef {
             child.get_first_descendant()
         };
         Some(descendant.unwrap_or(child))
-    }
-
-    /// `ElementNode.getTextContentSize()`.
-    pub(crate) fn get_element_text_content_size(&self) -> usize {
-        let children = self.get_children();
-        let length = children.len();
-        let mut size = crate::slot::get_slots_text_content_size(&*self.get_latest());
-        for (i, child) in children.iter().enumerate() {
-            size += child.get_text_content_size();
-            if child.is_element() && i != length - 1 && !child.is_inline() {
-                size += utf16::len(DOUBLE_LINE_BREAK);
-            }
-        }
-        size
     }
 
     /// `ElementNode.select(anchorOffset, focusOffset)`: an element range at

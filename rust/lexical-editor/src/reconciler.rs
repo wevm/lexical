@@ -145,6 +145,14 @@ pub(crate) struct ReconciledNode {
     container: Cell<Option<u64>>,
 }
 
+#[cfg(all(test, feature = "extension", feature = "rich-text", feature = "link"))]
+impl ReconciledNode {
+    /// `dom.__lexicalFirstTextKey`, for the ported reconciler tests.
+    pub(crate) fn first_text_key(&self) -> Option<Option<NodeKey>> {
+        self.first_text_key.borrow().clone()
+    }
+}
+
 /// `editor._keyToDOMMap`.
 pub(crate) type KeyToDomMap = HashMap<NodeKey, Rc<ReconciledNode>>;
 

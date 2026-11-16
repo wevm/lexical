@@ -31,7 +31,7 @@ impl SlotMap {
         self.entries.iter().find(|(n, _)| n == name).map(|(_, k)| k)
     }
 
-    fn set(&mut self, name: &str, key: NodeKey) {
+    pub(crate) fn set(&mut self, name: &str, key: NodeKey) {
         match self.entries.iter_mut().find(|(n, _)| n == name) {
             Some(entry) => entry.1 = key,
             None => self.entries.push((name.to_owned(), key)),

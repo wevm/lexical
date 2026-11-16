@@ -1837,6 +1837,22 @@
     "reason": "deviation",
     "note": "JS passes a non-integer index; get_child_caret_at_index takes a usize, so 0.5, 1.5 and NaN have no Rust form."
   },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret at -Infinity preserves clamping and direction": {
+    "reason": "deviation",
+    "note": "JS passes a negative index, which it clamps to 0; get_child_caret_at_index takes a usize, so -Infinity and -1 have no Rust form (index 0 is ported)."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret at -1 preserves clamping and direction": {
+    "reason": "deviation",
+    "note": "JS passes a negative index, which it clamps to 0; get_child_caret_at_index takes a usize, so -Infinity and -1 have no Rust form (index 0 is ported)."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret in an empty element at -Infinity stays at its boundary": {
+    "reason": "deviation",
+    "note": "JS passes a negative index, which it clamps to 0; get_child_caret_at_index takes a usize, so -Infinity and -1 have no Rust form (index 0 is ported)."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret in an empty element at -1 stays at its boundary": {
+    "reason": "deviation",
+    "note": "JS passes a negative index, which it clamps to 0; get_child_caret_at_index takes a usize, so -Infinity and -1 have no Rust form (index 0 is ported)."
+  },
   "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::getDOMSlot tests > can create wrapper": {
     "reason": "dom-only",
     "note": "Tests ElementDOMSlot, the DOM placement of children; getDOMSlot and the rest of what only the reconciler calls aren't ported (rust/PARITY.md, @lexical/html and the core's DOM side)."
@@ -5919,5 +5935,377 @@
   "lexical-mark/src/__tests__/unit/MarkFlavors.test.ts::mark flavors > types > the type rules reject what the runtime rejects": {
     "reason": "deviation",
     "note": "Only type checked upstream (@ts-expect-error on string literal stateKey rules and argument order), so it asserts nothing at run time; the argument-order cases do not compile in Rust."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretMutation.test.ts::caret insertion dispatches to the previous node method": {
+    "reason": "deviation",
+    "note": "Asserts with vi.spyOn on TextNode.prototype.insertBefore; Rust has no prototype to spy on, and insert_before is not a LexicalNode hook a node class could record. The insertion itself is checked by the 'moving sibling' ports."
+  },
+  "lexical/src/caret/__tests__/unit/LexicalCaretMutation.test.ts::caret insertion dispatches to the next node method": {
+    "reason": "deviation",
+    "note": "Asserts with vi.spyOn on TextNode.prototype.insertAfter; Rust has no prototype to spy on. PointCaret::insert calls NodeRef::insert_after, which dispatches to LexicalNode::insert_after; the insertion itself is checked by the 'moving sibling' ports."
+  },
+  "lexical/src/__tests__/unit/LexicalEditorEmptyState.test.ts::setEditorState with an empty editor state (production arm) > recovers to an empty paragraph rather than leaving the root childless": {
+    "reason": "deviation",
+    "note": "Mocks devInvariant with vi.mock to run the production build's arm, which only warns and appends a paragraph; the port has the development build's behaviour, where set_editor_state of an empty state is an error (Editor::set_editor_state), and no module to mock."
+  },
+  "lexical/src/__tests__/unit/LexicalWritableNode.test.ts::writable node reuse > returns cached writable nodes without looking them up in the node map": {
+    "reason": "deviation",
+    "note": "Spies on the node map's get with vi.spyOn to check that getWritable reuses _cloneNotNeeded without a lookup; a Rust HashMap cannot be spied on, and the port has no _cloneNotNeeded map (an Rc the node map holds alone is the writable version, rust/DESIGN.md, Nodes). The reuse itself is checked by 'reuses new nodes and clones committed nodes once per update'."
+  },
+  "lexical/src/__tests__/unit/LexicalWritableNode.test.ts::stale node references > explains how to guard a stale reference when reading": {
+    "reason": "deviation",
+    "note": "Checks the exact message, which names the stale node's type from the JS object's __type; a Rust NodeRef is only a key (rust/DESIGN.md, Nodes), so once the node is gone from the editor state nothing knows its type, and the port panics with its own message."
+  },
+  "lexical/src/__tests__/unit/LexicalWritableNode.test.ts::stale node references > explains how to guard a stale reference when writing": {
+    "reason": "deviation",
+    "note": "Checks the exact message, which names the stale node's type from the JS object's __type; a Rust NodeRef is only a key (rust/DESIGN.md, Nodes), so once the node is gone from the editor state nothing knows its type, and the port panics with its own message."
+  },
+  "lexical/src/__tests__/unit/InlineElementTextFields.test.ts::serializing inline elements nested inside each other > a clone that reads JSON before the change it is made for does not keep what the change replaces": {
+    "reason": "deviation",
+    "note": "Checks that JS's per-export memo of $hasTextInside is invalidated when a node's afterCloneFrom calls exportJSON on the node it is cloned from. A Rust node has no afterCloneFrom (Clone carries its fields, rust/DESIGN.md, Schemas, and runs while the node map is borrowed, so it cannot read the document), and should_serialize_text_styles walks the children without a memo (nodes/element.rs), so there is no cache to keep stale."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated exportJSON > the checked-in outputs are what the generator produces; `pnpm run generate-node-json` to fix": {
+    "reason": "deviation",
+    "note": "Runs @lexical/compiler's generator (scripts/shared/generateNodeJSON.mjs) and compares its output with the checked-in modules. Rust's generated code is ported by hand, not generated (rust/PARITY.md, Not ported yet: SchemaJsonCodegen.ts); 'every generated exporter agrees with the schema-driven walk' and 'every generated parser agrees with the schema-driven walk' check it against the walk."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > text": {
+    "reason": "deviation",
+    "note": "Checks that the class's $config names its GENERATED_* factory and that getGeneratedJSON binds it once per class. A Rust class's generated code is its own generated_export_json and generated_update_from_json methods (rust/DESIGN.md, Schemas), with no factory to name, bind or look up."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > paragraph": {
+    "reason": "deviation",
+    "note": "Checks that the class's $config names its GENERATED_* factory and that getGeneratedJSON binds it once per class. A Rust class's generated code is its own generated_export_json and generated_update_from_json methods (rust/DESIGN.md, Schemas), with no factory to name, bind or look up."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > linebreak": {
+    "reason": "deviation",
+    "note": "Checks that the class's $config names its GENERATED_* factory and that getGeneratedJSON binds it once per class. A Rust class's generated code is its own generated_export_json and generated_update_from_json methods (rust/DESIGN.md, Schemas), with no factory to name, bind or look up."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > tab": {
+    "reason": "deviation",
+    "note": "Checks that the class's $config names its GENERATED_* factory and that getGeneratedJSON binds it once per class. A Rust class's generated code is its own generated_export_json and generated_update_from_json methods (rust/DESIGN.md, Schemas), with no factory to name, bind or look up."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a subclass whose tables compile the same way inherits it": {
+    "reason": "deviation",
+    "note": "Tests whether a JS subclass inherits its ancestor's generated code, which getGeneratedJSON decides from the composed tables (and refuses where a $config names it). A Rust node class is a struct of its own, not a subclass: it has generated code only where it implements generated_export_json and generated_update_from_json, and otherwise takes the walk, so nothing is inherited or refused (rust/DESIGN.md, Schemas)."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a subclass that overrides an accessor a field stands in for takes the walk": {
+    "reason": "deviation",
+    "note": "Tests whether a JS subclass inherits its ancestor's generated code, which getGeneratedJSON decides from the composed tables (and refuses where a $config names it). A Rust node class is a struct of its own, not a subclass: it has generated code only where it implements generated_export_json and generated_update_from_json, and otherwise takes the walk, so nothing is inherited or refused (rust/DESIGN.md, Schemas)."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a subclass that declares a property of its own takes the walk": {
+    "reason": "deviation",
+    "note": "Tests whether a JS subclass inherits its ancestor's generated code, which getGeneratedJSON decides from the composed tables (and refuses where a $config names it). A Rust node class is a struct of its own, not a subclass: it has generated code only where it implements generated_export_json and generated_update_from_json, and otherwise takes the walk, so nothing is inherited or refused (rust/DESIGN.md, Schemas)."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a subclass that re-declares a property with a different predicate takes the walk": {
+    "reason": "deviation",
+    "note": "Tests whether a JS subclass inherits its ancestor's generated code, which getGeneratedJSON decides from the composed tables (and refuses where a $config names it). A Rust node class is a struct of its own, not a subclass: it has generated code only where it implements generated_export_json and generated_update_from_json, and otherwise takes the walk, so nothing is inherited or refused (rust/DESIGN.md, Schemas)."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated code is inherited where it still applies > a $config that names an ancestor's generated code is refused": {
+    "reason": "deviation",
+    "note": "Tests whether a JS subclass inherits its ancestor's generated code, which getGeneratedJSON decides from the composed tables (and refuses where a $config names it). A Rust node class is a struct of its own, not a subclass: it has generated code only where it implements generated_export_json and generated_update_from_json, and otherwise takes the walk, so nothing is inherited or refused (rust/DESIGN.md, Schemas)."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::the compact form is generated too > a property compared at run time omits exactly what the walk omits": {
+    "reason": "deviation",
+    "note": "A hand-built generated factory that receives the dispatch's isCompactDefault test for a property whose default has no literal. Rust's generated code is ported by hand and compares its defaults in source (generated_json.rs); no dispatch hands it an omission test."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::the synthesized importJSON > follows the node the generated parser returns": {
+    "reason": "deviation",
+    "note": "A generated parser that removes its node and returns another, which importJSON hands on. A Rust generated_update_from_json writes the node it is given (&mut self) and returns whether it ran, so it cannot hand back another node."
+  },
+  "lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::the synthesized importJSON > state a constructor set is reset from JSON that carries none": {
+    "reason": "deviation",
+    "note": "A node whose constructor calls $setState on itself. A Rust node's constructor is Default, which runs before the node has a key or an editor state, so it cannot set a state."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > clone shares state until first write": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > write to a clone isolates that clone from the original": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > write to the original after clone isolates the original": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > delete then resurrect preserves size and value": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > size tracks set/delete correctly across clone boundaries": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > iteration yields entries in nursery-overrides-old order": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > iteration skips tombstoned keys": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > compact folds nursery into old and resets nursery": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::GenMap > clear resets all state": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > GenMap source returns a clone (O(1) path)": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > plain Map below threshold returns a fresh plain Map": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalGenMap.test.ts::cloneMap > plain Map at or above threshold returns a GenMap snapshot": {
+    "reason": "deviation",
+    "note": "GenMap is JS's generational node map (O(1) clone, copy on first write). Rust's node map is a HashMap of Rc nodes, cloned as pointers with the nodes shared until getWritable, as Swift's is; a GenMap would change the cost of a clone, not any behaviour (rust/PARITY.md, Not ported yet: LexicalGenMap.ts)."
+  },
+  "lexical/src/__tests__/unit/LexicalSchema.test.ts::a strict match never claims what the schema itself declines > and a schema carrying no meta is asked, not walked": {
+    "reason": "deviation",
+    "note": "Checks that the walk reads a hand-rolled schema with a missing or malformed meta defensively; a Rust SerializationSchema::new requires a SerializationSchemaMeta, a closed enum whose payloads the compiler checks, so no schema lacks meta or carries an unknown kind."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.constructor": {
+    "reason": "deviation",
+    "note": "Constructs nodes with a caller-chosen key (new LexicalNode('__custom_key__')). A Rust node value is made without a key and gets a fresh one from create/set_node_key; no constructor takes a key, so there is no keyed node to construct or to reject in a read."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.constructor: type change detected": {
+    "reason": "deviation",
+    "note": "Checks the invariant against re-using another class's key in a constructor (new TestNode(textNode.__key)); a Rust node value never takes a key from its caller (create/set_node_key make a fresh one), so a key can't be re-used across types."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.clone()": {
+    "reason": "deviation",
+    "note": "Checks that the abstract LexicalNode.clone throws when a subclass doesn't extend it; a Rust node's clone is its type's Clone, which the compiler requires (NodeClone), so there is no unextended base clone."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.updateDOM()": {
+    "reason": "deviation",
+    "note": "Calls the base updateDOM with no arguments (@ts-expect-error) and expects 'base method not extended'; Rust's update_dom is the reconciler's model half, a bool with a default for every node (rust/PARITY.md, updateDOM isn't ported), and the argument can't be left out."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.replace()": {
+    "reason": "deviation",
+    "note": "Calls replace() without its argument (@ts-expect-error) and expects a throw; the Rust method requires it, so the call doesn't compile."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.insertAfter()": {
+    "reason": "deviation",
+    "note": "Calls insertAfter() without its argument (@ts-expect-error) and expects a throw; the Rust method requires it, so the call doesn't compile."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode tests > LexicalNode.insertBefore()": {
+    "reason": "deviation",
+    "note": "Calls insertBefore() without its argument (@ts-expect-error) and expects a throw; the Rust method requires it, so the call doesn't compile."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::Element-anchored selection on old parent (#6031) > cross-parent move > insertBefore with restoreSelection=false skips the source-parent shift": {
+    "reason": "dom-only",
+    "note": "Expects the reconciler's application of the out-of-range selection to the DOM to throw an IndexSizeError that it warns about (console.warn with a DOMException); Rust doesn't set a DOM selection (rust/PARITY.md, the DOM half of the reconciler)."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::Element-anchored selection on old parent (#6031) > cross-parent move > insertAfter with restoreSelection=false skips the source-parent shift": {
+    "reason": "dom-only",
+    "note": "Expects the reconciler's application of the out-of-range selection to the DOM to throw an IndexSizeError that it warns about (console.warn with a DOMException); Rust doesn't set a DOM selection (rust/PARITY.md, the DOM half of the reconciler)."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() without registration > static getType() before registration": {
+    "reason": "deviation",
+    "note": "Checks that a class without $config or a static getType throws on getType; LexicalNode::get_type is a required trait method in Rust, so such a node type doesn't compile."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() without registration > subclass static getType() is not shadowed by a superclass synthesized getType": {
+    "reason": "deviation",
+    "note": "Regression for the getType JS synthesizes on a class from its $config and a subclass inheriting it; a Rust node's type comes from its own trait implementation and is never synthesized or inherited."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() without registration > subclass static getType() resolves correctly when read before the superclass": {
+    "reason": "deviation",
+    "note": "Regression for the getType JS synthesizes on a class from its $config and a subclass inheriting it; a Rust node's type comes from its own trait implementation and is never synthesized or inherited."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::LexicalNode.$config() without registration > abstract base class declares shared $config under a Symbol key": {
+    "reason": "deviation",
+    "note": "Resolves a $config an abstract base class publishes under a Symbol for its subclasses; Rust nodes have no class inheritance, so there is no abstract base to collect a shared $transform from (each type implements LexicalNode::transform)."
+  },
+  "lexical/src/__tests__/unit/LexicalNode.test.ts::a setter returns the version it wrote to > setFormat/setStyle/setIndent return the writable, not the receiver": {
+    "reason": "deviation",
+    "note": "Checks which node object (version) a setter returns; Rust's setters are on NodeRef, which resolves the latest version on every call, and return no node, so there is no receiver version to compare."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::LexicalElementNode tests > getTextContentSize() > child node getTextContentSize() can be overridden and is then reflected when calling the same method on parent node": {
+    "reason": "deviation",
+    "note": "Overrides getTextContentSize on one node object by assigning to it; a Rust node's methods come from its type's LexicalNode impl and can't be replaced on one node."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalElementNode.test.tsx::LexicalElementNode tests > splice > Nested elements: Delete selected with previous element (selection moves to the next)": {
+    "reason": "dom-only",
+    "note": "The splice leaves the point at element 0 of the next block (moveSelectionPointToSibling, as Rust does); the text point upstream expects comes from the next update reading the reconciled DOM selection back, which Rust doesn't do (rust/PARITY.md, the DOM half of the reconciler: an update starts with the last selection)."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode __cachedText incremental update #8096": {
+    "reason": "deviation",
+    "note": "Checks RootNode.__cachedText, the text cache the DOM reconciler keeps; Rust has no __cachedText and getTextContent always walks the tree (rust/PARITY.md, the DOM half of the reconciler)."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode __cachedText": {
+    "reason": "deviation",
+    "note": "Checks RootNode.__cachedText, the text cache the DOM reconciler keeps; Rust has no __cachedText and getTextContent always walks the tree (rust/PARITY.md, the DOM half of the reconciler)."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode __cachedText (empty paragraph)": {
+    "reason": "deviation",
+    "note": "Checks RootNode.__cachedText, the text cache the DOM reconciler keeps; Rust has no __cachedText and getTextContent always walks the tree (rust/PARITY.md, the DOM half of the reconciler)."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalRootNode.test.ts::LexicalRootNode tests > RootNode __cachedText (inlines)": {
+    "reason": "deviation",
+    "note": "Checks RootNode.__cachedText, the text cache the DOM reconciler keeps; Rust has no __cachedText and getTextContent always walks the tree (rust/PARITY.md, the DOM half of the reconciler)."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > change in text": {
+    "reason": "deviation",
+    "note": "Checks that TextNode.updateDOM writes the new text into the element; Rust's update_dom is the model half only (whether the DOM is made again), and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/html and the core's DOM side). The result half is checked by the other updateDOM ports."
+  },
+  "lexical/src/nodes/__tests__/unit/LexicalTextNode.test.tsx::LexicalTextNode tests > updateDOM() > updates and removes styles with direct DOM property updates": {
+    "reason": "deviation",
+    "note": "Checks that TextNode.updateDOM patches the element's inline style; Rust's update_dom is the model half only, and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/html and the core's DOM side)."
+  },
+  "lexical/src/__tests__/unit/LexicalBulkSplice.test.ts::bulk removal preserves clone-hook traversal, detached links, and snapshots": {
+    "reason": "deviation",
+    "note": "Observes the half-spliced tree from ObservedTextNode.afterCloneFrom. A Rust node has no afterCloneFrom: Clone carries its fields (rust/DESIGN.md, Schemas) and runs while the node map is borrowed (lexical_utils.rs, unshare), so no hook can read the document mid-splice."
+  },
+  "lexical/src/__tests__/unit/FastPathCrossParent.test.ts::fast path differential fuzz — cross-parent moves > fast path matches the general walk across cross-parent moves": {
+    "reason": "deviation",
+    "note": "Compares the reconciler's children fast path with its general walk (__benchOnly.skipChildrenFastPath). Rust's reconciler ports only the general walk (reconciler.rs: the fast paths only save DOM work), so there is nothing to compare; FastPathCrossParentTextCache's ports check the root's cached text it keeps."
+  },
+  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > node replacement > should fail if node keys are re-used": {
+    "reason": "deviation",
+    "note": "The replacement's with constructs `new TestTextNode(text, node.getKey())`, and $setNodeKey throws because the key belongs to a TextNode. A Rust node gets its key only from set_node_key, which generates a fresh one (lexical_utils.rs); a with closure cannot construct a node under an existing key, so this invariant has nothing to catch. Returning the replaced node itself is caught by apply_node_replacement's own key invariant instead, with a different message."
+  },
+  "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > should call importDOM methods only once": {
+    "reason": "deviation",
+    "note": "Spies on the static ParagraphNode.importDOM and expects one call when a subclass inherits it: JS skips a class whose importDOM is the same function as one already handled. Rust has no static inheritance; NodeClass::of::<T>() takes T's own import_dom, so a subclass that doesn't define one has none and there is no shared function to call once (lexical_dom.rs, initialize_conversion_cache)."
+  },
+  "lexical/src/__tests__/unit/LexicalRefCountedRegistry.test.ts::createRefCountedRegistry > the disposer is idempotent": {
+    "reason": "deviation",
+    "note": "Calls one disposer twice; in Rust a disposer is an `Unregister` (`Box<dyn FnOnce()>`), which the first call consumes, so a second call doesn't compile. A disposer that has become stale is a no-op (ported: 'a disposer held after registry.dispose() is a no-op')."
+  },
+  "lexical/src/__tests__/unit/LexicalRefCountedRegistry.test.ts::createRefCountedRegistry > a stale disposer does not affect a fresh entry for the same key": {
+    "reason": "deviation",
+    "note": "Calls one disposer a second time after the key was registered again; in Rust a disposer is an `Unregister` (`Box<dyn FnOnce()>`), which the first call consumes, so the second call doesn't compile."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError reports > a callback that changes text, then throws (discrete: true)": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError reports > a callback that changes text, then throws (discrete: false)": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError reports > a callback that throws before any change, then an update that changes nothing": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError reports > a transform that throws": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError reports > a nested update that throws discards the update it is part of": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError reports > an update batched after another one discards both": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError reports > a selection change listener that throws": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError reports > what the failed update committed before it threw stays": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError reports > a read in onError sees the committed state and commits nothing of the failed update": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError reports > the updates it queued are dropped with it": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError reports > the updates queued before it still run": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError reports > an error thrown while the editor is restored is reported too": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError reports > an update onError queues runs, also when restoring the editor throws": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError reports > a nested update sharing its pending state: reported once, discarded as a whole": {
+    "reason": "deviation",
+    "note": "Rust has no `onError` (rust/PARITY.md, extension API row): an update's error is the `Result` `Editor::update` returns, which is JS's `onError` rethrowing it (the `onError rethrows` cases are ported in lexical_update_errors.rs); an `onError` that only reports the error has no counterpart."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update that throws, onError rethrows > a selection change listener that throws": {
+    "reason": "deviation",
+    "note": "Needs SELECTION_CHANGE_COMMAND dispatched from the commit (`$notifyPendingSelectionChange`); Rust does not port selection-change notifications (rust/PARITY.md, the DOM half of the reconciler), so no listener runs."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError rethrows > a nested update sharing its pending state: reported once, discarded as a whole": {
+    "reason": "deviation",
+    "note": "Needs SELECTION_CHANGE_COMMAND dispatched from the commit (`$notifyPendingSelectionChange`); Rust does not port selection-change notifications (rust/PARITY.md, the DOM half of the reconciler), so no listener runs."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError rethrows > a read in onError sees the committed state and commits nothing of the failed update": {
+    "reason": "deviation",
+    "note": "Reads the editor from inside `onError`; Rust has no `onError` (rust/PARITY.md, extension API row): the failed update's error is returned by `Editor::update` after the editor is restored."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError rethrows > an update onError queues runs, also when restoring the editor throws": {
+    "reason": "deviation",
+    "note": "Runs an update from inside `onError` and has an update listener throw; Rust has no `onError` (rust/PARITY.md) and its update listeners return no error (`Fn(&UpdateListenerPayload)`), so neither can happen."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::error handling of an update that throws, onError rethrows > an error thrown while the editor is restored is reported too": {
+    "reason": "deviation",
+    "note": "Has an update listener throw while the failed update is discarded; Rust's update listeners cannot fail (`Fn(&UpdateListenerPayload) -> impl ListenerCleanup`), and Rust has no `onError` to report a second error to (rust/PARITY.md)."
+  },
+  "lexical/src/__tests__/unit/LexicalUpdateErrors.test.ts::an update listener that throws > does not undo the commit, whatever onError does": {
+    "reason": "deviation",
+    "note": "Has an update listener throw out of `editor.update`; Rust's update listeners cannot fail (`Fn(&UpdateListenerPayload) -> impl ListenerCleanup`), and a panic is not an error the update reports."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::$applyNodeReplacement > validates replace node key change": {
+    "reason": "deviation",
+    "note": "The replacement is `new ExtendedTextNode(text, node.getKey())`: a constructor given an existing key, whose `$setNodeKey` reports the constructor mismatch. A Rust node gets its key only from `set_node_key`, which always generates a fresh one, so no node of another class can be made with the original's key and the error cannot arise. A `with` that returns the original node itself is ported ('validates replace node type withKlass')."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > getStaticNodeConfig() > derives the type and config from $config()": {
+    "reason": "deviation",
+    "note": "A Rust node class has no `$config()` object: its type and the classes it extends are trait methods (`get_type`, `super_types`), so there is no `ownNodeConfig` with `extends` to derive. The structure part of a config chain is `iter_static_node_config_chain`."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > getStaticNodeConfig() > caches the result for a node class": {
+    "reason": "deviation",
+    "note": "Checks that `$config()` is called once per class (a `vi.fn` spy); Rust has no `$config()` method and no per-class config cache to observe."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > getStaticNodeConfig() > resolves symbol-keyed config for abstract node classes": {
+    "reason": "deviation",
+    "note": "Reads the symbol-keyed `$config` of the abstract `ElementNode` class (its `extends` and `$transform`); Rust has no abstract node classes: `ElementNode` is the `ElementData` a node type embeds."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > iterStaticNodeConfigChain > a subclass that declares no $config contributes nothing, and does not hide its parent": {
+    "reason": "deviation",
+    "note": "Needs a class that inherits its parent's `$config()` without declaring one; a Rust node type has no class inheritance and always declares its own type and chain (`static_node_config_chain`)."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > iterStaticNodeConfigChain > an inline $transform is registered once for a subclass that declares no $config": {
+    "reason": "deviation",
+    "note": "The double registration came from a subclass inheriting its parent's inline `$transform` closure through `$config()`; a Rust node type's transform is its own `LexicalNode::transform` method, registered once per registered type, and there is no subclass that inherits it."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::getParentElement > iterStaticNodeConfigChain > handles a class transform": {
+    "reason": "deviation",
+    "note": "Expects the chain `[ParagraphNode, ElementNode, LexicalNode]` of JS classes; Rust's `iter_static_node_config_chain` lists only node types that declare structure (a paragraph's is `[paragraph]`), as there are no abstract `ElementNode`/`LexicalNode` classes."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns globalThis.document when rootElement is null": {
+    "reason": "dom-only",
+    "note": "Rust has no `$getDocument()` that looks up a root element's `ownerDocument`: a Rust root element is the app's, not a DOM element, and `dom::get_document()` is always the thread's document, so the fallback has nothing to be compared against (as the sibling 'returns ownerDocument when rootElement is mounted' skip)."
+  },
+  "lexical/src/__tests__/unit/LexicalUtils.test.ts::$getDocument > returns globalThis.document when called with no active editor": {
+    "reason": "dom-only",
+    "note": "Rust has no `$getDocument()`; `dom::get_document()` never consults an active editor, so the regression (throwing outside an update) has no counterpart."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop across editors > inserts in the destination and dispatches deleteByDrag at the source root": {
+    "reason": "deviation",
+    "note": "The test's contract is the synthetic `beforeinput` `deleteByDrag` event the destination's drop dispatches at the source editor's DOM root (its type, inputType and target). By design Rust's `$doDrop` leaves a cross-editor drag's source range to the source editor's platform (`clipboard::do_drop`), as Swift does, so nothing is dispatched; the destination insertion alone would be a partial port. A same-editor move is ported (the `$handleTextDrop` cases), and so is the cancelled cross-editor drag."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop beside DOM the editor renders > drops before the decorator at the DOM point before it": {
+    "reason": "dom-only",
+    "note": "Checks how a DOM point beside DOM the editor renders (the zero-size anchor before a leading block decorator, #8922) resolves to a Lexical point. A Rust editor takes the drop caret from its root element's `caret_from_point`, which the app's view resolves, so there is no DOM point to map; giving it the Lexical point (root, 0) directly would not test the mapping (Swift does that)."
+  },
+  "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop beside DOM the editor renders > drops before the first child of an element at the DOM point after its marker": {
+    "reason": "dom-only",
+    "note": "Checks how the DOM point after a leading marker in an element's DOM slot (`getDOMSlot().withAfter`) resolves to the Lexical point (element, 0). A Rust editor takes the drop caret from its root element's `caret_from_point`, so there is no DOM point to map; giving it the Lexical point directly would not test the mapping (Swift does that)."
   }
 }

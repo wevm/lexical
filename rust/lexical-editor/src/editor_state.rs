@@ -36,6 +36,10 @@ pub(crate) struct EditorStateInner {
     /// records the one it was made writable in (`NodeBase::written_in`),
     /// which is how a NodeState knows its version, as JS knows its object.
     pub(crate) id: u64,
+    /// `cachedNodeMaps.get(editorState)`: what
+    /// [`get_cached_type_to_node_map`](crate::get_cached_type_to_node_map)
+    /// computed for this read-only state.
+    pub(crate) type_to_node_map: RefCell<Option<Rc<crate::TypeToNodeMap>>>,
 }
 
 thread_local! {
@@ -51,6 +55,7 @@ fn new_editor_state(node_map: NodeMap) -> EditorState {
         parsed: Cell::new(false),
         slots_used: Cell::new(false),
         id: NEXT_EDITOR_STATE_ID.with(|n| n.replace(n.get() + 1)),
+        type_to_node_map: RefCell::new(None),
     }))
 }
 
@@ -114,6 +119,20 @@ impl EditorState {
         let mut keys: Vec<String> = self.0.node_map.borrow().keys().cloned().collect();
         keys.sort_by_key(|k| (k != "root", k.parse::<u64>().unwrap_or(u64::MAX), k.clone()));
         keys
+    }
+
+    /// `clone(selection)`: a read-only state with the same nodes, and
+    /// `selection` (`None` is JS's `undefined`, this state's selection;
+    /// `Some(None)` is `null`). It is parsed when this one is, so
+    /// `setEditorState(parsed.clone(null))` still runs transforms on it.
+    /// (`Clone::clone` shares this state itself.)
+    pub fn clone_with_selection(&self, selection: Option<Option<SelectionRef>>) -> EditorState {
+        let state = new_editor_state(self.0.node_map.borrow().clone());
+        *state.0.selection.borrow_mut() = selection.unwrap_or_else(|| self.selection());
+        state.0.slots_used.set(self.0.slots_used.get());
+        state.0.read_only.set(true);
+        state.0.parsed.set(self.0.parsed.get());
+        state
     }
 
     /// Whether `self` and `other` are the same state.

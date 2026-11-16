@@ -125,7 +125,8 @@ fn with_export_context<T>(
 }
 
 /// `$generateDOMFromNodes(container, selection, editor)`: appends the DOM
-/// of the root's children (or of what `selection` covers) to `container`,
+/// of the root's children (or of what `selection` covers, walked from its
+/// slot frame) to `container`,
 /// through the editor's render config, with `RenderContextExport` set.
 pub fn generate_dom_from_nodes(
     container: &DomNode,
@@ -134,7 +135,15 @@ pub fn generate_dom_from_nodes(
 ) -> Result<(), LexicalError> {
     with_export_context(editor, false, || {
         let dom_config = session_dom_render_config(editor)?;
-        for top_level_node in get_root().get_children() {
+        // A selection wholly inside a slot subtree never includes its host
+        // (slots are shadow-root isolated), so a root-children walk would
+        // miss the selected nodes entirely and export an empty payload.
+        // Walk the selection's slot frame instead; outside slots this is
+        // the root.
+        let walk_root = crate::slot::get_selection_slot_frame(selection)?
+            .filter(NodeRef::is_element)
+            .unwrap_or_else(get_root);
+        for top_level_node in walk_root.get_children() {
             append_nodes_to_html(editor, &top_level_node, container, selection, &dom_config)?;
         }
         Ok(())

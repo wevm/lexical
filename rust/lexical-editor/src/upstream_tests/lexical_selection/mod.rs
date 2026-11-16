@@ -9,6 +9,6 @@ mod lexical_selection_helpers;
 mod lexical_set_blocks_type_slots;
 mod patch_style_detached_selection;
 mod slice_selected_text_node_content;
-mod support;
+pub(super) mod support;
 mod wrap_nodes_block_leaf;
 mod wrap_nodes_inline_content;

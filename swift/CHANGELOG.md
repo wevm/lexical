@@ -4,6 +4,38 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.1
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Fixed `registerAutoEmbed`'s single-token test of a pasted text (JS's `/^\S+$/`) to use JS's white space: a paste with U+0085 in it now counts as one token, as in JS, so the link it makes can open the embed menu.
+- Fixed `autoLinkUrlMatcher`, `autoLinkEmailMatcher` and `registerAutoLink` to match JS for white space, line terminators and characters outside the BMP. U+FEFF counts as white space and U+0085 does not, in the email pattern, the default `separatorRegex` (`/[.,;\s]/`) and the check for where a link's text nodes end, so a URL after U+FEFF is linked and an email around U+0085 is linked whole. A quoted local part may hold U+000B, U+000C and U+0085, as in JS. `autoLinkEmailMatcher` counts its length limits in UTF-16 code units, as JS does for a regular expression without the `u` flag, so a local part longer than 64 code units, such as 33 emoji, is no longer linked whole.
+- Fixed `buildEditor`'s `dispose()` to remove the root element before it unregistered the extensions, as JS's does, so the extensions' root and update listeners heard the root element go.
+- Fixed the code highlighter's node keys, which now follow JS's: JS's `$tokenize` makes a node of every token before comparing them with the block's children, so each token takes a key. `CodeHighlighterExtension` and `registerCodeHighlighting` still make nodes only of the tokens that changed, but now give them the keys JS gives them and skip the keys of the rest, so the nodes made after a highlight have JS's keys too.
+- Fixed `RangeSelection.insertNodes` in a `CodeNode`, which now inserts the nodes in the code block, or the text of a pasted code block, as JS does. `CodeNode` is now a `CodeLanguageNode`, so it takes `insertNodes`' code block case; before, a pasted paragraph's text merged into the code's next line.
+- Fixed the inline style declaration keeping the case of a CSS-wide keyword (`INHERIT`, `Unset`) for font names and shadows, and keeping a `box-shadow` or `text-shadow` of nothing but identifiers (`Foo`, `red, blue`) as written. It now lower-cases those keywords for every property and rejects such shadows, as jsdom does.
+- Fixed `generateContent` in `LexicalDevtoolsCore` printing nothing for a `MarkNode`: it prints the mark's ids (`ids: [ a, b ]`), as `@lexical/devtools-core` does. `LexicalDevtoolsCore` now depends on `LexicalMark`.
+- Fixed the core's `KEY_DOWN_COMMAND` handler returning early for a key event whose `key` is empty, so such an event with a modifier held now dispatches `KEY_MODIFIER_COMMAND`, as in JS. The handler also no longer records the last key itself: the views' `keyDown` did already, as JS's `onKeyDown` does, so a `KEY_DOWN_COMMAND` dispatched directly no longer changes which key ends a text replacement.
+  
+  Fixed the core's `BEFORE_INPUT_COMMAND` handler deleting a character on `deleteContentBackward` when the editor had no selection: as in JS, it now only restores the previous update's selection and leaves the event to the platform.
+- Changed `RangeSelection.deleteCharacter`, `deleteWord`, `deleteLine` and `modify` on an editor with no root element and no `selectionMovement` (a headless editor) to throw `LexicalError("window object not found")` when the move needs text layout, as headless JS does, instead of doing nothing. Moves that the model resolves (across a decorator or a block boundary, or deleting an expanded selection) work as before. To delete within text headless, set `editor.selectionMovement`, or extend the selection in the model and call `removeText()`.
+- Fixed NodeState reading node JSON differently from Lexical JS in two cases. A `$`
+  that is a string or an array, not an object, now gives the node a state
+  keyed by index, as JS's `Object.entries` does (for a string, one entry per
+  UTF-16 code unit), where Swift used to drop it. And a state value no config
+  has read yet (an object or array) now compares by identity, as JS's `===`
+  does: two text nodes made from separate JSON that carry equal unread
+  objects no longer merge, and a node and its copies or split pieces still
+  do. `registerLexicalTextEntity` applies the same rule when it decides
+  whether a text node merges with a neighboring entity.
+- Fixed the reconciler of a mounted editor not calling `updateDOM`, so a node whose `updateDOM` returns true (a heading whose tag changed, a list whose type changed) was not created again as in JS. Now its children are reported `created` to mutation listeners, its decorators decorate again, and it keeps its `textFormat` and `textStyle` instead of taking them from its first text. A node class that leaves `createDOM` or `updateDOM` to the base method keeps its rendering, as before.
+- Fixed `RichTextExtension` and `PlainTextExtension` to depend on `NormalizeTripleClickSelectionExtension`, as JS's do, so an editor built from either one trimmed a triple click's block selection back into the clicked block without listing that extension itself.
+- Fixed the order of a `StyleObject`'s properties, and so of `getStyleObjectFromCSS`'s, which now follows a JS object's key order: properties named by an array index (such as `2`) come first, in ascending order, then the others in the order they were first set. `getCSSFromStyleObject` and `patchStyleText` write CSS in that order, as Lexical JS does; before, Swift kept every property in the order it was first set.
+- Fixed `$inlineStylesFromStyleSheets` (`inlineStylesFromStyleSheets`, and the legacy `generateNodesFromDOM` that runs it) to match JS's on more style sheets: rules with descendant, child and sibling combinators and every attribute selector operator now apply, property names in a rule match in any case, and a `}` inside a quoted value no longer ends the rule. Added `parseStyleSheet` and `DOMNode.querySelectorAll`/`DOMElement.matches`, which it uses.
+- Fixed `basicTypeaheadTriggerMatch` to match as JS's `useBasicTypeaheadTriggerMatch` does: it counts `maxLength` in UTF-16 code units, as a JS regular expression without the `u` flag does, so a query of one emoji no longer fits a `maxLength` of 1, and its white space is JS's `\s` (U+FEFF ends a query, U+0085 and U+180E do not). The trigger and `punctuation` are still read as the bodies of character classes.
+
 ## 0.2.0
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

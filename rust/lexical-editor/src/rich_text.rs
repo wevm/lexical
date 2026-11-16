@@ -8,7 +8,9 @@
 //! other DOM events (click, arrow keys, Backspace, Delete, Enter, Escape,
 //! Space, Tab and drag and drop) wait for an input layer, and the DOM parts
 //! (`createDOM`, `exportDOM`, `importDOM`) come with `html`. With the
-//! `extension` feature, [`rich_text_extension`] is `RichTextExtension`.
+//! `extension` feature, [`rich_text_extension`] is `RichTextExtension`, and
+//! with `a11y`, `heading_announce_extension` is `HeadingAnnounceExtension`
+//! (`HeadingAnnounceExtension.ts`).
 
 use crate::clipboard::{copy_to_clipboard, insert_data_transfer_for_rich_text};
 use crate::commands::{
@@ -43,6 +45,13 @@ mod lexical_rich_text_extension;
 
 #[cfg(feature = "extension")]
 pub use lexical_rich_text_extension::{RichTextExtensionType, rich_text_extension};
+#[cfg(feature = "a11y")]
+mod heading_announce_extension;
+#[cfg(feature = "a11y")]
+pub use heading_announce_extension::{
+    HeadingAnnounceExtensionConfig, HeadingAnnounceExtensionConfigOverrides,
+    HeadingAnnounceExtensionType, HeadingAnnounceOutput, heading_announce_extension,
+};
 
 /// The node classes this package registers (`RichTextExtension`'s
 /// `nodes`): `HeadingNode` and `QuoteNode`.
@@ -157,6 +166,13 @@ impl LexicalNode for HeadingNode {
         true
     }
 
+    /// `HeadingNode.updateDOM(prevNode)`: a heading of another level is
+    /// made again.
+    fn update_dom(&self, prev_node: &dyn LexicalNode) -> bool {
+        prev_node
+            .downcast_ref::<HeadingNode>()
+            .is_some_and(|prev| prev.tag != self.tag)
+    }
     fn get_type(&self) -> &'static str {
         "heading"
     }

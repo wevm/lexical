@@ -54,9 +54,11 @@ open class AutoEmbedOption: MenuOption {
   }
 }
 
-/// `/^\S+$/`: JS's `\s` is Unicode's white space and U+FEFF.
-private func isSingleToken(_ text: String) -> Bool {
-  !text.isEmpty && !text.unicodeScalars.contains { $0.properties.isWhitespace || $0 == "\u{FEFF}" }
+/// `/^\S+$/`: JS's `\s` is Unicode's space separators, the line
+/// terminators, tab, vertical tab, form feed and U+FEFF; U+0085 and U+180E
+/// are not white space to it.
+func isSingleToken(_ text: String) -> Bool {
+  !text.isEmpty && !text.utf16.contains(where: isJSWhitespace)
 }
 
 /// `LexicalAutoEmbedPlugin`: watches for links that a paste of one token

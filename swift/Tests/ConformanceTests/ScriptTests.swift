@@ -21,7 +21,8 @@ struct ScriptTests {
     "scripts/autolink", "scripts/code", "scripts/overflow", "scripts/node-state",
     "scripts/selection-utils", "scripts/set-blocks-type", "scripts/decorator", "scripts/text",
     "scripts/extensions", "scripts/mark", "scripts/clipboard", "scripts/package-extensions",
-    "scripts/slots", "scripts/block-id", "fuzz/core",
+    "scripts/slots", "scripts/block-id", "scripts/a11y", "scripts/decorator-block", "scripts/menu",
+    "scripts/auto-embed", "fuzz/core",
   ]
 
   static let cases: [Case] = files.flatMap { file in

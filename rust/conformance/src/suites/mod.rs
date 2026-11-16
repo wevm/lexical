@@ -58,6 +58,11 @@ pub fn all() -> Vec<Suite> {
             check: serialization::check,
         },
         Suite {
+            file: "serialization/decorator-block",
+            variant: None,
+            check: serialization::check,
+        },
+        Suite {
             file: "serialization/core",
             variant: None,
             check: serialization::check,
@@ -213,6 +218,26 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/a11y",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/decorator-block",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/menu",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/auto-embed",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "fuzz/core",
             variant: None,
             check: crate::scripts::check,
@@ -234,9 +259,23 @@ pub fn all() -> Vec<Suite> {
 /// its directory under `packages/`, for cases that need one not ported yet.
 pub fn package_of(node_type: &str) -> Option<&'static str> {
     Some(match node_type {
-        "root" | "paragraph" | "text" | "linebreak" | "tab" | "heading" | "quote" | "list"
-        | "listitem" | "link" | "autolink" | "code" | "code-highlight" | "overflow" | "hashtag"
-        | "mark" => {
+        "root"
+        | "paragraph"
+        | "text"
+        | "linebreak"
+        | "tab"
+        | "heading"
+        | "quote"
+        | "list"
+        | "listitem"
+        | "link"
+        | "autolink"
+        | "code"
+        | "code-highlight"
+        | "overflow"
+        | "hashtag"
+        | "mark"
+        | "test-decorator-block" => {
             return None;
         }
         _ => "unknown",

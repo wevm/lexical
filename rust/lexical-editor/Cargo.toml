@@ -89,6 +89,30 @@ devtools = []
 # HorizontalRuleExtension's $insertNodeToNearestRoot. With another package's
 # feature, that package's extensions (RichTextExtension, HistoryExtension...).
 extension = ["utils"]
+# @lexical/a11y's announcements: the live region model (LiveRegion, shown by
+# the app's LiveRegionHost), AriaLiveRegionExtension, HistoryAnnounceExtension
+# and EditorModeAnnounceExtension; with `rich-text`, @lexical/rich-text's
+# HeadingAnnounceExtension, and with `link`, @lexical/link's
+# AutoLinkAnnounceExtension. Upstream it depends on @lexical/extension and
+# @lexical/utils. The focus trap, roving tabindex and focus manager move DOM
+# focus, and aren't ported.
+a11y = ["extension", "utils"]
+# @lexical/react's DecoratorBlockNode (LexicalDecoratorBlockNode.ts). Upstream
+# @lexical/react depends on most packages, for its other modules; the node
+# needs none of them.
+decorator-block = []
+# The text matching of @lexical/react's typeahead menu
+# (LexicalTypeaheadMenuPluginUtils.ts and the platform-neutral parts of
+# shared/LexicalMenu.tsx and LexicalTypeaheadMenuPlugin.tsx): the trigger
+# match (without the `regex` crate), $splitNodeContainingQuery, the text
+# before the caret, and the menu's state and option selection.
+menu = []
+# @lexical/react's auto-embed (LexicalAutoEmbedPluginUtils.ts and the logic of
+# LexicalAutoEmbedPlugin.tsx): URL_MATCHER (without the `regex` crate),
+# EmbedConfig, INSERT_EMBED_COMMAND and registerAutoEmbed, which opens a node
+# menu at a pasted link. It needs @lexical/link, the menu and @lexical/utils,
+# as upstream's imports do.
+auto-embed = ["link", "menu", "utils"]
 
 [dependencies]
 # Without `perf-literal`, which would add aho-corasick and memchr.

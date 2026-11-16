@@ -32,7 +32,7 @@ use lexical::{
     LexicalError, LexicalExtension, NodeClass, Unregister, config_extension, create_paragraph_node,
     create_text_node, declare_peer_dependency, define_extension, get_root, shallow_merge_config,
 };
-use lexical::{code, hashtag, history, link, list, overflow, plain_text, rich_text};
+use lexical::{a11y, code, hashtag, history, link, list, overflow, plain_text, rich_text};
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -64,6 +64,11 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "RichTextExtension" => rich_text::rich_text_extension().into(),
         "SelectBlockExtension" => select_block_extension().into(),
         "TabIndentationExtension" => tab_indentation_extension().into(),
+        "AriaLiveRegionExtension" => a11y::aria_live_region_extension().into(),
+        "AutoLinkAnnounceExtension" => link::auto_link_announce_extension().into(),
+        "EditorModeAnnounceExtension" => a11y::editor_mode_announce_extension().into(),
+        "HeadingAnnounceExtension" => rich_text::heading_announce_extension().into(),
+        "HistoryAnnounceExtension" => a11y::history_announce_extension().into(),
         _ => return None,
     })
 }
@@ -103,6 +108,11 @@ fn real_configured(
 ) -> Result<AnyLexicalExtensionArgument, LexicalError> {
     let bool_of = |field: &str, v: &Value| v.as_bool().ok_or_else(|| bad_config(key, field, v));
     let number_of = |field: &str, v: &Value| v.as_f64().ok_or_else(|| bad_config(key, field, v));
+    let string_of = |field: &str, v: &Value| {
+        v.as_str()
+            .map(str::to_owned)
+            .ok_or_else(|| bad_config(key, field, v))
+    };
     let usize_or_null = |field: &str, v: &Value| match v {
         Value::Null => Ok(None),
         v => number_of(field, v).map(|n| Some(n as usize)),
@@ -324,6 +334,72 @@ fn real_configured(
                 _ => unknown(field, v)?,
             }),
         ),
+        "AriaLiveRegionExtension" => config_extension(
+            &a11y::aria_live_region_extension(),
+            overrides!(
+                a11y::AriaLiveRegionExtensionConfigOverrides,
+                |o, field, v| match field {
+                    "politeness" => {
+                        o.politeness = Some(
+                            v.as_str()
+                                .and_then(a11y::AriaPoliteness::parse)
+                                .ok_or_else(|| bad_config(key, field, v))?,
+                        )
+                    }
+                    _ => unknown(field, v)?,
+                }
+            ),
+        ),
+        "HistoryAnnounceExtension" => config_extension(
+            &a11y::history_announce_extension(),
+            overrides!(
+                a11y::HistoryAnnounceExtensionConfigOverrides,
+                |o, field, v| match field {
+                    "undone" => o.undone = Some(string_of(field, v)?),
+                    "redone" => o.redone = Some(string_of(field, v)?),
+                    "disabled" => o.disabled = Some(bool_of(field, v)?),
+                    _ => unknown(field, v)?,
+                }
+            ),
+        ),
+        "EditorModeAnnounceExtension" => config_extension(
+            &a11y::editor_mode_announce_extension(),
+            overrides!(
+                a11y::EditorModeAnnounceExtensionConfigOverrides,
+                |o, field, v| match field {
+                    "editable" => o.editable = Some(string_of(field, v)?),
+                    "readOnly" => o.read_only = Some(string_of(field, v)?),
+                    "disabled" => o.disabled = Some(bool_of(field, v)?),
+                    _ => unknown(field, v)?,
+                }
+            ),
+        ),
+        "HeadingAnnounceExtension" => config_extension(
+            &rich_text::heading_announce_extension(),
+            overrides!(
+                rich_text::HeadingAnnounceExtensionConfigOverrides,
+                |o, field, v| match field {
+                    "created" => o.created = Some(string_of(field, v)?),
+                    "destroyed" => o.destroyed = Some(string_of(field, v)?),
+                    "disabled" => o.disabled = Some(bool_of(field, v)?),
+                    _ => unknown(field, v)?,
+                }
+            ),
+        ),
+        "AutoLinkAnnounceExtension" => config_extension(
+            &link::auto_link_announce_extension(),
+            overrides!(
+                link::AutoLinkAnnounceExtensionConfigOverrides,
+                |o, field, v| match field {
+                    "created" => o.created = Some(string_of(field, v)?),
+                    "createdMany" => o.created_many = Some(string_of(field, v)?),
+                    "destroyed" => o.destroyed = Some(string_of(field, v)?),
+                    "destroyedMany" => o.destroyed_many = Some(string_of(field, v)?),
+                    "disabled" => o.disabled = Some(bool_of(field, v)?),
+                    _ => unknown(field, v)?,
+                }
+            ),
+        ),
         _ => return Err(err(format!("{key} takes no config overrides"))),
     })
 }
@@ -337,6 +413,7 @@ fn set_real_signal(
 ) -> Option<Result<(), LexicalError>> {
     let bad = || err(format!("bad value of {key}'s {name}: {value}"));
     let as_bool = || value.as_bool().ok_or_else(bad);
+    let as_string = || value.as_str().map(str::to_owned).ok_or_else(bad);
     let as_usize_or_null = || match value {
         Value::Null => Ok(None),
         v => v.as_f64().map(|n| Some(n as usize)).ok_or_else(bad),
@@ -399,6 +476,54 @@ fn set_real_signal(
             ("SelectBlockExtension", "disabled") => output(editor, &select_block_extension())?
                 .disabled
                 .set_value(as_bool()?),
+            ("AriaLiveRegionExtension", "politeness") => {
+                output(editor, &a11y::aria_live_region_extension())?
+                    .politeness
+                    .set_value(
+                        as_string()
+                            .ok()
+                            .and_then(|p| a11y::AriaPoliteness::parse(&p))
+                            .ok_or_else(bad)?,
+                    )
+            }
+            ("HistoryAnnounceExtension", field) => {
+                let o = output(editor, &a11y::history_announce_extension())?;
+                match field {
+                    "undone" => o.undone.set_value(as_string()?),
+                    "redone" => o.redone.set_value(as_string()?),
+                    "disabled" => o.disabled.set_value(as_bool()?),
+                    _ => return Err(err(format!("no signal {name} of {key}"))),
+                }
+            }
+            ("EditorModeAnnounceExtension", field) => {
+                let o = output(editor, &a11y::editor_mode_announce_extension())?;
+                match field {
+                    "editable" => o.editable.set_value(as_string()?),
+                    "readOnly" => o.read_only.set_value(as_string()?),
+                    "disabled" => o.disabled.set_value(as_bool()?),
+                    _ => return Err(err(format!("no signal {name} of {key}"))),
+                }
+            }
+            ("HeadingAnnounceExtension", field) => {
+                let o = output(editor, &rich_text::heading_announce_extension())?;
+                match field {
+                    "created" => o.created.set_value(as_string()?),
+                    "destroyed" => o.destroyed.set_value(as_string()?),
+                    "disabled" => o.disabled.set_value(as_bool()?),
+                    _ => return Err(err(format!("no signal {name} of {key}"))),
+                }
+            }
+            ("AutoLinkAnnounceExtension", field) => {
+                let o = output(editor, &link::auto_link_announce_extension())?;
+                match field {
+                    "created" => o.created.set_value(as_string()?),
+                    "createdMany" => o.created_many.set_value(as_string()?),
+                    "destroyed" => o.destroyed.set_value(as_string()?),
+                    "destroyedMany" => o.destroyed_many.set_value(as_string()?),
+                    "disabled" => o.disabled.set_value(as_bool()?),
+                    _ => return Err(err(format!("no signal {name} of {key}"))),
+                }
+            }
             _ => return Err(err(format!("no signal {name} of {key}"))),
         }
         Ok(())

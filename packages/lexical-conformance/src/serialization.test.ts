@@ -39,6 +39,7 @@ import {
 } from 'lexical';
 import {test} from 'vitest';
 
+import {TestDecoratorBlockNode} from './ops';
 import {emitVectors} from './vectors';
 
 type Case = {
@@ -426,6 +427,58 @@ test('serialization/mark', () => {
     'serialization/mark',
     'serialization',
     'Documents with @lexical/mark nodes, and mark ids as NodeState, and the exact JSON text JS writes for them.',
+    cases,
+  );
+});
+
+// Documents with @lexical/react's DecoratorBlockNode, through
+// TestDecoratorBlockNode (ops.ts), which extends it with nothing: its
+// `format` is written in the legacy form always and in the compact form
+// unless it is ''.
+test('serialization/decorator-block', () => {
+  const block = (
+    format?: Parameters<TestDecoratorBlockNode['setFormat']>[0],
+  ) => {
+    const node = new TestDecoratorBlockNode();
+    return format === undefined ? node : node.setFormat(format);
+  };
+  const documents: Record<string, () => void> = {
+    'a block without a format': () => {
+      $getRoot().append(block());
+    },
+    'blocks with each format, between paragraphs': () => {
+      $getRoot().append(
+        $createParagraphNode().append($createTextNode('before')),
+        block('left'),
+        block('start'),
+        block('center'),
+        block('right'),
+        block('end'),
+        block('justify'),
+        block(''),
+        $createParagraphNode().append($createTextNode('after')),
+      );
+    },
+  };
+  const cases: Case[] = Object.entries(documents).map(([name, build]) => {
+    const editor = createHeadlessEditor({
+      nodes: [TestDecoratorBlockNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    editor.update(build, {discrete: true});
+    const state = editor.getEditorState();
+    return {
+      compact: JSON.stringify(state.toJSON(true)),
+      legacy: JSON.stringify(state.toJSON()),
+      name,
+    };
+  });
+  emitVectors(
+    'serialization/decorator-block',
+    'serialization',
+    "Documents with @lexical/react's DecoratorBlockNode (TestDecoratorBlockNode) and the exact JSON text JS writes for them.",
     cases,
   );
 });

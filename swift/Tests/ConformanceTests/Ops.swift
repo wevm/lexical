@@ -1,7 +1,9 @@
 import Foundation
 import Lexical
+import LexicalA11y
 import LexicalClipboard
 import LexicalCodeCore
+import LexicalDecoratorBlockNode
 import LexicalExtension
 import LexicalHashtag
 import LexicalHistory
@@ -14,6 +16,11 @@ import LexicalRichText
 import LexicalSelection
 import LexicalText
 import LexicalUtils
+
+// The module-private functions of the menu and auto-embed that ops.ts
+// re-exports from upstream's modules (`INTERNAL_*`, vitest.config.mts).
+@testable import LexicalAutoEmbed
+@testable import LexicalMenu
 
 // The Swift interpreter of the script vectors that
 // packages/lexical-conformance/src/ops.ts writes. It must do exactly what
@@ -94,7 +101,57 @@ private let coreCommands: [String: CoreCommand] = [
   "REMOVE_LIST_COMMAND": .void(REMOVE_LIST_COMMAND),
   "UPDATE_LIST_START_COMMAND": .listStart(UPDATE_LIST_START_COMMAND),
   "TOGGLE_LINK_COMMAND": .toggleLink(TOGGLE_LINK_COMMAND),
+  "INSERT_EMBED_COMMAND": .string(INSERT_EMBED_COMMAND),
 ]
+
+/// `TestDecoratorBlockNode` in ops.ts: a `DecoratorBlockNode` that adds
+/// nothing, as an app's block embed would extend it.
+final class TestDecoratorBlockNode: DecoratorBlockNode {
+  override class func config() throws -> NodeConfig? {
+    try NodeConfig(
+      TestDecoratorBlockNode.self, type: "test-decorator-block", extends: DecoratorBlockNode.self)
+  }
+}
+
+/// The session's root element (`sessionDOM(ctx).root` in ops.ts): a root
+/// that is not in its document, as ops.ts's `div` is not, whose document's
+/// body hosts `AriaLiveRegionExtension`'s regions.
+private final class SessionRoot: LexicalRootElement, LiveRegionHost {
+  var isConnected: Bool { false }
+  private(set) var regions: [LiveRegion] = []
+
+  func mountLiveRegion(_ region: LiveRegion) { regions.append(region) }
+  func unmountLiveRegion(_ region: LiveRegion) { regions.removeAll { $0 === region } }
+}
+
+/// `useBasicTypeaheadTriggerMatch(trigger, options)` of a `TypeaheadSpec`,
+/// the options left out taking its defaults.
+private func typeaheadTrigger(_ spec: JSONValue) throws -> TriggerFn {
+  basicTypeaheadTriggerMatch(
+    try spec["trigger"]?.stringValue.orThrow() ?? "", minLength: spec["minLength"]?.int ?? 1,
+    maxLength: spec["maxLength"]?.int ?? 75,
+    punctuation: spec["punctuation"]?.stringValue ?? PUNCTUATION,
+    allowWhitespace: spec["allowWhitespace"]?.boolValue ?? false)
+}
+
+/// `$typeaheadMatch(spec, editor)` in ops.ts: the text before the caret and
+/// its match (`nil`s past a `nil`).
+private func typeaheadMatch(
+  _ spec: JSONValue, _ editor: Editor
+) throws -> (
+  String?, MenuTextMatch?
+) {
+  let text = try (getSelection() as? RangeSelection).flatMap { try getTextUpToAnchor($0) }
+  return (text, try text.flatMap { try typeaheadTrigger(spec)($0, editor) })
+}
+
+private func menuTextMatchJSON(_ match: MenuTextMatch) -> JSONValue {
+  .object(
+    JSONObject([
+      ("leadOffset", .int(match.leadOffset)), ("matchingString", .string(match.matchingString)),
+      ("replaceableString", .string(match.replaceableString)),
+    ]))
+}
 
 /// `TOGGLE_LINK_COMMAND`'s payload as the script writes it: `null`, a URL, or
 /// an object with a URL and the attributes it has (`null` or a string each).
@@ -185,6 +242,27 @@ private final class ScriptContext {
   var saved: [String: EditorState] = [:]
   /// The block handles `logBlockHandles` kept, by name.
   var handles: [String: JSMap<String, String>] = [:]
+  /// The session's root element, made on first use (`setRootElement`).
+  private var root: SessionRoot?
+
+  /// `sessionDOM(ctx).root`.
+  fileprivate func sessionRoot() -> SessionRoot {
+    if let root { return root }
+    let root = SessionRoot()
+    self.root = root
+    return root
+  }
+
+  /// `liveRegionEntry(ctx)`: `['liveRegion', [[aria-live, textContent]...]]`.
+  func liveRegionEntry() -> JSONValue {
+    .array([
+      .string("liveRegion"),
+      .array(
+        (root?.regions ?? []).map {
+          .array([.string($0.politeness.rawValue), .string($0.textContent)])
+        }),
+    ])
+  }
 
   init(_ editor: Editor? = nil) { self.editor = editor }
 
@@ -511,12 +589,19 @@ private func runNodeMethod(
       } else {
         try t.setFormat(a0.stringValue.orThrow() as TextFormatType)
       }
+    } else if let block = n as? DecoratorBlockNode {
+      try block.setFormat(a0.stringValue.orThrow())
     } else {
       try element(n).setFormat(a0.stringValue.orThrow())
     }
   case "setIDs":
     try markNode(n).setIDs((a0.arrayValue.orThrow()).map { try $0.stringValue.orThrow() })
   case "setIndent": try element(n).setIndent(a0.int.orThrow())
+  case "setTag":
+    guard let heading = n as? HeadingNode else {
+      throw ScriptError("\(n.getKey()) is not a heading")
+    }
+    _ = try heading.setTag(a0.stringValue.orThrow())
   case "setMode": try text(n).setMode(a0.stringValue.orThrow())
   case "setStyle":
     if let t = n as? TextNode {
@@ -881,6 +966,55 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     }
     try insertGeneratedNodes(
       ctx.editor, generateNodesFromSerializedNodes(serialized), anySelection())
+  case "selectTypeaheadOption":
+    let (_, match) = try typeaheadMatch(action["typeahead"] ?? .null, ctx.editor)
+    let node = try match.flatMap { try splitNodeContainingQuery($0) }
+    ctx.log.append(
+      .array([
+        .string("splitNodeContainingQuery"), node.map { .string($0.getKey()) } ?? .null,
+        try node.map { .string(try $0.getTextContent()) } ?? .null,
+      ]))
+    if let node {
+      let replacement = try createTextNode(action["replacement"]?.stringValue.orThrow() ?? "")
+      _ = try node.replace(replacement)
+      _ = try replacement.select()
+    }
+  case "logFullMatchOffset":
+    let documentText = try action["documentText"]?.stringValue.orThrow() ?? ""
+    let entryText = try action["entryText"]?.stringValue.orThrow() ?? ""
+    let offset = try action["offset"]?.int.orThrow() ?? 0
+    ctx.log.append(
+      .array([
+        .string("fullMatchOffset"), .string(documentText), .string(entryText), .int(offset),
+        .int(getFullMatchOffset(documentText, entryText, offset)),
+      ]))
+  case "logDecoratorBlock":
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    let n = try node(key)
+    let block = n as? DecoratorBlockNode
+    ctx.log.append(
+      .array([
+        .string("decoratorBlock"), .string(key), .bool(isDecoratorBlockNode(n)),
+        .bool(try n.isInline()), try block.map { .string(try $0.getFormat()) } ?? .null,
+        block.map { .bool($0.canIndent()) } ?? .null,
+      ]))
+  case "logUrlMatcher":
+    let text = try action["text"]?.stringValue.orThrow() ?? ""
+    let match = try URL_MATCHER.firstMatch(in: text)
+    ctx.log.append(
+      .array([
+        .string("urlMatcher"), .string(text),
+        match.map { match in
+          .array([
+            .int(text.utf16.distance(from: text.startIndex, to: match.range.lowerBound)),
+            .string(String(text[match.range])),
+          ])
+        } ?? .null,
+      ]))
+  case "logSingleTokenPaste":
+    let text = try action["text"]?.stringValue.orThrow() ?? ""
+    ctx.log.append(
+      .array([.string("singleTokenPaste"), .string(text), .bool(isSingleToken(text))]))
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)
@@ -1165,6 +1299,7 @@ func runScriptWithBuild(_ script: JSONValue) throws -> (build: JSONValue?, steps
   if let extensions = script["extensions"]?.arrayValue {
     for flag in [
       "richText", "plainText", "list", "link", "code", "overflow", "hashtag", "extension", "mark",
+      "decoratorBlock",
     ]
     where script[flag]?.boolValue == true {
       throw ScriptError("extensions and \(flag) don't mix")
@@ -1179,6 +1314,9 @@ func runScriptWithBuild(_ script: JSONValue) throws -> (build: JSONValue?, steps
     } catch {
       let message = (error as? LexicalError)?.message ?? "\(error)"
       return (.object(JSONObject([("error", .string(message)), ("log", .array(ctx.log))])), [])
+    }
+    if script["liveRegion"]?.boolValue == true {
+      ctx.log.append(ctx.liveRegionEntry())
     }
     let (selection, content) = try ctx.editor.read {
       (try selectionSnapshot(), try getRoot().getTextContent())
@@ -1231,6 +1369,9 @@ private func makeEditor(_ script: JSONValue) throws -> Editor {
   }
   if script["mark"]?.boolValue == true {
     nodes += [.klass(MarkNode.self)]
+  }
+  if script["decoratorBlock"]?.boolValue == true {
+    nodes += [.klass(TestDecoratorBlockNode.self)]
   }
   return try createEditor(
     // ops.ts's `NAMESPACE`, which a clipboard payload names.
@@ -1303,6 +1444,23 @@ private func runSteps(
       return result
     }
   }
+  // `mutations`: a listener per node type, logging the mutations and the
+  // update's tags, sorted.
+  for type in try (script["mutations"]?.arrayValue ?? []).map({ try $0.stringValue.orThrow() }) {
+    guard let klass = editor._nodes.get(type)?.klass else {
+      throw ScriptError("unknown node type \(type)")
+    }
+    try editor.registerMutationListener(
+      klass,
+      { mutations, payload in
+        ctx.log.append(
+          .array([
+            .string("mutation"), .string(type),
+            .array(mutations.map { .array([.string($0.0), .string($0.1)]) }),
+            .array(Array(payload.updateTags).sorted().map { .string($0) }),
+          ]))
+      }, skipInitialization: true)
+  }
   if script["listen"]?.boolValue == true {
     editor.registerUpdateListener { payload in
       ctx.log.append(
@@ -1353,11 +1511,30 @@ private func runSteps(
       } else if let name = step["dispatch"]?.stringValue {
         let handled = try ctx.dispatch(name, step["payload"] ?? .null)
         ctx.log.append(.array([.string("dispatched"), .string(name), .bool(handled)]))
+      } else if let on = step["setRootElement"]?.boolValue {
+        try editor.setRootElement(on ? ctx.sessionRoot() : nil)
+      } else if let editable = step["setEditable"]?.boolValue {
+        try editor.setEditable(editable)
+      } else if let text = step["announce"]?.stringValue {
+        try getExtensionDependencyFromEditor(editor, AriaLiveRegionExtension).output.announce(text)
+      } else if let spec = step["typeahead"] {
+        try editor.getEditorState().read {
+          let (text, match) = try typeaheadMatch(spec, editor)
+          ctx.log.append(
+            .array([
+              .string("typeahead"), text.map { .string($0) } ?? .null,
+              match.map(menuTextMatchJSON) ?? .null,
+              try match.map { .bool(try isSelectionOnEntityBoundary($0.leadOffset)) } ?? .null,
+            ]))
+        }
       } else {
         try extensions.orThrow().runStep(step, editor)
       }
     } catch {
       failed = true
+    }
+    if script["liveRegion"]?.boolValue == true {
+      ctx.log.append(ctx.liveRegionEntry())
     }
     let (selection, content) = try editor.read {
       (try selectionSnapshot(), try getRoot().getTextContent())

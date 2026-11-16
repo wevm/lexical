@@ -23,6 +23,8 @@ struct SerializationTests {
   static let codeCases: [Case] = (try? Vectors.load("serialization/code")) ?? []
   static let overflowCases: [Case] = (try? Vectors.load("serialization/overflow")) ?? []
   static let markCases: [Case] = (try? Vectors.load("serialization/mark")) ?? []
+  static let decoratorBlockCases: [Case] =
+    (try? Vectors.load("serialization/decorator-block")) ?? []
 
   @Test(arguments: cases)
   func roundTrip(_ vector: Case) throws {
@@ -59,6 +61,12 @@ struct SerializationTests {
   @Test(arguments: markCases)
   func markRoundTrip(_ vector: Case) throws {
     try check(vector, createEditor(CreateEditorArgs(nodes: [.klass(MarkNode.self)])))
+  }
+
+  @Test(arguments: decoratorBlockCases)
+  func decoratorBlockRoundTrip(_ vector: Case) throws {
+    try check(
+      vector, createEditor(CreateEditorArgs(nodes: [.klass(TestDecoratorBlockNode.self)])))
   }
 
   func check(_ vector: Case, _ editor: Editor) throws {

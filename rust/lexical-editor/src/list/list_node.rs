@@ -137,6 +137,13 @@ impl ListNode {
 }
 
 impl LexicalNode for ListNode {
+    /// `ListNode.updateDOM(prevNode)`: a list of another tag or type is
+    /// made again (the tag follows the type here).
+    fn update_dom(&self, prev_node: &dyn LexicalNode) -> bool {
+        prev_node
+            .downcast_ref::<ListNode>()
+            .is_some_and(|prev| prev.list_type != self.list_type)
+    }
     fn get_type(&self) -> &'static str {
         "list"
     }

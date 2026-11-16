@@ -13,7 +13,7 @@
 //! `watchedSignal` and the signals it is built on (`signals`, a port of
 //! `@preact/signals-core`), `getKnownTypesAndNodes`, and the model-level
 //! extensions `InitialStateExtension`, `ClearEditorExtension`,
-//! `EditorStateExtension`, `DecoratorTextExtension`,
+//! `EditorStateExtension`, `RootElementExtension`, `DecoratorTextExtension`,
 //! `NormalizeInlineElementsExtension` (which `RichTextExtension` and
 //! `PlainTextExtension` depend on), `TabIndentationExtension`,
 //! `SelectBlockExtension`, `BlockIdExtension` (block ids, positional ids and
@@ -49,6 +49,7 @@ mod lexical_builder;
 mod named_signals;
 mod normalize_inline_elements_extension;
 mod positional_block_id;
+mod root_element_extension;
 mod select_block_extension;
 pub mod signals;
 mod tab_indentation_extension;
@@ -88,7 +89,7 @@ pub use initial_state_extension::{
 };
 pub use lexical_builder::{LexicalBuilder, LexicalEditorWithDispose, build_editor_from_extensions};
 // For the package modules whose extensions use it (ListExtension, CodeIndentExtension).
-#[cfg(any(feature = "list", feature = "code"))]
+#[cfg(any(feature = "list", feature = "code", feature = "a11y"))]
 pub(crate) use named_signals::named_signals_config;
 pub use named_signals::{NamedSignalsOutput, named_signals};
 pub use normalize_inline_elements_extension::{
@@ -96,6 +97,7 @@ pub use normalize_inline_elements_extension::{
     NormalizeInlineElementsExtensionType, NormalizeInlineElementsOutput,
     normalize_inline_elements_extension, register_normalize_inline_elements,
 };
+pub use root_element_extension::{RootElementExtensionType, root_element_extension};
 pub use select_block_extension::{
     PreventSelectAllConfig, PreventSelectAllConfigOverrides, PreventSelectAllExtensionType,
     PreventSelectAllOutput, SelectBlockConfig, SelectBlockConfigOverrides,

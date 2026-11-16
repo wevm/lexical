@@ -4,7 +4,7 @@ use lexical::{CreateEditorArgs, create_editor};
 
 /// `serialization/*.json`: the document parses from both forms and writes
 /// both back byte for byte. The editor has the list, link, code, overflow,
-/// hashtag and mark nodes, for the `serialization/*` file of each package.
+/// hashtag and mark nodes and `TestDecoratorBlockNode`, for the `serialization/*` file of each package.
 pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let legacy = case.str("legacy")?;
     let compact = case.str("compact")?;
@@ -16,6 +16,7 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
             lexical::overflow::overflow_nodes(),
             lexical::hashtag::hashtag_nodes(),
             lexical::mark::mark_nodes(),
+            crate::scripts::test_decorator_block_nodes(),
         ]
         .concat(),
         ..CreateEditorArgs::default()

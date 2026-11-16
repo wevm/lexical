@@ -9,13 +9,16 @@
 //!
 //! With the `extension` feature, [`link_extension`] is `LinkExtension`, and
 //! with `autolink` as well, `auto_link_extension` is `AutoLinkExtension`.
+//! With `a11y`, `auto_link_announce_extension` is
+//! `AutoLinkAnnounceExtension` (`AutoLinkAnnounceExtension.ts`).
 //!
 //! Not ported: the DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
 //! `importDOM`, `sanitizeUrl`, `LinkImportRules`), which come with `html`;
 //! `registerLink`'s paste handler, which reads clipboard data; and
-//! `ClickableLinkExtension` and `AutoLinkAnnounceExtension`, which need a
-//! DOM (rust/PARITY.md).
+//! `ClickableLinkExtension`, which needs a DOM (rust/PARITY.md).
 
+#[cfg(feature = "a11y")]
+mod auto_link_announce_extension;
 #[cfg(feature = "autolink")]
 mod auto_link_extension;
 mod generated_json;
@@ -29,6 +32,11 @@ pub use auto_link_extension::{
     create_link_matcher_with_reg_exp, register_auto_link,
 };
 
+#[cfg(feature = "a11y")]
+pub use auto_link_announce_extension::{
+    AutoLinkAnnounceExtensionConfig, AutoLinkAnnounceExtensionConfigOverrides,
+    AutoLinkAnnounceExtensionType, AutoLinkAnnounceOutput, auto_link_announce_extension,
+};
 #[cfg(all(feature = "autolink", feature = "extension"))]
 pub use auto_link_extension::{
     AutoLinkConfigOverrides, AutoLinkExtensionType, auto_link_extension,

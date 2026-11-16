@@ -701,6 +701,9 @@ importers:
 
   packages/lexical-conformance:
     devDependencies:
+      '@lexical/a11y':
+        specifier: workspace:*
+        version: link:../lexical-a11y
       '@lexical/clipboard':
         specifier: workspace:*
         version: link:../lexical-clipboard
@@ -749,6 +752,9 @@ importers:
       '@lexical/plain-text':
         specifier: workspace:*
         version: link:../lexical-plain-text
+      '@lexical/react':
+        specifier: workspace:*
+        version: link:../lexical-react
       '@lexical/rich-text':
         specifier: workspace:*
         version: link:../lexical-rich-text

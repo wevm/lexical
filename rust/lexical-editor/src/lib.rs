@@ -44,6 +44,10 @@
 //! );
 //! ```
 
+#[cfg(feature = "a11y")]
+pub mod a11y;
+#[cfg(feature = "auto-embed")]
+pub mod auto_embed;
 mod caret;
 mod caret_tree;
 mod caret_utils;
@@ -53,6 +57,8 @@ pub mod clipboard;
 pub mod code;
 mod commands;
 pub mod constants;
+#[cfg(feature = "decorator-block")]
+pub mod decorator_block;
 #[cfg(feature = "devtools")]
 pub mod devtools;
 mod editor;
@@ -80,6 +86,8 @@ pub mod link;
 pub mod list;
 #[cfg(feature = "mark")]
 pub mod mark;
+#[cfg(feature = "menu")]
+pub mod menu;
 mod merge_register;
 mod node;
 mod node_state;
@@ -90,6 +98,7 @@ mod ordered;
 pub mod overflow;
 #[cfg(feature = "plain-text")]
 pub mod plain_text;
+mod reconciler;
 #[cfg(feature = "rich-text")]
 pub mod rich_text;
 #[cfg(feature = "selection")]
@@ -141,8 +150,9 @@ pub use editor::{
     COLLABORATION_TAG, COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
     COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, COMPOSITION_END_TAG, COMPOSITION_START_TAG,
     CUT_TAG, CreateEditorArgs, Editor, HISTORIC_TAG, HISTORY_MERGE_TAG, HISTORY_PUSH_TAG,
-    LexicalCommand, NodeClass, PASTE_TAG, Transform, Unregister, UpdateListenerPayload,
-    UpdateOptions, create_command, create_editor, has_update_tag,
+    LexicalCommand, MutationListenerOptions, MutationListenerPayload, NodeClass, NodeMutation,
+    NodeMutations, PASTE_TAG, RootElement, RootElementRef, Transform, Unregister,
+    UpdateListenerPayload, UpdateOptions, create_command, create_editor, has_update_tag,
 };
 pub use editor_state::EditorState;
 pub use error::LexicalError;
@@ -185,7 +195,7 @@ pub use slot::{
     get_declared_slots, get_selection_slot_frame, get_slot, get_slot_frame, get_slot_host,
     get_slot_name_within_host, get_slot_names, is_slot_child, is_slot_host, remove_slot, set_slot,
 };
-pub use updates::parse_serialized_node;
+pub use updates::{on_update, parse_serialized_node};
 
 /// The upstream Lexical release this port conforms to. The conformance
 /// vectors (`meta.json`) name the same one, so an upstream sync can't move

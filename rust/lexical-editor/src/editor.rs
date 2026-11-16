@@ -171,6 +171,94 @@ pub struct UpdateListenerPayload {
 /// A node transform (`Transform<T>`).
 pub type Transform = Rc<dyn Fn(&NodeRef) -> Result<(), LexicalError>>;
 
+/// `NodeMutation`: what the reconciler did with a node in a commit.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NodeMutation {
+    /// `'created'`.
+    Created,
+    /// `'updated'`.
+    Updated,
+    /// `'destroyed'`.
+    Destroyed,
+}
+
+impl NodeMutation {
+    /// The mutation as JS names it.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NodeMutation::Created => "created",
+            NodeMutation::Updated => "updated",
+            NodeMutation::Destroyed => "destroyed",
+        }
+    }
+}
+
+/// The nodes of one class a commit mutated, in the order the reconciler
+/// reached them (JS's `Map<NodeKey, NodeMutation>`).
+pub type NodeMutations = Vec<(NodeKey, NodeMutation)>;
+
+/// A mutation listener's second argument (`MutationListener`'s
+/// `{dirtyLeaves, prevEditorState, updateTags}`).
+#[derive(Clone, Debug)]
+pub struct MutationListenerPayload {
+    pub dirty_leaves: Vec<NodeKey>,
+    pub prev_editor_state: EditorState,
+    pub update_tags: Vec<String>,
+}
+
+/// `MutationListenerOptions`.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MutationListenerOptions {
+    /// `skipInitialization`: don't call the listener at once with the
+    /// class's existing nodes as created (false by default, as in JS).
+    pub skip_initialization: bool,
+}
+
+/// A mutation listener.
+pub(crate) type MutationListener = Rc<dyn Fn(&NodeMutations, &MutationListenerPayload)>;
+
+/// The editor's root element: what JS's `HTMLElement` root is to an app
+/// without a DOM, the view that shows the document. Setting one
+/// ([`Editor::set_root_element`]) runs the reconciler's model half, so
+/// mutation listeners hear from the editor. Root elements compare by
+/// identity, as JS's elements do.
+pub trait RootElement: Any {
+    /// JS appends `@lexical/a11y`'s live region to `owner`, or to the root
+    /// element's `ownerDocument.body`: this is where a root element puts it,
+    /// or `None` (the default) for a root without one, where announcements
+    /// are dropped.
+    #[cfg(feature = "a11y")]
+    fn live_region_host(self: Rc<Self>) -> Option<Rc<dyn crate::a11y::LiveRegionHost>> {
+        None
+    }
+}
+
+/// A root element, compared by identity.
+#[derive(Clone)]
+pub struct RootElementRef(pub Rc<dyn RootElement>);
+
+impl PartialEq for RootElementRef {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::addr_eq(Rc::as_ptr(&self.0), Rc::as_ptr(&other.0))
+    }
+}
+
+impl std::fmt::Debug for RootElementRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "RootElementRef({:p})", Rc::as_ptr(&self.0) as *const ())
+    }
+}
+
+/// A root listener (`RootListener`): the next and the previous root
+/// element; what it returns runs before its next call and when it is
+/// unregistered.
+pub(crate) type RootListener =
+    Rc<dyn Fn(Option<&RootElementRef>, Option<&RootElementRef>) -> Option<Unregister>>;
+
+/// A registered root listener: its id, the listener, and what its last call
+/// returned.
+type RootListenerEntry = (u64, RootListener, Rc<RefCell<Option<Unregister>>>);
+
 /// Calling it removes what was registered, as the function JS's `register*`
 /// methods return. Dropping it without calling it keeps the registration.
 pub type Unregister = Box<dyn FnOnce()>;
@@ -325,6 +413,17 @@ pub(crate) struct EditorInner {
     /// `_slotsUsed`: whether a slot was ever set in this editor, or in a
     /// state it was given. Latched for the editor's lifetime.
     pub(crate) slots_used: Cell<bool>,
+    /// `_rootElement`.
+    root_element: RefCell<Option<RootElementRef>>,
+    /// `_listeners.mutation`: each listener with its class, in the order
+    /// they were registered.
+    mutation_listeners: RefCell<Vec<(u64, MutationListener, &'static str)>>,
+    /// `_listeners.editable`.
+    editable_listeners: Listeners<dyn Fn(bool)>,
+    /// `_listeners.root`, each with what its last call returned.
+    root_listeners: RefCell<Vec<RootListenerEntry>>,
+    /// `_deferred`: the `$onUpdate` callbacks of the pending update.
+    pub(crate) deferred: RefCell<Vec<Box<dyn FnOnce()>>>,
     /// The `LexicalBuilder` that built the editor (JS's
     /// `editor[builderSymbol]`).
     #[cfg(feature = "extension")]
@@ -387,6 +486,11 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         namespace,
         editable: Cell::new(true),
         slots_used: Cell::new(false),
+        root_element: RefCell::new(None),
+        mutation_listeners: RefCell::new(Vec::new()),
+        editable_listeners: RefCell::new(Vec::new()),
+        root_listeners: RefCell::new(Vec::new()),
+        deferred: RefCell::new(Vec::new()),
         #[cfg(feature = "extension")]
         builder: RefCell::new(None),
     }))
@@ -408,10 +512,198 @@ impl Editor {
         self.0.editable.get()
     }
 
-    /// `setEditable(editable)`. Editable listeners
-    /// (`registerEditableListener`) aren't ported, so nothing is notified.
+    /// `setEditable(editable)`: when that changes the editor's mode, the
+    /// editable listeners hear of it.
     pub fn set_editable(&self, editable: bool) {
-        self.0.editable.set(editable);
+        if self.0.editable.get() != editable {
+            self.0.editable.set(editable);
+            let listeners: Vec<_> = self
+                .0
+                .editable_listeners
+                .borrow()
+                .iter()
+                .map(|(_, l)| l.clone())
+                .collect();
+            with_updating(self, true, || {
+                for listener in listeners {
+                    listener(editable);
+                }
+            });
+        }
+    }
+
+    /// `registerEditableListener(listener)`: `listener` hears each change of
+    /// [`is_editable`](Self::is_editable).
+    pub fn register_editable_listener(&self, listener: impl Fn(bool) + 'static) -> Unregister {
+        let id = self.next_id();
+        self.0
+            .editable_listeners
+            .borrow_mut()
+            .push((id, Rc::new(listener)));
+        let weak = self.weak();
+        Box::new(move || {
+            if let Some(inner) = weak.upgrade() {
+                inner
+                    .editable_listeners
+                    .borrow_mut()
+                    .retain(|(i, _)| *i != id);
+            }
+        })
+    }
+
+    /// `getRootElement()`.
+    pub fn get_root_element(&self) -> Option<RootElementRef> {
+        self.0.root_element.borrow().clone()
+    }
+
+    /// `setRootElement(nextRootElement)`, its model half: the editor is
+    /// reset (its state is empty again) and the pending state, or the
+    /// current one, is committed with `history-merge`, the queued updates
+    /// and tags kept. With a root, every node is reconciled, so mutation
+    /// listeners hear of each as created; then the root listeners run.
+    /// Styling and events are the app's view's job.
+    pub fn set_root_element(
+        &self,
+        next_root_element: Option<RootElementRef>,
+    ) -> Result<(), LexicalError> {
+        let prev_root_element = self.get_root_element();
+        if next_root_element == prev_root_element {
+            return Ok(());
+        }
+        let pending_editor_state = self.pending().unwrap_or_else(|| self.get_editor_state());
+        *self.0.root_element.borrow_mut() = next_root_element.clone();
+        // `resetEditor(this, prev, next, pendingEditorState, {preserveUpdateQueue: true})`.
+        *self.0.editor_state.borrow_mut() = create_empty_editor_state();
+        *self.0.pending.borrow_mut() = Some(pending_editor_state);
+        *self.0.dirty.borrow_mut() = Dirty::default();
+        if next_root_element.is_some() {
+            self.0.dirty.borrow_mut().dirty_type = DirtyType::FullReconcile;
+        }
+        self.add_tags(&[HISTORY_MERGE_TAG.to_owned()]);
+        let committed = commit_pending_updates(self);
+        // `triggerListeners('root', this, false, next, prev)`.
+        let listeners: Vec<_> = self
+            .0
+            .root_listeners
+            .borrow()
+            .iter()
+            .map(|(_, l, cleanup)| (l.clone(), cleanup.clone()))
+            .collect();
+        with_updating(self, false, || {
+            for (listener, cleanup) in listeners {
+                trigger_root_listener(
+                    &listener,
+                    &cleanup,
+                    next_root_element.as_ref(),
+                    prev_root_element.as_ref(),
+                );
+            }
+        });
+        committed
+    }
+
+    /// `registerRootListener(listener)`: `listener` is called at once with
+    /// the root element (and `None`), then with the next and previous root
+    /// each time it changes, and with `None` and the root when it is
+    /// unregistered. What it returns runs before its next call.
+    pub fn register_root_listener(
+        &self,
+        listener: impl Fn(Option<&RootElementRef>, Option<&RootElementRef>) -> Option<Unregister>
+        + 'static,
+    ) -> Unregister {
+        let id = self.next_id();
+        let listener: RootListener = Rc::new(listener);
+        let root = self.get_root_element();
+        let cleanup = Rc::new(RefCell::new(listener(root.as_ref(), None)));
+        self.0
+            .root_listeners
+            .borrow_mut()
+            .push((id, listener.clone(), cleanup.clone()));
+        let weak = self.weak();
+        Box::new(move || {
+            let Some(inner) = weak.upgrade() else { return };
+            let root = inner.root_element.borrow().clone();
+            trigger_root_listener(&listener, &cleanup, None, root.as_ref());
+            inner
+                .root_listeners
+                .borrow_mut()
+                .retain(|(i, _, _)| *i != id);
+            let last = cleanup.borrow_mut().take();
+            if let Some(last) = last {
+                last();
+            }
+        })
+    }
+
+    /// `registerMutationListener(klass, listener, options)`, by the node
+    /// type: after each commit that the reconciler ran in (the editor has a
+    /// root element), `listener` gets the class's nodes it created,
+    /// updated or destroyed. Unless `skip_initialization`, it is called at
+    /// once with the class's nodes in the editor's state as created. Fails
+    /// for a type the editor doesn't register.
+    pub fn register_mutation_listener(
+        &self,
+        node_type: &str,
+        listener: impl Fn(&NodeMutations, &MutationListenerPayload) + 'static,
+        options: MutationListenerOptions,
+    ) -> Result<Unregister, LexicalError> {
+        let Some((&node_type, _)) = self.0.nodes.get_key_value(node_type) else {
+            return Err(LexicalError::new(format!(
+                "Node {node_type} has not been registered. Ensure node has been passed to createEditor."
+            )));
+        };
+        let id = self.next_id();
+        let listener: MutationListener = Rc::new(listener);
+        self.0
+            .mutation_listeners
+            .borrow_mut()
+            .push((id, listener.clone(), node_type));
+        if !options.skip_initialization {
+            // `initializeMutationListener(listener, klass)`.
+            let prev_editor_state = self.get_editor_state();
+            let keys: NodeMutations = {
+                let node_map = prev_editor_state.0.node_map.borrow();
+                prev_editor_state
+                    .keys_in_creation_order()
+                    .into_iter()
+                    .filter(|key| node_map[key].get_type() == node_type)
+                    .map(|key| (key, NodeMutation::Created))
+                    .collect()
+            };
+            if !keys.is_empty() {
+                listener(
+                    &keys,
+                    &MutationListenerPayload {
+                        dirty_leaves: Vec::new(),
+                        prev_editor_state,
+                        update_tags: vec!["registerMutationListener".to_owned()],
+                    },
+                );
+            }
+        }
+        let weak = self.weak();
+        Ok(Box::new(move || {
+            if let Some(inner) = weak.upgrade() {
+                inner
+                    .mutation_listeners
+                    .borrow_mut()
+                    .retain(|(i, _, _)| *i != id);
+            }
+        }))
+    }
+
+    /// The node types mutation listeners listen to.
+    pub(crate) fn has_mutation_listeners(&self) -> bool {
+        !self.0.mutation_listeners.borrow().is_empty()
+    }
+
+    pub(crate) fn mutation_listeners(&self) -> Vec<(MutationListener, &'static str)> {
+        self.0
+            .mutation_listeners
+            .borrow()
+            .iter()
+            .map(|(_, l, t)| (l.clone(), *t))
+            .collect()
     }
 
     pub(crate) fn registered_nodes(&self) -> &HashMap<&'static str, NodeClass> {
@@ -716,6 +1008,33 @@ impl Editor {
         })
     }
 
+    /// `registerCommand(command, listener, COMMAND_PRIORITY_BEFORE_*)`: as
+    /// [`register_command`](Self::register_command), but at the start of
+    /// `priority`'s queue (JS's `COMMAND_PRIORITY_BEFORE_EDITOR` is the
+    /// start of the editor queue).
+    #[cfg(feature = "auto-embed")]
+    pub(crate) fn register_command_before<P: 'static>(
+        &self,
+        command: &LexicalCommand<P>,
+        listener: impl Fn(&P, &Editor) -> Result<bool, LexicalError> + 'static,
+        priority: u8,
+    ) -> Unregister {
+        let priority = usize::from(priority.min(COMMAND_PRIORITY_CRITICAL));
+        let id = self.next_id();
+        let listener: CommandListener<P> = Rc::new(listener);
+        let command_id = command.id();
+        self.0.commands.borrow_mut().entry(command_id).or_default()[priority]
+            .insert(0, (id, Rc::new(listener) as Rc<dyn Any>));
+        let weak = self.weak();
+        Box::new(move || {
+            if let Some(inner) = weak.upgrade()
+                && let Some(lists) = inner.commands.borrow_mut().get_mut(&command_id)
+            {
+                lists[priority].retain(|(i, _)| *i != id);
+            }
+        })
+    }
+
     pub(crate) fn command_listeners<P: 'static>(
         &self,
         command: &LexicalCommand<P>,
@@ -783,6 +1102,35 @@ pub fn has_update_tag(tag: &str) -> bool {
         .tags
         .borrow()
         .contains(tag)
+}
+
+/// Runs `f` with the editor's `_updating` set to `updating`, as
+/// `triggerListeners` does with `isCurrentlyEnqueuingUpdates`.
+fn with_updating<R>(editor: &Editor, updating: bool, f: impl FnOnce() -> R) -> R {
+    struct Restore<'a>(&'a Editor, bool);
+    impl Drop for Restore<'_> {
+        fn drop(&mut self) {
+            self.0.0.updating.set(self.1);
+        }
+    }
+    let _restore = Restore(editor, editor.0.updating.replace(updating));
+    f()
+}
+
+/// `triggerListener(listenerMap, listener, args)` of a root listener: what
+/// it returned last runs, then it runs, and what it returns is kept.
+fn trigger_root_listener(
+    listener: &RootListener,
+    cleanup: &Rc<RefCell<Option<Unregister>>>,
+    next: Option<&RootElementRef>,
+    prev: Option<&RootElementRef>,
+) {
+    let last = cleanup.borrow_mut().take();
+    if let Some(last) = last {
+        last();
+    }
+    let next_cleanup = listener(next, prev);
+    *cleanup.borrow_mut() = next_cleanup;
 }
 
 /// `markNodesWithTypesAsDirty(editor, types)`: an update that marks every

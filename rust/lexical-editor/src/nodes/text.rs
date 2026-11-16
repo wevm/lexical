@@ -124,6 +124,43 @@ pub fn create_text_node(text: &str) -> NodeRef {
 }
 
 /// `ToInt32(x)`, how JS's bitwise operators read a number.
+/// `getElementOuterTag(node, format)`.
+fn get_element_outer_tag(format: f64) -> Option<&'static str> {
+    use crate::constants::{IS_CODE, IS_HIGHLIGHT, IS_SUBSCRIPT, IS_SUPERSCRIPT};
+    let format = to_int32(format);
+    if format & IS_CODE != 0 {
+        Some("code")
+    } else if format & IS_HIGHLIGHT != 0 {
+        Some("mark")
+    } else if format & IS_SUBSCRIPT != 0 {
+        Some("sub")
+    } else if format & IS_SUPERSCRIPT != 0 {
+        Some("sup")
+    } else {
+        None
+    }
+}
+
+/// `getElementInnerTag(node, format)`.
+fn get_element_inner_tag(format: f64) -> &'static str {
+    use crate::constants::{IS_BOLD, IS_ITALIC};
+    let format = to_int32(format);
+    if format & IS_BOLD != 0 {
+        "strong"
+    } else if format & IS_ITALIC != 0 {
+        "em"
+    } else {
+        "span"
+    }
+}
+
+/// What `TextNode.updateDOM(prevNode, dom, config)` returns: true, so the
+/// reconciler makes the DOM again, when the text's outermost tag changes.
+pub(crate) fn update_dom(prev: &TextData, next: &TextData) -> bool {
+    let tag = |format: f64| get_element_outer_tag(format).unwrap_or(get_element_inner_tag(format));
+    tag(prev.format) != tag(next.format)
+}
+
 pub(crate) fn to_int32(x: f64) -> i32 {
     if !x.is_finite() {
         return 0;

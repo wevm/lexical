@@ -41,14 +41,26 @@
 //! is counted as waiting on that part of `lexical`, never as passing.
 
 use crate::case::{Case, Outcome, same};
+use lexical::a11y::{LiveRegion, LiveRegionHost, aria_live_region_extension};
+use lexical::auto_embed::{INSERT_EMBED_COMMAND, is_single_token, url_matcher};
 use lexical::clipboard;
+use lexical::decorator_block::{
+    DecoratorBlockData, export_decorator_block, is_decorator_block_node,
+    update_decorator_block_from_json,
+};
 use lexical::extension as ext;
+use lexical::extension::get_extension_dependency_from_editor;
 use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
 use lexical::link;
 use lexical::list;
 use lexical::mark;
-use lexical::rich_text::{HeadingTagType, create_heading_node, create_quote_node};
+use lexical::menu::{
+    MenuTextMatch, TriggerFn, TypeaheadTriggerOptions, basic_typeahead_trigger_match,
+    get_full_match_offset, get_text_up_to_anchor, is_selection_on_entity_boundary,
+    split_node_containing_query,
+};
+use lexical::rich_text::{HeadingTagType, create_heading_node, create_quote_node, is_heading_node};
 use lexical::selection::{self, set_blocks_type};
 use lexical::utils;
 use lexical::{
@@ -70,6 +82,7 @@ use lexical::{
     select_all, set_selection, set_selection_from_caret_range, set_state, set_state_with,
     split_node, utf16,
 };
+use lexical::{LexicalNode, MutationListenerOptions, NodeBase, RootElement, RootElementRef};
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -96,6 +109,160 @@ struct Ctx {
     saved: RefCell<HashMap<String, EditorState>>,
     /// The block handles `logBlockHandles` kept, by name.
     handles: RefCell<HashMap<String, Vec<(String, String)>>>,
+    /// The session's root element and its document's body (`ctx.dom`),
+    /// made on first use (`setRootElement`).
+    dom: RefCell<Option<Rc<SessionRoot>>>,
+}
+
+/// The session's root element (`sessionDOM(ctx).root`): a `div` whose
+/// document's body hosts `AriaLiveRegionExtension`'s live region.
+pub(crate) struct SessionRoot {
+    body: Rc<SessionBody>,
+}
+
+impl RootElement for SessionRoot {
+    fn live_region_host(self: Rc<Self>) -> Option<Rc<dyn LiveRegionHost>> {
+        Some(self.body.clone())
+    }
+}
+
+/// The body of the session's document: the live regions mounted in it, in
+/// document order.
+#[derive(Default)]
+struct SessionBody {
+    regions: RefCell<Vec<Rc<LiveRegion>>>,
+}
+
+impl LiveRegionHost for SessionBody {
+    fn mount_live_region(&self, region: &Rc<LiveRegion>) {
+        self.regions.borrow_mut().push(region.clone());
+    }
+    fn unmount_live_region(&self, region: &Rc<LiveRegion>) {
+        self.regions.borrow_mut().retain(|r| !Rc::ptr_eq(r, region));
+    }
+}
+
+impl Ctx {
+    /// `sessionDOM(ctx)`.
+    fn session_dom(&self) -> Rc<SessionRoot> {
+        self.dom
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                Rc::new(SessionRoot {
+                    body: Rc::new(SessionBody::default()),
+                })
+            })
+            .clone()
+    }
+
+    /// `liveRegionEntry(ctx)`: `['liveRegion', [[aria-live, textContent]...]]`.
+    fn live_region_entry(&self) -> Value {
+        let regions = match &*self.dom.borrow() {
+            None => Vec::new(),
+            Some(root) => root
+                .body
+                .regions
+                .borrow()
+                .iter()
+                .map(|region| {
+                    Value::Array(vec![
+                        region
+                            .politeness()
+                            .map_or(Value::Null, |p| p.as_str().into()),
+                        region.text_content().into(),
+                    ])
+                })
+                .collect(),
+        };
+        Value::Array(vec!["liveRegion".into(), Value::Array(regions)])
+    }
+}
+
+/// `TestDecoratorBlockNode` (ops.ts): a `DecoratorBlockNode` that adds
+/// nothing, as an app's block embed would extend it.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct TestDecoratorBlockNode {
+    base: NodeBase,
+    block: DecoratorBlockData,
+}
+
+impl LexicalNode for TestDecoratorBlockNode {
+    fn get_type(&self) -> &'static str {
+        "test-decorator-block"
+    }
+    fn base(&self) -> &NodeBase {
+        &self.base
+    }
+    fn base_mut(&mut self) -> &mut NodeBase {
+        &mut self.base
+    }
+    fn decorator_block(&self) -> Option<&DecoratorBlockData> {
+        Some(&self.block)
+    }
+    fn decorator_block_mut(&mut self) -> Option<&mut DecoratorBlockData> {
+        Some(&mut self.block)
+    }
+    fn export_json(&self, compact: bool) -> Object {
+        export_decorator_block(self, compact)
+    }
+    fn update_from_json(&mut self, json: &Object) {
+        update_decorator_block_from_json(&mut self.block, json);
+    }
+}
+
+/// `TestDecoratorBlockNode`'s class.
+pub(crate) fn test_decorator_block_nodes() -> Vec<lexical::NodeClass> {
+    vec![lexical::NodeClass::of::<TestDecoratorBlockNode>()]
+}
+
+/// `TypeaheadSpec`: `useBasicTypeaheadTriggerMatch(trigger, options)`'s
+/// arguments, the options left out taking its defaults.
+fn typeahead_trigger(spec: &Value) -> Result<TriggerFn, LexicalError> {
+    let trigger = spec
+        .get("trigger")
+        .and_then(Value::as_str)
+        .ok_or_else(|| err("no trigger"))?;
+    let mut options = TypeaheadTriggerOptions::default();
+    if let Some(n) = spec.get("minLength").and_then(Value::as_f64) {
+        options.min_length = n as usize;
+    }
+    if let Some(n) = spec.get("maxLength").and_then(Value::as_f64) {
+        options.max_length = n as usize;
+    }
+    if let Some(p) = spec.get("punctuation").and_then(Value::as_str) {
+        options.punctuation = p.to_owned();
+    }
+    if let Some(w) = spec.get("allowWhitespace").and_then(Value::as_bool) {
+        options.allow_whitespace = w;
+    }
+    Ok(basic_typeahead_trigger_match(trigger, options))
+}
+
+/// `$typeaheadMatch(spec, editor)`: the text before the caret and its match
+/// (`None`s past a `None`).
+fn typeahead_match(
+    spec: &Value,
+    editor: &Editor,
+) -> Result<(Option<String>, Option<MenuTextMatch>), LexicalError> {
+    let text = get_selection()
+        .and_then(|s| s.range())
+        .and_then(|range| get_text_up_to_anchor(&range));
+    let text_match = match &text {
+        None => None,
+        Some(text) => typeahead_trigger(spec)?(text, editor),
+    };
+    Ok((text, text_match))
+}
+
+fn text_match_json(text_match: &MenuTextMatch) -> Value {
+    let mut json = Object::new();
+    json.insert("leadOffset", (text_match.lead_offset as f64).into());
+    json.insert("matchingString", text_match.matching_string.as_str().into());
+    json.insert(
+        "replaceableString",
+        text_match.replaceable_string.as_str().into(),
+    );
+    json.into()
 }
 
 /// `ops.ts`'s `STATES`, one set per session (JS's are shared by every
@@ -241,6 +408,7 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
         "REMOVE_LIST_COMMAND" => ScriptCommand::Void(list::REMOVE_LIST_COMMAND),
         "UPDATE_LIST_START_COMMAND" => ScriptCommand::ListStart(list::UPDATE_LIST_START_COMMAND),
         "TOGGLE_LINK_COMMAND" => ScriptCommand::Link(link::TOGGLE_LINK_COMMAND),
+        "INSERT_EMBED_COMMAND" => ScriptCommand::Str(INSERT_EMBED_COMMAND),
         _ => return None,
     })
 }
@@ -504,7 +672,12 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "logIdentified"
             | "logBlockHandles"
             | "logBlockHandle"
-            | "resolveBlockHandle",
+            | "resolveBlockHandle"
+            | "selectTypeaheadOption"
+            | "logFullMatchOffset"
+            | "logDecoratorBlock"
+            | "logUrlMatcher"
+            | "logSingleTokenPaste",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -837,6 +1010,9 @@ fn run_node_method(
             Value::String(name) => n.set_format_type(&name),
             v => n.set_format(number(&v)?),
         },
+        "setFormat" if is_decorator_block_node(&n) => {
+            n.set_decorator_block_format(a(0).as_str().unwrap_or(""))
+        }
         "setFormat" => element(n)?.set_element_format(a(0).as_str().unwrap_or("")),
         "setIDs" => {
             let ids = a(0)
@@ -848,6 +1024,13 @@ fn run_node_method(
             mark_node(n)?.set_ids(&ids);
         }
         "setIndent" => element(n)?.set_indent(number(&a(0))?)?,
+        "setTag" => {
+            if !is_heading_node(&n) {
+                return Err(err(format!("{} is not a heading", n.get_key())));
+            }
+            let tag = HeadingTagType::parse(&string(&a(0))?).ok_or_else(|| err("bad tag"))?;
+            n.set_heading_tag(tag);
+        }
         "setMode" => text(n)?.set_mode(&string(&a(0))?)?,
         "setStyle" if n.is_text() => n.set_style(&string(&a(0))?),
         "setStyle" => element(n)?.set_element_style(a(0).as_str().unwrap_or("")),
@@ -1452,6 +1635,75 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             let selection = get_selection().ok_or_else(|| err("no selection"))?;
             clipboard::insert_generated_nodes(editor, nodes, &selection)
         }
+        Some("selectTypeaheadOption") => {
+            let spec = action.get("typeahead").cloned().unwrap_or(Value::Null);
+            let (_, text_match) = typeahead_match(&spec, editor)?;
+            let node = match &text_match {
+                None => None,
+                Some(text_match) => split_node_containing_query(text_match)?,
+            };
+            ctx.log(vec![
+                "splitNodeContainingQuery".into(),
+                node.as_ref().map_or(Value::Null, |n| n.get_key().into()),
+                node.as_ref()
+                    .map_or(Value::Null, |n| n.get_text_content().into()),
+            ]);
+            if let Some(node) = node {
+                let replacement = lexical::create_text_node(&string(
+                    action.get("replacement").unwrap_or(&Value::Null),
+                )?);
+                node.replace(&replacement, false)?;
+                replacement.select(None, None)?;
+            }
+            Ok(())
+        }
+        Some("logFullMatchOffset") => {
+            let document_text = action.str("documentText").map_err(err)?;
+            let entry_text = action.str("entryText").map_err(err)?;
+            let offset = number(action.get("offset").unwrap_or(&Value::Null))? as usize;
+            ctx.log(vec![
+                "fullMatchOffset".into(),
+                document_text.into(),
+                entry_text.into(),
+                (offset as f64).into(),
+                (get_full_match_offset(document_text, entry_text, offset) as f64).into(),
+            ]);
+            Ok(())
+        }
+        Some("logDecoratorBlock") => {
+            let key = action.str("key").map_err(err)?;
+            let n = node(key)?;
+            let format = n.get_decorator_block_format();
+            ctx.log(vec![
+                "decoratorBlock".into(),
+                key.into(),
+                format.is_some().into(),
+                n.is_inline().into(),
+                format.map_or(Value::Null, Value::from),
+                format.map_or(Value::Null, |_| n.can_indent().into()),
+            ]);
+            Ok(())
+        }
+        Some("logUrlMatcher") => {
+            let text = action.str("text").map_err(err)?;
+            ctx.log(vec![
+                "urlMatcher".into(),
+                text.into(),
+                url_matcher(text).map_or(Value::Null, |(index, matched)| {
+                    Value::Array(vec![(index as f64).into(), matched.into()])
+                }),
+            ]);
+            Ok(())
+        }
+        Some("logSingleTokenPaste") => {
+            let text = action.str("text").map_err(err)?;
+            ctx.log(vec![
+                "singleTokenPaste".into(),
+                text.into(),
+                is_single_token(text).into(),
+            ]);
+            Ok(())
+        }
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");
             let payload = action.get("payload").cloned().unwrap_or(Value::Null);
@@ -1972,6 +2224,8 @@ pub struct Session {
     clock: Rc<Cell<f64>>,
     /// Unregisters the history, whose entries hold the editor.
     unregister_history: Option<Unregister>,
+    /// `script.liveRegion`.
+    live_region: bool,
 }
 
 impl Drop for Session {
@@ -2012,7 +2266,7 @@ fn snapshot_of(editor: &Editor, ctx: &Ctx, snapshot: bool) -> Result<Object, Str
 }
 
 /// The package flags a script with `extensions` can't have.
-const PACKAGE_FLAGS: [&str; 9] = [
+const PACKAGE_FLAGS: [&str; 10] = [
     "richText",
     "plainText",
     "list",
@@ -2022,6 +2276,7 @@ const PACKAGE_FLAGS: [&str; 9] = [
     "hashtag",
     "extension",
     "mark",
+    "decoratorBlock",
 ];
 
 impl Session {
@@ -2056,6 +2311,10 @@ impl Session {
                     Ok((None, Some(Value::Object(build))))
                 }
                 Ok(built) => {
+                    if script.get("liveRegion").and_then(Value::as_bool) == Some(true) {
+                        let entry = ctx.live_region_entry();
+                        ctx.log.borrow_mut().push(entry);
+                    }
                     let build = snapshot_of(&built, &ctx, true)?;
                     let mut session = Self::start_on(script, built.editor().clone(), ctx)?;
                     session.built = Some(built);
@@ -2100,6 +2359,9 @@ impl Session {
         }
         if with_mark {
             nodes.extend(mark::mark_nodes());
+        }
+        if script.get("decoratorBlock").and_then(Value::as_bool) == Some(true) {
+            nodes.extend(test_decorator_block_nodes());
         }
         let editor = create_editor(CreateEditorArgs {
             nodes,
@@ -2205,6 +2467,43 @@ impl Session {
                 priority,
             );
         }
+        for node_type in script
+            .get("mutations")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let node_type = node_type.as_str().unwrap_or("").to_owned();
+            let log = ctx.clone();
+            let _unregister = editor
+                .register_mutation_listener(
+                    &node_type.clone(),
+                    move |mutations, payload| {
+                        let mut tags = payload.update_tags.clone();
+                        tags.sort();
+                        log.log(vec![
+                            "mutation".into(),
+                            node_type.as_str().into(),
+                            Value::Array(
+                                mutations
+                                    .iter()
+                                    .map(|(key, mutation)| {
+                                        Value::Array(vec![
+                                            key.as_str().into(),
+                                            mutation.as_str().into(),
+                                        ])
+                                    })
+                                    .collect(),
+                            ),
+                            Value::Array(tags.into_iter().map(Value::from).collect()),
+                        ]);
+                    },
+                    MutationListenerOptions {
+                        skip_initialization: true,
+                    },
+                )
+                .map_err(|e| e.message().to_owned())?;
+        }
         if script.get("listen").and_then(Value::as_bool) == Some(true) {
             let log = ctx.clone();
             let _unregister = editor.register_update_listener(move |payload| {
@@ -2261,6 +2560,7 @@ impl Session {
             ctx,
             clock,
             unregister_history,
+            live_region: flag("liveRegion"),
         })
     }
 
@@ -2308,9 +2608,41 @@ impl Session {
             ctx.command(name)
                 .dispatch(editor, payload)
                 .map(|handled| ctx.log(vec!["dispatched".into(), name.into(), handled.into()]))
+        } else if let Some(on) = step.get("setRootElement").and_then(Value::as_bool) {
+            let root = ctx.session_dom();
+            editor.set_root_element(on.then(|| RootElementRef(root)))
+        } else if let Some(editable) = step.get("setEditable").and_then(Value::as_bool) {
+            editor.set_editable(editable);
+            Ok(())
+        } else if let Some(text) = step.get("announce").and_then(Value::as_str) {
+            get_extension_dependency_from_editor(editor, &aria_live_region_extension()).and_then(
+                |dep| {
+                    dep.output
+                        .ok_or_else(|| err("no output"))
+                        .map(|announcer| announcer.announce(text))
+                },
+            )
+        } else if let Some(spec) = step.get("typeahead") {
+            editor.get_editor_state().read(|| {
+                let (text, text_match) = typeahead_match(spec, editor)?;
+                let on_entity_boundary = text_match
+                    .as_ref()
+                    .map(|m| is_selection_on_entity_boundary(editor, m.lead_offset));
+                ctx.log(vec![
+                    "typeahead".into(),
+                    text.map_or(Value::Null, Value::from),
+                    text_match.as_ref().map_or(Value::Null, text_match_json),
+                    on_entity_boundary.map_or(Value::Null, Value::from),
+                ]);
+                Ok(())
+            })
         } else {
             extensions::run_step(step, ctx, self.built.as_ref())
         };
+        if self.live_region {
+            let entry = ctx.live_region_entry();
+            ctx.log.borrow_mut().push(entry);
+        }
         let mut json = snapshot_of(editor, ctx, snapshot)?;
         let error = outcome.err();
         if error.is_some() {

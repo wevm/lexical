@@ -105,6 +105,10 @@ devtools = []
 # HorizontalRuleExtension's $insertNodeToNearestRoot. With another package's
 # feature, that package's extensions (RichTextExtension, HistoryExtension...).
 extension = ["utils"]
+# @lexical/html: a DOM in place of the browser's (`dom`: nodes, an HTML
+# parser and serializer, and an inline style declaration that normalizes as
+# jsdom's does), with the nodes' DOM hooks and HTML export and import.
+html = ["selection"]
 # @lexical/a11y's announcements: the live region model (LiveRegion, shown by
 # the app's LiveRegionHost), AriaLiveRegionExtension, HistoryAnnounceExtension
 # and EditorModeAnnounceExtension; with `rich-text`, @lexical/rich-text's
@@ -129,10 +133,6 @@ menu = []
 # menu at a pasted link. It needs @lexical/link, the menu and @lexical/utils,
 # as upstream's imports do.
 auto-embed = ["link", "menu", "utils"]
-# @lexical/html: a DOM in place of the browser's (`dom`: nodes, an HTML
-# parser and serializer, and an inline style declaration that normalizes as
-# jsdom's does), with the nodes' DOM hooks and HTML export and import.
-html = ["selection"]
 # @lexical/markdown: import, export, the transformers and the shortcuts
 # (registerMarkdownShortcuts), with a JS RegExp engine of its own (no `regex`).
 markdown = ["rich-text", "list", "link", "code"]

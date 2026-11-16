@@ -139,14 +139,23 @@ fn the_field_draws_the_examples_lists_quote_and_link() {
             Block::Quote,
         ]
     );
-    let link = rt
-        .state
-        .edit
-        .marks()
-        .iter()
-        .find(|m| matches!(&m.mark, Mark::Link(url) if url == "https://lexical.dev"))
-        .expect("the link's mark");
-    assert_eq!(&rt.state.edit.text[link.range()], "lexical.dev");
+    // The link draws as a link, but isn't a `Mark::Link`, which would leave
+    // the rest of the field unclickable.
+    assert!(
+        !rt.state
+            .edit
+            .marks()
+            .iter()
+            .any(|m| matches!(m.mark, Mark::Link(_)))
+    );
+    let link = decorations(doc, false)
+        .into_iter()
+        .find(|s| s.underline.is_some())
+        .expect("the link's span");
+    assert_eq!(
+        &rt.state.edit.text[link.start as usize..link.end as usize],
+        "lexical.dev"
+    );
     // The h2 draws larger and heavier.
     let heading = doc.offset_of(Pos { block: 2, byte: 0 });
     assert!(
@@ -194,18 +203,16 @@ fn the_link_button_links_the_selection_and_unlinks_it() {
     rt.frame(0.0);
     click(&mut rt, "link");
     assert_eq!(rt.state.playground.link(), Some("https://"));
-    assert!(rt.state.edit.marks().iter().any(|m| {
-        matches!(&m.mark, Mark::Link(url) if url == "https://") && m.range() == (0..5)
-    }));
+    // It draws as a link (see `decorations`).
+    let linked = |rt: &Runtime<State>| {
+        decorations(rt.state.playground.document(), false)
+            .iter()
+            .any(|s| s.underline.is_some() && (s.start, s.end) == (0, 5))
+    };
+    assert!(linked(&rt));
     click(&mut rt, "link");
     assert_eq!(rt.state.playground.link(), None);
-    assert!(
-        !rt.state
-            .edit
-            .marks()
-            .iter()
-            .any(|m| matches!(&m.mark, Mark::Link(url) if url == "https://"))
-    );
+    assert!(!linked(&rt));
 }
 
 #[test]
@@ -305,4 +312,32 @@ fn markdown_shortcuts_typed_in_the_field_become_rich_text() {
         byte: 4,
     });
     assert_eq!(rt.state.edit.range(), (caret, caret));
+}
+
+// tmm's bug: the example has a link, and a click in the editor, on its text
+// or below it, blurred the field, so nothing typed after it reached Lexical.
+#[test]
+fn a_click_in_the_editor_keeps_the_keyboard_for_typing() {
+    let mut rt = runtime();
+    let editor = rt
+        .elements()
+        .into_iter()
+        .find(|e| e.key.as_deref() == Some("editor"))
+        .expect("the editor");
+    let [x, y, w, h] = editor.rect;
+    // On the first line's text, then on the empty space below the text.
+    for (cx, cy) in [(x + 40.0, y + 8.0), (x + w / 2.0, y + h - 20.0)] {
+        rt.pointer_down(cx, cy);
+        rt.pointer_up(cx, cy);
+        rt.frame(0.5);
+        assert!(
+            rt.state.edit.focused,
+            "a click at ({cx}, {cy}) blurred the editor"
+        );
+    }
+    let before = rt.state.playground.document().text();
+    typed(&mut rt, "Q");
+    let after = rt.state.playground.document().text();
+    assert_eq!(after.len(), before.len() + 1);
+    assert_eq!(after.matches('Q').count(), before.matches('Q').count() + 1);
 }

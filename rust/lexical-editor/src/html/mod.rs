@@ -10,9 +10,18 @@
 //! also has `DOMRenderExtension` ([`dom_render_extension`]), whose
 //! overrides and render context the export reads.
 
+#[cfg(feature = "extension")]
+mod block_id_html_extension;
 pub mod import;
 #[cfg(feature = "extension")]
 pub(crate) mod internal;
+
+#[cfg(feature = "extension")]
+pub use block_id_html_extension::{
+    BLOCK_HANDLE_ATTRIBUTE, BLOCK_ID_ATTRIBUTE, BLOCK_WRAPPER_ID_ATTRIBUTE, BlockIdHtmlConfig,
+    BlockIdHtmlConfigOverrides, BlockIdHtmlExtensionType, BlockIdHtmlOutput, BlockIdHtmlRuntime,
+    block_id_html_extension,
+};
 
 #[cfg(feature = "extension")]
 pub use internal::dom_render_extension::{

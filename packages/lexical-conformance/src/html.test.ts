@@ -15,6 +15,7 @@ import {
 } from '@lexical/clipboard';
 import {CodeExtension} from '@lexical/code-core';
 import {
+  BlockIdExtension,
   buildEditorFromExtensions,
   HorizontalRuleExtension,
   HorizontalRuleNode,
@@ -39,10 +40,24 @@ import {
   RenderContextExport,
   RenderContextRoot,
 } from '@lexical/html';
+import {
+  type BlockIdHTMLConfig,
+  BlockIdHTMLExtension,
+} from '@lexical/html/BlockIdHTMLExtension';
 import {$createLinkNode, LinkExtension, LinkNode} from '@lexical/link';
-import {CheckListExtension, WordListImportExtension} from '@lexical/list';
+import {
+  $createListItemNode,
+  $createListNode,
+  CheckListExtension,
+  WordListImportExtension,
+} from '@lexical/list';
 import {$createMarkNode, MarkNode} from '@lexical/mark';
-import {RichTextExtension, ShadowRootQuoteRule} from '@lexical/rich-text';
+import {
+  $createHeadingNode,
+  $createQuoteNode,
+  RichTextExtension,
+  ShadowRootQuoteRule,
+} from '@lexical/rich-text';
 import {JSDOM} from 'jsdom';
 import {
   $createLineBreakNode,
@@ -65,6 +80,7 @@ import {
   type DOMExportOutput,
   type EditorThemeClasses,
   type ElementFormatType,
+  HISTORY_MERGE_TAG,
   isHTMLElement,
   type LexicalEditor,
   type LexicalNode,
@@ -1218,6 +1234,236 @@ test('html/export-mark', () => {
     'html/export-mark',
     'html-export',
     "Documents of MarkNodes (zero to three ids, nested, around and inside links, some indented), with and without a theme's mark and markOverlap classes, and the HTML $generateHtmlFromNodes writes for them in jsdom, which leaves the marks out (MarkNode.excludeFromCopy('html')) and keeps their children.",
+    cases,
+  );
+});
+
+type BlockIdCase = {
+  name: string;
+  /**
+   * BlockIdHTMLExtension's config: `default`, `handles` (`handles: true`),
+   * `export-off` (`export: false`) or `import-off` (`import: false`).
+   */
+  scenario: string;
+  /**
+   * The document, without ids: setting it is a load, which gives positional
+   * ids. Without one, the editor is first edited (a paragraph appended, then
+   * the root cleared, both discrete with `history-merge`), so that the import
+   * is not a load and its blocks get generated ids.
+   */
+  editorState?: string;
+  /** `export`: `$generateHtmlFromNodes(editor)`. */
+  html?: string;
+  /** `import`: the HTML imported and appended to the root. */
+  importHtml?: string;
+  /** `import`: the editor state after it, with every block's id. */
+  state?: string;
+};
+
+const BLOCK_ID_SCENARIOS: Record<string, Partial<BlockIdHTMLConfig>> = {
+  default: {},
+  'export-off': {export: false},
+  handles: {handles: true},
+  'import-off': {import: false},
+};
+
+/**
+ * An editor built from the package extensions and BlockIdHTMLExtension with
+ * the scenario's config, whose generated ids are id1, id2...
+ */
+function blockIdEditor(scenario: string) {
+  let n = 0;
+  return buildEditorFromExtensions(
+    defineExtension({
+      dependencies: [
+        RichTextExtension,
+        CheckListExtension,
+        LinkExtension,
+        CodeExtension,
+        configExtension(BlockIdExtension, {generateId: () => `id${++n}`}),
+        configExtension(BlockIdHTMLExtension, BLOCK_ID_SCENARIOS[scenario]),
+      ],
+      name: '[conformance]',
+      nodes: DOCUMENT_NODES,
+    }),
+  );
+}
+
+function runBlockIdCase(c: BlockIdCase): BlockIdCase {
+  const editor = blockIdEditor(c.scenario);
+  try {
+    return withJSDOM(win => {
+      if (c.editorState !== undefined) {
+        editor.setEditorState(editor.parseEditorState(c.editorState));
+      } else {
+        const options = {discrete: true, tag: HISTORY_MERGE_TAG} as const;
+        editor.update(() => {
+          $getRoot().append($createParagraphNode());
+        }, options);
+        editor.update(() => {
+          $getRoot().clear();
+        }, options);
+      }
+      if (c.importHtml === undefined) {
+        return {
+          ...c,
+          html: editor.read(() => $generateHtmlFromNodes(editor)),
+        };
+      }
+      const dom = new win.DOMParser().parseFromString(
+        c.importHtml,
+        'text/html',
+      );
+      editor.update(
+        () => {
+          $getRoot().append(
+            ...$generateNodesFromDOMViaExtension(dom).map(node =>
+              node.isInline() ? $createParagraphNode().append(node) : node,
+            ),
+          );
+        },
+        {discrete: true},
+      );
+      return {...c, state: JSON.stringify(editor.getEditorState().toJSON())};
+    });
+  } finally {
+    editor.dispose();
+  }
+}
+
+/** Documents that reach the wrapper id: items that only wrap a nested list. */
+function $blockIdDocument(kind: number): void {
+  const item = (text: string) =>
+    $createListItemNode().append($createTextNode(text));
+  if (kind === 0) {
+    $getRoot().append(
+      $createListNode('bullet').append(
+        item('a'),
+        $createListItemNode().append(
+          $createListNode('number').append(item('b'), item('c')),
+        ),
+        item('d'),
+      ),
+    );
+  } else if (kind === 1) {
+    $getRoot().append(
+      $createHeadingNode('h2').append($createTextNode('h')),
+      $createListNode('check').append(
+        $createListItemNode().append(
+          $createListNode('check').append(
+            $createListItemNode().append(
+              $createListNode('check').append(item('deep')),
+            ),
+          ),
+        ),
+      ),
+      $createQuoteNode().append($createTextNode('q')),
+    );
+  } else {
+    $getRoot().append(
+      $createParagraphNode().append(
+        $createLinkNode('https://a.test').append($createTextNode('l')),
+      ),
+      $createListNode('bullet').append(
+        $createListItemNode().append(
+          $createListNode('bullet').append(item('x')),
+        ),
+      ),
+    );
+  }
+}
+
+/** HTML carrying ids: valid, invalid, repeated, on inline and nested blocks. */
+const BLOCK_ID_IMPORT_CORPUS = [
+  '<p data-block-id="pa">a</p><h2 data-block-id="pa">dup</h2><blockquote data-block-id="not valid!">bad</blockquote>',
+  '<p data-block-id="">empty</p><p data-block-id="' +
+    'x'.repeat(65) +
+    '">long</p><p data-block-id="ok_-9">fine</p>',
+  '<span data-block-id="sp">inline</span><p><b data-block-id="bb">bold</b> text</p>',
+  '<div data-block-id="dv"><p>one</p><p>two</p></div>',
+  '<ul data-block-id="ul1"><li data-block-id="li1">a</li><li data-block-id="li2">b<ul data-block-id="ul2"><li data-block-id="li3">c</li></ul></li></ul>',
+  '<ul><li data-block-id="w1">a</li><li><ul data-block-wrapper-id="w2"><li data-block-id="w3">b</li></ul></li></ul>',
+  '<ol><li><ol data-block-wrapper-id="w4"><li><ol data-block-wrapper-id="w5"><li>deep</li></ol></li></ol></li></ol>',
+  '<ul><li>a<ul data-block-wrapper-id="w6"><li>b</li></ul></li></ul><p data-block-wrapper-id="w7">p</p>',
+  '<pre data-block-id="cd">code</pre><a href="https://a.test" data-block-id="ln">link</a>',
+];
+
+test('html/block-id', {timeout: 120_000}, () => {
+  const documents: string[] = JSON.parse(
+    readFileSync(
+      new URL('../vectors/property/documents.json', import.meta.url),
+      'utf8',
+    ),
+  ).cases.map((c: {legacy: string}) => c.legacy);
+  for (let kind = 0; kind < 3; kind++) {
+    const editor = createHeadlessEditor({
+      nodes: DOCUMENT_NODES,
+      onError: e => {
+        throw e;
+      },
+    });
+    editor.update(() => $blockIdDocument(kind), {discrete: true});
+    documents.push(JSON.stringify(editor.getEditorState().toJSON()));
+  }
+  const cases: BlockIdCase[] = [];
+  documents.forEach((editorState, i) => {
+    const curated = i >= documents.length - 3;
+    for (const scenario of i < 30 || curated
+      ? ['default', 'handles', 'export-off']
+      : ['default']) {
+      cases.push(
+        runBlockIdCase({
+          editorState,
+          name: `export ${scenario} document ${i}`,
+          scenario,
+        }),
+      );
+    }
+  });
+  // Each document's export, imported into an empty editor and into the
+  // document itself (whose ids it repeats).
+  documents.forEach((editorState, i) => {
+    if (i >= 40 && i < documents.length - 3) {
+      return;
+    }
+    const importHtml = cases.find(
+      c => c.name === `export default document ${i}`,
+    )!.html!;
+    cases.push(
+      runBlockIdCase({
+        importHtml,
+        name: `import default document ${i} into empty`,
+        scenario: 'default',
+      }),
+      runBlockIdCase({
+        editorState,
+        importHtml,
+        name: `import default document ${i} into itself`,
+        scenario: 'default',
+      }),
+    );
+  });
+  BLOCK_ID_IMPORT_CORPUS.forEach((importHtml, i) => {
+    for (const scenario of ['default', 'import-off']) {
+      cases.push(
+        runBlockIdCase({
+          importHtml,
+          name: `import ${scenario} html ${i}`,
+          scenario,
+        }),
+        runBlockIdCase({
+          editorState: documents[documents.length - 3],
+          importHtml,
+          name: `import ${scenario} html ${i} into a list`,
+          scenario,
+        }),
+      );
+    }
+  });
+  emitVectors(
+    'html/block-id',
+    'html-block-id',
+    "BlockIdHTMLExtension in an editor built from RichTextExtension, CheckListExtension, LinkExtension, CodeExtension and BlockIdExtension (generated ids id1, id2...): the HTML $generateHtmlFromNodes writes in jsdom for the property/documents documents and three with items that only wrap a nested list (positional ids; with the default config, `handles: true` and `export: false`), and the editor state after DOMImportExtension's import of HTML carrying ids is appended to the root (each document's export, into an empty editor and into itself; curated HTML with valid, invalid, repeated, inline and wrapper ids, also with `import: false`).",
     cases,
   );
 });

@@ -741,3 +741,128 @@ pub fn check_clipboard(case: &Value, _file: &Value) -> Result<Outcome, String> {
     result?;
     Ok(Outcome::Pass)
 }
+
+/// `blockIdEditor(scenario)`: the package extensions, `BlockIdExtension`
+/// with generated ids id1, id2... and `BlockIdHTMLExtension` with the
+/// scenario's config.
+fn block_id_editor(scenario: &str) -> Result<lexical::extension::LexicalEditorWithDispose, String> {
+    use lexical::extension::{BlockIdConfigOverrides, GenerateId, block_id_extension};
+    use lexical::html::{BlockIdHtmlConfigOverrides, block_id_html_extension};
+    use lexical::{LexicalExtension, config_extension, define_extension};
+    let html = match scenario {
+        "default" => BlockIdHtmlConfigOverrides::default(),
+        "export-off" => BlockIdHtmlConfigOverrides {
+            export: Some(false),
+            ..Default::default()
+        },
+        "handles" => BlockIdHtmlConfigOverrides {
+            handles: Some(true),
+            ..Default::default()
+        },
+        "import-off" => BlockIdHtmlConfigOverrides {
+            import: Some(false),
+            ..Default::default()
+        },
+        other => return Err(format!("unknown scenario {other}")),
+    };
+    let n = std::cell::Cell::new(0);
+    let generate_id = GenerateId(Rc::new(move || {
+        n.set(n.get() + 1);
+        format!("id{}", n.get())
+    }));
+    let host = define_extension(LexicalExtension::<(), (), ()> {
+        dependencies: vec![
+            lexical::rich_text::rich_text_extension().into(),
+            lexical::list::check_list_extension().into(),
+            lexical::link::link_extension().into(),
+            lexical::code::code_extension().into(),
+            config_extension(
+                &block_id_extension(),
+                [BlockIdConfigOverrides {
+                    generate_id: Some(generate_id),
+                    ..Default::default()
+                }],
+            ),
+            config_extension(&block_id_html_extension(), [html]),
+        ],
+        nodes: document_nodes(),
+        ..LexicalExtension::new("[conformance]", ())
+    });
+    lexical::extension::build_editor_from_extensions([host.into()]).map_err(|e| e.to_string())
+}
+
+/// `html/block-id`: `BlockIdHTMLExtension`'s export of a document (its
+/// positional ids, or handles) and the editor state after DOMImportExtension
+/// imports HTML carrying ids into the root.
+pub fn check_block_id(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    use lexical::html::import::generate_nodes_from_dom_via_extension;
+    let built = block_id_editor(case.str("scenario")?)?;
+    let editor = (*built).clone();
+    let result = (|| -> Result<(), String> {
+        let discrete = UpdateOptions {
+            discrete: true,
+            ..UpdateOptions::default()
+        };
+        if let Some(json) = case.get("editorState").and_then(Value::as_str) {
+            let state = editor
+                .parse_editor_state(json)
+                .map_err(|e| format!("editorState: {e}"))?;
+            editor
+                .set_editor_state(&state, None)
+                .map_err(|e| e.to_string())?;
+        } else {
+            // Edited first, so that the import is not a load.
+            let merge = UpdateOptions {
+                tags: vec![lexical::HISTORY_MERGE_TAG.to_owned()],
+                ..discrete.clone()
+            };
+            editor
+                .update(
+                    || lexical::get_root().append(&[lexical::create_paragraph_node()]),
+                    merge.clone(),
+                )
+                .and_then(|()| editor.update(|| lexical::get_root().clear(), merge))
+                .map_err(|e| e.to_string())?;
+        }
+        let Some(import_html) = case.get("importHtml").and_then(Value::as_str) else {
+            let html = editor
+                .read(|| generate_html_from_nodes(&editor, None))
+                .and_then(|html| html)
+                .map_err(|e| e.to_string())?;
+            return same("html", html.as_str(), case.str("html")?);
+        };
+        let dom = parse_from_string(import_html);
+        editor
+            .update(
+                move || {
+                    let nodes = generate_nodes_from_dom_via_extension(&dom, None)?
+                        .into_iter()
+                        .map(|node| {
+                            if node.is_inline() {
+                                let paragraph = lexical::create_paragraph_node();
+                                paragraph.append(&[node])?;
+                                Ok(paragraph)
+                            } else {
+                                Ok(node)
+                            }
+                        })
+                        .collect::<Result<Vec<_>, lexical::LexicalError>>()?;
+                    lexical::get_root().append(&nodes)
+                },
+                discrete,
+            )
+            .map_err(|e| e.to_string())?;
+        same(
+            "state",
+            editor
+                .get_editor_state()
+                .to_json(false)
+                .to_string()
+                .as_str(),
+            case.str("state")?,
+        )
+    })();
+    built.dispose();
+    result?;
+    Ok(Outcome::Pass)
+}

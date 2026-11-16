@@ -296,10 +296,36 @@ fn extract_with_child(
         && !selection.get_text_content()?.is_empty())
 }
 
+/// `LinkNode`'s config chain (see its [`LexicalNode::static_node_config_chain`]).
+fn link_node_config_chain() -> Vec<crate::structure::NodeConfigLink> {
+    use crate::structure::{
+        MergeAdjacentDeclaration, MergeAdjacentEntry, NodeChildrenConfig, NodeConfigLink,
+        StaticNodeConfig,
+    };
+    vec![NodeConfigLink::new(
+        "link",
+        StaticNodeConfig {
+            inline: Some(true),
+            children: Some(NodeChildrenConfig::Inline),
+            merge_adjacent: Some(MergeAdjacentDeclaration::By(vec![
+                MergeAdjacentEntry::Field("url"),
+                MergeAdjacentEntry::Field("target"),
+                MergeAdjacentEntry::Field("rel"),
+                MergeAdjacentEntry::Field("title"),
+            ])),
+            ..StaticNodeConfig::default()
+        },
+    )]
+}
+
 impl LexicalNode for LinkNode {
-    /// `children: 'inline'` in its `$config()`.
-    fn declares_inline_children(&self) -> bool {
-        true
+    /// The `$config()` of `LinkNode`: `inline: true`, `children: 'inline'`
+    /// and `mergeAdjacent: {by: ['url', 'target', 'rel', 'title']}`, what
+    /// `shouldMergeAdjacentLink` compares. The method stays the authority:
+    /// `$linkNodeTransform` calls it, and a subclass that inherits the
+    /// declaration is never merged by the normalization.
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        link_node_config_chain()
     }
 
     fn get_type(&self) -> &'static str {
@@ -380,9 +406,20 @@ impl LexicalNode for LinkNode {
 /// `canInsertTextAfter` either, whatever its class comment says), so each
 /// hook is `LinkNode`'s.
 impl LexicalNode for AutoLinkNode {
-    /// `children: 'inline'` in its `$config()`.
-    fn declares_inline_children(&self) -> bool {
-        true
+    /// The `$config()` of `AutoLinkNode`: `extends: LinkNode` and
+    /// `mergeAdjacent: false` (adjacent autolinks never merge, see
+    /// `shouldMergeAdjacentLink`).
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        use crate::structure::{MergeAdjacentDeclaration, NodeConfigLink, StaticNodeConfig};
+        let mut chain = vec![NodeConfigLink::new(
+            "autolink",
+            StaticNodeConfig {
+                merge_adjacent: Some(MergeAdjacentDeclaration::Off),
+                ..StaticNodeConfig::default()
+            },
+        )];
+        chain.extend(link_node_config_chain());
+        chain
     }
 
     /// `AutoLinkNode.updateDOM(prevNode)`: `LinkNode`'s (which keeps its
@@ -514,8 +551,10 @@ fn fix_merge_boundary_caret(
 /// with an adjacent link that `shouldMergeAdjacentLink` matches, keeping the
 /// selection where it was. `registerLink` registers it for `LinkNode`.
 ///
-/// `NodeStructureExtension`, which does both itself where it enforces node
-/// structure, isn't ported, so this always does them.
+/// Where `NodeStructureExtension` enforces declared structure, it lifts
+/// blocks out of links itself (`LinkNode` declares `children: 'inline'`),
+/// and merges equal adjacent `LinkNode`s (`$structureMerges`), the same way
+/// whichever node is dirty, so this transform leaves them to it.
 pub fn link_node_transform(link: &NodeRef) -> Result<(), LexicalError> {
     let selection = get_selection().filter(SelectionRef::is_range);
     let mut pairs = None;
@@ -535,8 +574,9 @@ pub fn link_node_transform(link: &NodeRef) -> Result<(), LexicalError> {
     };
 
     let mut transformed = false;
+    let lifts_blocks = !crate::structure::is_structure_enforced_on_active_editor();
     let children = get_child_caret(link, CaretDirection::Next).expect("a link is an element");
-    for caret in children.iter() {
+    for caret in children.iter().filter(|_| lifts_blocks) {
         let node = caret.origin().clone();
         if node.is_element() && !node.is_inline() {
             let block_children = node.get_children();
@@ -571,19 +611,21 @@ pub fn link_node_transform(link: &NodeRef) -> Result<(), LexicalError> {
             .transpose()
     };
     if link.is_attached() {
-        if let Some(prev_sibling) = link
-            .get_previous_sibling()
-            .filter(|p| is_link_node(p) && p.should_merge_adjacent_link(link))
-        {
+        if let Some(prev_sibling) = link.get_previous_sibling().filter(|p| {
+            is_link_node(p)
+                && !crate::structure::structure_merges(p, link)
+                && p.should_merge_adjacent_link(link)
+        }) {
             pairs = fix_pairs(pairs, &prev_sibling, link)?;
             prev_sibling.append(&link.get_children())?;
             link.remove(false)?;
             return restore_selection(&pairs);
         }
-        if let Some(next_sibling) = link
-            .get_next_sibling()
-            .filter(|n| is_link_node(n) && link.should_merge_adjacent_link(n))
-        {
+        if let Some(next_sibling) = link.get_next_sibling().filter(|n| {
+            is_link_node(n)
+                && !crate::structure::structure_merges(link, n)
+                && link.should_merge_adjacent_link(n)
+        }) {
             pairs = fix_pairs(pairs, link, &next_sibling)?;
             link.append(&next_sibling.get_children())?;
             next_sibling.remove(false)?;

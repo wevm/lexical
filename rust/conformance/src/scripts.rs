@@ -93,6 +93,7 @@ use std::rc::Rc;
 
 mod code_highlight;
 mod extensions;
+mod structure;
 
 /// What `ops.ts`'s `Context` holds besides the editor.
 #[derive(Default)]
@@ -119,6 +120,8 @@ struct Ctx {
     dom: RefCell<Option<Rc<SessionRoot>>>,
     /// What `characterLimit` and `tableOfContents` mounted, to unmount.
     mounted: RefCell<HashMap<String, Unregister>>,
+    /// The disposers `registerNodeStructure` returned, by name.
+    structures: RefCell<HashMap<String, Unregister>>,
 }
 
 /// The session's root element (`sessionDOM(ctx).root`): a `div` whose
@@ -731,6 +734,11 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "logNodesExist"
             | "setBlockId"
             | "logBlockIds"
+            | "logNodeStructure"
+            | "logBlockContainer"
+            | "logStructureEnforced"
+            | "normalizeNodeStructure"
+            | "appendNew"
             | "logBlockById"
             | "logIdentified"
             | "logBlockHandles"
@@ -1292,6 +1300,43 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             let key = action.get("key").and_then(Value::as_str).unwrap_or("");
             let id = action.get("id").and_then(Value::as_str).map(str::to_owned);
             set_state(&node(key)?, &ext::block_id_state(), id).map(|_| ())
+        }
+        Some("logNodeStructure") => {
+            let types = action
+                .get("types")
+                .and_then(Value::as_array)
+                .ok_or_else(|| err("types"))?;
+            for node_type in types {
+                let node_type = node_type.as_str().ok_or_else(|| err("a type"))?;
+                let json = structure::structure_json(editor, node_type)?;
+                ctx.log(vec!["nodeStructure".into(), node_type.into(), json]);
+            }
+            Ok(())
+        }
+        Some("logBlockContainer") => {
+            let keys = action
+                .get("keys")
+                .and_then(Value::as_array)
+                .ok_or_else(|| err("keys"))?;
+            for key in keys {
+                let key = key.as_str().ok_or_else(|| err("a key"))?;
+                let container = lexical::is_block_container(&node(key)?);
+                ctx.log(vec!["blockContainer".into(), key.into(), container.into()]);
+            }
+            Ok(())
+        }
+        Some("logStructureEnforced") => {
+            let enforced = lexical::internal_is_node_structure_enforced(editor);
+            ctx.log(vec!["structureEnforced".into(), enforced.into()]);
+            Ok(())
+        }
+        Some("normalizeNodeStructure") => {
+            lexical::internal_normalize_node_structure(&node(action.str("key").map_err(err)?)?)
+        }
+        Some("appendNew") => {
+            let parent = node(action.str("key").map_err(err)?)?;
+            let child = structure::create_test_node(action.str("type").map_err(err)?)?;
+            parent.append(&[child])
         }
         Some("logBlockIds") => {
             let keys = action
@@ -2791,6 +2836,21 @@ impl Session {
             })
         } else if step.get("characterLimit").is_some() || step.get("tableOfContents").is_some() {
             mount_step(step, ctx, editor)
+        } else if let Some(name) = step.get("registerNodeStructure").and_then(Value::as_str) {
+            let unregister = lexical::extension::register_node_structure(editor);
+            ctx.structures
+                .borrow_mut()
+                .insert(name.to_owned(), unregister);
+            Ok(())
+        } else if let Some(name) = step.get("disposeNodeStructure").and_then(Value::as_str) {
+            let dispose = ctx.structures.borrow_mut().remove(name);
+            match dispose {
+                None => Err(err(format!("no registration {name}"))),
+                Some(dispose) => {
+                    dispose();
+                    Ok(())
+                }
+            }
         } else if let Some(name) = step.get("unmount").and_then(Value::as_str) {
             let unmount = ctx.mounted.borrow_mut().remove(name);
             match unmount {

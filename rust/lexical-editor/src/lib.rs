@@ -111,6 +111,7 @@ mod selection_insert_text;
 mod serialized_export;
 mod set_dom_style;
 mod slot;
+mod structure;
 #[cfg(feature = "text")]
 pub mod text;
 mod updates;
@@ -172,7 +173,7 @@ pub use lexical_selection::{
     get_point_slot_frame, get_selection, is_same_frame, set_selection,
 };
 pub use lexical_utils::{
-    clone_with_properties, copy_node, get_node_by_key, get_root, get_text_direction,
+    clone_with_properties, copy_node, create, get_node_by_key, get_root, get_text_direction,
     is_root_or_shadow_root, reset_random_key, split_node,
 };
 pub use merge_register::merge_register;
@@ -194,6 +195,13 @@ pub use set_dom_style::{StyleObject, get_style_object_from_css};
 pub use slot::{
     get_declared_slots, get_selection_slot_frame, get_slot, get_slot_frame, get_slot_host,
     get_slot_name_within_host, get_slot_names, is_slot_child, is_slot_host, remove_slot, set_slot,
+};
+pub use structure::{
+    DeclaredBy, DeclaredNodeStructure, LiftsFromStructure, MergeAdjacentConfig,
+    MergeAdjacentDeclaration, MergeAdjacentEntry, NodeChildEntry, NodeChildrenConfig, NodeClassRef,
+    NodeConfigLink, StaticNodeConfig, get_declared_node_structure, internal_is_inline_content,
+    internal_is_node_structure_enforced, internal_normalize_node_structure,
+    internal_register_node_structure, is_block_container, iter_static_node_config_chain,
 };
 pub use updates::{on_update, parse_serialized_node};
 

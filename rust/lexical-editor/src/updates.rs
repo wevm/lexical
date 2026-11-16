@@ -193,10 +193,14 @@ fn apply_transforms(
 /// `$transform` every `ElementNode` has: wraps each run of inline children
 /// of a root or shadow root in the block the first one's
 /// `createParentElementNode` makes, for documents parsed from outside.
-/// `NodeStructureExtension`, which takes this over when it enforces
-/// structure, isn't ported.
+/// Where `NodeStructureExtension` enforces declared structure, it wraps
+/// these children itself (a root or shadow root holds blocks), after their
+/// own repairs: an empty inline element it removes is then never wrapped,
+/// which it would be here if this transform ran first.
 fn normalize_shadow_root_children(node: &NodeRef) -> Result<(), LexicalError> {
-    if !is_root_or_shadow_root(&*node.get_latest()) {
+    if !is_root_or_shadow_root(&*node.get_latest())
+        || crate::structure::is_structure_enforced_on_active_editor()
+    {
         return Ok(());
     }
     let mut block: Option<NodeRef> = None;

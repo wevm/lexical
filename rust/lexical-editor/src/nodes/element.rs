@@ -360,6 +360,25 @@ impl NodeRef {
     }
 }
 
+/// `ElementNode.exportJSON(compact)`, which a node that extends
+/// `ElementNode` calls as `super.exportJSON()` and adds its own properties
+/// to: the element's properties in both JSON forms (`exportElementNode`,
+/// `exportCompactElementNode`), with an empty `children` array.
+pub fn export_json(node: &dyn LexicalNode, compact: bool) -> crate::json::Object {
+    if compact {
+        crate::generated_json::export_compact_element_node(node)
+    } else {
+        crate::generated_json::export_element_node(node)
+    }
+}
+
+/// `ElementNode.updateFromJSON(serializedNode)` (`updateElementNode`) on
+/// the element's data, which a node that extends `ElementNode` calls as
+/// `super.updateFromJSON()`.
+pub fn update_from_json(data: &mut ElementData, json: &crate::json::Object) {
+    crate::generated_json::update_element_node(data, json);
+}
+
 /// `ElementNode.splice(start, deleteCount, nodesToInsert)`, which nodes that
 /// override it call as `super.splice`. The root takes only elements
 /// (`RootNode.splice`).

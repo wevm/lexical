@@ -166,9 +166,9 @@ fn with_tag(json: Object, tag: Option<HeadingTagType>) -> Object {
 }
 
 impl LexicalNode for HeadingNode {
-    /// `children: 'inline'` in its `$config()`.
-    fn declares_inline_children(&self) -> bool {
-        true
+    /// The `$config()` of `HeadingNode`: `children: 'inline'`.
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        crate::structure::inline_holder_chain(self.get_type())
     }
 
     /// `HeadingNode.updateDOM(prevNode)`: a heading of another level is
@@ -318,9 +318,9 @@ pub fn is_quote_node(node: &NodeRef) -> bool {
 }
 
 impl LexicalNode for QuoteNode {
-    /// `children: 'inline'` in its `$config()`.
-    fn declares_inline_children(&self) -> bool {
-        true
+    /// The `$config()` of `QuoteNode`: `children: 'inline'`.
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        crate::structure::inline_holder_chain(self.get_type())
     }
 
     fn get_type(&self) -> &'static str {

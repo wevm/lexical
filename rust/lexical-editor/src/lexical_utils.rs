@@ -133,6 +133,12 @@ pub(crate) fn restore_empty_container_paragraph(
     Ok(Some(paragraph))
 }
 
+/// `$create(klass)`: a new node of the class `T`, with a key, in the active
+/// editor state.
+pub fn create<T: LexicalNode + Default>() -> NodeRef {
+    set_node_key(Box::new(T::default()))
+}
+
 /// `$copyNode(node)`: a copy of the node with a new key and all its
 /// properties, but no parent, siblings or children, after
 /// `resetOnCopyNodeFrom`.

@@ -14,16 +14,17 @@ use lexical::extension::{
     BlockIdConfigOverrides, GenerateId, IsIdentifiedBlock, block_id_extension, is_root_child_block,
 };
 use lexical::extension::{
-    CanIndentPredicate, LexicalBuilder, NormalizeInlineElementsConfigOverrides,
-    SelectBlockConfigOverrides, TabIndentationConfigOverrides, normalize_inline_elements_extension,
-    select_block_extension, tab_indentation_extension,
+    CanIndentPredicate, LexicalBuilder, NodeStructureConfigOverrides,
+    NormalizeInlineElementsConfigOverrides, SelectBlockConfigOverrides,
+    TabIndentationConfigOverrides, normalize_inline_elements_extension, select_block_extension,
+    tab_indentation_extension,
 };
 use lexical::extension::{DecoratorTextNode, HorizontalRuleNode};
 use lexical::extension::{
     LexicalEditorWithDispose, NamedSignalsOutput, batch, build_editor_from_extensions,
     clear_editor_extension, computed, decorator_text_extension, editor_state_extension, effect,
     get_extension_dependency_from_editor, get_known_types_and_nodes,
-    get_peer_dependency_from_editor, named_signals, untracked,
+    get_peer_dependency_from_editor, named_signals, node_structure_extension, untracked,
 };
 use lexical::json::{Object, Value};
 use lexical::{
@@ -58,6 +59,7 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "HashtagExtension" => hashtag::hashtag_extension().into(),
         "LinkExtension" => link::link_extension().into(),
         "ListExtension" => list::list_extension().into(),
+        "NodeStructureExtension" => node_structure_extension().into(),
         "NormalizeInlineElementsExtension" => normalize_inline_elements_extension().into(),
         "OverflowExtension" => overflow::overflow_extension().into(),
         "PlainTextExtension" => plain_text::plain_text_extension().into(),
@@ -263,6 +265,13 @@ fn real_configured(
                 "disabled" => o.disabled = Some(bool_of(field, v)?),
                 "tabSize" => o.tab_size = Some(usize_or_null(field, v)?),
                 "escapeWithArrows" => o.escape_with_arrows = Some(bool_of(field, v)?),
+                _ => unknown(field, v)?,
+            }),
+        ),
+        "NodeStructureExtension" => config_extension(
+            &node_structure_extension(),
+            overrides!(NodeStructureConfigOverrides, |o, field, v| match field {
+                "disabled" => o.disabled = Some(bool_of(field, v)?),
                 _ => unknown(field, v)?,
             }),
         ),
@@ -473,6 +482,9 @@ fn set_real_signal(
             ("BlockIdExtension", "disabled") => output(editor, &block_id_extension())?
                 .disabled
                 .set_value(as_bool()?),
+            ("NodeStructureExtension", "disabled") => output(editor, &node_structure_extension())?
+                .disabled
+                .set_value(as_bool()?),
             ("SelectBlockExtension", "disabled") => output(editor, &select_block_extension())?
                 .disabled
                 .set_value(as_bool()?),
@@ -666,7 +678,11 @@ fn test_extension(ctx: &Rc<Ctx>, spec: &Object) -> Result<Rc<TestExtension>, Lex
         extension.nodes.push(match node_type.as_str() {
             "decorator-text" => NodeClass::of::<DecoratorTextNode>(),
             "horizontalrule" => NodeClass::of::<HorizontalRuleNode>(),
-            other => return Err(err(format!("unknown node type {other}"))),
+            "autolink" => NodeClass::of::<link::AutoLinkNode>(),
+            "mark" => NodeClass::of::<lexical::mark::MarkNode>(),
+            "overflow" => NodeClass::of::<overflow::OverflowNode>(),
+            other => super::structure::test_node_class(other)
+                .ok_or_else(|| err(format!("unknown node type {other}")))?,
         });
     }
     match spec.get("initialEditorState") {

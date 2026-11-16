@@ -223,6 +223,11 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/node-structure",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "scripts/block-id",
             variant: None,
             check: crate::scripts::check,

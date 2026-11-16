@@ -89,9 +89,17 @@ impl NodeRef {
 }
 
 impl LexicalNode for MarkNode {
-    /// `children: 'inline'` in its `$config()`.
-    fn declares_inline_children(&self) -> bool {
-        true
+    /// The `$config()` of `MarkNode`: `inline: true`, `children: 'inline'`.
+    fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
+        use crate::structure::{NodeChildrenConfig, NodeConfigLink, StaticNodeConfig};
+        vec![NodeConfigLink::new(
+            "mark",
+            StaticNodeConfig {
+                inline: Some(true),
+                children: Some(NodeChildrenConfig::Inline),
+                ..StaticNodeConfig::default()
+            },
+        )]
     }
 
     fn get_type(&self) -> &'static str {

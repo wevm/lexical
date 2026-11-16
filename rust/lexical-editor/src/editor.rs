@@ -13,6 +13,10 @@ use crate::nodes::{
 };
 use crate::ordered::{OrderedMap, OrderedSet};
 use crate::selection_deletion::SelectionMovement;
+use crate::structure::{
+    DeclaredNodeStructure, NodeStructureRegistration, get_declared_node_structure,
+    validate_node_structure,
+};
 use crate::updates::{
     begin_update, commit_pending_updates, parse_editor_state, read_editor_state,
     trigger_command_listeners, update_editor_sync,
@@ -45,6 +49,26 @@ pub struct NodeClass {
     /// (`klass.prototype instanceof TextNode`).
     #[cfg_attr(not(feature = "extension"), allow(dead_code))]
     pub(crate) is_text: fn() -> bool,
+    /// Whether the class is `ElementNode` or `DecoratorNode`, or a subclass
+    /// of either, whose nodes `INTERNAL_registerNodeStructure` marks dirty.
+    pub(crate) is_element_or_decorator: fn() -> bool,
+    /// `getDeclaredNodeStructure(klass)`.
+    node_structure: fn() -> DeclaredNodeStructure,
+    /// `validateNodeStructure(klass)`, which panics on a bad declaration.
+    validate_node_structure: fn(),
+}
+
+fn is_element_or_decorator_of<T: LexicalNode + Default>() -> bool {
+    let node = T::default();
+    node.element().is_some() || node.is_decorator()
+}
+
+fn node_structure_of<T: LexicalNode + Default>() -> DeclaredNodeStructure {
+    get_declared_node_structure(&T::default())
+}
+
+fn validate_node_structure_of<T: LexicalNode + Default>() {
+    validate_node_structure(&T::default());
 }
 
 fn declared_slots_of<T: LexicalNode + Default>() -> &'static [&'static str] {
@@ -83,6 +107,9 @@ impl NodeClass {
             is_inline_element: is_inline_element_of::<T>,
             declared_slots: declared_slots_of::<T>,
             is_text: is_text_of::<T>,
+            is_element_or_decorator: is_element_or_decorator_of::<T>,
+            node_structure: node_structure_of::<T>,
+            validate_node_structure: validate_node_structure_of::<T>,
         }
     }
 
@@ -99,11 +126,21 @@ impl NodeClass {
             is_inline_element: || false,
             declared_slots: || &[],
             is_text: || false,
+            is_element_or_decorator: || false,
+            node_structure: DeclaredNodeStructure::default,
+            validate_node_structure: || {},
         }
     }
 
     pub fn node_type(&self) -> &'static str {
         self.node_type
+    }
+
+    /// `getDeclaredNodeStructure(klass)` (`@experimental node-structure`):
+    /// the structure the class declares. A class made with
+    /// [`with_import_json`](Self::with_import_json) declares none.
+    pub fn get_declared_node_structure(&self) -> DeclaredNodeStructure {
+        (self.node_structure)()
     }
 }
 
@@ -387,7 +424,6 @@ pub(crate) struct EditorInner {
     nodes: HashMap<&'static str, NodeClass>,
     /// The types of `nodes` in the order JS's `_nodes` map holds them: the
     /// core nodes, then `args.nodes`, each type where it first came.
-    #[cfg_attr(not(feature = "extension"), allow(dead_code))]
     node_order: Vec<&'static str>,
     /// Each registered node's `sharedNodeState`.
     shared_node_states: HashMap<&'static str, Rc<SharedNodeState>>,
@@ -415,6 +451,9 @@ pub(crate) struct EditorInner {
     pub(crate) slots_used: Cell<bool>,
     /// `_rootElement`.
     root_element: RefCell<Option<RootElementRef>>,
+    /// `INTERNAL_registerNodeStructure`'s registration (JS keeps it in a
+    /// module-level `WeakMap` by editor).
+    pub(crate) node_structure: RefCell<Option<Rc<NodeStructureRegistration>>>,
     /// `_listeners.mutation`: each listener with its class, in the order
     /// they were registered.
     mutation_listeners: RefCell<Vec<(u64, MutationListener, &'static str)>>,
@@ -441,13 +480,22 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         args.namespace
     };
     let core = [
-        NodeClass::with_import_json("root", RootNode::import_json),
+        // The root is an `ElementNode`.
+        NodeClass {
+            is_element_or_decorator: || true,
+            ..NodeClass::with_import_json("root", RootNode::import_json)
+        },
         NodeClass::of::<TextNode>(),
         NodeClass::of::<LineBreakNode>(),
         NodeClass::of::<TabNode>(),
         NodeClass::of::<ParagraphNode>(),
     ];
     let classes: Vec<NodeClass> = core.into_iter().chain(args.nodes).collect();
+    // `validateNodeStructure(klass)`, which JS runs in development, as the
+    // vectors were recorded.
+    for class in &classes {
+        (class.validate_node_structure)();
+    }
     let mut node_order: Vec<&'static str> = Vec::new();
     for class in &classes {
         if !node_order.contains(&class.node_type) {
@@ -487,6 +535,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         editable: Cell::new(true),
         slots_used: Cell::new(false),
         root_element: RefCell::new(None),
+        node_structure: RefCell::new(None),
         mutation_listeners: RefCell::new(Vec::new()),
         editable_listeners: RefCell::new(Vec::new()),
         root_listeners: RefCell::new(Vec::new()),
@@ -710,8 +759,13 @@ impl Editor {
         &self.0.nodes
     }
 
+    /// `editor._nodes.get(type)`: the class the editor registers under the
+    /// type.
+    pub fn get_registered_node(&self, node_type: &str) -> Option<NodeClass> {
+        self.0.nodes.get(node_type).copied()
+    }
+
     /// The registered node classes in the order JS's `_nodes` holds them.
-    #[cfg(feature = "extension")]
     pub(crate) fn registered_nodes_in_order(&self) -> Vec<NodeClass> {
         self.0
             .node_order
@@ -1136,7 +1190,7 @@ fn trigger_root_listener(
 /// `markNodesWithTypesAsDirty(editor, types)`: an update that marks every
 /// node of those types in the committed state dirty, in the order JS's
 /// node map holds them.
-fn mark_nodes_with_types_as_dirty(editor: &Editor, types: &[&str]) {
+pub(crate) fn mark_nodes_with_types_as_dirty(editor: &Editor, types: &[&str]) {
     let editor_state = editor.get_editor_state();
     let keys: Vec<String> = {
         let node_map = editor_state.0.node_map.borrow();

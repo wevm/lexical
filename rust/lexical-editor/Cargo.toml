@@ -129,6 +129,9 @@ menu = []
 # menu at a pasted link. It needs @lexical/link, the menu and @lexical/utils,
 # as upstream's imports do.
 auto-embed = ["link", "menu", "utils"]
+# @lexical/markdown: import, export and the transformers, with a JS RegExp
+# engine of its own (no `regex`).
+markdown = ["rich-text", "list", "link", "code"]
 
 [dependencies]
 # Without `perf-literal`, which would add aho-corasick and memchr.

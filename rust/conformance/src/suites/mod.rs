@@ -4,6 +4,7 @@
 mod devtools;
 mod entities;
 mod file;
+mod markdown;
 mod meta;
 mod property;
 mod serialization;
@@ -263,8 +264,13 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "markdown/import-export",
+            variant: None,
+            check: markdown::check,
+        },
+        Suite {
             file: "property/documents",
-            variant: Some("JSON and text"),
+            variant: Some("JSON, text and Markdown"),
             check: property::check_document,
         },
         Suite {

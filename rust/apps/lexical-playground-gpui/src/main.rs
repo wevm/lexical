@@ -1,4 +1,4 @@
-//! The Lexical playground in GPUI: a document in `lexical-editor`, drawn
+//! The Lexical playground in GPUI: a document in `lexical-ui`, drawn
 //! and edited in a native window. `editor.rs` is the editor; `app.rs`, the
 //! window around it.
 

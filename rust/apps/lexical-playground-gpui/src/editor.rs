@@ -3,7 +3,7 @@
 //! text input (`EntityInputHandler`), keys (actions) and pointer.
 //!
 //! Lexical owns the document and the selection, as in a browser: every
-//! edit runs in `lexical-editor`, and the element is drawn again from its
+//! edit runs in `lexical-ui`, and the element is drawn again from its
 //! state, as Lexical's reconciler draws the DOM. Moving the caret and
 //! laying out text are the element's, as they are the browser's.
 

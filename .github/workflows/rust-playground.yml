@@ -1,7 +1,7 @@
 name: Rust playgrounds
 
 # rust/apps: the desktop playgrounds on the Rust port. Each is a Cargo
-# workspace of its own (Rune needs a newer Rust than lexical-editor's 1.88).
+# workspace of its own (Rune needs a newer Rust than lexical-ui's 1.88).
 # Path-filtered because macOS runners are slow to start. Linux checks that
 # the Rune app builds, passes its tests, and renders headless; macOS builds
 # and renders it as it runs on tmm's Mac. The GPUI app is macOS only here: it

@@ -1398,11 +1398,11 @@
   },
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scheduleMicroTask(): native": {
     "reason": "deviation",
-    "note": "scheduleMicroTask is JS's queueMicrotask with a Promise fallback; Rust has no microtask queue, and commits an update at the next read or discrete update instead (rust/lexical-editor/src/updates.rs)."
+    "note": "scheduleMicroTask is JS's queueMicrotask with a Promise fallback; Rust has no microtask queue, and commits an update at the next read or discrete update instead (rust/lexical-ui/src/updates.rs)."
   },
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > scheduleMicroTask(): promise": {
     "reason": "deviation",
-    "note": "scheduleMicroTask is JS's queueMicrotask with a Promise fallback; Rust has no microtask queue, and commits an update at the next read or discrete update instead (rust/lexical-editor/src/updates.rs)."
+    "note": "scheduleMicroTask is JS's queueMicrotask with a Promise fallback; Rust has no microtask queue, and commits an update at the next read or discrete update instead (rust/lexical-ui/src/updates.rs)."
   },
   "lexical/src/__tests__/unit/LexicalUtils.test.ts::LexicalUtils tests > emptyFunction()": {
     "reason": "deviation",

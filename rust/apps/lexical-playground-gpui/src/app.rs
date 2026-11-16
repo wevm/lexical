@@ -322,7 +322,7 @@ impl PlaygroundApp {
                     .text_sm()
                     .text_color(cx.theme().muted_foreground)
                     .child(
-                        "The editor here is lexical-editor. Replay runs the conformance vectors \
+                        "The editor here is lexical-ui. Replay runs the conformance vectors \
                      that JS Lexical recorded; Export writes this session as a vector that JS \
                      replays step by step, in packages/lexical-conformance:",
                     ),
@@ -385,7 +385,7 @@ impl PlaygroundApp {
             (None, Some(status)) => (status.clone(), cx.theme().muted_foreground),
             (None, None) => (
                 format!(
-                    "lexical-editor · {} steps · {} blocks",
+                    "lexical-ui · {} steps · {} blocks",
                     playground.step_count(),
                     playground.document().blocks.len()
                 ),

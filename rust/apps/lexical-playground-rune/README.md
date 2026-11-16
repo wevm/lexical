@@ -1,7 +1,7 @@
 # Lexical playground on Rune
 
 The Lexical playground as a native desktop app: a document in
-[`lexical-editor`](../../lexical-editor), the Rust port of Lexical, drawn and
+[`lexical-ui`](../../lexical-ui), the Rust port of Lexical, drawn and
 edited with the [Rune](https://github.com/anomalyco/rune) UI framework.
 macOS first; it also builds and renders on Linux.
 

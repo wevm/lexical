@@ -270,7 +270,7 @@ fn mono(s: &str, k: &Kit) -> El {
 }
 
 fn parity(s: &State, k: &Kit) -> El {
-    let explain = "The editor here is lexical-editor. Replay runs the conformance \
+    let explain = "The editor here is lexical-ui. Replay runs the conformance \
         vectors that JS Lexical recorded; Export writes this session as a vector \
         that JS replays step by step, in packages/lexical-conformance:\n\n\
         LEXICAL_REPLAY=<file> pnpm exec vitest run src/replay.test.ts";
@@ -341,7 +341,7 @@ fn status_bar(s: &State, k: &Kit) -> El {
         (Some(status), None) => (status.clone(), k.c.text_muted),
         (None, None) => (
             format!(
-                "lexical-editor · {} steps · {} blocks",
+                "lexical-ui · {} steps · {} blocks",
                 s.playground.step_count(),
                 s.playground.document().blocks.len()
             ),

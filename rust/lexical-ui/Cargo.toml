@@ -1,5 +1,5 @@
 [package]
-name = "lexical-editor"
+name = "lexical-ui"
 # The released version: rust/scripts/version-packages.sh bumps it from the
 # changesets in rust/.changeset (its README). Don't edit it by hand.
 version = "0.0.0"

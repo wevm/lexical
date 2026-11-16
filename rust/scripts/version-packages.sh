@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Consumes the pending changesets in rust/.changeset: bumps lexical-editor's
-# version in rust/lexical-editor/Cargo.toml and in the lockfiles that list
+# Consumes the pending changesets in rust/.changeset: bumps lexical-ui's
+# version in rust/lexical-ui/Cargo.toml and in the lockfiles that list
 # it, and adds the new version's section to rust/CHANGELOG.md, naming the
-# upstream Lexical version in lexical_editor::UPSTREAM_VERSION.
+# upstream Lexical version in lexical_ui::UPSTREAM_VERSION.
 #
 # The Changesets CLI always works in the monorepo root's .changeset/, which
 # is upstream Lexical's, so `changeset version` runs in a temporary root
@@ -10,7 +10,7 @@
 set -euo pipefail
 
 rust="$(cd "$(dirname "$0")/.." && pwd)"
-crate=lexical-editor
+crate=lexical-ui
 manifest="$rust/$crate/Cargo.toml"
 shopt -s nullglob
 sets=()
@@ -46,7 +46,7 @@ fi
 section="$tmp/section.md"
 {
   printf '## %s\n\n' "$new"
-  printf 'Conforms to upstream Lexical **%s** (`lexical_editor::UPSTREAM_VERSION`).\n' "$upstream"
+  printf 'Conforms to upstream Lexical **%s** (`lexical_ui::UPSTREAM_VERSION`).\n' "$upstream"
   awk 'NR > 1 && !/^## / {print}' "$tmp/CHANGELOG.md"
 } | cat -s >"$section"
 

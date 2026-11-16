@@ -116,7 +116,7 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
         }
     };
 
-    const FIRST: &str = "Hello from Rust. This document lives in a lexical-editor editor.";
+    const FIRST: &str = "Hello from Rust. This document lives in a lexical-ui editor.";
     step!("End of the line", key(Box::new(LineEnd)), expect(0, FIRST));
     step!("Return", key(Box::new(InsertParagraph)), expect(1, ""));
     step!("⌘B", key(Box::new(Bold)), bold(true));

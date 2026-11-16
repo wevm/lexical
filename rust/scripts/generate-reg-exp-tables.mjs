@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-// Generates rust/lexical-editor/src/markdown/reg_exp_tables.rs, the Unicode
+// Generates rust/lexical-ui/src/markdown/reg_exp_tables.rs, the Unicode
 // data of the markdown feature's JS regular expressions (`RegExp`), by
 // asking the JS engine that records the vectors:
 //
@@ -19,7 +19,7 @@
 //   node rust/scripts/generate-reg-exp-tables.mjs
 import {writeFileSync} from 'node:fs';
 
-const OUT = 'rust/lexical-editor/src/markdown/reg_exp_tables.rs';
+const OUT = 'rust/lexical-ui/src/markdown/reg_exp_tables.rs';
 
 /** The ranges of code points `re` matches, as `[first, last]` pairs. */
 function ranges(re) {

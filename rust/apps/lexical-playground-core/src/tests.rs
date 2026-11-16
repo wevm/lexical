@@ -13,7 +13,7 @@ fn reads_the_example_as_blocks_of_runs() {
     assert_eq!(first.kind, "paragraph");
     assert_eq!(
         first.text,
-        "Hello from Rust. This document lives in a lexical-editor editor."
+        "Hello from Rust. This document lives in a lexical-ui editor."
     );
     assert!(first.runs[1].has_format("bold"));
     assert_eq!(first.runs[1].start, "Hello from ".len());
@@ -459,7 +459,7 @@ fn links_toggle_on_a_selection_and_off_at_a_caret() {
     assert!(p.document().blocks[0].runs.iter().all(|r| r.link.is_none()));
     assert_eq!(
         p.document().blocks[0].text,
-        "Hello from Rust. This document lives in a lexical-editor editor."
+        "Hello from Rust. This document lives in a lexical-ui editor."
     );
 }
 

@@ -47,6 +47,7 @@ jobs:
       # Reruns the upstream unit tests of the in-scope packages: fails when
       # swift/parity/upstream-tests.json is stale, when a port or skip names
       # an unknown test, or when an enforced package has unported tests.
+      # Checks both ledgers, swift/parity and rust/parity.
       - name: Check the parity ledger
         run: pnpm --filter lexical-conformance run check-ledger --fresh
 

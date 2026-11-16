@@ -12,13 +12,36 @@ import {tmpdir} from 'node:os';
 import {dirname, join, relative} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
+// The parity ledgers of the Swift port (swift/parity) and the Rust port
+// (rust/parity). Both share one list of upstream unit tests,
+// swift/parity/upstream-tests.json, which this script generates; each port
+// has its own packages.json (which packages are enforced) and skips.json.
 const root = fileURLToPath(new URL('../../../', import.meta.url));
-const parity = join(root, 'swift/parity');
-const upstreamPath = join(parity, 'upstream-tests.json');
+const upstreamPath = join(root, 'swift/parity/upstream-tests.json');
 const args = process.argv.slice(2);
 
 const readJSON = path => JSON.parse(readFileSync(path, 'utf8'));
-const packages = readJSON(join(parity, 'packages.json'));
+
+const ports = [
+  {
+    collectPorted: collectSwiftPorted,
+    name: 'Swift',
+    parity: 'swift/parity',
+  },
+  {
+    collectPorted: collectRustPorted,
+    name: 'Rust',
+    parity: 'rust/parity',
+  },
+].map(port => ({
+  ...port,
+  packages: readJSON(join(root, port.parity, 'packages.json')),
+}));
+
+// Swift's packages first, in its order, then any only Rust tracks.
+const trackedPackages = [
+  ...new Set(ports.flatMap(port => Object.keys(port.packages))),
+];
 
 function collectUpstream() {
   const out = join(mkdtempSync(join(tmpdir(), 'ledger-')), 'run.json');
@@ -33,7 +56,7 @@ function collectUpstream() {
         'unit',
         '--reporter=json',
         `--outputFile=${out}`,
-        ...Object.keys(packages).map(name => `packages/${name}/`),
+        ...trackedPackages.map(name => `packages/${name}/`),
       ],
       {cwd: root, stdio: ['ignore', 'ignore', 'inherit']},
     );
@@ -43,9 +66,7 @@ function collectUpstream() {
       throw error;
     }
   }
-  const byPackage = Object.fromEntries(
-    Object.keys(packages).map(name => [name, []]),
-  );
+  const byPackage = Object.fromEntries(trackedPackages.map(name => [name, []]));
   const report = readJSON(out);
   const titlesOf = file =>
     file.assertionResults.map(test =>
@@ -92,10 +113,223 @@ function collectUpstream() {
   return `{"lexicalVersion":${JSON.stringify(lexicalVersion)},"packages":{\n${lines.join(',\n')}\n}}\n`;
 }
 
-function swiftFiles(dir) {
-  return readdirSync(dir, {recursive: true, withFileTypes: true})
-    .filter(entry => entry.isFile() && entry.name.endsWith('.swift'))
-    .map(entry => join(entry.parentPath, entry.name));
+// The files under `dir` with `extension`, leaving out build directories
+// (Cargo's `target`, SwiftPM's `.build`).
+function sourceFiles(dir, extension) {
+  const files = [];
+  for (const entry of readdirSync(dir, {withFileTypes: true})) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory() && !['target', '.build'].includes(entry.name)) {
+      files.push(...sourceFiles(path, extension));
+    } else if (entry.isFile() && entry.name.endsWith(extension)) {
+      files.push(path);
+    }
+  }
+  return files.sort();
+}
+
+// `@Test(.upstream("<id>"))`, one string literal per id.
+function collectSwiftPorted() {
+  const marks = [];
+  for (const file of sourceFiles(join(root, 'swift/Tests'), '.swift')) {
+    for (const [, literal] of readFileSync(file, 'utf8').matchAll(
+      /\.upstream\(\s*("(?:[^"\\]|\\.)*")\s*\)/g,
+    )) {
+      marks.push({at: relative(root, file), id: JSON.parse(literal)});
+    }
+  }
+  return {errors: [], marks};
+}
+
+// A `// upstream: <id>` line directly above a `#[test]` (other attributes,
+// such as `#[cfg(...)]`, may come between), one id per line. An id a line
+// comment can't hold as written (leading or trailing whitespace, control
+// characters) is written as a JSON string literal.
+function collectRustPorted() {
+  const marks = [];
+  const errors = [];
+  for (const file of sourceFiles(join(root, 'rust'), '.rs')) {
+    const lines = readFileSync(file, 'utf8').split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const match = /^\s*\/\/ upstream: (.*)$/.exec(lines[i]);
+      if (!match) {
+        continue;
+      }
+      const at = `${relative(root, file)}:${i + 1}`;
+      let id = match[1];
+      if (id.startsWith('"')) {
+        try {
+          id = JSON.parse(id);
+        } catch {
+          errors.push(`${at}: ${id} is not a JSON string literal`);
+          continue;
+        }
+      }
+      marks.push({at, id});
+      let next = i + 1;
+      while (
+        next < lines.length &&
+        (/^\s*\/\/ upstream: /.test(lines[next]) ||
+          (/^\s*#\[/.test(lines[next]) && lines[next].trim() !== '#[test]'))
+      ) {
+        next++;
+      }
+      if (next >= lines.length || lines[next].trim() !== '#[test]') {
+        errors.push(`${at}: \`// upstream:\` must be directly above a #[test]`);
+      }
+    }
+  }
+  return {errors, marks};
+}
+
+// The keys of a JSON object, in order and with repeats (JSON.parse keeps
+// only the last of a repeated key).
+function objectKeys(text) {
+  const keys = [];
+  let depth = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      let end = i + 1;
+      while (text[end] !== '"') {
+        end += text[end] === '\\' ? 2 : 1;
+      }
+      if (depth === 1 && /^\s*:/.test(text.slice(end + 1, end + 16))) {
+        keys.push(JSON.parse(text.slice(i, end + 1)));
+      }
+      i = end;
+    } else if (c === '{' || c === '[') {
+      depth++;
+    } else if (c === '}' || c === ']') {
+      depth--;
+    }
+  }
+  return keys;
+}
+
+function duplicateKeys(path) {
+  const seen = new Set();
+  const repeated = new Set();
+  for (const key of objectKeys(readFileSync(path, 'utf8'))) {
+    (seen.has(key) ? repeated : seen).add(key);
+  }
+  return [...repeated];
+}
+
+const reasons = [
+  'dom-only',
+  'react-only',
+  'out-of-scope-package',
+  'covered-by-vector',
+  'deviation',
+];
+
+function checkPort(port, upstream, known) {
+  const {name, parity, packages} = port;
+  const errors = [];
+  for (const file of ['packages.json', 'skips.json']) {
+    for (const key of duplicateKeys(join(root, parity, file))) {
+      errors.push(
+        `${parity}/${file}: ${JSON.stringify(key)} is listed more than once`,
+      );
+    }
+  }
+  for (const [pkg, status] of Object.entries(packages)) {
+    if (!(pkg in upstream.packages)) {
+      errors.push(
+        `${parity}/packages.json: ${pkg} is not in swift/parity/upstream-tests.json; run \`pnpm run ledger\` in packages/lexical-conformance`,
+      );
+    }
+    if (status !== 'enforced' && status !== 'pending') {
+      errors.push(
+        `${parity}/packages.json: ${pkg} has unknown status ${JSON.stringify(status)} (enforced or pending)`,
+      );
+    }
+  }
+  const collected = port.collectPorted();
+  errors.push(...collected.errors);
+  const ported = new Map();
+  for (const {at, id} of collected.marks) {
+    if (!known.has(id)) {
+      errors.push(`${at}: unknown upstream test ${JSON.stringify(id)}`);
+    }
+    // Swift's tests may share an id; a Rust id is marked once.
+    if (name === 'Rust' && ported.has(id)) {
+      errors.push(
+        `${at}: ${JSON.stringify(id)} is already marked at ${ported.get(id)}`,
+      );
+    }
+    if (!ported.has(id)) {
+      ported.set(id, at);
+    }
+  }
+  const skips = readJSON(join(root, parity, 'skips.json'));
+  for (const [id, skip] of Object.entries(skips)) {
+    const where = `${parity}/skips.json: ${JSON.stringify(id)}`;
+    if (!known.has(id)) {
+      errors.push(
+        `${parity}/skips.json: unknown upstream test ${JSON.stringify(id)}`,
+      );
+    }
+    if (!reasons.includes(skip.reason)) {
+      errors.push(`${where} has unknown reason ${JSON.stringify(skip.reason)}`);
+    }
+    if (typeof skip.note !== 'string' || skip.note === '') {
+      errors.push(`${where} needs a note saying why`);
+    }
+    if (ported.has(id)) {
+      errors.push(`${where} is also ported, at ${ported.get(id)}`);
+    }
+    // An out-of-scope-package skip names the packages it needs; once they
+    // are all enforced, it must be ported with them.
+    if (skip.reason === 'out-of-scope-package') {
+      if (!Array.isArray(skip.packages) || skip.packages.length === 0) {
+        errors.push(`${where} must list the packages it needs`);
+      } else if (skip.packages.every(pkg => packages[pkg] === 'enforced')) {
+        errors.push(
+          `${where} needs only enforced packages (${skip.packages.join(', ')}); port it`,
+        );
+      }
+    }
+  }
+  const rows = [];
+  const total = {done: 0, ids: 0, missing: 0, skipped: 0};
+  const byReason = new Map(reasons.map(reason => [reason, 0]));
+  for (const [pkg, status] of Object.entries(packages)) {
+    const ids = upstream.packages[pkg] ?? [];
+    const done = ids.filter(id => ported.has(id)).length;
+    const skipped = ids.filter(id => id in skips);
+    const missing = ids.filter(id => !ported.has(id) && !(id in skips));
+    if (status === 'enforced') {
+      errors.push(
+        ...missing.map(
+          id =>
+            `${name}: ${pkg} is enforced but ${JSON.stringify(id)} is neither ported nor skipped`,
+        ),
+      );
+    }
+    for (const id of skipped) {
+      byReason.set(skips[id].reason, (byReason.get(skips[id].reason) ?? 0) + 1);
+    }
+    total.ids += ids.length;
+    total.done += done;
+    total.skipped += skipped.length;
+    total.missing += missing.length;
+    rows.push(
+      `| ${pkg} | ${status} | ${ids.length} | ${done} | ${skipped.length} | ${missing.length} |`,
+    );
+  }
+  rows.push(
+    `| **Total** | | ${total.ids} | ${total.done} | ${total.skipped} | ${total.missing} |`,
+  );
+  const reasonText = [...byReason]
+    .filter(([, count]) => count > 0)
+    .map(([reason, count]) => `${reason} ${count}`)
+    .join(', ');
+  process.stdout.write(
+    `\n${name} (${parity})\n\n| Package | Status | Upstream tests | Ported | Skipped | Remaining |\n|---|---|---|---|---|---|\n${rows.join('\n')}\n\nSkipped by reason: ${reasonText || 'none'}\n`,
+  );
+  return errors;
 }
 
 function check() {
@@ -112,77 +346,8 @@ function check() {
       known.set(id, name);
     }
   }
-  const errors = [];
-  const ported = new Set();
-  for (const file of swiftFiles(join(root, 'swift/Tests'))) {
-    for (const [, literal] of readFileSync(file, 'utf8').matchAll(
-      /\.upstream\(\s*("(?:[^"\\]|\\.)*")\s*\)/g,
-    )) {
-      const id = JSON.parse(literal);
-      if (!known.has(id)) {
-        errors.push(
-          `${relative(root, file)}: unknown upstream test ${literal}`,
-        );
-      }
-      ported.add(id);
-    }
-  }
-  const skips = readJSON(join(parity, 'skips.json'));
-  const reasons = new Set([
-    'dom-only',
-    'react-only',
-    'out-of-scope-package',
-    'covered-by-vector',
-    'deviation',
-  ]);
-  for (const [id, skip] of Object.entries(skips)) {
-    if (!known.has(id)) {
-      errors.push(`skips.json: unknown upstream test ${JSON.stringify(id)}`);
-    }
-    if (!reasons.has(skip.reason)) {
-      errors.push(
-        `skips.json: ${JSON.stringify(id)} has unknown reason ${JSON.stringify(skip.reason)}`,
-      );
-    }
-    if (ported.has(id)) {
-      errors.push(`skips.json: ${JSON.stringify(id)} is also ported`);
-    }
-    // An out-of-scope-package skip names the packages it needs; once they
-    // are all enforced, it must be ported with them.
-    if (skip.reason === 'out-of-scope-package') {
-      if (!Array.isArray(skip.packages) || skip.packages.length === 0) {
-        errors.push(
-          `skips.json: ${JSON.stringify(id)} must list the packages it needs`,
-        );
-      } else if (skip.packages.every(name => packages[name] === 'enforced')) {
-        errors.push(
-          `skips.json: ${JSON.stringify(id)} needs only enforced packages (${skip.packages.join(', ')}); port it`,
-        );
-      }
-    }
-  }
-  const rows = [];
-  for (const [name, ids] of Object.entries(upstream.packages)) {
-    const done = ids.filter(id => ported.has(id)).length;
-    const skipped = ids.filter(id => id in skips).length;
-    const missing = ids.filter(id => !ported.has(id) && !(id in skips));
-    if (packages[name] === 'enforced') {
-      errors.push(
-        ...missing.map(
-          id =>
-            `${name} is enforced but ${JSON.stringify(id)} is neither ported nor skipped`,
-        ),
-      );
-    }
-    rows.push(
-      `| ${name} | ${packages[name]} | ${ids.length} | ${done} | ${skipped} | ${missing.length} |`,
-    );
-  }
-  process.stdout.write(`Upstream lexical ${upstream.lexicalVersion}\n\n`);
-  process.stdout.write(
-    '| Package | Status | Upstream tests | Ported | Skipped | Remaining |\n|---|---|---|---|---|---|\n',
-  );
-  process.stdout.write(rows.join('\n') + '\n');
+  process.stdout.write(`Upstream lexical ${upstream.lexicalVersion}\n`);
+  const errors = ports.flatMap(port => checkPort(port, upstream, known));
   if (errors.length) {
     fail(errors.join('\n'));
   }
@@ -193,8 +358,7 @@ function fail(message) {
   process.exit(1);
 }
 
-if (args.includes('--check')) {
-  check();
-} else {
+if (!args.includes('--check')) {
   writeFileSync(upstreamPath, collectUpstream());
 }
+check();

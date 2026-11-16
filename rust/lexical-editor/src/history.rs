@@ -807,6 +807,7 @@ mod tests {
 
     /// Upstream's "undo and redo apply to the editor that changed" (#8623):
     /// two editors sharing one history state.
+    // upstream: lexical-history/src/__tests__/unit/LexicalHistory.test.tsx::shared HistoryState across editors > undo and redo apply to the editor that changed
     #[test]
     fn shared_history_undoes_the_editor_that_changed() {
         let parent = create_editor(CreateEditorArgs::default());
@@ -856,6 +857,8 @@ mod tests {
 
     /// Upstream's `maxDepth` tests: `n` separate events leave `n - 1`
     /// entries, and a cap keeps the newest.
+    // upstream: lexical-history/src/__tests__/unit/LexicalHistory.test.tsx::HistoryExtension maxDepth > defaults to null (unbounded) and matches the historical behavior
+    // upstream: lexical-history/src/__tests__/unit/LexicalHistory.test.tsx::HistoryExtension maxDepth > caps the undoStack to maxDepth via FIFO eviction
     #[test]
     fn max_depth_evicts_the_oldest_entries() {
         for (max_depth, expected) in [(None, 24), (Some(5), 5)] {

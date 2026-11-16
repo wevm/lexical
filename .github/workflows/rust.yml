@@ -42,6 +42,17 @@ jobs:
       # which files aren't replayed yet.
       - name: Conformance
         run: cargo run --locked --release -p lexical-conformance -- --summary "$GITHUB_STEP_SUMMARY"
+      # The parity ledger (rust/parity and the `// upstream:` markers, with
+      # swift/parity): fails when a marker or a skip names an unknown test,
+      # or an enforced package has a test neither ported nor skipped.
+      # swift.yml runs it too, with `--fresh`, which reruns the upstream
+      # tests to check that swift/parity/upstream-tests.json is current.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - name: Parity ledger
+        run: node ../packages/lexical-conformance/scripts/ledger.mjs --check
       # Broken intra-doc links and other rustdoc warnings fail.
       - name: Docs
         env:

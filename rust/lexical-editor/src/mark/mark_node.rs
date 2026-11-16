@@ -260,6 +260,7 @@ mod tests {
     /// `createDOM`: the theme's `mark` class names, and its `markOverlap`
     /// ones only with more than one id (as Swift's port; the HTML export
     /// leaves marks out, so `html/export-mark` can't see them).
+    // upstream: lexical-mark/__tests__/unit/LexicalMarkNode.test.ts::MarkNode overlap theme class > createDOM adds the overlap class for more than one id
     #[test]
     fn create_dom_adds_the_theme_classes() {
         let mut theme = crate::json::Object::new();

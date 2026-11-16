@@ -39,8 +39,9 @@ import {
   RenderContextExport,
   RenderContextRoot,
 } from '@lexical/html';
-import {LinkExtension} from '@lexical/link';
+import {$createLinkNode, LinkExtension, LinkNode} from '@lexical/link';
 import {CheckListExtension, WordListImportExtension} from '@lexical/list';
+import {$createMarkNode, MarkNode} from '@lexical/mark';
 import {RichTextExtension, ShadowRootQuoteRule} from '@lexical/rich-text';
 import {JSDOM} from 'jsdom';
 import {
@@ -1139,6 +1140,84 @@ test('html/clipboard', {timeout: 120_000}, () => {
     'html/clipboard',
     'html-clipboard',
     "@lexical/clipboard's HTML paths over the property/documents documents, at seeded selections given as child-index paths: copies ($getClipboardDataFromSelection with $getHtmlContent in jsdom, and GetClipboardDataExtension with custom handlers), and pastes ($insertDataTransferForRichText of each document's copied HTML and text into the next document, and of curated payloads) with the default importers, ClipboardDOMImportExtension over the package extensions, a ClipboardImportExtension priority and a text/html handler that calls $next with other HTML.",
+    cases,
+  );
+});
+
+const MARK_IDS = ['a', 'b', 'c d', 'é'];
+const MARK_THEME: EditorThemeClasses = {
+  mark: 'mark-a mark-b',
+  markOverlap: 'overlap',
+};
+
+/** Paragraphs of text, marks with zero to three ids, nested marks and links. */
+function $randomMarkDocument(random: () => number): void {
+  const int = (n: number) => Math.floor(random() * n);
+  const pick = <T>(items: readonly T[]): T => items[int(items.length)];
+  const inline = (depth: number): LexicalNode => {
+    const kind = int(depth > 1 ? 3 : 6);
+    if (kind === 0) {
+      return $createTextNode(pick(TEXTS) || 'x').setFormat(
+        pick([0, 0, ...FORMATS]),
+      );
+    } else if (kind === 1) {
+      return $createLineBreakNode();
+    } else if (kind === 2) {
+      return $createTabNode();
+    }
+    const ids = MARK_IDS.filter(() => random() < 0.4);
+    const parent =
+      kind === 5
+        ? $createLinkNode('https://x.test/' + depth)
+        : $createMarkNode(ids);
+    if (random() < 0.2) {
+      parent.setIndent(1 + int(2)).setDirection(pick(['ltr', 'rtl'] as const));
+    }
+    const count = 1 + int(3);
+    for (let c = 0; c < count; c++) {
+      parent.append(inline(depth + 1));
+    }
+    return parent;
+  };
+  const paragraphs = 1 + int(3);
+  for (let p = 0; p < paragraphs; p++) {
+    const paragraph = $createParagraphNode();
+    const count = 1 + int(4);
+    for (let c = 0; c < count; c++) {
+      paragraph.append(inline(0));
+    }
+    $getRoot().append(paragraph);
+  }
+}
+
+test('html/export-mark', () => {
+  const cases: Case[] = [];
+  for (let seed = 1; seed <= 30; seed++) {
+    for (const theme of [undefined, MARK_THEME]) {
+      const random = prng(seed);
+      const editor = createHeadlessEditor({
+        nodes: [MarkNode, LinkNode],
+        onError: e => {
+          throw e;
+        },
+        theme: theme && JSON.parse(JSON.stringify(theme)),
+      });
+      editor.update(() => $randomMarkDocument(random), {discrete: true});
+      const html = withJSDOM(() =>
+        editor.read(() => $generateHtmlFromNodes(editor)),
+      );
+      cases.push({
+        editorState: JSON.stringify(editor.getEditorState().toJSON()),
+        html,
+        name: `seed ${seed}${theme ? ' themed' : ''}`,
+        ...(theme ? {theme} : {}),
+      });
+    }
+  }
+  emitVectors(
+    'html/export-mark',
+    'html-export',
+    "Documents of MarkNodes (zero to three ids, nested, around and inside links, some indented), with and without a theme's mark and markOverlap classes, and the HTML $generateHtmlFromNodes writes for them in jsdom, which leaves the marks out (MarkNode.excludeFromCopy('html')) and keeps their children.",
     cases,
   );
 });

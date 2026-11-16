@@ -118,6 +118,25 @@ impl LexicalNode for MarkNode {
         Some(&mut self.element)
     }
 
+    /// `MarkNode.createDOM(config)`: a `<mark>` with the theme's `mark`
+    /// class names, and its `markOverlap` ones when the mark has more than
+    /// one id. (`updateDOM` is the reconciler's.)
+    #[cfg(feature = "html")]
+    fn create_dom(
+        &self,
+        _this: &NodeRef,
+        config: &crate::EditorConfig,
+        _editor: &crate::Editor,
+    ) -> Result<crate::dom::DomNode, crate::LexicalError> {
+        use crate::lexical_dom::{add_theme_class_names, get_document};
+        let element = get_document().create_element("mark");
+        add_theme_class_names(&element, &config.theme, "mark");
+        if self.ids.len() > 1 {
+            add_theme_class_names(&element, &config.theme, "markOverlap");
+        }
+        Ok(element)
+    }
+
     /// `MarkNode.isInline()`.
     fn is_inline(&self) -> bool {
         true
@@ -203,5 +222,53 @@ impl LexicalNode for MarkNode {
     /// `updateMarkNode`.
     fn update_from_json(&mut self, json: &Object) {
         update_mark_node(self, json);
+    }
+}
+
+#[cfg(all(test, feature = "html"))]
+mod tests {
+    use crate::json::Value;
+    use crate::{CreateEditorArgs, create_editor};
+
+    /// `createDOM`: the theme's `mark` class names, and its `markOverlap`
+    /// ones only with more than one id (as Swift's port; the HTML export
+    /// leaves marks out, so `html/export-mark` can't see them).
+    #[test]
+    fn create_dom_adds_the_theme_classes() {
+        let mut theme = crate::json::Object::new();
+        theme.insert("mark", Value::from("m"));
+        theme.insert("markOverlap", Value::from("o"));
+        let editor = create_editor(CreateEditorArgs {
+            nodes: super::super::mark_nodes(),
+            theme,
+            ..CreateEditorArgs::default()
+        });
+        let html = |ids: &[&str]| {
+            let ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+            let mark = super::MarkNode {
+                ids,
+                ..super::MarkNode::default()
+            };
+            crate::node::LexicalNode::create_dom(
+                &mark,
+                &crate::lexical_utils::get_root(),
+                editor.config(),
+                &editor,
+            )
+            .map(|dom| dom.outer_html())
+        };
+        let read_editor = editor.clone();
+        let classes = read_editor
+            .read(|| [html(&[]), html(&["a"]), html(&["a", "b"])])
+            .unwrap()
+            .map(Result::unwrap);
+        assert_eq!(
+            classes,
+            [
+                r#"<mark class="m"></mark>"#,
+                r#"<mark class="m"></mark>"#,
+                r#"<mark class="m o"></mark>"#,
+            ]
+        );
     }
 }

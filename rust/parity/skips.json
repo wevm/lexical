@@ -7063,5 +7063,13 @@
   "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > searches the line for a link a few times with code spans before a link": {
     "reason": "deviation",
     "note": "Upstream spies on RegExp.prototype.exec (vi.spyOn) to count the searches with LINK's importRegExp. Rust can't spy on markdown::RegExp::exec (a language difference)."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsKlassEqual.test.ts::LexicalUtilsKlassEqual tests > objectKlassEquals": {
+    "reason": "deviation",
+    "note": "Tests objectKlassEquals on JS Event subclasses and constructors (instanceof and constructor names). Rust has no classes or constructors to compare; where JS checks an event's class, the port takes an enum (FilesEvent, PasteCommandType), and objectKlassEquals is not ported (rust/PARITY.md, @lexical/utils)."
+  },
+  "lexical-utils/src/__tests__/unit/LexicalUtilsKlassEqual.test.ts::LexicalUtilsKlassEqual tests > objectKlassEquals with a nullish or prototype-less value": {
+    "reason": "deviation",
+    "note": "Tests objectKlassEquals on JS Event subclasses and constructors (instanceof and constructor names). Rust has no classes or constructors to compare; where JS checks an event's class, the port takes an enum (FilesEvent, PasteCommandType), and objectKlassEquals is not ported (rust/PARITY.md, @lexical/utils)."
   }
 }

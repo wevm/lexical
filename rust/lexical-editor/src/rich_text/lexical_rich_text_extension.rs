@@ -101,19 +101,21 @@ fn make() -> Rc<RichTextExtensionType> {
             },
         )),
         conflicts_with: vec!["@lexical/plain-text".to_owned()],
-        // Of JS's dependencies, `NormalizeInlineElementsExtension` and
+        // Of JS's dependencies, `NormalizeInlineElementsExtension`,
         // `NormalizeTripleClickSelectionExtension` (on the app's
-        // `CLICK_COMMAND`). The others act on the DOM:
+        // `CLICK_COMMAND`) and, first as in JS, with `a11y`,
         // `HeadingAnnounceExtension` (a mutation listener that announces
-        // headings, with `a11y`) and `DragonExtension` (root element
-        // listeners). `CoreImportExtension` and `DOMImportExtension` with
-        // `RichTextImportRules` (HTML import) come with `html`.
+        // headings on the live region the root element hosts). `DragonExtension` (root element listeners)
+        // acts on the DOM. `CoreImportExtension` and `DOMImportExtension`
+        // with `RichTextImportRules` (HTML import) come with `html`.
         dependencies: {
             #[allow(unused_mut)]
             let mut dependencies = vec![
                 normalize_inline_elements_extension().into(),
                 crate::extension::normalize_triple_click_selection_extension().into(),
             ];
+            #[cfg(feature = "a11y")]
+            dependencies.insert(0, super::heading_announce_extension().into());
             #[cfg(feature = "html")]
             dependencies.extend(crate::html::import::package_import_dependencies(
                 super::rich_text_import_rules(),

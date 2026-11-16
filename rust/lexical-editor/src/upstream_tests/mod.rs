@@ -4,6 +4,10 @@
 //! Shared helpers live in `support`.
 
 mod lexical;
+#[cfg(all(feature = "a11y", feature = "rich-text"))]
+mod lexical_a11y;
+#[cfg(all(feature = "clipboard", feature = "extension", feature = "rich-text"))]
+mod lexical_clipboard;
 #[cfg(feature = "extension")]
 mod lexical_extension;
 #[cfg(feature = "hashtag")]
@@ -15,6 +19,10 @@ mod lexical_history;
 mod lexical_mark;
 #[cfg(all(feature = "markdown", feature = "extension"))]
 mod lexical_markdown;
+#[cfg(feature = "rich-text")]
+mod lexical_rich_text;
 #[cfg(feature = "selection")]
 mod lexical_selection;
+#[cfg(feature = "utils")]
+mod lexical_utils;
 mod support;

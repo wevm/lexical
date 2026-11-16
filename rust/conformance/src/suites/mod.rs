@@ -1,9 +1,11 @@
 //! One suite per vector file the port replays. A file with no suite is
 //! reported as not implemented.
 
+mod css;
 mod devtools;
 mod entities;
 mod file;
+mod html;
 mod markdown;
 mod meta;
 mod property;
@@ -17,6 +19,26 @@ pub fn all() -> Vec<Suite> {
             file: "meta",
             variant: None,
             check: meta::check,
+        },
+        Suite {
+            file: "css/properties",
+            variant: None,
+            check: css::check_property,
+        },
+        Suite {
+            file: "css/values",
+            variant: None,
+            check: css::check_value,
+        },
+        Suite {
+            file: "html/entities",
+            variant: None,
+            check: html::check_entity,
+        },
+        Suite {
+            file: "html/parse",
+            variant: None,
+            check: html::check_parse,
         },
         Suite {
             file: "devtools/tree",

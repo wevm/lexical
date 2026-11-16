@@ -147,11 +147,17 @@ struct Ctx {
 /// document's body hosts `AriaLiveRegionExtension`'s live region.
 pub(crate) struct SessionRoot {
     body: Rc<SessionBody>,
+    /// The computed styles the `computedStyles` step stubs, by node key.
+    computed_styles: RefCell<HashMap<String, selection::ComputedStyle>>,
 }
 
 impl RootElement for SessionRoot {
     fn live_region_host(self: Rc<Self>) -> Option<Rc<dyn LiveRegionHost>> {
         Some(self.body.clone())
+    }
+
+    fn computed_style(&self, key: &str) -> Option<selection::ComputedStyle> {
+        self.computed_styles.borrow().get(key).cloned()
     }
 }
 
@@ -179,6 +185,7 @@ impl Ctx {
             .get_or_insert_with(|| {
                 Rc::new(SessionRoot {
                     body: Rc::new(SessionBody::default()),
+                    computed_styles: RefCell::default(),
                 })
             })
             .clone()
@@ -3373,7 +3380,36 @@ impl Session {
                 .map(|dispatched| log_dispatched(|entry| ctx.log(entry), name, dispatched))
         } else if let Some(on) = step.get("setRootElement").and_then(Value::as_bool) {
             let root = ctx.session_dom();
+            // A JS editor with a root element has its jsdom window, which
+            // gives no DOM selection: `Selection.modify` stops after the
+            // model step, where a headless editor throws.
+            editor.set_selection_movement(on.then(|| {
+                Rc::new(crate::suites::property::WindowWithoutSelection)
+                    as Rc<dyn lexical::SelectionMovement>
+            }));
             editor.set_root_element(on.then(|| RootElementRef(root)))
+        } else if let Some(styles) = step.get("computedStyles").and_then(Value::as_object) {
+            // `stubComputedStyles`: `direction` and `writingMode`, CSS's
+            // initial values when left out.
+            let default = selection::ComputedStyle::default();
+            *ctx.session_dom().computed_styles.borrow_mut() = styles
+                .iter()
+                .map(|(key, style)| {
+                    let field = |name: &str, initial: &str| {
+                        style
+                            .get(name)
+                            .and_then(Value::as_str)
+                            .unwrap_or(initial)
+                            .to_owned()
+                    };
+                    let computed = selection::ComputedStyle {
+                        direction: field("direction", &default.direction),
+                        writing_mode: field("writingMode", &default.writing_mode),
+                    };
+                    (key.to_owned(), computed)
+                })
+                .collect();
+            Ok(())
         } else if let Some(editable) = step.get("setEditable").and_then(Value::as_bool) {
             editor.set_editable(editable);
             Ok(())

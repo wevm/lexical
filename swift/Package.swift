@@ -314,7 +314,7 @@ let package = Package(
           name: "LexicalUIKit", condition: .when(platforms: [.iOS, .visionOS, .macCatalyst])),
       ]),
     // @lexical/devtools-core: the playground's tree view.
-    .target(name: "LexicalDevtoolsCore", dependencies: ["Lexical", "LexicalHTML"]),
+    .target(name: "LexicalDevtoolsCore", dependencies: ["Lexical", "LexicalHTML", "LexicalMark"]),
     // Test support: the `.upstream(...)` trait the parity ledger reads.
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
     // Gating in CI: `swift run -c release LexicalBenchmarks`.

@@ -110,15 +110,16 @@ fn lift_format_from_single_paragraph(
 /// [`normalize_list_children`] lifts) becomes its inline content, with a
 /// line break between it and the runs around it (`<li>1<div>2</div>3</li>`
 /// gives `1<br>2<br>3`). A childless block decorator stands on its own
-/// line. JS leaves out the line breaks next to one when
-/// `NodeStructureExtension` enforces node structure, which isn't ported.
+/// line, but where `NodeStructureExtension` enforces node structure the
+/// normalization splits the list around it, so no line break goes next to
+/// it.
 fn flatten_list_item_blocks(children: Vec<NodeRef>) -> Result<Vec<NodeRef>, LexicalError> {
     let is_boundary = |node: &NodeRef| is_block_level(node) && !is_list_node(node);
     if !children.iter().any(is_boundary) {
         return Ok(children);
     }
     // `INTERNAL_isNodeStructureEnforced($getEditor())`.
-    let lifts = false;
+    let lifts = crate::structure::is_structure_enforced_on_active_editor();
     let mut segments: Vec<(Vec<NodeRef>, bool)> = Vec::new();
     let mut inline_run: Vec<NodeRef> = Vec::new();
     for child in children {

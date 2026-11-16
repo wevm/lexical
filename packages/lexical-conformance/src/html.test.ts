@@ -19,6 +19,7 @@ import {
   buildEditorFromExtensions,
   HorizontalRuleExtension,
   HorizontalRuleNode,
+  NodeStructureExtension,
 } from '@lexical/extension';
 import {createHeadlessEditor} from '@lexical/headless';
 import {
@@ -763,9 +764,20 @@ const SHADOW_ROOT_QUOTE_CORPUS = [
   '<blockquote data-lexical-indent="1"><h1>h</h1>x<p>p</p></blockquote>',
 ];
 
+/**
+ * List items holding blocks, imported with `NodeStructureExtension` too, so
+ * `ListImportRules`' flatten step puts no line break next to a childless
+ * block decorator.
+ */
+const NODE_STRUCTURE_IMPORT_CORPUS = [
+  '<ul><li>a<hr>b</li><li><p>one</p><p>two</p></li></ul>',
+  '<ul><li><hr></li><li>x<hr><hr>y</li><li>1<div>2</div>3</li></ul>',
+];
+
 // Builds an editor per case (about 4.5 s in all), near vitest's 5 s default.
 test('html/import-packages', {timeout: 60_000}, () => {
-  const htmls: [string, boolean][] = [
+  type Flags = {nodeStructure?: boolean; shadowRootQuote?: boolean};
+  const htmls: [string, Flags][] = [
     ...[
       ...IMPORT_CORPUS,
       ...IMPORT_EXTENSION_CORPUS,
@@ -779,51 +791,55 @@ test('html/import-packages', {timeout: 60_000}, () => {
       )
         .cases.map((c: {html?: string | null}) => c.html)
         .filter((html: unknown): html is string => typeof html === 'string'),
-    ].map(html => [html, false] as [string, boolean]),
-    ...SHADOW_ROOT_QUOTE_CORPUS.map(html => [html, true] as [string, boolean]),
+    ].map(html => [html, {}] as [string, Flags]),
+    ...SHADOW_ROOT_QUOTE_CORPUS.map(
+      html => [html, {shadowRootQuote: true}] as [string, Flags],
+    ),
+    ...NODE_STRUCTURE_IMPORT_CORPUS.map(
+      html => [html, {nodeStructure: true}] as [string, Flags],
+    ),
   ];
-  const cases: (ImportCase & {shadowRootQuote?: boolean})[] = htmls.map(
-    ([html, shadowRootQuote]) => {
-      const editor = buildEditorFromExtensions(
-        defineExtension({
-          dependencies: [
-            RichTextExtension,
-            CheckListExtension,
-            LinkExtension,
-            CodeExtension,
-            WordListImportExtension,
-            HorizontalRuleExtension,
-            ...(shadowRootQuote
-              ? [
-                  configExtension(DOMImportExtension, {
-                    rules: [ShadowRootQuoteRule],
-                  }),
-                ]
-              : []),
-          ],
-          name: '[conformance]',
-        }),
+  const cases: (ImportCase & Flags)[] = htmls.map(([html, flags]) => {
+    const editor = buildEditorFromExtensions(
+      defineExtension({
+        dependencies: [
+          RichTextExtension,
+          CheckListExtension,
+          LinkExtension,
+          CodeExtension,
+          WordListImportExtension,
+          HorizontalRuleExtension,
+          ...(flags.shadowRootQuote
+            ? [
+                configExtension(DOMImportExtension, {
+                  rules: [ShadowRootQuoteRule],
+                }),
+              ]
+            : []),
+          ...(flags.nodeStructure ? [NodeStructureExtension] : []),
+        ],
+        name: '[conformance]',
+      }),
+    );
+    let nodes = '';
+    withJSDOM(() => {
+      const dom = new JSDOM(html).window.document;
+      editor.update(
+        () => {
+          nodes = JSON.stringify(
+            $generateNodesFromDOMViaExtension(dom).map($nodeToJSON),
+          );
+        },
+        {discrete: true},
       );
-      let nodes = '';
-      withJSDOM(() => {
-        const dom = new JSDOM(html).window.document;
-        editor.update(
-          () => {
-            nodes = JSON.stringify(
-              $generateNodesFromDOMViaExtension(dom).map($nodeToJSON),
-            );
-          },
-          {discrete: true},
-        );
-      });
-      editor.dispose();
-      return {html, nodes, ...(shadowRootQuote ? {shadowRootQuote} : {})};
-    },
-  );
+    });
+    editor.dispose();
+    return {html, nodes, ...flags};
+  });
   emitVectors(
     'html/import-packages',
     'html-import',
-    "HTML (the html/import, html/import-extension and html/import-nodes corpora, curated cases for each package's import rules, and every property/documents HTML export) and the nodes DOMImportExtension's $generateNodesFromDOM makes from it in a jsdom document, in an editor built from RichTextExtension, CheckListExtension, LinkExtension, CodeExtension, WordListImportExtension and HorizontalRuleExtension (and, for `shadowRootQuote`, ShadowRootQuoteRule), each as exportJSON with its children.",
+    "HTML (the html/import, html/import-extension and html/import-nodes corpora, curated cases for each package's import rules, and every property/documents HTML export) and the nodes DOMImportExtension's $generateNodesFromDOM makes from it in a jsdom document, in an editor built from RichTextExtension, CheckListExtension, LinkExtension, CodeExtension, WordListImportExtension and HorizontalRuleExtension (and, for `shadowRootQuote`, ShadowRootQuoteRule; for `nodeStructure`, NodeStructureExtension), each as exportJSON with its children.",
     cases,
   );
 });

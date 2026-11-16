@@ -46,8 +46,8 @@ pub use register_list::{
     register_check_list, register_list, register_list_strict_indent_transform,
 };
 pub use utils::{
-    get_all_list_items, get_list_depth, get_new_list_start, get_top_list_node, is_nested_list_node,
-    remove_highest_empty_list_parent,
+    find_nearest_list_item_node, get_all_list_items, get_list_depth, get_new_list_start,
+    get_top_list_node, is_last_item_in_list, is_nested_list_node, remove_highest_empty_list_parent,
 };
 #[cfg(all(feature = "html", feature = "extension"))]
 pub use word_list_import_extension::word_list_import_extension;

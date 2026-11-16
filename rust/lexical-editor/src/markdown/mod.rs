@@ -9,9 +9,6 @@
 //! transformers bring their own; [`RegExp`] is a small JS regular
 //! expression engine of this module's, so the feature needs no
 //! third-party crate (rust/PARITY.md).
-//!
-//! Not ported: `$generateNodesFromMarkdownString`, which imports into an
-//! `ArtificialNode__DO_NOT_USE` the core doesn't have yet.
 
 mod import_text_format_transformer;
 mod import_text_match_transformer;
@@ -73,6 +70,32 @@ pub fn convert_from_markdown_string(
         root.select_start()?;
     }
     Ok(())
+}
+
+/// `$generateNodesFromMarkdownString(markdown, transformers,
+/// shouldPreserveNewLines, shouldMergeAdjacentLines)`: the markdown's
+/// nodes, imported into an `ArtificialNode__DO_NOT_USE` and taken out of
+/// it, not attached to the document, for the caller to insert (with
+/// `selection.insertNodes()`, say).
+pub fn generate_nodes_from_markdown_string(
+    markdown: &str,
+    transformers: &[Transformer],
+    should_preserve_new_lines: bool,
+    should_merge_adjacent_lines: bool,
+) -> Result<Vec<NodeRef>, LexicalError> {
+    let sanitized_markdown = if should_preserve_new_lines {
+        markdown.to_owned()
+    } else {
+        normalize_markdown(markdown, should_merge_adjacent_lines)
+    };
+    let container = crate::nodes::artificial::create_artificial_node();
+    import_markdown_nodes(
+        &sanitized_markdown,
+        &container,
+        transformers,
+        should_preserve_new_lines,
+    )?;
+    Ok(container.get_children())
 }
 
 /// `$convertToMarkdownString(transformers, node, shouldPreserveNewLines)`:

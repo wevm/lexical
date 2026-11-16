@@ -6,7 +6,12 @@
  *
  */
 import {generateContent} from '@lexical/devtools-core';
+import {
+  $createHorizontalRuleNode,
+  HorizontalRuleNode,
+} from '@lexical/extension';
 import {createHeadlessEditor} from '@lexical/headless';
+import {$createMarkNode, MarkNode} from '@lexical/mark';
 import {
   $createHeadingNode,
   $createQuoteNode,
@@ -20,15 +25,23 @@ import {
   $createTabNode,
   $createTextNode,
   $getRoot,
+  $getSlot,
+  $getSlotNames,
+  $isDecoratorNode,
   $isElementNode,
   $isTextNode,
   $setSelection,
+  $setSlot,
   type LexicalEditor,
   type LexicalNode,
 } from 'lexical';
 import {test} from 'vitest';
 
+import {browserWindow} from './browserWindow';
 import {emitVectors} from './vectors';
+
+/** A path from the root: child indexes, and slot names for slot values. */
+type Path = (number | string)[];
 
 type Case = {
   name: string;
@@ -39,22 +52,29 @@ type Case = {
     | null
     | {
         type: 'range';
-        anchor: {path: number[]; offset: number; type: 'text' | 'element'};
-        focus: {path: number[]; offset: number; type: 'text' | 'element'};
+        anchor: {path: Path; offset: number; type: 'text' | 'element'};
+        focus: {path: Path; offset: number; type: 'text' | 'element'};
         format?: number;
         style?: string;
       }
-    | {type: 'node'; paths: number[][]};
+    | {type: 'node'; paths: Path[]};
   editable: boolean;
   /**
-   * The node keys in the order the tree prints them (root excluded), so a
-   * port whose keys differ can map them.
+   * The node keys in the order the tree prints them (root excluded; slot
+   * values before children, as `$visitTree` walks), so a port whose keys
+   * differ can map them.
    */
   keys: string[];
   /** `LexicalEditor.version` in JS; the Swift port prints its own. */
   version: string;
   /** `generateContent(editor, [], false)`: the playground's tree view. */
   tree: string;
+  /**
+   * `generateContent(editor, [], true)` in jsdom: the state's HTML,
+   * indented (`printPrettyHTML`). Recorded once per document, with no
+   * selection, as the export takes none.
+   */
+  html?: string;
 };
 
 type Builder = () => void;
@@ -91,6 +111,15 @@ const DOCUMENTS: Record<string, Builder> = {
       $createQuoteNode().append($createTextNode('A quote')),
     );
   },
+  marks: () => {
+    $getRoot().append(
+      $createParagraphNode().append(
+        $createTextNode('before '),
+        $createMarkNode(['a', 'b']).append($createTextNode('marked')),
+        $createMarkNode([]).append($createTextNode('none')),
+      ),
+    );
+  },
   modesAndDetails: () => {
     $getRoot().append(
       $createParagraphNode().append(
@@ -120,6 +149,22 @@ const DOCUMENTS: Record<string, Builder> = {
       $createParagraphNode(),
     );
   },
+  slots: () => {
+    // A host with a shadow root value and a block decorator value.
+    const host = $createQuoteNode().append($createTextNode('body'));
+    $getRoot().append(
+      host,
+      $createParagraphNode().append($createTextNode('x')),
+    );
+    $setSlot(
+      host,
+      'title',
+      $createQuoteNode({shadowRoot: true}).append(
+        $createParagraphNode().append($createTextNode('Title')),
+      ),
+    );
+    $setSlot(host, 'media', $createHorizontalRuleNode());
+  },
 };
 
 const SELECTIONS: Record<string, Case['selection']> = {
@@ -145,6 +190,11 @@ const SELECTIONS: Record<string, Case['selection']> = {
     focus: {offset: 0, path: [0], type: 'element'},
     type: 'range',
   },
+  inSlot: {
+    anchor: {offset: 1, path: [0, 'title', 0, 0], type: 'text'},
+    focus: {offset: 3, path: [0, 'title', 0, 0], type: 'text'},
+    type: 'range',
+  },
   node: {paths: [[0, 0]], type: 'node'},
   none: null,
   withinText: {
@@ -154,11 +204,16 @@ const SELECTIONS: Record<string, Case['selection']> = {
   },
 };
 
-function $nodeAt(path: number[]) {
+function $nodeAt(path: Path) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let node: any = $getRoot();
   for (const index of path) {
-    node = node.getChildAtIndex(index);
+    node =
+      typeof index === 'string'
+        ? $getSlot(node, index)
+        : $isElementNode(node)
+          ? node.getChildAtIndex(index)
+          : null;
     if (node === null) {
       return null;
     }
@@ -226,11 +281,26 @@ function $applySelection(selection: Case['selection']): boolean {
 function makeEditor(): LexicalEditor {
   return createHeadlessEditor({
     namespace: 'playground',
-    nodes: [HeadingNode, QuoteNode],
+    nodes: [HeadingNode, QuoteNode, MarkNode, HorizontalRuleNode],
     onError: e => {
       throw e;
     },
   });
+}
+
+/** Runs `f` with a jsdom window's `document` as the global, as in a browser. */
+function withDocument<T>(f: () => T): T {
+  const dom = browserWindow();
+  const globals = globalThis as {window?: unknown; document?: unknown};
+  const prev = [globals.window, globals.document];
+  globals.window = dom;
+  globals.document = dom.document;
+  try {
+    return f();
+  } finally {
+    [globals.window, globals.document] = prev;
+    dom.close();
+  }
 }
 
 test('tree view vectors', () => {
@@ -258,15 +328,26 @@ test('tree view vectors', () => {
         const keys: string[] = [];
         editor.read(() => {
           const visit = (node: LexicalNode) => {
-            for (const child of $isElementNode(node)
-              ? node.getChildren()
-              : []) {
+            const slots = $getSlotNames(node).flatMap(name => {
+              const value = $getSlot(node, name);
+              return value === null ? [] : [value];
+            });
+            for (const child of [
+              ...slots,
+              ...($isElementNode(node) ? node.getChildren() : []),
+            ]) {
               keys.push(child.getKey());
-              visit(child);
+              if ($isElementNode(child) || $isDecoratorNode(child)) {
+                visit(child);
+              }
             }
           };
           visit($getRoot());
         });
+        const html =
+          selName === 'none' && editable
+            ? withDocument(() => generateContent(editor, [], true))
+            : undefined;
         cases.push({
           editable,
           editorState,
@@ -277,6 +358,7 @@ test('tree view vectors', () => {
           version: String(
             (editor.constructor as {version?: string}).version ?? '',
           ),
+          ...(html !== undefined ? {html} : {}),
         });
       }
     }
@@ -284,7 +366,7 @@ test('tree view vectors', () => {
   emitVectors(
     'devtools/tree',
     'devtools-tree',
-    "generateContent(editor, [], false) from @lexical/devtools-core: the playground's tree view of the editor state, its selection and the editor's flags. The selection is set after the state is parsed; Swift prints its own LexicalEditor.version in place of `version`.",
+    "generateContent(editor, [], false) from @lexical/devtools-core: the playground's tree view of the editor state (with marks and named slots), its selection and the editor's flags; and, once per document, generateContent(editor, [], true), its exportDOM form, in jsdom. The selection is set after the state is parsed (a path's strings name slots); Swift prints its own LexicalEditor.version in place of `version`.",
     cases,
   );
 });

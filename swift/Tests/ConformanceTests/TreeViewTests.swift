@@ -1,17 +1,35 @@
 import Foundation
 import Lexical
 import LexicalDevtoolsCore
+import LexicalExtension
+import LexicalMark
 import LexicalRichText
 import Testing
 
 /// Replays `vectors/devtools/tree.json`: the playground's tree view
 /// (`generateContent(editor, [], false)` in `@lexical/devtools-core`) of each
 /// document and selection matches JS, with JS's node keys mapped to the
-/// port's (both listed in tree order) and the port's version.
+/// port's (both listed in tree order) and the port's version; and its
+/// `exportDOM` form (`generateContent(editor, [], true)`) matches JS's `html`.
 @Suite(.enabled(if: Vectors.available))
 struct TreeViewTests {
+  /// A step of a path from the root: a child index, or a slot's name.
+  enum PathStep: Decodable, Sendable {
+    case index(Int)
+    case slot(String)
+
+    init(from decoder: any Decoder) throws {
+      let container = try decoder.singleValueContainer()
+      if let name = try? container.decode(String.self) {
+        self = .slot(name)
+      } else {
+        self = .index(try container.decode(Int.self))
+      }
+    }
+  }
+
   struct PointPath: Decodable, Sendable {
-    let path: [Int]
+    let path: [PathStep]
     let offset: Int
     let type: String
   }
@@ -22,7 +40,7 @@ struct TreeViewTests {
     let focus: PointPath?
     let format: Int?
     let style: String?
-    let paths: [[Int]]?
+    let paths: [[PathStep]]?
   }
 
   struct Case: Decodable, CustomTestStringConvertible, Sendable {
@@ -33,6 +51,7 @@ struct TreeViewTests {
     let keys: [String]
     let version: String
     let tree: String
+    let html: String?
     var testDescription: String { name }
   }
 
@@ -48,17 +67,23 @@ struct TreeViewTests {
   func tree(_ vector: Case) throws {
     let editor = try createEditor(
       CreateEditorArgs(
-        namespace: "playground", nodes: [.klass(HeadingNode.self), .klass(QuoteNode.self)],
+        namespace: "playground",
+        nodes: [
+          .klass(HeadingNode.self), .klass(QuoteNode.self), .klass(MarkNode.self),
+          .klass(HorizontalRuleNode.self),
+        ],
         onError: { throw $0 }, headless: true))
     try editor.setEditorState(editor.parseEditorState(vector.editorState))
     try editor.update(discrete: true) { try apply(vector.selection) }
     try editor.setEditable(vector.editable)
     var keys: [NodeKey] = []
     try editor.read {
+      // Slot values first, as `$visitTree` walks.
       func visit(_ node: LexicalNode) throws {
-        for child in try (node as? ElementNode)?.getChildren() ?? [] {
+        let slots = try getSlotNames(node).compactMap { try getSlot(node, $0) }
+        for child in try slots + ((node as? ElementNode)?.getChildren() ?? []) {
           keys.append(child.getKey())
-          try visit(child)
+          if child is ElementNode || child is DecoratorNode { try visit(child) }
         }
       }
       try visit(getRoot())
@@ -68,6 +93,9 @@ struct TreeViewTests {
     let tree = try generateContent(editor, [], false)
     let want = try expected(vector, swiftKey)
     #expect(tree == want)
+    if let html = vector.html {
+      #expect(try generateContent(editor, [], true) == html)
+    }
   }
 
   /// The JS tree with its keys replaced by the port's, and its version line
@@ -105,10 +133,13 @@ struct TreeViewTests {
     }
   }
 
-  private func node(at path: [Int]) throws -> LexicalNode? {
+  private func node(at path: [PathStep]) throws -> LexicalNode? {
     var node: LexicalNode? = try getRoot()
-    for index in path {
-      node = try (node as? ElementNode)?.getChildAtIndex(index)
+    for step in path {
+      switch step {
+      case .index(let index): node = try (node as? ElementNode)?.getChildAtIndex(index)
+      case .slot(let name): node = try node.flatMap { try getSlot($0, name) }
+      }
     }
     return node
   }

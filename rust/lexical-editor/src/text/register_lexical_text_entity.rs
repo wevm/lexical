@@ -1,10 +1,6 @@
 //! `registerLexicalTextEntity.ts`: `registerLexicalTextEntity` and the
 //! `EntityMatch` its matcher returns.
 //!
-//! The NodeState half of `$wouldMerge` (`haveEquivalentNodeState`, with
-//! `readStateValue`) is left out: only a token or segmented entity kept as
-//! one takes that path, which an entity `createNode` makes in normal mode,
-//! such as a hashtag, never is, so no vector reaches it (rust/PARITY.md).
 //! The text edit log isn't ported, so `INTERNAL_$recordTextMove` just runs
 //! its callback and `INTERNAL_$recordTextRetype` is not called.
 
@@ -13,7 +9,9 @@ use crate::editor_state::EditorStateInner;
 use crate::error::invariant;
 use crate::lexical_selection::{PointType, SelectionRef, Which, get_selection};
 use crate::node::{NodeKey, NodeRef};
-use crate::node_state::{NodeStateRef, get_writable_node_state, is_default, unparse};
+use crate::node_state::{
+    NodeStateRef, get_writable_node_state, have_equivalent_node_state, is_default, unparse,
+};
 use crate::nodes::text::create_text_node;
 use crate::updates::internal_get_active_editor_state;
 use crate::{Editor, EditorState, LexicalError, Unregister, utf16};
@@ -37,11 +35,18 @@ const MAX_MATCHES_PASSED: usize = 8;
 // text before it leaves it as an entity.
 const MAX_TURNED_INTO_TEXT: usize = 2;
 
-/// `$wouldMerge(a, b)`: whether `a` and `b` would merge as text, the same
-/// format, style and detail (and NodeState, which isn't ported).
+/// `$wouldMerge(a, b)`: whether `a` and `b` would merge as text: the same
+/// format, style, detail and NodeState (`haveEquivalentNodeState`).
 fn would_merge(a: &NodeRef, b: &NodeRef) -> bool {
-    let (a, b) = (a.text_data(), b.text_data());
-    a.format == b.format && a.style == b.style && a.detail == b.detail
+    let (latest_a, latest_b) = (a.get_latest(), b.get_latest());
+    let (text_a, text_b) = (a.text_data(), b.text_data());
+    text_a.format == text_b.format
+        && text_a.style == text_b.style
+        && text_a.detail == text_b.detail
+        && have_equivalent_node_state(
+            latest_a.base().state.as_ref(),
+            latest_b.base().state.as_ref(),
+        )
 }
 
 /// `$moveSelectionIntoEntity(node, entity, count)`: before `entity` takes
@@ -774,4 +779,69 @@ pub fn register_lexical_text_entity(
         .register_node_transform(target_type, move |node| entity.reverse_node_transform(node));
 
     vec![remove_plain_text_transform, remove_reverse_node_transform]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        CreateEditorArgs, UpdateOptions, create_editor, create_state, get_root, json,
+        parse_serialized_node, set_state,
+    };
+
+    /// `$wouldMerge`'s NodeState half (`haveEquivalentNodeState`), which no
+    /// vector reaches: what JS's rule (`nodeStatesAreEquivalent`, which
+    /// `haveEquivalentNodeState` repeats without keeping parsed values)
+    /// gives for two text nodes with these flat `$` states and values set
+    /// with `$setState` of `createState('k', {parse: v => typeof v ===
+    /// 'number' ? v : 0})`, recorded by running it.
+    #[test]
+    fn would_merge_compares_node_state_as_js_does() {
+        type Case = (&'static str, &'static str, Option<f64>, Option<f64>, bool);
+        let cases: &[Case] = &[
+            ("", "", None, None, true),
+            (r#","$":{"k":1}"#, "", None, None, false),
+            (r#","$":{"k":1}"#, r#","$":{"k":1}"#, None, None, true),
+            (r#","$":{"k":[1]}"#, r#","$":{"k":[1]}"#, None, None, false),
+            ("", r#","$":{"k":1}"#, Some(1.0), None, true),
+            ("", "", Some(1.0), Some(2.0), false),
+            ("", "", Some(0.0), None, true),
+            (r#","$":{"other":"x"}"#, "", Some(1.0), Some(1.0), false),
+        ];
+        let k = create_state("k", |v: &json::Value| v.as_f64().unwrap_or(0.0));
+        for &(json_a, json_b, state_a, state_b, want) in cases {
+            let editor = create_editor(CreateEditorArgs::default());
+            let k = k.clone();
+            let doc = format!(
+                r#"{{"type":"paragraph","children":[{{"type":"text","text":"a"{json_a}}},{{"type":"text","text":"b"{json_b}}}]}}"#
+            );
+            let got = Rc::new(RefCell::new(None));
+            let out = got.clone();
+            editor
+                .update(
+                    move || {
+                        let paragraph = parse_serialized_node(&json::parse(&doc).unwrap())?;
+                        get_root().append(std::slice::from_ref(&paragraph))?;
+                        let children = paragraph.get_children();
+                        for (node, value) in children.iter().zip([state_a, state_b]) {
+                            if let Some(value) = value {
+                                set_state(node, &k, value)?;
+                            }
+                        }
+                        *out.borrow_mut() = Some(would_merge(&children[0], &children[1]));
+                        Ok(())
+                    },
+                    UpdateOptions {
+                        discrete: true,
+                        ..UpdateOptions::default()
+                    },
+                )
+                .unwrap();
+            assert_eq!(
+                *got.borrow(),
+                Some(want),
+                "{json_a} / {json_b} / {state_a:?} / {state_b:?}"
+            );
+        }
+    }
 }

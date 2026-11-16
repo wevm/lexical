@@ -336,6 +336,17 @@ pub trait RootElement: Any {
     fn caret_from_point(&self, _x: f64, _y: f64) -> Option<crate::caret::PointCaret> {
         None
     }
+
+    /// The computed style of the element rendered for the node `key`, as
+    /// `getComputedStyle(editor.getElementByKey(key))`, which
+    /// `@lexical/selection`'s `$getComputedStyleForElement` reads for the
+    /// text direction and writing mode the arrow keys follow. It is read
+    /// inside an update. `None` (the default) for a node with no element,
+    /// as a JS editor that renders nothing has none.
+    #[cfg(feature = "selection")]
+    fn computed_style(&self, _key: &str) -> Option<crate::selection::ComputedStyle> {
+        None
+    }
 }
 
 /// A root element, compared by identity.

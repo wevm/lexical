@@ -1,9 +1,9 @@
 import Lexical
 import LexicalHTML
+import LexicalMark
 
 // Port of packages/lexical-devtools-core/src/generateContent.ts: the text of
-// the playground's tree view. Link, mark and table nodes aren't ported yet,
-// so their branches are left out.
+// the playground's tree view. The link and table branches are left out.
 
 /// A command the tree view lists (`LexicalCommandLog`'s entries).
 public struct LexicalCommandLogEntry: Sendable {
@@ -179,6 +179,9 @@ private func printNode(
     let title = content.isEmpty ? "(empty)" : "\"\(normalize(content, obfuscateText))\""
     let properties = try printAllTextNodeProperties(text)
     return jsTrim(properties.isEmpty ? title : "\(title) { \(properties) }")
+  }
+  if let mark = node as? MarkNode {
+    return "ids: [ \(try mark.getIDs().joined(separator: ", ")) ]"
   }
   if let paragraph = node as? ParagraphNode {
     let formatText = try printFormatProperties { try paragraph.hasTextFormat($0) }

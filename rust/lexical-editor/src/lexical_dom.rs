@@ -600,4 +600,42 @@ mod tests {
         assert_eq!(js_round(-2.5), -2.0);
         assert!(js_round(-0.4) == 0.0 && js_round(-0.4).is_sign_negative());
     }
+
+    /// `$setTextContent`'s composition suffix in `TextNode.createDOM`, and
+    /// so in the HTML export: what JS gives in jsdom for a paragraph of a
+    /// text node being composed and a bold one, recorded by running it.
+    #[test]
+    fn a_composed_text_node_ends_with_the_composition_suffix() {
+        use crate::{
+            CreateEditorArgs, UpdateOptions, create_editor, create_paragraph_node,
+            create_text_node, get_root, set_composition_key,
+        };
+        let editor = create_editor(CreateEditorArgs::default());
+        let html = Rc::new(std::cell::RefCell::new(String::new()));
+        let out = html.clone();
+        let read = editor.clone();
+        editor
+            .update(
+                move || {
+                    let text = create_text_node("ab");
+                    let bold = create_text_node("c");
+                    bold.set_format(1.0);
+                    let paragraph = create_paragraph_node();
+                    paragraph.append(&[text.clone(), bold])?;
+                    get_root().append(&[paragraph])?;
+                    set_composition_key(Some(text.get_key()));
+                    *out.borrow_mut() = crate::html::generate_html_from_nodes(&read, None)?;
+                    Ok(())
+                },
+                UpdateOptions {
+                    discrete: true,
+                    ..UpdateOptions::default()
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            *html.borrow(),
+            "<p><span style=\"white-space: pre-wrap;\">ab\u{200b}</span><b><strong style=\"white-space: pre-wrap;\">c</strong></b></p>"
+        );
+    }
 }

@@ -22,6 +22,7 @@ struct MarkdownTests {
     let customTransformers: [String]?
     let importState: String?
     let importHtml: String?
+    let importNodes: String?
     let exportState: String?
     let exportMd: String?
     var testDescription: String { String(name.prefix(60)) }
@@ -72,6 +73,22 @@ struct MarkdownTests {
     #expect(try editor.read(.latest) { try generateHtmlFromNodes(editor) } == vector.importHtml)
     // "should not select when importing"
     #expect(try editor.read(.latest) { try getSelection() } == nil)
+  }
+
+  @Test(arguments: importCases.filter { $0.importNodes != nil })
+  func generateNodesFromMarkdown(_ vector: Case) throws {
+    let editor = try createTestEditor()
+    var nodes = ""
+    try editor.update(
+      {
+        nodes = try JSONValue.array(
+          generateNodesFromMarkdownString(
+            vector.md, custom(vector) + TRANSFORMERS + [HIGHLIGHT_TEXT_MATCH_IMPORT],
+            vector.shouldPreserveNewLines ?? false, vector.shouldMergeAdjacentLines ?? false
+          ).map(HTMLImportTests.nodeToJSON)
+        ).stringify()
+      }, EditorUpdateOptions(discrete: true))
+    #expect(nodes == vector.importNodes)
   }
 
   @Test(arguments: exportCases)

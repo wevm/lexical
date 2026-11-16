@@ -5,6 +5,7 @@ use super::list_node::is_list_node;
 use crate::LexicalError;
 use crate::error::invariant;
 use crate::node::NodeRef;
+use crate::selection_insert_nodes::find_matching_parent;
 
 /// `$getListDepth(listNode)`: how many lists, counting this one, the list
 /// is nested in.
@@ -43,6 +44,32 @@ pub fn get_top_list_node(list_item: &NodeRef) -> Result<NodeRef, LexicalError> {
         }
     }
     Ok(list)
+}
+
+/// `$isLastItemInList(listItem)`: whether the item holds no nested list
+/// and no list item at or above it has later siblings.
+pub fn is_last_item_in_list(list_item: &NodeRef) -> bool {
+    let mut is_last = true;
+    if list_item
+        .get_first_child()
+        .is_some_and(|c| is_list_node(&c))
+    {
+        return false;
+    }
+    let mut parent = Some(list_item.clone());
+    while let Some(p) = parent {
+        if is_list_item_node(&p) && !p.get_next_siblings().is_empty() {
+            is_last = false;
+        }
+        parent = p.get_parent();
+    }
+    is_last
+}
+
+/// `$findNearestListItemNode(node)`: the node or its nearest ancestor that
+/// is a list item.
+pub fn find_nearest_list_item_node(node: &NodeRef) -> Option<NodeRef> {
+    find_matching_parent(node, is_list_item_node)
 }
 
 /// `$getAllListItems(node)`: the list's items that hold content, nested

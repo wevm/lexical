@@ -11,9 +11,11 @@ repository = "https://github.com/wevm/lexical"
 
 # The crate's name is provisional (rust/DESIGN.md). Every crate in the
 # workspace depends on it as `lexical`, so a rename changes the package name in
-# lexical-editor/Cargo.toml and this line, not the code.
+# lexical-editor/Cargo.toml and this line, not the code. No version: the
+# crates that use it aren't published, and lexical-editor's own version
+# (lexical-editor/Cargo.toml) moves with each release.
 [workspace.dependencies]
-lexical = { package = "lexical-editor", path = "lexical-editor", version = "0.0.0" }
+lexical = { package = "lexical-editor", path = "lexical-editor" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

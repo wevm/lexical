@@ -6307,5 +6307,589 @@
   "lexical/src/__tests__/unit/HandleTextDrop.test.ts::$handleRichTextDrop beside DOM the editor renders > drops before the first child of an element at the DOM point after its marker": {
     "reason": "dom-only",
     "note": "Checks how the DOM point after a leading marker in an element's DOM slot (`getDOMSlot().withAfter`) resolves to the Lexical point (element, 0). A Rust editor takes the drop caret from its root element's `caret_from_point`, so there is no DOM point to map; giving it the Lexical point directly would not test the mapping (Swift does that)."
+  },
+  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=false, outer=false, mutates=self)": {
+    "reason": "deviation",
+    "note": "Rust's $sliceSelectedTextNodeContent has only the 'clone' mode: 'self' writes a node's text without getWritable, and a node's committed value can't change in place here (rust/PARITY.md, @lexical/selection exceptions)."
+  },
+  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=false, outer=true, mutates=self)": {
+    "reason": "deviation",
+    "note": "Rust's $sliceSelectedTextNodeContent has only the 'clone' mode: 'self' writes a node's text without getWritable, and a node's committed value can't change in place here (rust/PARITY.md, @lexical/selection exceptions)."
+  },
+  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=true, outer=false, mutates=self)": {
+    "reason": "deviation",
+    "note": "Rust's $sliceSelectedTextNodeContent has only the 'clone' mode: 'self' writes a node's text without getWritable, and a node's committed value can't change in place here (rust/PARITY.md, @lexical/selection exceptions)."
+  },
+  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=0, backward=true, outer=true, mutates=self)": {
+    "reason": "deviation",
+    "note": "Rust's $sliceSelectedTextNodeContent has only the 'clone' mode: 'self' writes a node's text without getWritable, and a node's committed value can't change in place here (rust/PARITY.md, @lexical/selection exceptions)."
+  },
+  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=false, outer=false, mutates=self)": {
+    "reason": "deviation",
+    "note": "Rust's $sliceSelectedTextNodeContent has only the 'clone' mode: 'self' writes a node's text without getWritable, and a node's committed value can't change in place here (rust/PARITY.md, @lexical/selection exceptions)."
+  },
+  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=false, outer=true, mutates=self)": {
+    "reason": "deviation",
+    "note": "Rust's $sliceSelectedTextNodeContent has only the 'clone' mode: 'self' writes a node's text without getWritable, and a node's committed value can't change in place here (rust/PARITY.md, @lexical/selection exceptions)."
+  },
+  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=true, outer=false, mutates=self)": {
+    "reason": "deviation",
+    "note": "Rust's $sliceSelectedTextNodeContent has only the 'clone' mode: 'self' writes a node's text without getWritable, and a node's committed value can't change in place here (rust/PARITY.md, @lexical/selection exceptions)."
+  },
+  "lexical-selection/src/__tests__/unit/$sliceSelectedTextNodeContent.test.ts::$sliceSelectedTextNodeContent > empty equivalent endpoints (offset=2, backward=true, outer=true, mutates=self)": {
+    "reason": "deviation",
+    "note": "Rust's $sliceSelectedTextNodeContent has only the 'clone' mode: 'self' writes a node's text without getWritable, and a node's committed value can't change in place here (rust/PARITY.md, @lexical/selection exceptions)."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Simple typing (#1)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Simple typing in bold (#2)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Simple typing in italic (#3)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Simple typing in italic + bold (#4)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Simple typing in underline (#5)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Simple typing in strikethrough (#6)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Simple typing in underline + strikethrough (#7)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Deletion (#8)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Creation of an token node (#9)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Convert text to an token node (#10)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Creation of a segmented node (#11)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Convert text to a segmented node (#12)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format selection that starts and ends on element and retain selection (#13)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format multiline text selection that starts and ends on element and retain selection (#14)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format multiline text selection that starts and ends within text (#15)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format selection that starts on text and ends on element and retain selection (#16)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format selection that starts on element and ends on text and retain selection (#17)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format selection that starts on middle of token node should format complete node (#18)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format selection that ends on middle of token node should format complete node (#19)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format token node if it is the single one selected (#20)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Format selection that contains a token node in the middle should format the token node (#21)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a space, delete word backward from end (#22)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a space, delete word forward from beginning (#23)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a space, delete word forward from beginning of preceding whitespace (#24)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a space, delete word backward from end of trailing whitespace (#25)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#26)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#27)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#28)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#29)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#30)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a non-breaking space, delete word backward from end (#31)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a non-breaking space, delete word forward from beginning (#32)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a non-breaking space, delete word forward from beginning of preceding whitespace (#33)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a non-breaking space, delete word backward from end of trailing whitespace (#34)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#35)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#36)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#37)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#38)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#39)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a en quad, delete word backward from end (#40)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a en quad, delete word forward from beginning (#41)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a en quad, delete word forward from beginning of preceding whitespace (#42)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a en quad, delete word backward from end of trailing whitespace (#43)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#44)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#45)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#46)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#47)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#48)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a em quad, delete word backward from end (#49)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a em quad, delete word forward from beginning (#50)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a em quad, delete word forward from beginning of preceding whitespace (#51)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a em quad, delete word backward from end of trailing whitespace (#52)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#53)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#54)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#55)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#56)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#57)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a en space, delete word backward from end (#58)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a en space, delete word forward from beginning (#59)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a en space, delete word forward from beginning of preceding whitespace (#60)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a en space, delete word backward from end of trailing whitespace (#61)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#62)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#63)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#64)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#65)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#66)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a em space, delete word backward from end (#67)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a em space, delete word forward from beginning (#68)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a em space, delete word forward from beginning of preceding whitespace (#69)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a em space, delete word backward from end of trailing whitespace (#70)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#71)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#72)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#73)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#74)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#75)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a three-per-em space, delete word backward from end (#76)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a three-per-em space, delete word forward from beginning (#77)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a three-per-em space, delete word forward from beginning of preceding whitespace (#78)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a three-per-em space, delete word backward from end of trailing whitespace (#79)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#80)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#81)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#82)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#83)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#84)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a four-per-em space, delete word backward from end (#85)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a four-per-em space, delete word forward from beginning (#86)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a four-per-em space, delete word forward from beginning of preceding whitespace (#87)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a four-per-em space, delete word backward from end of trailing whitespace (#88)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#89)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#90)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#91)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#92)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#93)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a six-per-em space, delete word backward from end (#94)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a six-per-em space, delete word forward from beginning (#95)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a six-per-em space, delete word forward from beginning of preceding whitespace (#96)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a six-per-em space, delete word backward from end of trailing whitespace (#97)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#98)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#99)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#100)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#101)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#102)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a figure space, delete word backward from end (#103)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a figure space, delete word forward from beginning (#104)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a figure space, delete word forward from beginning of preceding whitespace (#105)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a figure space, delete word backward from end of trailing whitespace (#106)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#107)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#108)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#109)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#110)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#111)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a punctuation space, delete word backward from end (#112)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a punctuation space, delete word forward from beginning (#113)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a punctuation space, delete word forward from beginning of preceding whitespace (#114)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a punctuation space, delete word backward from end of trailing whitespace (#115)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#116)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#117)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#118)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#119)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#120)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a thin space, delete word backward from end (#121)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a thin space, delete word forward from beginning (#122)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a thin space, delete word forward from beginning of preceding whitespace (#123)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a thin space, delete word backward from end of trailing whitespace (#124)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#125)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#126)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#127)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#128)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#129)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a hair space, delete word backward from end (#130)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a hair space, delete word forward from beginning (#131)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a hair space, delete word forward from beginning of preceding whitespace (#132)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type two words separated by a hair space, delete word backward from end of trailing whitespace (#133)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#134)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a word, delete it and undo the deletion (#135)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a sentence, move the caret to the middle and move with the arrows to the start (#136)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Type a text and token text, move the caret to the end of the first text (#137)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#138)": {
+    "reason": "dom-only",
+    "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
   }
 }

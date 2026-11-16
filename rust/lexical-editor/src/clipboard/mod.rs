@@ -11,29 +11,46 @@
 //! or inserts its text ([`insert_data_transfer_for_rich_text`],
 //! [`insert_data_transfer_for_plain_text`]).
 //!
-//! Not ported (rust/PARITY.md): the HTML parts (`$getHtmlContent` and the
-//! `text/html` importer), which come with `html`;
-//! `GetClipboardDataExtension`, `ClipboardImportExtension` and
-//! `ClipboardDOMImportExtension` with their configs, which need the
-//! extension API (the functions here do what their defaults do); drag and
-//! drop (`$handleRichTextDrop`, `$handlePlainTextDrop`,
-//! `$writeDragSourceToDataTransfer`, `caretFromPoint`), which needs a DOM;
-//! and `copyToClipboard`'s event and timer plumbing.
+//! With the `html` feature, the selection is copied as HTML too
+//! ([`get_html_content`]) and pasted HTML is imported. With `extension`,
+//! [`get_clipboard_data_extension`] and [`clipboard_import_extension`]
+//! (and, with both, [`clipboard_dom_import_extension`]) configure the
+//! stacks of each MIME type that copy and paste run.
+//!
+//! Not ported (rust/PARITY.md): drag and drop (`$handleRichTextDrop`,
+//! `$handlePlainTextDrop`, `$writeDragSourceToDataTransfer`,
+//! `caretFromPoint`), which needs a DOM, and `copyToClipboard`'s event and
+//! timer plumbing.
+
+mod clipboard_import_extension;
+
+#[cfg(all(feature = "extension", feature = "html"))]
+pub use clipboard_import_extension::clipboard_dom_import_extension;
+pub use clipboard_import_extension::{
+    ClipboardImportConfig, ClipboardImportOutput, ImportMimeTypeConfig, ImportMimeTypeFunction,
+    ImportMimeTypeNext, ImportMimeTypePriority, default_import_mime_type,
+    default_import_mime_type_priority, get_import_output,
+};
+#[cfg(feature = "extension")]
+pub use clipboard_import_extension::{
+    ClipboardImportConfigOverrides, ClipboardImportExtensionType, clipboard_import_extension,
+};
 
 use crate::commands::{InsertClipboardNodesPayload, SELECTION_INSERT_CLIPBOARD_NODES_COMMAND};
 use crate::events::DataTransfer;
 use crate::json::{self, Object, Value};
-use crate::lexical_selection::{SelectionRef, get_selection, set_selection};
+use crate::lexical_selection::SelectionRef;
+#[cfg(feature = "rich-text")]
+use crate::lexical_selection::get_selection;
 use crate::lexical_utils::get_root;
 use crate::node::NodeRef;
-use crate::nodes::tab::create_tab_node;
 use crate::selection::slice_selected_text_node_content;
-use crate::selection_insert_nodes::{RawTextVisitor, tokenize_raw_text};
 use crate::serialized_export::export_node_json;
 use crate::updates::parse_serialized_node;
 use crate::{
     CaretDirection, Editor, LexicalError, caret_from_point, get_caret_range, get_child_caret,
 };
+use std::rc::Rc;
 
 /// The `application/x-lexical-editor` MIME type: a clipboard payload of
 /// Lexical JSON.
@@ -105,125 +122,25 @@ pub fn insert_data_transfer_for_plain_text(
 
 /// `$insertDataTransferForRichText(dataTransfer, selection, editor)`:
 /// inserts the contents of `data_transfer` at `selection` with the
-/// rich-text import pipeline's default stack (`$getImportOutput()` of an
-/// editor without `ClipboardImportExtension`, which isn't ported): the
-/// first MIME type with data whose importer takes it, of
-/// `application/x-lexical-editor` (Lexical JSON in the editor's namespace),
-/// `text/plain` and `text/uri-list`.
-///
-/// JS tries `text/html` between the JSON and the plain text (unless it is
-/// the plain text verbatim, as iOS Safari's autocorrect pastes); its
-/// importer comes with `html` (rust/PARITY.md), so here HTML is left for
-/// the plain text after it.
+/// rich-text import pipeline, `$getImportOutput().$insertDataTransfer`:
+/// the stacks of the editor's `ClipboardImportExtension`, or the defaults
+/// (`application/x-lexical-editor`, Lexical JSON in the editor's namespace;
+/// `text/html` with the `html` feature, unless it is the plain text
+/// verbatim, as iOS Safari's autocorrect pastes; `text/plain`;
+/// `text/uri-list`), the first type with data whose stack takes it.
 ///
 /// Every payload type leaves the editor's selection after the inserted
 /// content, so `selection` must be a live selection this update may write
-/// to. JS's `editor` is unused; this one is the editor whose namespace the
-/// JSON must name and that gets `SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`.
+/// to. JS's `editor` is unused, and so is this one (the importers use the
+/// active editor).
 pub fn insert_data_transfer_for_rich_text(
     data_transfer: &DataTransfer,
     selection: &SelectionRef,
-    editor: &Editor,
+    _editor: &Editor,
 ) -> Result<(), LexicalError> {
-    run_import(data_transfer, selection, editor).map(|_| ())
-}
-
-/// `$runImport(config, dataTransfer, selection)` with the default config
-/// (`DEFAULT_IMPORT_MIME_TYPE` in `DEFAULT_IMPORT_MIME_TYPE_PRIORITY`'s
-/// order), less `text/html`: whether an importer took the data.
-fn run_import(
-    data_transfer: &DataTransfer,
-    selection: &SelectionRef,
-    editor: &Editor,
-) -> Result<bool, LexicalError> {
-    for mime in [LEXICAL_MIME_TYPE, "text/plain", "text/uri-list"] {
-        let data = data_transfer.get_data(mime);
-        if data.is_empty() {
-            continue;
-        }
-        let handled = if mime == LEXICAL_MIME_TYPE {
-            default_lexical_editor_importer(&data, selection, editor)
-        } else {
-            default_plain_text_importer(&data, selection)?
-        };
-        if handled {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
-/// `$defaultLexicalEditorImporter`: parses the JSON and, when it names the
-/// editor's namespace and has a `nodes` array, inserts its nodes. Anything
-/// that fails (bad JSON, an unknown node type, an insertion that throws) is
-/// caught, as JS catches it (and logs it), and leaves the data to the next
-/// MIME type.
-fn default_lexical_editor_importer(data: &str, selection: &SelectionRef, editor: &Editor) -> bool {
-    let run = || -> Result<bool, LexicalError> {
-        let Ok(payload) = json::parse(data) else {
-            return Ok(false);
-        };
-        let namespace_matches =
-            payload.get("namespace").and_then(Value::as_str) == Some(editor.get_namespace());
-        let Some(serialized_nodes) = payload.get("nodes").and_then(Value::as_array) else {
-            return Ok(false);
-        };
-        if !namespace_matches {
-            return Ok(false);
-        }
-        let nodes = generate_nodes_from_serialized_nodes(serialized_nodes)?;
-        insert_generated_nodes(editor, nodes, selection)?;
-        Ok(true)
-    };
-    // `$next()` from the only importer in the stack is `false`.
-    run().unwrap_or(false)
-}
-
-/// `$defaultPlainTextImporter`: on a range selection, the text token by
-/// token (`tokenizeRawText`), each `\n` as `insertParagraph`, each tab as a
-/// tab node and the rest as `insertText`, each on the editor's selection as
-/// the one before leaves it (after making `selection` the editor's); on a
-/// node selection, `insertRawText`, which does nothing.
-fn default_plain_text_importer(data: &str, selection: &SelectionRef) -> Result<bool, LexicalError> {
-    if !selection.is_range() {
-        selection.insert_raw_text(data)?;
-        return Ok(true);
-    }
-    // Each insertion below reports the caret position that follows it by
-    // writing to the editor's selection, so the loop re-reads it between
-    // tokens. Honoring a caller-supplied selection means promoting it to
-    // the editor's selection first.
-    if !get_selection().is_some_and(|current| current.ptr_eq(selection)) {
-        set_selection(Some(selection.clone()));
-    }
-    /// The tokens' insertions; JS stops at the first that throws.
-    struct Insert(Result<(), LexicalError>);
-    impl Insert {
-        fn with_current_range(
-            &mut self,
-            f: impl FnOnce(&SelectionRef) -> Result<(), LexicalError>,
-        ) {
-            if self.0.is_ok()
-                && let Some(current) = get_selection().filter(SelectionRef::is_range)
-            {
-                self.0 = f(&current);
-            }
-        }
-    }
-    impl RawTextVisitor for Insert {
-        fn linebreak(&mut self) {
-            self.with_current_range(|cur| cur.insert_paragraph().map(|_| ()));
-        }
-        fn tab(&mut self) {
-            self.with_current_range(|cur| cur.insert_nodes(vec![create_tab_node()]));
-        }
-        fn text(&mut self, text: &str) {
-            self.with_current_range(|cur| cur.insert_text(text));
-        }
-    }
-    let mut insert = Insert(Ok(()));
-    tokenize_raw_text(data, &mut insert);
-    insert.0.map(|_| true)
+    get_import_output()?
+        .insert_data_transfer(data_transfer, selection)
+        .map(|_| ())
 }
 
 /// `$insertGeneratedNodes(editor, nodes, selection)`: inserts `nodes` at
@@ -432,26 +349,259 @@ pub fn generate_nodes_from_serialized_nodes(
     serialized_nodes.iter().map(parse_serialized_node).collect()
 }
 
-/// `$getClipboardDataFromSelection(selection)` with the default
-/// `ExportMimeTypeConfig` (`GetClipboardDataExtension` isn't ported):
-/// `text/plain` (the selection's text, `""` without one) and, when
-/// something is selected, `application/x-lexical-editor`
-/// ([`get_lexical_content`]). JS's default also has `text/html`
-/// (`$getHtmlContent`), which comes with `html`. JS's `selection` defaults
+/// `$getHtmlContent(editor, selection)`: the HTML of the nodes in
+/// `selection` (`$generateHtmlFromNodes`, relying on each node's
+/// `exportDOM`); `""` when nothing is selected. JS's `selection` defaults
 /// to `$getSelection()`; pass it here.
+#[cfg(feature = "html")]
+pub fn get_html_content(
+    editor: &Editor,
+    selection: Option<&SelectionRef>,
+) -> Result<String, LexicalError> {
+    let Some(selection) = selection else {
+        return Err(LexicalError::new("Expected valid LexicalSelection"));
+    };
+    // If we haven't selected anything
+    if is_nothing_selected(selection)? {
+        return Ok(String::new());
+    }
+    crate::html::generate_html_from_nodes(editor, Some(selection))
+}
+
+/// The `next` of an [`ExportMimeTypeFunction`]: the handler below it in
+/// the stack (`None` below the bottom).
+pub type ExportMimeTypeNext<'a> = &'a dyn Fn() -> Result<Option<String>, LexicalError>;
+
+/// `ExportMimeTypeFunction`: serializes the selection (`None` when there is
+/// none) for one MIME type, or returns `None` to leave the type out.
+pub type ExportMimeTypeFunction = Rc<
+    dyn Fn(Option<&SelectionRef>, ExportMimeTypeNext<'_>) -> Result<Option<String>, LexicalError>,
+>;
+
+/// `ExportMimeTypeConfig`: a stack per MIME type, in the order the types
+/// were first added; the last function of a stack runs first.
+pub type ExportMimeTypeConfig = Vec<(String, Vec<ExportMimeTypeFunction>)>;
+
+/// `DEFAULT_EXPORT_MIME_TYPE`: [`get_lexical_content`],
+/// [`get_html_content`] (with the `html` feature) and the selection's text.
+pub fn default_export_mime_type() -> ExportMimeTypeConfig {
+    fn active_editor() -> Result<Editor, LexicalError> {
+        crate::updates::get_active_editor()
+            .ok_or_else(|| LexicalError::new("Unable to find an active editor."))
+    }
+    let mut config: ExportMimeTypeConfig = vec![(
+        LEXICAL_MIME_TYPE.to_owned(),
+        vec![Rc::new(
+            |sel: Option<&SelectionRef>, next: ExportMimeTypeNext<'_>| match sel {
+                Some(sel) => get_lexical_content(&active_editor()?, Some(sel)),
+                None => next(),
+            },
+        )],
+    )];
+    #[cfg(feature = "html")]
+    config.push((
+        "text/html".to_owned(),
+        vec![Rc::new(
+            |sel: Option<&SelectionRef>, next: ExportMimeTypeNext<'_>| match sel {
+                Some(sel) => get_html_content(&active_editor()?, Some(sel)).map(Some),
+                None => next(),
+            },
+        )],
+    ));
+    config.push((
+        "text/plain".to_owned(),
+        vec![Rc::new(
+            |sel: Option<&SelectionRef>, next: ExportMimeTypeNext<'_>| match sel {
+                Some(sel) => sel.get_text_content().map(Some),
+                None => next(),
+            },
+        )],
+    ));
+    config
+}
+
+/// `$getExportConfig(editor)`: the editor's `GetClipboardDataExtension`
+/// output, or the defaults without it.
+fn get_export_config(editor: &Editor) -> Result<Rc<ExportMimeTypeConfig>, LexicalError> {
+    #[cfg(feature = "extension")]
+    if let Some(output) = crate::extension::get_peer_dependency_from_editor::<
+        GetClipboardDataConfig,
+        ExportMimeTypeConfig,
+        (),
+    >(
+        editor,
+        get_clipboard_data::GET_CLIPBOARD_DATA_EXTENSION_NAME,
+    )?
+    .and_then(|dep| dep.output)
+    {
+        return Ok(output);
+    }
+    let _ = editor;
+    Ok(Rc::new(default_export_mime_type()))
+}
+
+/// `callExportMimeTypeFunctionStack(fns, selection)`: the last function
+/// first, each `next` calling the one below it.
+fn call_export_mime_type_function_stack(
+    fns: &[ExportMimeTypeFunction],
+    selection: Option<&SelectionRef>,
+) -> Result<Option<String>, LexicalError> {
+    fn call_at(
+        fns: &[ExportMimeTypeFunction],
+        i: usize,
+        selection: Option<&SelectionRef>,
+    ) -> Result<Option<String>, LexicalError> {
+        if i == 0 {
+            return Ok(None);
+        }
+        (fns[i - 1])(selection, &|| call_at(fns, i - 1, selection))
+    }
+    call_at(fns, fns.len(), selection)
+}
+
+/// `$getClipboardDataFromSelection(selection)`: `selection` serialized for
+/// each MIME type of the editor's export stacks
+/// (`GetClipboardDataExtension`'s, or the defaults): `text/plain` first
+/// (`""` without a selection), then each type in the stacks' order whose
+/// stack gives a value. JS's `selection` defaults to `$getSelection()`;
+/// pass it here.
 pub fn get_clipboard_data_from_selection(
     selection: Option<&SelectionRef>,
 ) -> Result<LexicalClipboardData, LexicalError> {
     let editor = crate::updates::get_active_editor()
         .ok_or_else(|| LexicalError::new("Unable to find an active editor."))?;
     let mut clipboard_data: LexicalClipboardData = vec![("text/plain".to_owned(), String::new())];
-    if let Some(selection) = selection {
-        if let Some(lexical) = get_lexical_content(&editor, Some(selection))? {
-            clipboard_data.push((LEXICAL_MIME_TYPE.to_owned(), lexical));
+    for (k, fns) in get_export_config(&editor)?.iter() {
+        if let Some(v) = call_export_mime_type_function_stack(fns, selection)? {
+            match clipboard_data.iter_mut().find(|(key, _)| key == k) {
+                Some(entry) => entry.1 = v,
+                None => clipboard_data.push((k.clone(), v)),
+            }
         }
-        clipboard_data[0].1 = selection.get_text_content()?;
     }
     Ok(clipboard_data)
+}
+
+/// `$exportMimeTypeFromSelection(mimeType, selection)`: `selection`
+/// serialized for one MIME type with the editor's export stack, or `None`
+/// when it has none for the type or every handler gave `None`. JS's
+/// `selection` defaults to `$getSelection()`; pass it here.
+pub fn export_mime_type_from_selection(
+    mime_type: &str,
+    selection: Option<&SelectionRef>,
+) -> Result<Option<String>, LexicalError> {
+    let editor = crate::updates::get_active_editor()
+        .ok_or_else(|| LexicalError::new("Unable to find an active editor."))?;
+    let config = get_export_config(&editor)?;
+    let fns = config
+        .iter()
+        .find(|(k, _)| k == mime_type)
+        .map(|(_, fns)| &fns[..])
+        .unwrap_or_default();
+    call_export_mime_type_function_stack(fns, selection)
+}
+
+/// The merge of `$exportMimeType` and `$importMimeType`: each of
+/// `partial`'s functions go on top of its type's stack, and a new type is
+/// added last.
+#[cfg(feature = "extension")]
+pub(crate) fn append_stacks<F: Clone>(
+    config: &mut Vec<(String, Vec<F>)>,
+    partial: &[(String, Vec<F>)],
+) {
+    for (k, v) in partial {
+        match config.iter_mut().find(|(key, _)| key == k) {
+            Some(entry) => entry.1.extend(v.iter().cloned()),
+            None => config.push((k.clone(), v.clone())),
+        }
+    }
+}
+
+#[cfg(feature = "extension")]
+pub use get_clipboard_data::*;
+
+#[cfg(feature = "extension")]
+mod get_clipboard_data {
+    use super::{ExportMimeTypeConfig, append_stacks, default_export_mime_type};
+    use crate::Editor;
+    use crate::extension_core::{
+        ExtensionBuildState, ExtensionConfigBase, LexicalExtension, define_extension,
+    };
+    use std::rc::Rc;
+
+    pub(super) const GET_CLIPBOARD_DATA_EXTENSION_NAME: &str =
+        "@lexical/clipboard/GetClipboardData";
+
+    /// `GetClipboardDataConfig`.
+    #[derive(Clone)]
+    pub struct GetClipboardDataConfig {
+        /// `$exportMimeType`: a contribution's functions go on top of each
+        /// type's stack (`[...prev, ...override]`).
+        pub export_mime_type: ExportMimeTypeConfig,
+    }
+
+    /// `Partial<GetClipboardDataConfig>`.
+    #[derive(Clone, Default)]
+    pub struct GetClipboardDataConfigOverrides {
+        pub export_mime_type: Option<ExportMimeTypeConfig>,
+    }
+
+    impl ExtensionConfigBase for GetClipboardDataConfig {
+        type Partial = GetClipboardDataConfigOverrides;
+
+        fn shallow_merge(&self, overrides: &GetClipboardDataConfigOverrides) -> Self {
+            GetClipboardDataConfig {
+                export_mime_type: overrides
+                    .export_mime_type
+                    .clone()
+                    .unwrap_or_else(|| self.export_mime_type.clone()),
+            }
+        }
+    }
+
+    /// `GetClipboardDataExtension`.
+    pub type GetClipboardDataExtensionType =
+        LexicalExtension<GetClipboardDataConfig, ExportMimeTypeConfig, ()>;
+
+    fn make() -> Rc<GetClipboardDataExtensionType> {
+        define_extension(LexicalExtension {
+            build: Some(Rc::new(
+                |_: &Editor, config: &GetClipboardDataConfig, _: &ExtensionBuildState<()>| {
+                    Ok(config.export_mime_type.clone())
+                },
+            )),
+            merge_config: Some(Rc::new(
+                |config: &GetClipboardDataConfig, partial: &GetClipboardDataConfigOverrides| {
+                    let mut merged = config.shallow_merge(partial);
+                    if let Some(export_mime_type) = &partial.export_mime_type {
+                        merged.export_mime_type = config.export_mime_type.clone();
+                        append_stacks(&mut merged.export_mime_type, export_mime_type);
+                    }
+                    merged
+                },
+            )),
+            ..LexicalExtension::new(
+                GET_CLIPBOARD_DATA_EXTENSION_NAME,
+                GetClipboardDataConfig {
+                    export_mime_type: default_export_mime_type(),
+                },
+            )
+        })
+    }
+
+    thread_local! {
+        static GET_CLIPBOARD_DATA_EXTENSION: Rc<GetClipboardDataExtensionType> = make();
+    }
+
+    /// `GetClipboardDataExtension`: how the selection is serialized into
+    /// each MIME type when copying out of the editor. Its output is the
+    /// merged [`ExportMimeTypeConfig`], which
+    /// [`get_clipboard_data_from_selection`](super::get_clipboard_data_from_selection)
+    /// and [`export_mime_type_from_selection`](super::export_mime_type_from_selection)
+    /// read.
+    pub fn get_clipboard_data_extension() -> Rc<GetClipboardDataExtensionType> {
+        GET_CLIPBOARD_DATA_EXTENSION.with(Rc::clone)
+    }
 }
 
 /// `setLexicalClipboardDataTransfer(clipboardData, data)`: `setData` on
@@ -561,10 +711,22 @@ mod tests {
                 .unwrap()
         );
         assert_eq!(text(&editor), "hello world");
+        #[cfg(not(feature = "html"))]
         assert_eq!(
             clipboard.types(),
             ["text/html", "text/plain", "application/x-lexical-editor"]
         );
+        #[cfg(feature = "html")]
+        {
+            assert_eq!(
+                clipboard.types(),
+                ["text/plain", "application/x-lexical-editor", "text/html"]
+            );
+            assert_eq!(
+                clipboard.get_data("text/html"),
+                r#"<span style="white-space: pre-wrap;">world</span>"#
+            );
+        }
         assert_eq!(clipboard.get_data("text/plain"), "world");
         assert_eq!(
             clipboard.get_data("application/x-lexical-editor"),
@@ -585,8 +747,9 @@ mod tests {
         assert_eq!(text(&editor), "hello world");
     }
 
-    /// `registerPlainText`'s: the copy writes only `text/plain`, and the
-    /// paste takes only the text, not the Lexical JSON.
+    /// `registerPlainText`'s: the copy writes only `text/plain` (and
+    /// `text/html`), and the paste takes only the text, not the Lexical
+    /// JSON.
     #[test]
     fn plain_text_copy_cut_and_paste() {
         let editor = editor(crate::plain_text::register_plain_text);
@@ -597,7 +760,16 @@ mod tests {
                 .unwrap()
         );
         assert_eq!(text(&editor), "hello ");
+        #[cfg(not(feature = "html"))]
         assert_eq!(clipboard.types(), ["text/plain"]);
+        #[cfg(feature = "html")]
+        {
+            assert_eq!(clipboard.types(), ["text/html", "text/plain"]);
+            assert_eq!(
+                clipboard.get_data("text/html"),
+                r#"<span style="white-space: pre-wrap;">world</span>"#
+            );
+        }
         clipboard.set_data("application/x-lexical-editor", "{}");
         clipboard.set_data("text/plain", "there\nyou");
         assert!(

@@ -5,6 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
+import {
+  $getClipboardDataFromSelection,
+  $insertDataTransferForRichText,
+  ClipboardDOMImportExtension,
+  ClipboardImportExtension,
+  type ExportMimeTypeConfig,
+  GetClipboardDataExtension,
+} from '@lexical/clipboard';
 import {CodeExtension} from '@lexical/code-core';
 import {
   buildEditorFromExtensions,
@@ -38,13 +46,19 @@ import {JSDOM} from 'jsdom';
 import {
   $createLineBreakNode,
   $createParagraphNode,
+  $createRangeSelection,
   $createTabNode,
   $createTextNode,
   $getDocument,
+  $getNodeByKey,
   $getRoot,
+  $getSelection,
   $isElementNode,
   $isParagraphNode,
+  $isRangeSelection,
   $isTextNode,
+  $setSelection,
+  type AnyLexicalExtensionArgument,
   configExtension,
   defineExtension,
   type DOMExportOutput,
@@ -54,6 +68,7 @@ import {
   type LexicalEditor,
   type LexicalNode,
   ParagraphNode,
+  type PointType,
   TabNode,
   TEXT_TYPE_TO_FORMAT,
   TextNode,
@@ -791,6 +806,339 @@ test('html/import-packages', {timeout: 60_000}, () => {
     'html/import-packages',
     'html-import',
     "HTML (the html/import, html/import-extension and html/import-nodes corpora, curated cases for each package's import rules, and every property/documents HTML export) and the nodes DOMImportExtension's $generateNodesFromDOM makes from it in a jsdom document, in an editor built from RichTextExtension, CheckListExtension, LinkExtension, CodeExtension, WordListImportExtension and HorizontalRuleExtension (and, for `shadowRootQuote`, ShadowRootQuoteRule), each as exportJSON with its children.",
+    cases,
+  );
+});
+
+/** A point: the child indices from the root to its node, its offset and type. */
+type PathPoint = [number[], number, 'text' | 'element'];
+
+type ClipboardCase = {
+  name: string;
+  /**
+   * The editor: `headless` (`createHeadlessEditor` over DOCUMENT_NODES),
+   * `dom-import` (the package extensions with `ClipboardDOMImportExtension`),
+   * `priority` (`ClipboardImportExtension` ranking `text/plain` first),
+   * `next-data` (a `text/html` handler that calls `$next` with other HTML)
+   * or `custom-export` (`GetClipboardDataExtension` with the handlers of
+   * CUSTOM_EXPORT).
+   */
+  scenario: string;
+  /** `JSON.stringify(editorState.toJSON())` before the operation. */
+  editorState: string;
+  /** The range selection the operation runs at: anchor, then focus. */
+  selection: [PathPoint, PathPoint];
+  /** `copy`: `$getClipboardDataFromSelection()`'s entries in order. */
+  clipboard?: [string, string][];
+  /** `paste`: the `DataTransfer`'s entries. */
+  data?: [string, string][];
+  /** `paste`: the editor state after `$insertDataTransferForRichText`. */
+  state?: string;
+  /** `paste`: the selection after it (`null` when it isn't a range). */
+  after?: [PathPoint, PathPoint] | null;
+};
+
+function $path(node: LexicalNode): number[] {
+  const path: number[] = [];
+  for (
+    let n: LexicalNode | null = node;
+    n && n.getParent();
+    n = n.getParent()
+  ) {
+    path.unshift(n.getIndexWithinParent());
+  }
+  return path;
+}
+
+function $nodeAtPath(path: number[]): LexicalNode {
+  let node: LexicalNode = $getRoot();
+  for (const i of path) {
+    if (!$isElementNode(node)) {
+      throw new Error(`no node at ${path}`);
+    }
+    node = node.getChildAtIndex(i)!;
+  }
+  return node;
+}
+
+/**
+ * Every range selection point of the document, in document order, but
+ * those inside a surrogate pair (half a pair can't be a Rust string, the
+ * Tier 1 exception in rust/PARITY.md).
+ */
+function $allPoints(): PathPoint[] {
+  const points: PathPoint[] = [];
+  const visit = (node: LexicalNode) => {
+    if ($isTextNode(node)) {
+      const text = node.getTextContent();
+      for (let i = 0; i <= text.length; i++) {
+        const unit = text.charCodeAt(i);
+        if (!(unit >= 0xdc00 && unit <= 0xdfff && i > 0)) {
+          points.push([$path(node), i, 'text']);
+        }
+      }
+    } else if ($isElementNode(node)) {
+      const children = node.getChildren();
+      for (let i = 0; i <= children.length; i++) {
+        points.push([$path(node), i, 'element']);
+        if (i < children.length) {
+          visit(children[i]);
+        }
+      }
+    }
+  };
+  visit($getRoot());
+  return points;
+}
+
+function $selectPaths([anchor, focus]: [PathPoint, PathPoint]): void {
+  const selection = $createRangeSelection();
+  selection.anchor.set($nodeAtPath(anchor[0]).getKey(), anchor[1], anchor[2]);
+  selection.focus.set($nodeAtPath(focus[0]).getKey(), focus[1], focus[2]);
+  $setSelection(selection);
+}
+
+function $selectionPaths(): [PathPoint, PathPoint] | null {
+  const selection = $getSelection();
+  if (!$isRangeSelection(selection)) {
+    return null;
+  }
+  const point = ({key, offset, type}: PointType): PathPoint => [
+    $path($getNodeByKey(key)!),
+    offset,
+    type,
+  ];
+  return [point(selection.anchor), point(selection.focus)];
+}
+
+/** GetClipboardDataExtension's handlers for the `custom-export` scenario. */
+const CUSTOM_EXPORT: ExportMimeTypeConfig = {
+  'application/x-lexical-editor': [() => null],
+  'application/x-node-count': [
+    selection => (selection ? String(selection.getNodes().length) : null),
+  ],
+  'text/html': [
+    (_selection, next) => {
+      const html = next();
+      return html ? `<!--wrapped-->${html}` : html;
+    },
+  ],
+};
+
+function clipboardEditor(scenario: string): LexicalEditor {
+  const onError = (e: Error) => {
+    throw e;
+  };
+  if (scenario === 'headless') {
+    return createHeadlessEditor({
+      namespace: 'conformance',
+      nodes: DOCUMENT_NODES,
+      onError,
+    });
+  }
+  const scenarios: Record<string, AnyLexicalExtensionArgument[]> = {
+    'custom-export': [
+      configExtension(GetClipboardDataExtension, {
+        $exportMimeType: CUSTOM_EXPORT,
+      }),
+    ],
+    'dom-import': [
+      RichTextExtension,
+      CheckListExtension,
+      LinkExtension,
+      CodeExtension,
+      ClipboardDOMImportExtension,
+    ],
+    'next-data': [
+      configExtension(ClipboardImportExtension, {
+        $importMimeType: {
+          'text/html': [
+            (html, _selection, $next) => $next(`<p><b>first</b></p>${html}`),
+          ],
+        },
+      }),
+    ],
+    priority: [
+      configExtension(ClipboardImportExtension, {
+        priority: {'text/plain': 5},
+      }),
+    ],
+  };
+  return buildEditorFromExtensions(
+    defineExtension({
+      dependencies: scenarios[scenario],
+      name: '[conformance]',
+      nodes: DOCUMENT_NODES,
+      onError,
+    }),
+  );
+}
+
+function dataTransferOf(entries: [string, string][]): DataTransfer {
+  const data = new Map(entries);
+  return {
+    getData: (type: string) => data.get(type) ?? '',
+    types: [...data.keys()],
+  } as unknown as DataTransfer;
+}
+
+/**
+ * Runs `c` (with no `selection`) at the selection `seed` picks among the
+ * document's points in the case's editor (`0` for all of it), recorded as
+ * `selection`.
+ */
+function runClipboardCase(
+  c: Omit<ClipboardCase, 'selection'>,
+  seed: number,
+): ClipboardCase {
+  const editor = clipboardEditor(c.scenario);
+  const globals = globalThis as {DOMParser?: unknown};
+  return withJSDOM(win => {
+    const prevParser = globals.DOMParser;
+    globals.DOMParser = win.DOMParser;
+    try {
+      editor.setEditorState(editor.parseEditorState(c.editorState));
+      const points = editor.read($allPoints);
+      const random = prng(seed);
+      const pick = () => points[Math.floor(random() * points.length)];
+      const selection: [PathPoint, PathPoint] =
+        seed === 0 ? [points[0], points[points.length - 1]] : [pick(), pick()];
+      if (c.data === undefined) {
+        let clipboard: [string, string][] = [];
+        editor.update(
+          () => {
+            $selectPaths(selection);
+            clipboard = Object.entries($getClipboardDataFromSelection()).map(
+              ([k, v]) => [k, v ?? ''],
+            );
+          },
+          {discrete: true},
+        );
+        return {...c, clipboard, selection};
+      }
+      const dataTransfer = dataTransferOf(c.data);
+      editor.update(
+        () => {
+          $selectPaths(selection);
+          $insertDataTransferForRichText(
+            dataTransfer,
+            $getSelection()!,
+            editor,
+          );
+        },
+        {discrete: true},
+      );
+      return {
+        ...c,
+        after: editor.read($selectionPaths),
+        selection,
+        state: JSON.stringify(editor.getEditorState().toJSON()),
+      };
+    } finally {
+      globals.DOMParser = prevParser;
+      if ('dispose' in editor && typeof editor.dispose === 'function') {
+        editor.dispose();
+      }
+    }
+  });
+}
+
+/** Pastes with every importer's edge: equal plain text, bad JSON, URIs. */
+const CLIPBOARD_PASTES: [string, string][][] = [
+  [
+    ['text/html', '<p>same</p>'],
+    ['text/plain', '<p>same</p>'],
+  ],
+  [['text/html', '<h2>h</h2><ul><li>a</li></ul>']],
+  [
+    ['text/plain', 'plain\nlines'],
+    ['text/html', '<p><i>rich</i> text</p>'],
+  ],
+  [
+    ['application/x-lexical-editor', '{"namespace":"other","nodes":[]}'],
+    ['text/html', '<blockquote>q</blockquote><p>p</p>'],
+  ],
+  [
+    ['application/x-lexical-editor', 'not json'],
+    ['text/plain', 'fallback'],
+  ],
+  [['text/uri-list', 'https://example.com']],
+  [['text/html', '<a href="https://a.test">link</a> tail<pre>code</pre>']],
+];
+
+test('html/clipboard', {timeout: 120_000}, () => {
+  const documents: string[] = JSON.parse(
+    readFileSync(
+      new URL('../vectors/property/documents.json', import.meta.url),
+      'utf8',
+    ),
+  ).cases.map((c: {legacy: string}) => c.legacy);
+  const cases: ClipboardCase[] = [];
+  documents.forEach((editorState, i) => {
+    for (const j of [0, 1]) {
+      for (const scenario of j === 0
+        ? ['headless']
+        : ['headless', 'custom-export']) {
+        cases.push(
+          runClipboardCase(
+            {
+              editorState,
+              name: `copy ${scenario} document ${i} selection ${j}`,
+              scenario,
+            },
+            j === 0 ? i + 1 : 0,
+          ),
+        );
+      }
+    }
+  });
+  // Each document's copied HTML and text, pasted into the next document.
+  documents.forEach((_, i) => {
+    const copied = cases.find(
+      c => c.name === `copy headless document ${i} selection 0`,
+    )!.clipboard!;
+    const data = copied.filter(([k]) => k !== 'application/x-lexical-editor');
+    const target = (i + 1) % documents.length;
+    for (const scenario of ['headless', 'dom-import']) {
+      cases.push(
+        runClipboardCase(
+          {
+            data,
+            editorState: documents[target],
+            name: `paste ${scenario} document ${i} into ${target}`,
+            scenario,
+          },
+          target + 1,
+        ),
+      );
+    }
+  });
+  CLIPBOARD_PASTES.forEach((data, i) => {
+    for (const scenario of [
+      'headless',
+      'dom-import',
+      'priority',
+      'next-data',
+    ]) {
+      for (const target of [0, 7]) {
+        cases.push(
+          runClipboardCase(
+            {
+              data,
+              editorState: documents[target],
+              name: `paste ${scenario} data ${i} into ${target}`,
+              scenario,
+            },
+            target + 1,
+          ),
+        );
+      }
+    }
+  });
+  emitVectors(
+    'html/clipboard',
+    'html-clipboard',
+    "@lexical/clipboard's HTML paths over the property/documents documents, at seeded selections given as child-index paths: copies ($getClipboardDataFromSelection with $getHtmlContent in jsdom, and GetClipboardDataExtension with custom handlers), and pastes ($insertDataTransferForRichText of each document's copied HTML and text into the next document, and of curated payloads) with the default importers, ClipboardDOMImportExtension over the package extensions, a ClipboardImportExtension priority and a text/html handler that calls $next with other HTML.",
     cases,
   );
 });

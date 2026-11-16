@@ -455,3 +455,276 @@ pub fn check_import_packages(case: &Value, _file: &Value) -> Result<Outcome, Str
     same("nodes", nodes.borrow().as_str(), case.str("nodes")?)?;
     Ok(Outcome::Pass)
 }
+
+/// The nodes of `property/documents` (`DOCUMENT_NODES`).
+fn document_nodes() -> Vec<lexical::NodeClass> {
+    [
+        lexical::rich_text::rich_text_nodes(),
+        lexical::list::list_nodes(),
+        lexical::link::link_nodes(),
+        lexical::code::code_nodes(),
+        lexical::overflow::overflow_nodes(),
+        lexical::hashtag::hashtag_nodes(),
+    ]
+    .concat()
+}
+
+/// `clipboardEditor(scenario)`, with the handle that disposes an editor
+/// built from extensions.
+fn clipboard_editor(
+    scenario: &str,
+) -> Result<
+    (
+        lexical::Editor,
+        Option<lexical::extension::LexicalEditorWithDispose>,
+    ),
+    String,
+> {
+    use lexical::clipboard::{
+        ClipboardImportConfigOverrides, ExportMimeTypeFunction, GetClipboardDataConfigOverrides,
+        ImportMimeTypeFunction, clipboard_dom_import_extension, clipboard_import_extension,
+        get_clipboard_data_extension,
+    };
+    use lexical::{LexicalExtension, config_extension, define_extension};
+    if scenario == "headless" {
+        let editor = create_editor(CreateEditorArgs {
+            nodes: document_nodes(),
+            namespace: "conformance".to_owned(),
+            ..Default::default()
+        });
+        return Ok((editor, None));
+    }
+    let dependencies = match scenario {
+        // `CUSTOM_EXPORT`.
+        "custom-export" => {
+            let omit: ExportMimeTypeFunction = Rc::new(|_, _| Ok(None));
+            let node_count: ExportMimeTypeFunction = Rc::new(|selection, _| {
+                selection
+                    .map(|s| s.get_nodes().map(|nodes| nodes.len().to_string()))
+                    .transpose()
+            });
+            let wrap: ExportMimeTypeFunction = Rc::new(|_, next| {
+                Ok(next()?.map(|html| {
+                    if html.is_empty() {
+                        html
+                    } else {
+                        format!("<!--wrapped-->{html}")
+                    }
+                }))
+            });
+            vec![config_extension(
+                &get_clipboard_data_extension(),
+                [GetClipboardDataConfigOverrides {
+                    export_mime_type: Some(vec![
+                        ("application/x-lexical-editor".to_owned(), vec![omit]),
+                        ("application/x-node-count".to_owned(), vec![node_count]),
+                        ("text/html".to_owned(), vec![wrap]),
+                    ]),
+                }],
+            )]
+        }
+        "dom-import" => vec![
+            lexical::rich_text::rich_text_extension().into(),
+            lexical::list::check_list_extension().into(),
+            lexical::link::link_extension().into(),
+            lexical::code::code_extension().into(),
+            clipboard_dom_import_extension().into(),
+        ],
+        "next-data" => {
+            let first: ImportMimeTypeFunction =
+                Rc::new(|html, _, next, _| next(Some(&format!("<p><b>first</b></p>{html}")), None));
+            vec![config_extension(
+                &clipboard_import_extension(),
+                [ClipboardImportConfigOverrides {
+                    import_mime_type: Some(vec![("text/html".to_owned(), vec![first])]),
+                    ..Default::default()
+                }],
+            )]
+        }
+        "priority" => vec![config_extension(
+            &clipboard_import_extension(),
+            [ClipboardImportConfigOverrides {
+                priority: Some(vec![("text/plain".to_owned(), 5.0)]),
+                ..Default::default()
+            }],
+        )],
+        other => return Err(format!("unknown scenario {other}")),
+    };
+    let host = define_extension(LexicalExtension::<(), (), ()> {
+        dependencies,
+        nodes: document_nodes(),
+        ..LexicalExtension::new("[conformance]", ())
+    });
+    let built = lexical::extension::build_editor_from_extensions([host.into()])
+        .map_err(|e| e.to_string())?;
+    Ok(((*built).clone(), Some(built)))
+}
+
+/// `$nodeAtPath(path)`.
+fn node_at_path(path: &Value) -> Result<NodeRef, lexical::LexicalError> {
+    let mut node: NodeRef = lexical::get_root();
+    for i in path.as_array().into_iter().flatten() {
+        let i = i.as_f64().unwrap_or(-1.0) as usize;
+        node = node
+            .get_child_at_index(i)
+            .ok_or_else(|| lexical::LexicalError::new(format!("no node at {path}")))?;
+    }
+    Ok(node)
+}
+
+/// `$path(node)`.
+fn path_of(node: &NodeRef) -> Value {
+    let mut path = Vec::new();
+    let mut current = node.clone();
+    while let Some(parent) = current.get_parent() {
+        path.insert(
+            0,
+            Value::from(current.get_index_within_parent().unwrap_or(0) as f64),
+        );
+        current = parent;
+    }
+    Value::Array(path)
+}
+
+/// `$selectPaths([anchor, focus])`.
+fn select_paths(selection: &Value) -> Result<(), lexical::LexicalError> {
+    use lexical::{PointType, Which, create_range_selection, set_selection};
+    let range = create_range_selection();
+    let points = selection.as_array().cloned().unwrap_or_default();
+    for (which, point) in [Which::Anchor, Which::Focus].into_iter().zip(points) {
+        let parts = point.as_array().cloned().unwrap_or_default();
+        let node = node_at_path(&parts[0])?;
+        let offset = parts[1].as_f64().unwrap_or(0.0) as usize;
+        let point_type = match parts[2].as_str() {
+            Some("text") => PointType::Text,
+            _ => PointType::Element,
+        };
+        range.point_set(which, node.get_key(), offset, point_type)?;
+    }
+    set_selection(Some(range));
+    Ok(())
+}
+
+/// `$selectionPaths()`.
+fn selection_paths() -> Value {
+    use lexical::Which;
+    let Some(selection) = lexical::get_selection().filter(|s| s.is_range()) else {
+        return Value::Null;
+    };
+    let point = |which| {
+        let p = selection.point(which).expect("a range selection");
+        let node = lexical::get_node_by_key(p.key.as_str()).expect("the point's node");
+        Value::Array(vec![
+            path_of(&node),
+            (p.offset as f64).into(),
+            p.point_type.as_str().into(),
+        ])
+    };
+    Value::Array(vec![point(Which::Anchor), point(Which::Focus)])
+}
+
+/// `html/clipboard`: at the case's selection, `$getClipboardDataFromSelection`
+/// gives JS's entries (`copy`), or `$insertDataTransferForRichText` of its
+/// data leaves JS's editor state and selection (`paste`), in the case's
+/// scenario's editor (`clipboardEditor`).
+pub fn check_clipboard(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    use lexical::DataTransfer;
+    use lexical::clipboard::{
+        get_clipboard_data_from_selection, insert_data_transfer_for_rich_text,
+    };
+    let (editor, built) = clipboard_editor(case.str("scenario")?)?;
+    let state = editor
+        .parse_editor_state(case.str("editorState")?)
+        .map_err(|e| format!("editorState: {e}"))?;
+    editor
+        .set_editor_state(&state, None)
+        .map_err(|e| e.to_string())?;
+    let selection = case.get("selection").cloned().unwrap_or(Value::Null);
+    let options = UpdateOptions {
+        discrete: true,
+        ..UpdateOptions::default()
+    };
+    let result = match case.get("data") {
+        None => {
+            let out = Rc::new(RefCell::new(Value::Null));
+            let write = out.clone();
+            editor
+                .update(
+                    move || {
+                        select_paths(&selection)?;
+                        let data =
+                            get_clipboard_data_from_selection(lexical::get_selection().as_ref())?;
+                        *write.borrow_mut() = Value::Array(
+                            data.into_iter()
+                                .map(|(k, v)| Value::Array(vec![k.into(), v.into()]))
+                                .collect(),
+                        );
+                        Ok(())
+                    },
+                    options,
+                )
+                .map_err(|e| e.to_string())
+                .and_then(|()| {
+                    same(
+                        "clipboard",
+                        &out.borrow().to_string(),
+                        &case
+                            .get("clipboard")
+                            .cloned()
+                            .unwrap_or(Value::Null)
+                            .to_string(),
+                    )
+                })
+        }
+        Some(data) => {
+            let data_transfer = DataTransfer::new();
+            for entry in data.as_array().into_iter().flatten() {
+                if let Some([k, v]) = entry.as_array().map(Vec::as_slice) {
+                    data_transfer.set_data(k.as_str().unwrap_or(""), v.as_str().unwrap_or(""));
+                }
+            }
+            let paste_editor = editor.clone();
+            editor
+                .update(
+                    move || {
+                        select_paths(&selection)?;
+                        let selection = lexical::get_selection()
+                            .ok_or_else(|| lexical::LexicalError::new("no selection"))?;
+                        insert_data_transfer_for_rich_text(
+                            &data_transfer,
+                            &selection,
+                            &paste_editor,
+                        )
+                    },
+                    options,
+                )
+                .map_err(|e| e.to_string())
+                .and_then(|()| {
+                    same(
+                        "state",
+                        editor
+                            .get_editor_state()
+                            .to_json(false)
+                            .to_string()
+                            .as_str(),
+                        case.str("state")?,
+                    )?;
+                    let after = editor.read(selection_paths).map_err(|e| e.to_string())?;
+                    same(
+                        "after",
+                        &after.to_string(),
+                        &case
+                            .get("after")
+                            .cloned()
+                            .unwrap_or(Value::Null)
+                            .to_string(),
+                    )
+                })
+        }
+    };
+    if let Some(built) = built {
+        built.dispose();
+    }
+    result?;
+    Ok(Outcome::Pass)
+}

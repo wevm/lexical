@@ -31,6 +31,11 @@ pub fn all() -> Vec<Suite> {
             check: css::check_value,
         },
         Suite {
+            file: "html/clipboard",
+            variant: None,
+            check: html::check_clipboard,
+        },
+        Suite {
             file: "html/entities",
             variant: None,
             check: html::check_entity,

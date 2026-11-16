@@ -8,7 +8,10 @@
 
 use crate::LexicalError;
 use crate::caret::CaretDirection;
-use crate::caret_utils::{caret_from_point, normalize_caret, set_point_from_caret};
+use crate::caret_utils::{
+    SplitAtPointCaretNextOptions, caret_from_point, insert_node_to_nearest_root_at_caret,
+    normalize_caret, set_point_from_caret,
+};
 use crate::error::invariant;
 use crate::lexical_selection::{
     Point, PointType, RangeSelection, Selection, SelectionRef, Which, get_selection, set_selection,
@@ -276,12 +279,28 @@ fn range_selection_insert_nodes(
     }
 
     // CASE 3a: there is non-inline content but no block ancestor to insert
-    // it relative to: a malformed document. JS inserts the blocks with
-    // `$insertNodeToNearestRootAtCaret`, which is not ported yet.
+    // it relative to: a malformed document, where an inline-only element
+    // holds a block child (#8713) or a non-inline element reports
+    // `canBeEmpty() === false`. A non-inline node must never become the
+    // child of an inline-only element, so each block goes in with
+    // `$insertNodeToNearestRootAtCaret`, which splits the ancestors up to the
+    // nearest root or shadow root. (A list item is always a block ancestor,
+    // so lists fall through to CASE 3.)
     let Some(found_block) = first_block.clone() else {
-        return Err(LexicalError::new(
-            "insertNodes: inserting blocks with no block ancestor ($insertNodeToNearestRootAtCaret) is not ported yet",
-        ));
+        let blocks_parent = wrap_inline_nodes(nodes)?;
+        let node_to_select = blocks_parent.get_last_descendant();
+        let mut caret = caret_from_point(&anchor_of(selection), CaretDirection::Next)?;
+        for block in blocks_parent.get_children() {
+            caret = insert_node_to_nearest_root_at_caret(
+                &block,
+                &caret,
+                &SplitAtPointCaretNextOptions::default(),
+            )?;
+        }
+        if let Some(node_to_select) = node_to_select {
+            node_to_select.select_end()?;
+        }
+        return Ok(());
     };
 
     // CASE 3b: the block cannot receive block siblings (a slot value, whose

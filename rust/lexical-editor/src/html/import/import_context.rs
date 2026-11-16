@@ -1,12 +1,10 @@
 //! `import/ImportContext.ts`: the import context's states, the session the
 //! walk writes to, and reading and layering the context.
-//!
-//! JS's `ImportSourceDataTransfer` holds a clipboard `DataTransfer`, which
-//! the port doesn't have; it isn't ported.
 
 use super::compile_import_rules::CompiledOverlayRules;
 use super::dom_import_extension::{DomImportConfig, DomImportExtensionOutput};
 use crate::dom::DomNode;
+use crate::events::DataTransfer;
 use crate::extension::get_peer_dependency_from_editor;
 use crate::html::internal::constants::DOM_IMPORT_EXTENSION_NAME;
 use crate::html::internal::context_record::{
@@ -93,6 +91,7 @@ pub fn default_is_inline(node: &DomNode) -> bool {
 
 struct States {
     source: ImportStateConfig<ImportSourceKind>,
+    source_data_transfer: ImportStateConfig<Option<SharedDataTransfer>>,
     text_format: ImportStateConfig<i32>,
     text_style: ImportStateConfig<StyleObject>,
     whitespace: ImportStateConfig<WhitespaceImportConfig>,
@@ -102,6 +101,7 @@ struct States {
 thread_local! {
     static STATES: States = States {
         source: create_import_state("importSource", || ImportSourceKind::Unknown),
+        source_data_transfer: create_import_state("importSourceDataTransfer", || None),
         text_format: create_import_state("textFormat", || 0),
         text_style: create_import_state("textStyle", StyleObject::new),
         whitespace: create_import_state("whitespaceConfig", || WhitespaceImportConfig {
@@ -115,6 +115,25 @@ thread_local! {
 /// `ImportSource`: how this import was started (`Unknown` by default).
 pub fn import_source() -> ImportStateConfig<ImportSourceKind> {
     STATES.with(|s| s.source.clone())
+}
+
+/// A `DataTransfer` shared with the import context, equal only to itself,
+/// as JS compares objects.
+#[derive(Clone, Debug)]
+pub struct SharedDataTransfer(pub Rc<DataTransfer>);
+
+impl PartialEq for SharedDataTransfer {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+/// `ImportSourceDataTransfer` (`@experimental` upstream): the
+/// `DataTransfer` a paste came from (`None` by default), for rules and
+/// preprocessors that look at its other MIME types.
+/// `ClipboardDOMImportExtension` sets it.
+pub fn import_source_data_transfer() -> ImportStateConfig<Option<SharedDataTransfer>> {
+    STATES.with(|s| s.source_data_transfer.clone())
 }
 
 /// `ImportTextFormat`: the text format bits for text nodes made in the

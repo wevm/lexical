@@ -70,6 +70,7 @@ updated with each milestone.
 | The packages' import rules (the `html` and `extension` features with each package's) | `packages/lexical-rich-text/src/RichTextImportExtension.ts` (`RichTextImportRules`, the heading, Google Docs title and blockquote rules, and the shadow root quote rule), `packages/lexical-list/src/ListImportExtension.ts` (`ListImportRules`, `isDomChecklist`, the list schema with its flatten step), `packages/lexical-list/src/WordListImportExtension.ts` (the `mso-list` paragraph preprocess and rules), `packages/lexical-link/src/LinkImportExtension.ts` (`LinkImportRules`), `packages/lexical-code-core/src/CodeImportExtension.ts` (`CodeImportRules` and the VS Code paste overlay); each package extension depends on `CoreImportExtension` and its rules, as in JS | `rich_text::rich_text_import_extension`, `list::list_import_extension`, `list::word_list_import_extension`, `link::link_import_extension`, `code::code_import_extension` | `html/import-packages` |
 | Inline CSS text | `utils/setDOMStyle.ts` (`getStyleObjectFromCSS`, with JS's property order; with the `html` feature `setDOMStyleObject` and `setDOMStyleFromCSS`) | `set_dom_style` | through `css/values`; unit tests against JS's output |
 | Clipboard, JSON and plain text (the `clipboard` feature) | `packages/lexical-clipboard/src/clipboard.ts`: `$generateJSONFromSelectedNodes` (`$appendNodesToJSON`: `isSelected`, `excludeFromCopy('clone')`, `extractWithChild`, the text sliced at the selection's edges, empty slices left out, a node selection's element taking its subtree), `$generateNodesFromSerializedNodes`, `$insertGeneratedNodes` (`SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`, `$updateSelectionOnInsert`), `$getLexicalContent`, `$insertDataTransferForPlainText`, `$insertDataTransferForRichText` (the default stack of `ClipboardImportExtension.ts`: `$runImport` with `$defaultLexicalEditorImporter` and `$defaultPlainTextImporter` for `text/plain` and `text/uri-list`, by `DEFAULT_IMPORT_MIME_TYPE_PRIORITY`), `$getClipboardDataFromSelection` (the default `ExportMimeTypeConfig` but `text/html`), `setLexicalClipboardDataTransfer`; `$sliceSelectedTextNodeContent` (`@lexical/selection`, `'clone'`); from the core `LexicalNode.isSelected`, `createEditor`'s `namespace` and `getNamespace` (as the devtools row has them), `insertNodes`' CASE 1 (inside a code block), `PASTE_COMMAND`, `COPY_COMMAND`, `CUT_COMMAND` and `SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`, and `DataTransfer` (`getData`, `setData`, `types`, as Swift's in `LexicalEvents.swift`); the `extractWithChild` of `ParagraphNode`, `ListNode` and `ListItemNode` | `clipboard`, `events`, `selection`, `node`, `editor`, `commands`, `selection_insert_nodes`, `nodes::paragraph`, `list` | `scripts/clipboard` |
+| Clipboard, HTML and the extensions (the `clipboard` feature with `html`, `extension` or both) | `packages/lexical-clipboard/src/clipboard.ts`: `$getHtmlContent`, the `text/html` entry of `DEFAULT_EXPORT_MIME_TYPE`, `$getExportConfig`, `callExportMimeTypeFunctionStack`, `$exportMimeTypeFromSelection`, `GetClipboardDataExtension` (`GetClipboardDataConfig`, `ExportMimeTypeFunction`, its `mergeConfig`); `ClipboardImportExtension.ts`: `$defaultHtmlImporter`, `DEFAULT_IMPORT_MIME_TYPE`, `DEFAULT_IMPORT_MIME_TYPE_PRIORITY`, `$callImportMimeTypeFunctionStack` (with `$next`'s data and selection), `orderedMimeTypes`, `$runImport` (with the iOS Safari skip of HTML equal to the plain text), `$getImportOutput`, `ClipboardImportExtension`, `ClipboardDOMImportExtension`; `registerPlainText`'s copy writing `text/html`; `@lexical/html`'s `ImportSourceDataTransfer`; from the core, `insertNodes`' CASE 3a (`$insertNodeToNearestRootAtCaret` for blocks with no block ancestor) | `clipboard`, `plain_text`, `html::import`, `selection_insert_nodes` | `html/clipboard` |
 | Copy, cut and paste handlers (the `rich-text` and `plain-text` features) | `registerRichText`'s `COPY_COMMAND` (`copyToClipboard` with an event, `$copyToClipboardEvent`), `CUT_COMMAND` (`onCutForRichText`, with `INTERNAL_$expandSelectionToWholeDocument`) and `PASTE_COMMAND` (`onPasteForRichText`) handlers; `registerPlainText`'s (`onCopyForPlainText`, `onCutForPlainText`, `onPasteForPlainText`), with JS's `paste` and `cut` tags | `rich_text`, `plain_text`, `clipboard` | unit tests (no vector: headless JS has no `ClipboardEvent`) |
 | The rest of `@lexical/selection`'s model (the `selection` feature) | `packages/lexical-selection/src/lexical-node.ts` (`$sliceSelectedTextNodeContent`, its `'clone'` mode only, `$isAtNodeEnd`, `$trimTextContentFromAnchor`, `$addNodeStyle` as the deprecated no-op it is, `$patchStyleText` with values, `null` and functions of the previous value, `$forEachSelectedTextNode`, `$ensureForwardRangeSelection`), `range-selection.ts` (`$wrapNodes` with `$wrapNodesImpl`, `$shouldOverrideDefaultCharacterSelection`, `$isParentElementRTL`, `$moveCaretSelection`, `$moveCharacter`, `$getSelectionStyleValueForProperty`), `utils.ts` (`getCSSFromStyleObject`, `getStyleObjectFromRawCSS`), and its re-exports of `getStyleObjectFromCSS`, `$cloneWithProperties` and `$selectAll` (with a selection to scope it, `select_all_in`); from the core `getStyleObjectFromCSS` (`StyleObject`, in a JS object's key order), `$cloneWithProperties`, `$splitNode`, `ElementNode.getDescendantByIndex`, `TextNode.canHaveFormat` | `selection`, `set_dom_style`, `lexical_utils`, `selection_insert_nodes` | `scripts/selection-utils` |
 | `@lexical/utils`'s model (the `utils` feature) | `packages/lexical-utils/src/index.ts`: `DFSNode`, `$dfs`, `$reverseDfs`, `$dfsIterator`, `$reverseDfsIterator` (Rust iterators), `$getAdjacentCaret`, `$getNextSiblingOrParentSibling`, `$getDepth`, `$getNextRightPreorderNode`, `$getNearestNodeOfType`, `$getNearestBlockElementAncestorOrThrow`, `registerNestedElementResolver` (by node type), `$restoreEditorState`, `$insertNodeToNearestRoot`, `$insertNodeIntoLeaf`, `$wrapNodeInElement`, `$filter`, `$handleIndentAndOutdent`, `$insertFirst`, `$unwrapAndFilterDescendants`, `$descendantsMatching`, `$firstToLastIterator`, `$lastToFirstIterator`, `$unwrapNode`, `StateConfigWrapper`, `makeStateWrapper`, `$onEscapeUp`, `$onEscapeDown`, `$isAtStartOfNode`, `$isAtEndOfNode`; its re-exports of `$findMatchingParent`, `$getAdjacentSiblingOrParentSiblingCaret`, `$insertNodeToNearestRootAtCaret`, `$isBlockFullySelected`, `$isRootOrShadowRoot`, `$splitNode` and `mergeRegister` (no longer behind the `extension` feature) | `utils`, `lexical_utils`, `caret_utils`, `selection_deletion`, `merge_register` | `scripts/selection-utils` |
@@ -190,9 +191,7 @@ touches:
   model step, which a movement whose `has_dom_selection` is false does. The DOM
   details around the measurement (block cursor element, shadow DOM ranges,
   Firefox's line-affinity retry) have no counterpart.
-  `$selectAll(selection)`'s scoping isn't ported, nor
-  `insertNodes`' CASE 3a (blocks with no block ancestor, which needs
-  `$insertNodeToNearestRootAtCaret`).
+  `$selectAll(selection)`'s scoping isn't ported.
 - Of `@lexical/selection` and `@lexical/utils`, what needs the DOM, a
   browser or pieces the port doesn't have: `createDOMRange`,
   `createRectsFromDOMRange`, `positionNodeOnRange`, `markSelection`,
@@ -378,8 +377,7 @@ touches:
   DOM's `Selection.modify` to get there and throws, which `scripts/rich-text`
   records.
 - Of `@lexical/html` and the core's DOM side (the `html` feature):
-  `BlockIdHTMLExtension` and `ImportSourceDataTransfer`
-  (no `DataTransfer`). `$inlineStylesFromStyleSheets` parses each `<style>`
+  `BlockIdHTMLExtension`. `$inlineStylesFromStyleSheets` parses each `<style>`
   sheet itself (`dom::parse_style_sheet`) and matches its selectors with
   `DomNode::query_selector_all`, which takes compound selectors, combinators
   and attribute operators; a rule whose selector needs more (pseudo-classes,
@@ -397,21 +395,12 @@ touches:
   `$setRenderContextValue` recompiles the config without the full
   reconcile JS runs to recreate the DOM.
 - Of `@lexical/clipboard` (the `clipboard` feature):
-  - The HTML parts: `$getHtmlContent`, the `text/html` entry of
-    `$getClipboardDataFromSelection`, `onCopyForPlainText`'s `text/html`,
-    and `$insertDataTransferForRichText`'s `text/html` importer
-    (`$defaultHtmlImporter`, `trustHTML`, and the iOS Safari check that
-    skips HTML equal to the plain text). They need `@lexical/html`'s
-    export and import (M4), which they aren't wired to yet; until then a
-    rich-text paste of HTML alone inserts nothing, and one with plain text
-    inserts the text. `scripts/clipboard` records copies without
-    `text/html` (`ops.ts`'s `$clipboardDataWithoutHtml`, the default export
-    stack less its HTML entry), so its vectors need no DOM.
-  - `GetClipboardDataExtension` (`$exportMimeTypeFromSelection`,
-    `ExportMimeTypeFunction`, `GetClipboardDataConfig`),
-    `ClipboardImportExtension` (`ImportMimeTypeFunction`, the priority
-    config, `$getImportOutput`) and `ClipboardDOMImportExtension`, which
-    need the extension API; the functions here do what their defaults do.
+  - `trustHTML`: there are no Trusted Types outside a browser, so the
+    HTML is parsed as is (as in Swift). `ClipboardDOMImportExtension` puts
+    a copy of the `DataTransfer` in `ImportSourceDataTransfer`, since the
+    import stacks get it by reference. `scripts/clipboard` records copies
+    without `text/html` (`ops.ts`'s `$clipboardDataWithoutHtml`, which
+    the Rust runner mirrors); `html/clipboard` records them with it.
   - Drag and drop (`$handleRichTextDrop`, `$handlePlainTextDrop`,
     `$doDrop`, `$writeDragSourceToDataTransfer`, `caretFromPoint.ts`),
     which hit-test the DOM.

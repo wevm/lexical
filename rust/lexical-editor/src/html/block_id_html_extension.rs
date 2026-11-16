@@ -114,9 +114,19 @@ pub struct BlockIdHtmlOutput {
 #[derive(Default)]
 pub struct BlockIdHtmlRuntime {
     imported: RefCell<Vec<String>>,
+    /// How many waiting wrapper ids the resolver has looked at, the work
+    /// upstream's tests count with spies on `getParent` and
+    /// `getChildrenSize`.
+    wrapper_id_lookups: std::cell::Cell<usize>,
 }
 
 impl BlockIdHtmlRuntime {
+    /// How many waiting wrapper ids the resolver has looked at.
+    #[cfg(test)]
+    pub(crate) fn wrapper_id_lookups(&self) -> usize {
+        self.wrapper_id_lookups.get()
+    }
+
     fn add(&self, key: String) {
         let mut imported = self.imported.borrow_mut();
         if !imported.contains(&key) {
@@ -282,6 +292,9 @@ fn block_wrapper_id_resolve_rule() -> DomImportRule {
             let (_, runtime) = html_dependency()?;
             let mut kept = from;
             for k in from..waiting.active.len() {
+                runtime
+                    .wrapper_id_lookups
+                    .set(runtime.wrapper_id_lookups.get() + 1);
                 let (key, entry_el) = waiting.active[k].clone();
                 let Some(id) = waiting.get(&key).cloned() else {
                     continue;

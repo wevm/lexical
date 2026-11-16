@@ -7071,5 +7071,33 @@
   "lexical-utils/src/__tests__/unit/LexicalUtilsKlassEqual.test.ts::LexicalUtilsKlassEqual tests > objectKlassEquals with a nullish or prototype-less value": {
     "reason": "deviation",
     "note": "Tests objectKlassEquals on JS Event subclasses and constructors (instanceof and constructor names). Rust has no classes or constructors to compare; where JS checks an event's class, the port takes an enum (FilesEvent, PasteCommandType), and objectKlassEquals is not ported (rust/PARITY.md, @lexical/utils)."
+  },
+  "lexical-code-core/src/__tests__/unit/CodeNode.test.ts::CodeNode > applies and replaces styles through DOM style properties": {
+    "reason": "deviation",
+    "note": "Checks that CodeNode.updateDOM patches the <code> element's inline style (removing color and margin, adding padding and --custom); Rust's update_dom is the reconciler's model half only, a bool, and updateDOM's DOM writes aren't ported (rust/PARITY.md, @lexical/code-core's DOM parts). createDOM's style and exportDOM's are checked by the other CodeNode ports."
+  },
+  "lexical-html/src/__tests__/unit/compileDOMRenderConfigOverrides.test.ts::precompileDOMRenderConfigOverrides > precompiles with only type overrides": {
+    "reason": "deviation",
+    "note": "Asserts precompileDOMRenderConfigOverrides' internal table by JS function identity (toEqual on the 'types' buckets); Rust compiles each class override as a step behind an instanceof guard, in the same order, and keeps no such table (rust/PARITY.md, @lexical/html's DOM side). The order it pins is checked through behavior by the DOMRenderExtension 'type merge' port."
+  },
+  "lexical-html/src/__tests__/unit/compileDOMRenderConfigOverrides.test.ts::precompileDOMRenderConfigOverrides > precompiles with wildcards, predicates, and type overrides": {
+    "reason": "deviation",
+    "note": "Asserts precompileDOMRenderConfigOverrides' internal table by JS function identity (the 'types' buckets, the guard and ALWAYS_TRUE entries); Rust compiles each override as a step behind a guard, in the same order, and keeps no such table (rust/PARITY.md, @lexical/html's DOM side). The order it pins is checked through behavior by the DOMRenderExtension 'type merge' port."
+  },
+  "lexical-html/src/__tests__/unit/DOMRenderExtension.test.ts::DOMRenderExtension > $decorateDOM overrides all run in order (base, specific, wildcard last)": {
+    "reason": "dom-only",
+    "note": "Asserts the data-order the $decorateDOM overrides write into the DOM the reconciler renders into a root element; a Rust root element is the app's, the reconciler renders no DOM and $decorateDOM isn't ported (rust/PARITY.md, @lexical/html's DOM side)."
+  },
+  "lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not let an older paste that resolves late replace the menu": {
+    "reason": "deviation",
+    "note": "Makes parseUrl return a promise that resolves after a later paste; the Rust EmbedConfig::parse_url is synchronous (rust/PARITY.md, auto-embed), so a paste's check cannot resolve late."
+  },
+  "lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not offer to embed a link whose URL changed while parsing": {
+    "reason": "deviation",
+    "note": "Changes the link's URL while a promise returned by parseUrl is pending; the Rust EmbedConfig::parse_url is synchronous (rust/PARITY.md, auto-embed), so there is no time while parsing."
+  },
+  "lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not offer to embed a link with a pending URL change when parsing resolves": {
+    "reason": "deviation",
+    "note": "Resolves a pending parseUrl promise in the same act as an uncommitted URL change; the Rust EmbedConfig::parse_url is synchronous (rust/PARITY.md, auto-embed), so parsing never resolves after the paste's commit."
   }
 }

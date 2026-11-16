@@ -2522,7 +2522,11 @@ fn link_destination_whitespace_does_not_backtrack() {
             case(
                 format!("link destination whitespace does not backtrack > reads {name}"),
                 move || {
-                    // Upstream's `{timeout: 5000}`.
+                    // Upstream's limit is `{timeout: 5000}`. A debug build
+                    // takes about 2 s for the run of tabs alone (it makes
+                    // 200,000 TabNodes, as JS does), and more on a busy CI
+                    // runner, while walking every split of a run would take
+                    // minutes. So the limit is 30 s, as in the Swift port.
                     let start = std::time::Instant::now();
                     let editor = link_editor();
                     import(&editor, &md);
@@ -2538,7 +2542,7 @@ fn link_destination_whitespace_does_not_backtrack() {
                         }),
                         0
                     );
-                    assert!(start.elapsed() < std::time::Duration::from_secs(5));
+                    assert!(start.elapsed() < std::time::Duration::from_secs(30));
                 },
             )
         })

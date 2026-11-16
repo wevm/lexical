@@ -58,6 +58,8 @@ mod editor_state;
 mod error;
 #[cfg(feature = "extension")]
 pub mod extension;
+#[cfg(feature = "extension")]
+mod extension_core;
 #[cfg(feature = "file")]
 pub mod file;
 mod gc;
@@ -73,6 +75,8 @@ mod lexical_utils;
 pub mod link;
 #[cfg(feature = "list")]
 pub mod list;
+#[cfg(feature = "extension")]
+mod merge_register;
 mod node;
 mod node_state;
 pub mod nodes;
@@ -134,6 +138,15 @@ pub use editor::{
 };
 pub use editor_state::EditorState;
 pub use error::LexicalError;
+#[cfg(feature = "extension")]
+pub use extension_core::{
+    AbortController, AbortSignal, AnyLexicalExtension, AnyLexicalExtensionArgument,
+    ExtensionBuildFn, ExtensionBuildState, ExtensionConfigBase, ExtensionInitFn,
+    ExtensionInitState, ExtensionMergeConfigFn, ExtensionRegisterFn, ExtensionRegisterState,
+    InitialEditorConfig, InitialEditorStateFn, InitialEditorStateType, LexicalExtension,
+    LexicalExtensionDependency, NormalizedPeerDependency, config_extension,
+    declare_peer_dependency, define_extension, safe_cast, shallow_merge_config,
+};
 pub use lexical_selection::{
     NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
     create_node_selection, create_range_selection, get_selection, set_selection,
@@ -141,6 +154,8 @@ pub use lexical_selection::{
 pub use lexical_utils::{
     copy_node, get_node_by_key, get_root, get_text_direction, reset_random_key,
 };
+#[cfg(feature = "extension")]
+pub use merge_register::merge_register;
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};
 pub use node_state::{
     AnyStateConfig, RequiredNodeStateConfig, StateConfig, StateIsEqual, StateValue,

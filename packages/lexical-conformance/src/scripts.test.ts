@@ -11,6 +11,8 @@ import {test} from 'vitest';
 
 import {
   type Action,
+  type ExtensionArg,
+  type ExtensionSpec,
   type HandlerSpec,
   type Json,
   runScript,
@@ -3516,6 +3518,281 @@ test('scripts/text', () => {
           update(clear),
           doc(p(dt(), t('ab'))),
           probe(0, 1, 2),
+        ],
+      },
+    ],
+  );
+});
+
+test('scripts/extensions', () => {
+  // @lexical/extension's builder (buildEditorFromExtensions, LexicalBuilder.ts
+  // and ExtensionRep.ts) with test extensions made from JSON (ops.ts's
+  // ExtensionSpec), which log each phase they run with their merged config,
+  // and a few of the package's own extensions. The build log is the
+  // script's `build`; InitialStateExtension, which the builder always adds
+  // first, logs nothing itself.
+  const EXT: {[key: string]: ExtensionSpec} = {
+    base: {
+      config: {items: ['b'], label: 'base'},
+      inspect: true,
+      mergeConfig: 'concat',
+      name: 'test/base',
+    },
+    conflict: {conflictsWith: ['test/base'], name: 'test/conflict'},
+    dupA: {name: 'test/dup'},
+    dupB: {name: 'test/dup'},
+    early: {buildPeers: ['test/late'], name: 'test/early'},
+    earlyInit: {initPeers: ['test/late'], name: 'test/early-init'},
+    hr: {
+      initialEditorState: {
+        json: {
+          root: {
+            children: [
+              p(t('rule below')),
+              {type: 'horizontalrule', version: 1} as Node,
+            ],
+            direction: null,
+            format: '',
+            indent: 0,
+            type: 'root',
+            version: 1,
+          },
+        },
+      },
+      listen: true,
+      name: 'test/hr',
+      nodes: ['horizontalrule'],
+    },
+    hrUnregistered: {
+      initialEditorState: {
+        json: {
+          root: {
+            children: [{type: 'horizontalrule', version: 1} as Node],
+            direction: null,
+            format: '',
+            indent: 0,
+            type: 'root',
+            version: 1,
+          },
+        },
+      },
+      name: 'test/hr-unregistered',
+    },
+    late: {config: {label: 'late'}, name: 'test/late'},
+    left: {
+      config: {side: 'left'},
+      dependencies: [['base', {items: ['l'], label: 'from-left'}]],
+      name: 'test/left',
+    },
+    lookup: {lookups: ['base'], name: 'test/lookup'},
+    noInit: {initResult: true, name: 'test/no-init', phases: ['register']},
+    nullState: {initialEditorState: null, listen: true, name: 'test/null'},
+    peer: {config: {label: 'peer', other: 1}, name: 'test/peer'},
+    peerUser: {
+      buildPeers: ['test/peer', 'test/absent'],
+      initPeers: ['test/peer', 'test/absent'],
+      inspect: true,
+      name: 'test/peer-user',
+      peerDependencies: [['test/peer', {label: 'from-user'}], ['test/absent']],
+    },
+    quiet: {name: 'test/quiet', phases: []},
+    right: {
+      config: {side: 'right'},
+      dependencies: [['base', {items: ['r']}, {items: ['r2']}]],
+      lookups: ['base'],
+      name: 'test/right',
+    },
+    textState: {
+      initialEditorState: {text: 'from a function'},
+      listen: true,
+      name: 'test/text',
+    },
+    toClear: {
+      dependencies: ['ClearEditorExtension'],
+      initialEditorState: {text: 'clear me'},
+      name: 'test/to-clear',
+    },
+    toggle: {
+      config: {disabled: false, label: 'a'},
+      name: 'test/toggle',
+      signals: true,
+    },
+    top: {
+      abort: true,
+      dependencies: ['left', 'right'],
+      initResult: true,
+      inspect: true,
+      name: 'test/top',
+    },
+    watch: {
+      dependencies: ['EditorStateExtension'],
+      editorState: true,
+      name: 'test/watch',
+    },
+    withDecoratorText: {
+      dependencies: ['DecoratorTextExtension'],
+      initialEditorState: {
+        json: {
+          root: {
+            children: [
+              p(t('a'), {type: 'decorator-text', version: 1} as Node, t('b')),
+            ],
+            direction: null,
+            format: '',
+            indent: 0,
+            type: 'root',
+            version: 1,
+          },
+        },
+      },
+      name: 'test/with-decorator-text',
+    },
+  };
+  // The specs `extensions` names, with their dependencies.
+  const defs = (extensions: ExtensionArg[], ...more: string[]) => {
+    const out: {[key: string]: ExtensionSpec} = {};
+    const add = (arg: ExtensionArg) => {
+      const key = typeof arg === 'string' ? arg : arg[0];
+      const spec = EXT[key];
+      if (spec !== undefined && out[key] === undefined) {
+        out[key] = spec;
+        (spec.dependencies ?? []).forEach(add);
+      }
+    };
+    [...extensions, ...more].forEach(add);
+    return out;
+  };
+  const script = (
+    name: string,
+    extensions: ExtensionArg[],
+    steps: Step[] = [],
+    ...more: string[]
+  ): Script => ({
+    extensionDefs: defs(extensions, ...more),
+    extensions,
+    name,
+    steps,
+  });
+  const dispatch = (payload: Json): Step => ({
+    dispatch: 'EXTENSION_COMMAND',
+    payload,
+  });
+  const signals = (...entries: [string, Json][]): Step => ({
+    setSignals: entries.map(([name, value]) => ['toggle', name, value]),
+  });
+  emit(
+    'extensions',
+    'buildEditorFromExtensions: the order of the phases across a dependency graph, config merging, peer dependencies, errors, disposal, initial states, node registration and signals.',
+    [
+      script(
+        'a diamond: phase order, merge order and disposal',
+        ['top', ['base', {label: 'root'}]],
+        [
+          dispatch('x'),
+          {logDependency: 'base'},
+          {logDependency: 'left'},
+          {logDependency: 'top'},
+          {logPeer: 'test/right'},
+          {dispose: true},
+          dispatch('y'),
+          {dispose: true},
+        ],
+      ),
+      script('an extension listed twice is added once', [
+        'base',
+        ['base', {items: ['again']}],
+        'base',
+      ]),
+      script('an extension that defines no phase', ['quiet'], [dispatch(1)]),
+      script(
+        'a peer dependency that is present',
+        ['peerUser', 'peer'],
+        [{logPeer: 'test/peer'}, {logPeer: 'test/absent'}],
+      ),
+      script(
+        'a peer dependency that is absent',
+        ['peerUser'],
+        [{logPeer: 'test/peer'}, {logDependency: 'peerUser'}],
+      ),
+      script('a peer before it is configured', ['earlyInit', 'late']),
+      script('a peer before it is built', ['early', 'late']),
+      script('a peer that is built first', ['late', 'early']),
+      script('two extensions with one name', ['dupA', 'dupB']),
+      script('a conflict with an earlier extension', ['base', 'conflict']),
+      script('a conflict with a later extension', ['conflict', 'base']),
+      script('a dependency outside the editor', ['lookup'], [], 'base'),
+      script('getInitResult without init', ['noInit']),
+      script(
+        'an extension that is not in the editor',
+        ['base', 'dupA'],
+        [{logDependency: 'left'}, {logDependency: 'dupB'}, dispatch(1)],
+        'left',
+        'dupB',
+      ),
+      script('the default initial state', ['base']),
+      script('an initial state from JSON with a registered node', ['hr']),
+      script('an initial state with a node not registered', ['hrUnregistered']),
+      script(
+        'an initial state from a function',
+        ['textState'],
+        [update(node('2', 'setTextContent', 'x'))],
+      ),
+      script('a null initial state', ['nullState']),
+      script('the last initial state wins', ['hr', 'textState']),
+      script('DecoratorTextExtension registers its node', [
+        'withDecoratorText',
+      ]),
+      script(
+        'ClearEditorExtension',
+        ['toClear'],
+        [
+          update(select(['2', 3, 'text'])),
+          {dispatch: 'CLEAR_EDITOR_COMMAND'},
+          {dispose: true},
+          {dispatch: 'CLEAR_EDITOR_COMMAND'},
+        ],
+      ),
+      script(
+        'EditorStateExtension as a signal',
+        ['watch'],
+        [
+          update(node('1', 'append', [t('typed')])),
+          {dispose: true},
+          update(node('2', 'setTextContent', 'x')),
+        ],
+      ),
+      script(
+        'namedSignals toggle a registration',
+        [['toggle', {label: 'b'}]],
+        [
+          dispatch(1),
+          signals(['label', 'c']),
+          dispatch(2),
+          signals(['disabled', true]),
+          dispatch(3),
+          signals(['disabled', false], ['label', 'd']),
+          dispatch(4),
+          signals(['label', 'd']),
+          signals(['disabled', true], ['disabled', false]),
+          signals(['label', 'e'], ['disabled', true]),
+          {dispose: true},
+          signals(['disabled', false]),
+          dispatch(5),
+        ],
+      ),
+      script(
+        'a signal disabled by config',
+        [['toggle', {disabled: true}]],
+        [dispatch(1), signals(['disabled', false]), dispatch(2)],
+      ),
+      {
+        ...script(
+          'handlers registered after the build',
+          ['base', 'left'],
+          [dispatch('z')],
+        ),
+        handlers: [
+          {command: 'EXTENSION_COMMAND', id: 'h', priority: 1, result: false},
         ],
       },
     ],

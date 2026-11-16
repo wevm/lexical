@@ -66,12 +66,18 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
+mod extensions;
+
 /// What `ops.ts`'s `Context` holds besides the editor.
 #[derive(Default)]
 struct Ctx {
     log: RefCell<Vec<Value>>,
     commands: RefCell<HashMap<String, LexicalCommand<Value>>>,
     states: States,
+    /// The test extensions made so far, by key.
+    extensions: RefCell<HashMap<String, Rc<extensions::TestExtension>>>,
+    /// `script.extensionDefs`.
+    extension_defs: RefCell<Object>,
 }
 
 /// `ops.ts`'s `STATES`, one set per session (JS's are shared by every
@@ -1084,6 +1090,8 @@ fn transform_name(name: &str) -> Option<&'static str> {
 /// step by step alongside JS Lexical.
 pub struct Session {
     editor: Editor,
+    /// The editor built from `extensions`, when the script has them.
+    built: Option<lexical::extension::LexicalEditorWithDispose>,
     ctx: Rc<Ctx>,
     /// The session's clock, in milliseconds: what the history merges by.
     /// It starts at 0, and a step's `now` sets it.
@@ -1109,10 +1117,82 @@ pub struct StepResult {
     pub error: Option<LexicalError>,
 }
 
+/// `snapshotOf(editor, log, snapshot)`: the log, the selection and the
+/// text, and with `snapshot` the state in both forms, in that key order.
+fn snapshot_of(editor: &Editor, ctx: &Ctx, snapshot: bool) -> Result<Object, String> {
+    // A dispatch outside an update commits at the next read, whose
+    // listeners log too.
+    let (selection, text) = editor
+        .read(|| (selection_snapshot(), get_root().get_text_content()))
+        .map_err(|e| format!("committing: {e}"))?;
+    let mut json = Object::new();
+    json.insert("log", Value::Array(ctx.log.borrow().clone()));
+    json.insert("selection", selection);
+    json.insert("text", text.into());
+    if snapshot {
+        let state = editor.get_editor_state();
+        json.insert("state", state.to_json(false).to_string().into());
+        json.insert("compact", state.to_json(true).to_string().into());
+    }
+    Ok(json)
+}
+
+/// The package flags a script with `extensions` can't have.
+const PACKAGE_FLAGS: [&str; 8] = [
+    "richText",
+    "plainText",
+    "list",
+    "link",
+    "code",
+    "overflow",
+    "hashtag",
+    "extension",
+];
+
 impl Session {
     /// `startSession(script)`: a new headless editor, with keys restarted.
     pub fn start(script: &Value) -> Result<Session, String> {
+        Self::start_with_build(script)?
+            .0
+            .ok_or_else(|| "the editor failed to build".to_owned())
+    }
+
+    /// `startSession(script)`, with what building the editor from the
+    /// script's `extensions` recorded (`session.build`). When that build
+    /// fails there is no session.
+    pub fn start_with_build(script: &Value) -> Result<(Option<Session>, Option<Value>), String> {
         reset_random_key();
+        if let Some(extensions) = script.get("extensions").and_then(Value::as_array) {
+            if let Some(flag) = PACKAGE_FLAGS
+                .iter()
+                .find(|f| script.get(f).and_then(Value::as_bool) == Some(true))
+            {
+                return Err(format!("extensions and {flag} don't mix"));
+            }
+            let ctx = Rc::new(Ctx::default());
+            if let Some(defs) = script.get("extensionDefs").and_then(Value::as_object) {
+                *ctx.extension_defs.borrow_mut() = defs.clone();
+            }
+            return match extensions::build(&ctx, extensions) {
+                Err(e) => {
+                    let mut build = Object::new();
+                    build.insert("error", e.message().into());
+                    build.insert("log", Value::Array(ctx.log.borrow().clone()));
+                    Ok((None, Some(Value::Object(build))))
+                }
+                Ok(built) => {
+                    let build = snapshot_of(&built, &ctx, true)?;
+                    let mut session = Self::start_on(script, built.editor().clone(), ctx)?;
+                    session.built = Some(built);
+                    Ok((Some(session), Some(Value::Object(build))))
+                }
+            };
+        }
+        Ok((Some(Self::start_plain(script)?), None))
+    }
+
+    /// `startSession(script)` on `createEditor`.
+    fn start_plain(script: &Value) -> Result<Session, String> {
         let rich_text = script.get("richText").and_then(Value::as_bool) == Some(true);
         let with_list = script.get("list").and_then(Value::as_bool) == Some(true);
         let with_link = script.get("link").and_then(Value::as_bool) == Some(true);
@@ -1147,6 +1227,20 @@ impl Session {
             ..CreateEditorArgs::default()
         });
         let ctx = Rc::new(Ctx::default());
+        Self::start_on(script, editor, ctx)
+    }
+
+    /// Registers the script's packages, transforms, handlers, listeners and
+    /// history on `editor`.
+    fn start_on(script: &Value, editor: Editor, ctx: Rc<Ctx>) -> Result<Session, String> {
+        let flag = |key: &str| script.get(key).and_then(Value::as_bool) == Some(true);
+        let (rich_text, with_list, with_link, with_code, with_hashtag) = (
+            flag("richText"),
+            flag("list"),
+            flag("link"),
+            flag("code"),
+            flag("hashtag"),
+        );
         if rich_text {
             let _unregister = lexical::rich_text::register_rich_text(&editor);
         }
@@ -1284,6 +1378,7 @@ impl Session {
         };
         Ok(Session {
             editor,
+            built: None,
             ctx,
             clock,
             unregister_history,
@@ -1329,26 +1424,15 @@ impl Session {
                     ..UpdateOptions::default()
                 },
             )
-        } else {
-            let name = step.str("dispatch")?;
+        } else if let Some(name) = step.get("dispatch").and_then(Value::as_str) {
             let payload = step.get("payload").cloned().unwrap_or(Value::Null);
             ctx.command(name)
                 .dispatch(editor, payload)
                 .map(|handled| ctx.log(vec!["dispatched".into(), name.into(), handled.into()]))
+        } else {
+            extensions::run_step(step, ctx, self.built.as_ref())
         };
-        // A dispatch outside an update commits at the next read.
-        let (selection, text) = editor
-            .read(|| (selection_snapshot(), get_root().get_text_content()))
-            .map_err(|e| format!("committing: {e}"))?;
-        let mut json = Object::new();
-        json.insert("log", Value::Array(ctx.log.borrow().clone()));
-        json.insert("selection", selection);
-        json.insert("text", text.into());
-        if snapshot {
-            let state = editor.get_editor_state();
-            json.insert("state", state.to_json(false).to_string().into());
-            json.insert("compact", state.to_json(true).to_string().into());
-        }
+        let mut json = snapshot_of(editor, ctx, snapshot)?;
         let error = outcome.err();
         if error.is_some() {
             json.insert("error", true.into());
@@ -1365,8 +1449,26 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
     if let Some(part) = unported(case) {
         return Ok(Outcome::NotPorted(part));
     }
-    let session = Session::start(case)?;
+    let (session, build) = Session::start_with_build(case)?;
+    same(
+        "build recorded",
+        build.is_some(),
+        case.get("build").is_some(),
+    )?;
+    if let (Some(build), Some(expected)) = (&build, case.get("build")) {
+        for field in ["log", "selection", "text", "state", "compact", "error"] {
+            same(
+                format!("build {field}"),
+                build.get(field),
+                expected.get(field),
+            )?;
+        }
+    }
     let steps = case.arr("steps")?;
+    let Some(session) = session else {
+        same("steps after a failed build", steps.len(), 0)?;
+        return Ok(Outcome::Pass);
+    };
     let results = case.arr("results")?;
     same("steps recorded", results.len(), steps.len())?;
     for (i, (step, expected)) in steps.iter().zip(results).enumerate() {

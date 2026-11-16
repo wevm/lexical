@@ -21,6 +21,10 @@ mod lexical_headless;
 mod lexical_history;
 #[cfg(feature = "html")]
 mod lexical_html;
+#[cfg(feature = "link")]
+mod lexical_link;
+#[cfg(all(feature = "list", feature = "link", feature = "extension"))]
+mod lexical_list;
 #[cfg(feature = "mark")]
 mod lexical_mark;
 #[cfg(all(feature = "markdown", feature = "extension"))]
@@ -30,6 +34,8 @@ mod lexical_react;
 mod lexical_rich_text;
 #[cfg(feature = "selection")]
 mod lexical_selection;
+#[cfg(all(feature = "text", feature = "extension", feature = "markdown"))]
+mod lexical_text;
 #[cfg(feature = "utils")]
 mod lexical_utils;
 mod support;

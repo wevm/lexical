@@ -893,10 +893,14 @@ mod extension {
 
     fn make() -> Rc<AutoLinkExtensionType> {
         define_extension(LexicalExtension {
-            // Of JS's dependencies, `LinkExtension`;
-            // `AutoLinkAnnounceExtension` announces new links to a screen
-            // reader (`@lexical/a11y`), which needs a DOM.
-            dependencies: vec![link_extension().into()],
+            // JS's dependencies: `AutoLinkAnnounceExtension`, which
+            // announces new links to a screen reader (`@lexical/a11y`, with
+            // the `a11y` feature), and `LinkExtension`.
+            dependencies: vec![
+                #[cfg(feature = "a11y")]
+                crate::link::auto_link_announce_extension().into(),
+                link_extension().into(),
+            ],
             merge_config: Some(Rc::new(merge_auto_link_config)),
             nodes: vec![NodeClass::of::<AutoLinkNode>()],
             register: Some(Rc::new(

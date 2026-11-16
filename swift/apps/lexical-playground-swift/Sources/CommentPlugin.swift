@@ -153,7 +153,7 @@ final class CommentsModel {
   @ObservationIgnored private lazy var addCommentHost = TextViewOverlayHost(
     rootView: AddCommentBox(comments: self))
   @ObservationIgnored private lazy var inputHost = TextViewOverlayHost(
-    rootView: CommentInputBox(comments: self), extendsText: true)
+    rootView: CommentInputBox(comments: self, isInline: true), extendsText: true)
   /// The input box opened and has not been placed since: placing it
   /// scrolls it into view, as the web's box does as it takes the focus.
   @ObservationIgnored private var revealsInput = false
@@ -612,6 +612,9 @@ private struct AddCommentBox: View {
 /// `CommentInputBox`: the comment's text with Cancel and Comment.
 struct CommentInputBox: View {
   let comments: CommentsModel
+  /// The box in the editor's text view, which shows in a wide layout,
+  /// rather than the compact width's sheet.
+  let isInline: Bool
   @State private var content = ""
   @FocusState private var isFocused: Bool
   @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -671,7 +674,10 @@ struct CommentInputBox: View {
     .onChange(of: comments.showCommentInput, initial: true) { _, isShown in
       guard isShown else { return }
       content = ""
-      // Once the host shows the box (`AutoFocusPlugin`).
+      // Once the host shows the box (`AutoFocusPlugin`). Only the box that
+      // shows: the other stays hidden, and its field taking the focus would
+      // leave the shown one without it.
+      guard isInline == comments.isWide else { return }
       DispatchQueue.main.async { isFocused = true }
     }
   }

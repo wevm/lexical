@@ -10,6 +10,20 @@ final class LexicalPlaygroundUITests: XCTestCase {
     continueAfterFailure = false
   }
 
+  /// Attaches the screen at a failure: the screenshot comes from the
+  /// Simulator rather than the app, so it shows the screen even while the
+  /// app is too busy to answer an accessibility query.
+  override func record(_ issue: XCTIssue) {
+    // UI tests record their issues on the main thread.
+    let png = MainActor.assumeIsolated { XCUIScreen.main.screenshot().pngRepresentation }
+    let screenshot = XCTAttachment(data: png, uniformTypeIdentifier: "public.png")
+    screenshot.name = "Screen at the failure"
+    screenshot.lifetime = .keepAlways
+    var issue = issue
+    issue.add(screenshot)
+    super.record(issue)
+  }
+
   @MainActor
   private func launch() {
     app = XCUIApplication()
@@ -447,9 +461,10 @@ final class LexicalPlaygroundUITests: XCTestCase {
     insert.tap()
     let input = app.descendants(matching: .any)["comment-input"]
     XCTAssertTrue(input.waitForExistence(timeout: 5), app.debugDescription)
-    // The box takes focus as it opens, which a slower run may not have
-    // finished, so the tap makes sure.
-    input.tap()
+    // The box takes the focus as it opens: the sheet's, not the hidden one
+    // in the editor's text view, which once took it from the sheet's.
+    expectation(for: NSPredicate(format: "hasKeyboardFocus == true"), evaluatedWith: input)
+    waitForExpectations(timeout: 5)
     input.typeText("Nice greeting")
     attachScreenshot("playground-comment-input")
     app.buttons["comment-submit"].tap()

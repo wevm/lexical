@@ -253,10 +253,13 @@ import {
   $setSelectionFromCaretRange,
   $setSlot,
   $setState,
+  aliasedValue,
   type AnyLexicalCommand,
   type AnyLexicalExtension,
   type AnyLexicalExtensionArgument,
   type AnyStateConfig,
+  arraySetValue,
+  arrayValue,
   type BaseSelection,
   BEFORE_INPUT_COMMAND,
   CAN_REDO_COMMAND,
@@ -280,6 +283,7 @@ import {
   DELETE_WORD_COMMAND,
   type EditorState,
   ElementNode,
+  enumValue,
   FORMAT_ELEMENT_COMMAND,
   FORMAT_TEXT_COMMAND,
   getDeclaredNodeStructure,
@@ -313,6 +317,9 @@ import {
   type NodeCaret,
   type NodeChildrenConfig,
   nodeSchema,
+  nullable,
+  numberValue,
+  optional as optionalValue,
   OUTDENT_CONTENT_COMMAND,
   ParagraphNode,
   PASTE_COMMAND,
@@ -330,6 +337,7 @@ import {
   stringValue,
   TextNode,
   UNDO_COMMAND,
+  withAccessors,
   withField,
 } from 'lexical';
 import {createElement} from 'react';
@@ -1304,6 +1312,81 @@ export class TestDecoratorBlockNode extends DecoratorBlockNode {
 
   decorate(): never {
     return null as never;
+  }
+}
+
+/** `flags`: a set NodeState of `TestSchemaNode`, kept in canonical order. */
+const testSchemaFlagsState = createState('flags', {
+  parse: arraySetValue(stringValue()),
+});
+
+const testSchemaSchema = nodeSchema<TestSchemaNode>()({
+  count: withField(
+    numberValue(1, {clamp: true, integer: true, max: 10, min: 0}),
+    {field: '__count'},
+  ),
+  kind: withField(
+    aliasedValue(enumValue(['a', 'b']), {alpha: 'a', beta: 'b'}),
+    {field: '__kind'},
+  ),
+  label: withAccessors(stringValue(), {setter: null}),
+  note: withField(optionalValue(stringValue()), {field: '__note'}),
+  shown: withField(stringValue(), {field: '__shown', when: 'isShown'}),
+  tags: withField(arrayValue(stringValue()), {field: '__tags'}),
+  width: withAccessors(nullable(numberValue()), {}),
+});
+
+/**
+ * `test-schema`: a block element whose `$config` declares a `json` schema of
+ * every kind of property, for serialization/schema-node: fields with clamped,
+ * aliased, optional and array values, a field written only `when` a
+ * predicate holds, accessor properties (a nullable `width`, an export-only
+ * `label`), and an `arraySetValue` NodeState.
+ */
+export class TestSchemaNode extends ElementNode {
+  __count: number = 1;
+  __kind: 'a' | 'b' = 'a';
+  __note: string | undefined = undefined;
+  __shown: string = '';
+  __width: number | null = null;
+  __tags: readonly string[] = [];
+  $config() {
+    return this.config('test-schema', {
+      extends: ElementNode,
+      json: testSchemaSchema,
+      stateConfigs: [testSchemaFlagsState],
+    });
+  }
+  /**
+   * `width` is declared through accessors, which `$config` does not carry
+   * across a clone, so the class copies it; and a class's own
+   * `afterCloneFrom` replaces the one `$config` derives for its `withField`
+   * properties, so it copies those too.
+   */
+  afterCloneFrom(prevNode: this): void {
+    super.afterCloneFrom(prevNode);
+    this.__count = prevNode.__count;
+    this.__kind = prevNode.__kind;
+    this.__note = prevNode.__note;
+    this.__shown = prevNode.__shown;
+    this.__tags = prevNode.__tags;
+    this.__width = prevNode.__width;
+  }
+  /** Whether `shown` is written: only for a count above 1. */
+  isShown(): boolean {
+    return this.__count > 1;
+  }
+  /** `label`, computed from `kind`: written, never read back. */
+  getLabel(): string {
+    return this.getLatest().__kind.toUpperCase();
+  }
+  getWidth(): number | null {
+    return this.getLatest().__width;
+  }
+  setWidth(width: number | null): this {
+    const self = this.getWritable();
+    self.__width = width;
+    return self;
   }
 }
 

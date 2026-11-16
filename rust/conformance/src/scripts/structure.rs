@@ -5,11 +5,15 @@
 
 use super::err;
 use lexical::json::{Object, Value};
+use lexical::schema::{NodeSchema, node_schema, string_value, with_accessors};
 use lexical::{
     ElementData, LexicalError, LexicalNode, MergeAdjacentDeclaration, MergeAdjacentEntry, NodeBase,
     NodeChildEntry, NodeChildrenConfig, NodeClass, NodeConfigLink, NodeRef,
-    RequiredNodeStateConfig, StateConfig, StaticNodeConfig, create_state,
+    RequiredNodeStateConfig, StateConfig, StateValueConfig, StaticNodeConfig, create_state,
+    create_state_with,
 };
+
+use std::rc::Rc;
 
 thread_local! {
     /// `testTagColorState`: a NodeState that `TestTagNode`'s
@@ -18,7 +22,60 @@ thread_local! {
         v.as_str().unwrap_or("").to_owned()
     });
     /// `testTagCountState`: a derived NodeState of `TestTagNode`.
-    static COUNT: StateConfig<f64> = create_state("count", |v: &Value| v.as_f64().unwrap_or(0.0));
+    static COUNT: StateConfig<f64> = create_state_with(
+        "count",
+        StateValueConfig {
+            derived: true,
+            ..StateValueConfig::new(|v: &Value| v.as_f64().unwrap_or(0.0))
+        },
+    );
+    /// `testTagSchema`: `label` (derived) and `tag`, each a field.
+    static TAG_SCHEMA: NodeSchema = node_schema(vec![
+        (
+            "label",
+            with_accessors(
+                string_value(""),
+                Some(Rc::new(|n| tag_of(n).label.as_str().into())),
+                Some(Rc::new(|n, v| tag_of_mut(n).label = v.as_str().unwrap_or("").to_owned())),
+            )
+            .expect("a field")
+            .derived(),
+        ),
+        (
+            "tag",
+            with_accessors(
+                string_value(""),
+                Some(Rc::new(|n| tag_of(n).tag.as_str().into())),
+                Some(Rc::new(|n, v| tag_of_mut(n).tag = v.as_str().unwrap_or("").to_owned())),
+            )
+            .expect("a field"),
+        ),
+    ])
+    .expect("testTagSchema");
+}
+
+/// The `Tag` fields of a `TestTagNode` or a `TestSubTagNode`.
+fn tag_of(node: &dyn LexicalNode) -> &Tag {
+    match node.downcast_ref::<TestTagNode>() {
+        Some(n) => &n.tag,
+        None => &node.downcast_ref::<TestSubTagNode>().expect("a tag").tag,
+    }
+}
+
+fn tag_of_mut(node: &mut dyn LexicalNode) -> &mut Tag {
+    if node.is::<TestTagNode>() {
+        return &mut node.downcast_mut::<TestTagNode>().expect("a tag").tag;
+    }
+    &mut node.downcast_mut::<TestSubTagNode>().expect("a tag").tag
+}
+
+/// The schemas of `TestTagNode` and of `TestSubTagNode`, which declares
+/// none of its own: `testTagSchema`, then ElementNode's.
+fn tag_schema_chain() -> Vec<NodeSchema> {
+    vec![
+        TAG_SCHEMA.with(Clone::clone),
+        lexical::nodes::element::element_node_schema(),
+    ]
 }
 
 /// The chain of `TestBoxNode`: `children: 'block'`.
@@ -71,12 +128,6 @@ impl LexicalNode for TestBoxNode {
     fn static_node_config_chain(&self) -> Vec<NodeConfigLink> {
         vec![box_link()]
     }
-    fn export_json(&self, compact: bool) -> Object {
-        lexical::nodes::element::export_json(self, compact)
-    }
-    fn update_from_json(&mut self, json: &Object) {
-        lexical::nodes::element::update_from_json(&mut self.element, json);
-    }
 }
 
 impl LexicalNode for TestSubBoxNode {
@@ -86,12 +137,6 @@ impl LexicalNode for TestSubBoxNode {
             NodeConfigLink::new("test-sub-box", StaticNodeConfig::default()),
             box_link(),
         ]
-    }
-    fn export_json(&self, compact: bool) -> Object {
-        lexical::nodes::element::export_json(self, compact)
-    }
-    fn update_from_json(&mut self, json: &Object) {
-        lexical::nodes::element::update_from_json(&mut self.element, json);
     }
 }
 
@@ -104,7 +149,7 @@ pub(crate) struct Tag {
 }
 
 /// The link of `TestTagNode`: inline, `children: 'inline'`, merged by
-/// `['tag', testTagColorState]`, `label` and `count` derived.
+/// `['tag', testTagColorState]`.
 fn tag_link() -> NodeConfigLink {
     NodeConfigLink::new(
         "test-tag",
@@ -115,7 +160,6 @@ fn tag_link() -> NodeConfigLink {
                 MergeAdjacentEntry::Field("tag"),
                 MergeAdjacentEntry::State(COLOR.with(StateConfig::erased)),
             ])),
-            derived: vec!["label", "count"],
         },
     )
 }
@@ -125,37 +169,6 @@ fn tag_state_configs() -> Vec<RequiredNodeStateConfig> {
         COLOR.with(|c| RequiredNodeStateConfig::new(c, false)),
         COUNT.with(|c| RequiredNodeStateConfig::new(c, false)),
     ]
-}
-
-/// The JSON of a `TestTagNode`: the element's, with `label` and `tag` after
-/// `children` (the schema's properties, as `$config` serializes them).
-fn tag_export_json(node: &dyn LexicalNode, tag: &Tag, compact: bool) -> Object {
-    let element = lexical::nodes::element::export_json(node, compact);
-    let mut json = Object::new();
-    for (key, value) in element.iter() {
-        json.insert(key, value.clone());
-        if key == "children" {
-            if !compact || !tag.label.is_empty() {
-                json.insert("label", tag.label.as_str().into());
-            }
-            if !compact || !tag.tag.is_empty() {
-                json.insert("tag", tag.tag.as_str().into());
-            }
-        }
-    }
-    json
-}
-
-fn tag_update_from_json(element: &mut ElementData, tag: &mut Tag, json: &Object) {
-    lexical::nodes::element::update_from_json(element, json);
-    let string = |key: &str| {
-        json.get(key)
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .to_owned()
-    };
-    tag.label = string("label");
-    tag.tag = string("tag");
 }
 
 /// `TestTagNode`: an inline element holding inline content, which cannot
@@ -186,11 +199,8 @@ impl LexicalNode for TestTagNode {
     fn can_be_empty(&self) -> bool {
         false
     }
-    fn export_json(&self, compact: bool) -> Object {
-        tag_export_json(self, &self.tag, compact)
-    }
-    fn update_from_json(&mut self, json: &Object) {
-        tag_update_from_json(&mut self.element, &mut self.tag, json);
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        tag_schema_chain()
     }
 }
 
@@ -208,11 +218,8 @@ impl LexicalNode for TestSubTagNode {
     fn can_be_empty(&self) -> bool {
         false
     }
-    fn export_json(&self, compact: bool) -> Object {
-        tag_export_json(self, &self.tag, compact)
-    }
-    fn update_from_json(&mut self, json: &Object) {
-        tag_update_from_json(&mut self.element, &mut self.tag, json);
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        tag_schema_chain()
     }
 }
 

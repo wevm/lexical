@@ -35,11 +35,25 @@ import {
   $getRoot,
   $setSlot,
   $setState,
+  aliasedValue,
+  arraySetValue,
+  arrayValue,
+  booleanValue,
   createState,
+  enumValue,
+  nullable,
+  numberValue,
+  objectValue,
+  optional,
+  rawValue,
+  type SerializationSchema,
+  stringValue,
+  transformValue,
+  unionValue,
 } from 'lexical';
-import {test} from 'vitest';
+import {expect, test} from 'vitest';
 
-import {TestDecoratorBlockNode} from './ops';
+import {TestDecoratorBlockNode, TestSchemaNode} from './ops';
 import {emitVectors} from './vectors';
 
 type Case = {
@@ -479,6 +493,252 @@ test('serialization/decorator-block', () => {
     'serialization/decorator-block',
     'serialization',
     "Documents with @lexical/react's DecoratorBlockNode (TestDecoratorBlockNode) and the exact JSON text JS writes for them.",
+    cases,
+  );
+});
+
+type AnySchema = SerializationSchema<unknown, unknown, unknown>;
+
+/**
+ * The schemas of serialization/schema, each named by the JS that builds it, so
+ * a port builds the same one from the name.
+ */
+const SCHEMAS: Record<string, () => unknown> = {
+  "aliasedValue(enumValue(['number', 'bullet']), {ol: 'number', ul: 'bullet'})":
+    () =>
+      aliasedValue(enumValue(['number', 'bullet']), {
+        ol: 'number',
+        ul: 'bullet',
+      }),
+  "arraySetValue(enumValue(['a', 'b']))": () =>
+    arraySetValue(enumValue(['a', 'b'])),
+  'arraySetValue(stringValue())': () => arraySetValue(stringValue()),
+  'arrayValue(numberValue())': () => arrayValue(numberValue()),
+  'booleanValue()': () => booleanValue(),
+  'booleanValue(true)': () => booleanValue(true),
+  "enumValue(['a', 'b', 1])": () => enumValue<'a' | 'b' | 1>(['a', 'b', 1]),
+  "enumValue(['ltr', 'rtl', null], null)": () =>
+    enumValue(['ltr', 'rtl', null], null),
+  'nullable(objectValue({n: nullable(booleanValue())}))': () =>
+    nullable(objectValue({n: nullable(booleanValue())})),
+  "nullable(stringValue('x'))": () => nullable(stringValue('x')),
+  "nullable(stringValue('x'), {defaultAsNull: true})": () =>
+    nullable(stringValue('x'), {defaultAsNull: true}),
+  'numberValue()': () => numberValue(),
+  'numberValue(0, {clamp: true, max: 1, min: -1})': () =>
+    numberValue(0, {clamp: true, max: 1, min: -1}),
+  'numberValue(0, {integer: true})': () => numberValue(0, {integer: true}),
+  'numberValue(1, {clamp: true, integer: true, max: 3.5, min: 0.5})': () =>
+    numberValue(1, {clamp: true, integer: true, max: 3.5, min: 0.5}),
+  'numberValue(5, {max: 10, min: 0})': () => numberValue(5, {max: 10, min: 0}),
+  'objectValue({a: numberValue(), b: optional(stringValue())})': () =>
+    objectValue({a: numberValue(), b: optional(stringValue())}),
+  'optional(numberValue(1))': () => optional(numberValue(1)),
+  'optional(numberValue(1), {omitDefault: true})': () =>
+    optional(numberValue(1), {omitDefault: true}),
+  'rawValue()': () => rawValue(),
+  "stringValue('x')": () => stringValue('x'),
+  'stringValue()': () => stringValue(),
+  "transformValue(stringValue(), s => s + '!')": () =>
+    transformValue(stringValue(), s => s + '!'),
+  "unionValue([booleanValue(), stringValue('d')], 'd')": () =>
+    unionValue([booleanValue(), stringValue('d')], 'd'),
+  'unionValue([numberValue(), rawValue()])': () =>
+    unionValue([numberValue(), rawValue()]),
+  'unionValue([numberValue(), stringValue()])': () =>
+    unionValue([numberValue(), stringValue()]),
+};
+
+/** Declarations each builder refuses, with JS's message. */
+const REFUSED_SCHEMAS: Record<string, () => unknown> = {
+  'arraySetValue(numberValue())': () => arraySetValue(numberValue() as never),
+  'arrayValue(arraySetValue(stringValue()))': () =>
+    arrayValue(arraySetValue(stringValue())),
+  "enumValue(['a'], 'b')": () => enumValue(['a'], 'b' as never),
+  'enumValue([])': () => enumValue([] as never),
+  'numberValue(0, {integer: true, max: 1.8, min: 1.2})': () =>
+    numberValue(0, {integer: true, max: 1.8, min: 1.2}),
+  'numberValue(0, {max: 1, min: 5})': () => numberValue(0, {max: 1, min: 5}),
+  'objectValue({toString: numberValue()})': () =>
+    objectValue({toString: numberValue()}),
+  'unionValue([])': () => unionValue([] as never),
+};
+
+/** The inputs each schema of serialization/schema parses; `undefined` first. */
+const SCHEMA_INPUTS: unknown[] = [
+  undefined,
+  null,
+  true,
+  false,
+  0,
+  1,
+  2.5,
+  -3,
+  11,
+  1e300,
+  '',
+  'a',
+  'b',
+  'x',
+  'd',
+  '1',
+  '2.5',
+  ' 1',
+  '0x10',
+  '1e999',
+  'ol',
+  'ul',
+  'bullet',
+  'rtl',
+  'toString',
+  '__proto__',
+  [],
+  ['b', 'a', 'b'],
+  ['\u00e9', 'e', '\u{1F600}', '\uffff', 'a'],
+  [1, 'a', null],
+  {},
+  {a: 2, b: 'c'},
+  {a: 'no', b: 1},
+  {n: true},
+];
+
+// Each schema builder of LexicalSchema.ts parsing a table of inputs: invalid
+// values falling back to the default, clamping and integer bounds, aliases,
+// unions (with a catch-all member), nullable and optional values, objects,
+// and sets in canonical (code unit) order without duplicates. A case is one
+// schema: its default, and per input the parsed value (`JSON.stringify`, left
+// out for `undefined`) and whether it is the schema's default
+// (`isSchemaDefault`); or, for a declaration the builder refuses, its message.
+test('serialization/schema', () => {
+  type Result = {input?: unknown; parsed?: string; isDefault: boolean};
+  type SchemaCase =
+    | {schema: string; defaultValue?: string; results: Result[]}
+    | {schema: string; error: string};
+  const cases: SchemaCase[] = [
+    ...Object.entries(SCHEMAS),
+    ...Object.entries(REFUSED_SCHEMAS),
+  ].map(([name, build]) => {
+    let schema: AnySchema;
+    try {
+      schema = build() as AnySchema;
+    } catch (e) {
+      return {error: (e as Error).message, schema: name};
+    }
+    // `isSchemaDefault` (@internal in lexical): identity, or the schema's
+    // own `isEqual`.
+    const isDefault = (value: unknown) =>
+      value === schema.defaultValue ||
+      (schema.isEqual !== undefined &&
+        schema.isEqual(value, schema.defaultValue));
+    return {
+      defaultValue: JSON.stringify(schema.defaultValue),
+      results: SCHEMA_INPUTS.map(input => {
+        const parsed = schema(input);
+        return {
+          input,
+          isDefault: isDefault(parsed),
+          parsed: JSON.stringify(parsed),
+        };
+      }),
+      schema: name,
+    };
+  });
+  emitVectors(
+    'serialization/schema',
+    'schema',
+    'Each LexicalSchema.ts value builder parsing a table of inputs (the parsed value and isSchemaDefault), or the message of a declaration it refuses.',
+    cases,
+  );
+});
+
+// TestSchemaNode (ops.ts), whose `$config` declares a `json` schema, imported
+// from `input` (inside a root) and exported in both forms; a port imports
+// `input` and each form and writes the same bytes, and so does a clone of
+// the node (`getWritable` in a later update), which carries every field.
+test('serialization/schema-node', () => {
+  const base = {
+    children: [],
+    direction: null,
+    format: '',
+    indent: 0,
+    type: 'test-schema',
+    version: 1,
+  };
+  const inputs: Record<string, Record<string, unknown>> = {
+    'a fractional count, a negative width, a non-string tag': {
+      count: 2.5,
+      tags: [1],
+      width: -3,
+    },
+    'a numeric string, null and empty values': {
+      count: '7',
+      note: '',
+      shown: 'hidden at count 1',
+      tags: [],
+      width: null,
+    },
+    'aliases, clamping, an array kept in order': {
+      count: 99,
+      kind: 'beta',
+      tags: ['\u00e9', 'e', '\u{1F600}', '\uffff', 'e'],
+    },
+    defaults: {},
+    'every property set': {
+      $: {flags: ['y', 'x', 'y']},
+      count: 5,
+      kind: 'b',
+      note: 'n',
+      shown: 's',
+      tags: ['b', 'a', 'b'],
+      width: 3,
+    },
+    'invalid values': {
+      $: {flags: 'nope'},
+      count: 'x',
+      kind: 'zzz',
+      label: 'ignored',
+      note: 7,
+      shown: 1,
+      tags: 'nope',
+      width: 'big',
+    },
+  };
+  const cases = Object.entries(inputs).map(([name, json]) => {
+    const editor = createHeadlessEditor({
+      nodes: [TestSchemaNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    const input = JSON.stringify({
+      root: {
+        children: [{...base, ...json}],
+        direction: null,
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1,
+      },
+    });
+    const state = editor.parseEditorState(input);
+    const legacy = JSON.stringify(state.toJSON());
+    const compact = JSON.stringify(state.toJSON(true));
+    for (const form of [legacy, compact]) {
+      const reparsed = editor.parseEditorState(form);
+      expect(JSON.stringify(reparsed.toJSON())).toBe(legacy);
+      expect(JSON.stringify(reparsed.toJSON(true))).toBe(compact);
+    }
+    editor.setEditorState(state);
+    editor.update(() => $getRoot().getFirstChildOrThrow().getWritable(), {
+      discrete: true,
+    });
+    expect(JSON.stringify(editor.getEditorState().toJSON())).toBe(legacy);
+    return {compact, input, legacy, name};
+  });
+  emitVectors(
+    'serialization/schema-node',
+    'serialization-input',
+    'A node whose $config declares a json schema (TestSchemaNode), imported from `input` and the exact JSON text JS writes for it, legacy and compact.',
     cases,
   );
 });

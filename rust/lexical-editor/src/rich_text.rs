@@ -38,6 +38,7 @@ use crate::node_state::{
 use crate::nodes::element::ElementData;
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::nodes::tab::create_tab_node;
+use crate::schema::{NodeSchema, SchemaValue, enum_value, node_schema, with_field};
 use crate::selection_insert_nodes::{insert_nodes, select_all};
 use crate::utils::{find_matching_parent, handle_indent_and_outdent};
 use crate::utils::{is_at_end_of_node, is_at_start_of_node};
@@ -170,7 +171,43 @@ fn with_tag(json: Object, tag: Option<HeadingTagType>) -> Object {
     out
 }
 
+thread_local! {
+    static HEADING_NODE_SCHEMA: NodeSchema = node_schema(vec![(
+        "tag",
+        with_field(
+            enum_value(HEADING_TAGS.map(Value::from).to_vec(), None).expect("the heading tags"),
+            |n: &HeadingNode| &n.tag,
+            |n: &mut HeadingNode| &mut n.tag,
+        )
+        .expect("a field"),
+    )])
+    .expect("HeadingNode's schema");
+}
+
+/// The heading tags, `h1` to `h6`.
+const HEADING_TAGS: [&str; 6] = ["h1", "h2", "h3", "h4", "h5", "h6"];
+
+/// `headingNodeSchema`: the `tag` field.
+pub fn heading_node_schema() -> NodeSchema {
+    HEADING_NODE_SCHEMA.with(Clone::clone)
+}
+
+impl SchemaValue for HeadingTagType {
+    fn to_schema_value(&self) -> Value {
+        self.as_str().into()
+    }
+    fn from_schema_value(value: &Value) -> Option<Self> {
+        value.as_str().and_then(HeadingTagType::parse)
+    }
+}
+
 impl LexicalNode for HeadingNode {
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        vec![
+            heading_node_schema(),
+            crate::nodes::element::element_node_schema(),
+        ]
+    }
     /// The `$config()` of `HeadingNode`: `children: 'inline'`.
     fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
         crate::structure::inline_holder_chain(self.get_type())
@@ -243,23 +280,24 @@ impl LexicalNode for HeadingNode {
     /// `exportHeadingNode` and `exportCompactHeadingNode`: an element's
     /// JSON with `tag` after `children` (left out of the compact form when
     /// it's `h1`).
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             let tag = Some(self.tag).filter(|t| *t != HeadingTagType::H1);
             with_tag(export_compact_element_node(self), tag)
         } else {
             with_tag(export_element_node(self), Some(self.tag))
-        }
+        })
     }
 
     /// `updateHeadingNode`.
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_element_node(&mut self.element, json);
         self.tag = json
             .get("tag")
             .and_then(Value::as_str)
             .and_then(HeadingTagType::parse)
             .unwrap_or_default();
+        true
     }
 
     /// `HeadingNode.insertNewAfter(selection, restoreSelection)`: a
@@ -426,18 +464,19 @@ impl LexicalNode for QuoteNode {
 
     /// `exportQuoteNode` and `exportCompactQuoteNode` (the NodeState,
     /// `shadowRoot` among it, comes after).
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_element_node(self)
         } else {
             export_element_node(self)
-        }
+        })
     }
 
     /// `updateQuoteNode` (the flat `shadowRoot` is applied with the rest of
     /// the NodeState).
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_element_node(&mut self.element, json);
+        true
     }
 
     /// `QuoteNode.insertNewAfter(selection, restoreSelection)`: a paragraph

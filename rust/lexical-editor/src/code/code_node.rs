@@ -7,6 +7,7 @@ use super::flat_structure_utils::get_first_code_node_of_line;
 use super::generated_json::{export_code_node, export_compact_code_node, update_code_node};
 use crate::LexicalError;
 use crate::json::Object;
+use crate::json::Value;
 use crate::lexical_selection::{PointType, SelectionRef, Which};
 use crate::lexical_utils::{set_node_key, with_writable};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
@@ -14,6 +15,10 @@ use crate::nodes::element::ElementData;
 use crate::nodes::line_break::{LineBreakNode, create_line_break_node};
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::nodes::tab::{TabNode, create_tab_node};
+use crate::schema::{
+    NodeSchema, node_schema, nullable, optional, schema_getter, schema_setter, string_value,
+    with_accessors,
+};
 
 /// `DEFAULT_CODE_LANGUAGE`.
 pub const DEFAULT_CODE_LANGUAGE: &str = "javascript";
@@ -233,7 +238,56 @@ fn insert_new_after(selection: &SelectionRef) -> Result<Option<NodeRef>, Lexical
     Ok(None)
 }
 
+thread_local! {
+    static CODE_NODE_SCHEMA: NodeSchema = build_code_node_schema().expect("CodeNode's schema");
+}
+
+/// What `setLanguage`, `setTheme` and `setHighlightType` keep of a parsed
+/// value: a non-empty string, any other (`null`, `undefined`, `''`) being
+/// `undefined`.
+pub(super) fn truthy_value(value: &Value) -> Option<String> {
+    truthy(value.as_str())
+}
+
+/// `codeNodeSchema`: `language` and `theme`, read straight off the fields
+/// and applied through the setters, which keep only a non-empty string.
+pub fn code_node_schema() -> NodeSchema {
+    CODE_NODE_SCHEMA.with(Clone::clone)
+}
+
+fn build_code_node_schema() -> Result<NodeSchema, LexicalError> {
+    let field = |value: &Option<String>| value.as_deref().map_or(Value::Undefined, Value::from);
+    node_schema(vec![
+        (
+            "language",
+            with_accessors(
+                optional(nullable(string_value(""), false)?, false)?,
+                Some(schema_getter(move |n: &CodeNode| field(&n.language))),
+                Some(schema_setter(|n: &mut CodeNode, value| {
+                    n.language = truthy_value(&value);
+                })),
+            )?,
+        ),
+        (
+            "theme",
+            with_accessors(
+                optional(string_value(""), false)?,
+                Some(schema_getter(move |n: &CodeNode| field(&n.theme))),
+                Some(schema_setter(|n: &mut CodeNode, value| {
+                    n.theme = truthy_value(&value);
+                })),
+            )?,
+        ),
+    ])
+}
+
 impl LexicalNode for CodeNode {
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        vec![
+            code_node_schema(),
+            crate::nodes::element::element_node_schema(),
+        ]
+    }
     /// The `$config()` of `CodeNode`: `children: 'inline'`.
     fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
         crate::structure::inline_holder_chain(self.get_type())
@@ -308,17 +362,18 @@ impl LexicalNode for CodeNode {
     }
 
     /// `exportCodeNode` and `exportCompactCodeNode`.
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_code_node(self)
         } else {
             export_code_node(self)
-        }
+        })
     }
 
     /// `updateCodeNode`.
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_code_node(self, json);
+        true
     }
 }
 

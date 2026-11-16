@@ -115,14 +115,16 @@ impl LexicalNode for DecoratorTextNode {
         Self::set_format(this, format)
     }
     /// `LexicalNode`'s generated JSON: the type and the version.
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_line_break_node(self.get_type())
         } else {
             export_line_break_node(self.get_type())
-        }
+        })
     }
-    fn update_from_json(&mut self, _json: &Object) {}
+    fn generated_update_from_json(&mut self, _json: &Object) -> bool {
+        true
+    }
 }
 
 /// `applyFormatFromStyle(lexicalNode, style, shouldApply)` (the `html`

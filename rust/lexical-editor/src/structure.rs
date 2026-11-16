@@ -143,17 +143,15 @@ pub enum MergeAdjacentDeclaration {
 }
 
 /// The node-structure keys of one class's own `$config()`
-/// (`StaticNodeConfigValue`'s `inline`, `children` and `mergeAdjacent`),
-/// and the names of its schema fields and NodeState keys declared
-/// `derived` (`withField(..., {derived: true})`,
-/// `createState(..., {derived: true})`), which the port lists here as it has
-/// no schema builders yet.
+/// (`StaticNodeConfigValue`'s `inline`, `children` and `mergeAdjacent`).
+/// What it declares `derived` comes from its schema
+/// ([`LexicalNode::json_schema_chain`]) and its NodeState
+/// ([`LexicalNode::state_configs`]).
 #[derive(Clone, Debug, Default)]
 pub struct StaticNodeConfig {
     pub inline: Option<bool>,
     pub children: Option<NodeChildrenConfig>,
     pub merge_adjacent: Option<MergeAdjacentDeclaration>,
-    pub derived: Vec<&'static str>,
 }
 
 /// One class of a config chain (`iterStaticNodeConfigChain`'s
@@ -218,7 +216,7 @@ pub struct DeclaredNodeStructure {
     pub merge_adjacent: Option<MergeAdjacentConfig>,
     /// The schema fields and NodeState keys of the class declared
     /// `derived`: the node's own code recomputes them.
-    pub derived: Vec<&'static str>,
+    pub derived: Vec<String>,
     /// The class each key came from.
     pub declared_by: DeclaredBy,
 }
@@ -275,21 +273,21 @@ thread_local! {
 fn invalid_merge_by(
     node: &dyn LexicalNode,
     config: &MergeAdjacentConfig,
-    derived: &[&'static str],
+    derived: &[String],
 ) -> Option<(String, &'static str)> {
-    let fields = node.export_json(false);
+    let fields = crate::schema::get_composed_schema_fields(node);
     for entry in &config.by {
         match entry {
             MergeAdjacentEntry::Field(name) => {
-                if fields.get(name).is_none_or(|v| v.is_undefined()) {
+                if !fields.iter().any(|(key, _)| key == name) {
                     return Some(((*name).to_owned(), "unknown"));
                 }
-                if derived.contains(name) {
+                if derived.iter().any(|d| d == name) {
                     return Some(((*name).to_owned(), "derived"));
                 }
             }
             MergeAdjacentEntry::State(state) => {
-                if derived.contains(&state.key()) {
+                if state.derived() {
                     return Some((state.key().to_owned(), "derived-state"));
                 }
             }
@@ -339,14 +337,17 @@ fn merging_child_not_inline(
 }
 
 /// `derivedNamesOf(klass)`: the names of the schema fields and NodeState
-/// keys declared derived along the chain.
-fn derived_names_of(chain: &[NodeConfigLink]) -> Vec<&'static str> {
-    let mut derived = Vec::new();
-    for link in chain {
-        for name in &link.config.derived {
-            if !derived.contains(name) {
-                derived.push(*name);
-            }
+/// keys the class declares derived.
+fn derived_names_of(node: &dyn LexicalNode) -> Vec<String> {
+    let mut derived: Vec<String> = crate::schema::get_composed_schema_fields(node)
+        .into_iter()
+        .filter(|(_, field)| field.is_derived())
+        .map(|(key, _)| key)
+        .collect();
+    for required in node.state_configs() {
+        let key = required.state_config.key();
+        if required.state_config.derived() && !derived.iter().any(|d| d == key) {
+            derived.push(key.to_owned());
         }
     }
     derived
@@ -385,7 +386,7 @@ fn cached_node_structure(node: &dyn LexicalNode) -> Rc<CachedNodeStructure> {
             }
         }
     }
-    out.derived = derived_names_of(&chain);
+    out.derived = derived_names_of(node);
     // A declaration the class only inherits never makes it invalid: a key
     // the class contradicts, or may contradict, reads as undeclared for it.
     if out.declared_by.inline.is_some_and(|by| by != own) && Some(node.is_inline()) != out.inline {

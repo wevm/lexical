@@ -1,10 +1,16 @@
 //! `nodes/LexicalTabNode.ts`.
 
+use crate::LexicalError;
 use crate::constants::IS_UNMERGEABLE;
 use crate::generated_json::{export_compact_tab_node, export_tab_node, update_tab_node};
-use crate::json::Object;
+use crate::json::{Object, Value};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
-use crate::nodes::text::TextData;
+use crate::nodes::text::{TextData, text_of};
+use crate::schema::{
+    NodeSchema, NumberValueOptions, enum_value, node_schema, number_value, string_value,
+    with_accessors,
+};
+use std::rc::Rc;
 
 /// `$createTabNode()`.
 pub fn create_tab_node() -> NodeRef {
@@ -31,7 +37,56 @@ impl Default for TabNode {
     }
 }
 
+thread_local! {
+    static TAB_NODE_SCHEMA: NodeSchema = build_tab_node_schema().expect("TabNode's schema");
+}
+
+/// `tabNodeSchema`: a tab's `detail`, `mode` and `text` are fixed, so they
+/// are written (straight off the fields, `mode` only as `normal`) and
+/// derived on import.
+pub fn tab_node_schema() -> NodeSchema {
+    TAB_NODE_SCHEMA.with(Clone::clone)
+}
+
+fn build_tab_node_schema() -> Result<NodeSchema, LexicalError> {
+    node_schema(vec![
+        (
+            "detail",
+            with_accessors(
+                number_value(IS_UNMERGEABLE as f64, NumberValueOptions::default())?,
+                Some(Rc::new(|node| text_of(node).detail.into())),
+                None,
+            )?,
+        ),
+        (
+            "mode",
+            with_accessors(
+                enum_value(vec!["normal".into()], None)?,
+                Some(Rc::new(|node| {
+                    if text_of(node).mode == 0 {
+                        "normal".into()
+                    } else {
+                        Value::Undefined
+                    }
+                })),
+                None,
+            )?,
+        ),
+        (
+            "text",
+            with_accessors(
+                string_value("\t"),
+                Some(Rc::new(|node| text_of(node).text.as_str().into())),
+                None,
+            )?,
+        ),
+    ])
+}
+
 impl LexicalNode for TabNode {
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        vec![tab_node_schema(), crate::nodes::text::text_node_schema()]
+    }
     fn get_type(&self) -> &'static str {
         "tab"
     }
@@ -53,15 +108,16 @@ impl LexicalNode for TabNode {
     fn can_insert_text_after(&self) -> bool {
         false
     }
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_tab_node(self.get_type(), &self.text)
         } else {
             export_tab_node(self.get_type(), &self.text)
-        }
+        })
     }
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_tab_node(&mut self.text, json);
+        true
     }
 
     /// `TabNode.createDOM(config)`: `TextNode`'s, with the theme's `tab`

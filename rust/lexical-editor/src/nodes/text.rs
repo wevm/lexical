@@ -6,7 +6,7 @@ use crate::constants::{
 };
 use crate::error::invariant;
 use crate::generated_json::{export_compact_text_node, export_text_node, update_text_node};
-use crate::json::Object;
+use crate::json::{Object, Value};
 use crate::lexical_selection::{
     Point, PointType, SelectionRef, Which, adjust_point_offset_for_merged_sibling, get_selection,
     internal_make_range_selection, update_element_selection_on_create_delete_node,
@@ -18,8 +18,107 @@ use crate::lexical_utils::{
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::node_state::clone_node_state;
 use crate::nodes::tab::TabNode;
+use crate::schema::{
+    NodeSchema, NumberValueOptions, aliased_value, enum_value, node_schema, number_value,
+    string_value, with_accessors,
+};
 use crate::updates::error_on_read_only;
 use crate::{LexicalError, utf16};
+use std::rc::Rc;
+
+thread_local! {
+    static TEXT_NODE_SCHEMA: NodeSchema = build_text_node_schema().expect("TextNode's schema");
+}
+
+/// `textNodeSchema`: the properties of a text node's JSON, each one of its
+/// fields. `detail` and `format` also read the names of their flags
+/// (`DETAIL_TYPE_TO_DETAIL`, `TEXT_TYPE_TO_FORMAT`); `mode` is stored as
+/// its flag and written as its name (`TEXT_TYPE_TO_MODE`,
+/// `TEXT_MODE_TO_TYPE`).
+pub fn text_node_schema() -> NodeSchema {
+    TEXT_NODE_SCHEMA.with(Clone::clone)
+}
+
+pub(crate) fn text_of(node: &dyn LexicalNode) -> &TextData {
+    node.text().expect("a text node")
+}
+
+pub(crate) fn text_of_mut(node: &mut dyn LexicalNode) -> &mut TextData {
+    node.text_mut().expect("a text node")
+}
+
+/// An alias table of flag names, as `aliasedValue` takes it.
+fn flag_aliases(table: &[(&str, i32)]) -> Vec<(String, Value)> {
+    table
+        .iter()
+        .map(|(name, flag)| ((*name).to_owned(), Value::Number(*flag as f64)))
+        .collect()
+}
+
+fn build_text_node_schema() -> Result<NodeSchema, LexicalError> {
+    let number = || number_value(0.0, NumberValueOptions::default());
+    node_schema(vec![
+        (
+            "detail",
+            with_accessors(
+                aliased_value(number()?, flag_aliases(DETAIL_TYPE_TO_DETAIL))?,
+                Some(Rc::new(|node| text_of(node).detail.into())),
+                Some(Rc::new(|node, value| {
+                    text_of_mut(node).detail = value.as_f64().unwrap_or(0.0);
+                })),
+            )?,
+        ),
+        (
+            "format",
+            with_accessors(
+                aliased_value(number()?, flag_aliases(TEXT_TYPE_TO_FORMAT))?,
+                Some(Rc::new(|node| text_of(node).format.into())),
+                Some(Rc::new(|node, value| {
+                    text_of_mut(node).format = value.as_f64().unwrap_or(0.0);
+                })),
+            )?,
+        ),
+        (
+            "mode",
+            with_accessors(
+                enum_value(
+                    vec!["normal".into(), "token".into(), "segmented".into()],
+                    None,
+                )?,
+                Some(Rc::new(|node| {
+                    name_of(TEXT_MODE_TO_TYPE, text_of(node).mode)
+                        .map_or(Value::Undefined, Value::from)
+                })),
+                Some(Rc::new(|node, value| {
+                    text_of_mut(node).mode = value
+                        .as_str()
+                        .and_then(|name| lookup(TEXT_MODE_TO_TYPE, name))
+                        .unwrap_or(IS_NORMAL);
+                })),
+            )?,
+        ),
+        (
+            "style",
+            with_accessors(
+                string_value(""),
+                Some(Rc::new(|node| text_of(node).style.as_str().into())),
+                Some(Rc::new(|node, value| {
+                    text_of_mut(node).style = value.as_str().unwrap_or("").to_owned();
+                })),
+            )?,
+        ),
+        (
+            "text",
+            with_accessors(
+                string_value(""),
+                Some(Rc::new(|node| text_of(node).text.as_str().into())),
+                Some(Rc::new(|node, value| {
+                    text_of_mut(node).text = value.as_str().unwrap_or("").to_owned();
+                })),
+            )?,
+        ),
+    ])
+}
 
 /// The fields `TextNode` adds. `format` and `detail` are kept as the JS
 /// number they parsed to, so a document writes back exactly what JS writes;
@@ -93,15 +192,16 @@ impl LexicalNode for TextNode {
     fn text_mut(&mut self) -> Option<&mut TextData> {
         Some(&mut self.text)
     }
-    fn export_json(&self, compact: bool) -> Object {
-        if compact {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
+        Some(if compact {
             export_compact_text_node(self.get_type(), &self.text)
         } else {
             export_text_node(self.get_type(), &self.text)
-        }
+        })
     }
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_text_node(&mut self.text, json);
+        true
     }
     #[cfg(feature = "html")]
     fn import_dom(&self) -> Option<crate::lexical_dom::DomConversionMap> {

@@ -14,11 +14,16 @@ use crate::caret_utils::{
 };
 use crate::error::invariant;
 use crate::json::Object;
+use crate::json::Value;
 use crate::lexical_selection::{PointType, SelectionRef, Which, get_selection};
 use crate::lexical_utils::{copy_node, set_node_key, with_writable};
 use crate::node::{self, LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::{ElementData, is_root_or_shadow_root};
 use crate::nodes::paragraph::{ParagraphNode, create_paragraph_node};
+use crate::schema::{
+    NodeSchema, NumberValueOptions, boolean_value, node_schema, number_value, optional,
+    schema_getter, schema_setter, with_accessors, with_field,
+};
 
 /// `ListItemNode`: an item of a [`ListNode`](super::ListNode). It holds
 /// inline content, or, to nest a list, only that list.
@@ -228,7 +233,78 @@ fn points_around(
     })))
 }
 
+thread_local! {
+    static LIST_ITEM_NODE_SCHEMA: NodeSchema =
+        build_list_item_node_schema().expect("ListItemNode's schema");
+}
+
+/// `MAX_LIST_ITEM_INDENT`: the deepest list nesting `setIndent` walks to.
+const MAX_LIST_ITEM_INDENT: f64 = 128.0;
+
+/// `listItemNodeSchema`: `checked`, read with `getChecked` (from the
+/// parent list's type) and written to the field; `indent`, ElementNode's
+/// bounded and clamped, read with `getIndent` (from the nesting) and
+/// derived; `value`, derived. JS applies `indent` with `setIndent`, which
+/// on the new node `importJSON` gives it (no parent) changes nothing, so
+/// the item keeps its own.
+pub fn list_item_node_schema() -> NodeSchema {
+    LIST_ITEM_NODE_SCHEMA.with(Clone::clone)
+}
+
+fn build_list_item_node_schema() -> Result<NodeSchema, LexicalError> {
+    node_schema(vec![
+        (
+            "checked",
+            with_accessors(
+                optional(boolean_value(false), false)?,
+                Some(schema_getter(|n: &ListItemNode| {
+                    n.exported_checked_and_indent()
+                        .0
+                        .map_or(Value::Undefined, Value::from)
+                })),
+                Some(schema_setter(|n: &mut ListItemNode, value| {
+                    n.checked = value.as_bool();
+                })),
+            )?,
+        ),
+        (
+            "indent",
+            with_accessors(
+                number_value(
+                    0.0,
+                    NumberValueOptions {
+                        clamp: true,
+                        integer: true,
+                        max: Some(MAX_LIST_ITEM_INDENT),
+                        min: Some(0.0),
+                    },
+                )?,
+                Some(schema_getter(|n: &ListItemNode| {
+                    n.exported_checked_and_indent().1.into()
+                })),
+                Some(schema_setter(|_: &mut ListItemNode, _| {})),
+            )?
+            .derived(),
+        ),
+        (
+            "value",
+            with_field(
+                number_value(1.0, NumberValueOptions::default())?,
+                |n: &ListItemNode| &n.value,
+                |n: &mut ListItemNode| &mut n.value,
+            )?
+            .derived(),
+        ),
+    ])
+}
+
 impl LexicalNode for ListItemNode {
+    fn json_schema_chain(&self) -> Vec<NodeSchema> {
+        vec![
+            list_item_node_schema(),
+            crate::nodes::element::element_node_schema(),
+        ]
+    }
     /// The `$config()` of `ListItemNode`: `children: ['inline', ListNode]`,
     /// and its schema's derived `indent` and `value`.
     fn static_node_config_chain(&self) -> Vec<crate::structure::NodeConfigLink> {
@@ -242,7 +318,6 @@ impl LexicalNode for ListItemNode {
                     NodeChildEntry::Inline,
                     NodeChildEntry::Class(NodeClassRef::of::<super::ListNode>()),
                 ])),
-                derived: vec!["indent", "value"],
                 ..StaticNodeConfig::default()
             },
         )]
@@ -323,18 +398,19 @@ impl LexicalNode for ListItemNode {
     }
 
     /// `exportListItemNode` and `exportCompactListItemNode`.
-    fn export_json(&self, compact: bool) -> Object {
+    fn generated_export_json(&self, compact: bool) -> Option<Object> {
         let (checked, indent) = self.exported_checked_and_indent();
-        if compact {
+        Some(if compact {
             export_compact_list_item_node(self, checked, indent)
         } else {
             export_list_item_node(self, checked, indent)
-        }
+        })
     }
 
     /// `updateListItemNode`.
-    fn update_from_json(&mut self, json: &Object) {
+    fn generated_update_from_json(&mut self, json: &Object) -> bool {
         update_list_item_node(self, json);
+        true
     }
 
     /// `ListItemNode.append(...nodes)`: a list item or paragraph appended

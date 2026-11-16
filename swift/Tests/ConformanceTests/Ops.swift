@@ -149,6 +149,57 @@ final class TestDecoratorBlockNode: DecoratorBlockNode {
   }
 }
 
+/// `testSchemaFlagsState` in ops.ts: a set NodeState of `TestSchemaNode`,
+/// kept in canonical order.
+nonisolated(unsafe) private let testSchemaFlagsState = createState(
+  "flags", schema: try! arraySetValue(stringValue()))
+
+/// `TestSchemaNode` in ops.ts: a block element whose config declares a
+/// `json` schema of every kind of property, for serialization/schema-node.
+final class TestSchemaNode: ElementNode {
+  var __count: Double = 1
+  var __kind = "a"
+  var __note: String?
+  var __shown = ""
+  var __tags: [String] = []
+  var __width: Double?
+
+  override class func config() throws -> NodeConfig? {
+    try NodeConfig(
+      TestSchemaNode.self, type: "test-schema", extends: ElementNode.self,
+      json: [
+        SchemaField(
+          "count", numberValue(1, integer: true, min: 0, max: 10, clamp: true),
+          field: \TestSchemaNode.__count),
+        SchemaField(
+          "kind", aliasedValue(enumValue(["a", "b"]), ["alpha": "a", "beta": "b"]),
+          field: \TestSchemaNode.__kind),
+        // `withAccessors(stringValue(), {setter: null})`: `getLabel`.
+        SchemaField(
+          "label", stringValue(), of: TestSchemaNode.self,
+          get: { .string(try $0.getLatest().__kind.uppercased()) }, set: nil),
+        SchemaField("note", optional(stringValue()), field: \TestSchemaNode.__note),
+        // `{when: 'isShown'}`: only for a count above 1.
+        SchemaField(
+          "shown", stringValue(), field: \TestSchemaNode.__shown, when: { $0.__count > 1 }),
+        SchemaField("tags", arrayValue(stringValue()), field: \TestSchemaNode.__tags),
+        // `withAccessors(nullable(numberValue()), {})`: `getWidth` and
+        // `setWidth`.
+        SchemaField(
+          "width", nullable(numberValue()), of: TestSchemaNode.self,
+          get: { try $0.getLatest().__width.map(JSONValue.number) ?? .null },
+          set: { try $0.getWritable().__width = $1?.numberValue }),
+      ],
+      stateConfigs: [RequiredNodeStateConfig(testSchemaFlagsState)])
+  }
+
+  /// `width` is declared through accessors, so the class copies it.
+  override func afterCloneFrom(_ prevNode: LexicalNode) throws {
+    try super.afterCloneFrom(prevNode)
+    __width = (prevNode as! TestSchemaNode).__width
+  }
+}
+
 // The node classes of scripts/node-structure (ops.ts), for the structure
 // rules the packages' own nodes don't declare: a block container, an inline
 // element merged by a schema field and a NodeState, derived values, and

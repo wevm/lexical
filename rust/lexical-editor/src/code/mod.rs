@@ -3,16 +3,16 @@
 //! with their generated JSON (`LexicalCodeCoreGeneratedJSON.ts`),
 //! `$exitCodeNodeOnEnter` (`CodeNode.ts`), the line functions of
 //! `FlatStructureUtils.ts`, `CodeExtension`'s transform ([`register_code`])
-//! and `registerCodeIndentation`'s model command handlers
+//! and `registerCodeIndentation`'s command handlers, Tab, the arrow keys
+//! (`escapeWithArrows`), `MOVE_TO_START` and `MOVE_TO_END` among them
 //! ([`register_code_indentation`]); with the `extension` feature,
 //! `CodeExtension` and `CodeIndentExtension` (`code_extension`,
 //! `code_indent_extension`).
 //!
 //! Not ported: the DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
 //! `importDOM`, `CodeImportRules`, the VS Code paste overlay), which come
-//! with `html`; the handlers of key events (Enter, Tab, the arrow keys,
-//! Home and End), which wait for an input layer; and `registerCodeGutter`,
-//! which needs a DOM (rust/PARITY.md).
+//! with `html`; and `registerCodeGutter`, which needs a DOM
+//! (rust/PARITY.md).
 //!
 //! With the `code-highlight` feature, the highlighting loop of
 //! `@lexical/code-prism` (`CodeHighlighterPrism.ts`, with the lazy languages

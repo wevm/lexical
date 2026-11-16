@@ -2,8 +2,8 @@
 //! `LinkNode` and `AutoLinkNode` with their generated JSON
 //! (`LexicalLinkGeneratedJSON.ts`), `$linkNodeTransform`, `$toggleLink`,
 //! `TOGGLE_LINK_COMMAND` and `formatUrl` (`LexicalLinkNode.ts`), and
-//! `registerLink`'s transform and command handler
-//! (`LexicalLinkExtension.ts`); with the `autolink` feature,
+//! `registerLink`'s transform and command handlers, with the paste of a
+//! URL `validateUrl` accepts (`LexicalLinkExtension.ts`); with the `autolink` feature,
 //! `registerAutoLink` and its matchers (`LexicalAutoLinkExtension.ts`),
 //! whose regular expressions need the `regex` crate.
 //!
@@ -14,8 +14,7 @@
 //!
 //! Not ported: the DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
 //! `importDOM`, `sanitizeUrl`, `LinkImportRules`), which come with `html`;
-//! `registerLink`'s paste handler, which reads clipboard data; and
-//! `ClickableLinkExtension`, which needs a DOM (rust/PARITY.md).
+//! and `ClickableLinkExtension`, which needs a DOM (rust/PARITY.md).
 
 #[cfg(feature = "a11y")]
 mod auto_link_announce_extension;
@@ -43,7 +42,7 @@ pub use auto_link_announce_extension::{
 pub use auto_link_extension::{
     AutoLinkConfigOverrides, AutoLinkExtensionType, auto_link_extension,
 };
-pub use link_extension::{LinkConfig, ValidateUrl, register_link};
+pub use link_extension::{LinkConfig, ValidateUrl, register_link, register_link_paste};
 #[cfg(feature = "extension")]
 pub use link_extension::{
     LinkConfigOverrides, LinkExtensionType, LinkOutput, ValidateUrlFn, link_extension,

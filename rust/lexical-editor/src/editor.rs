@@ -321,6 +321,21 @@ pub trait RootElement: Any {
     fn live_region_host(self: Rc<Self>) -> Option<Rc<dyn crate::a11y::LiveRegionHost>> {
         None
     }
+
+    /// Gives up the focus and clears the platform's selection, as
+    /// [`Editor::blur`] (`editor.blur()`) does to a DOM root. Does nothing
+    /// by default.
+    fn blur(&self) {}
+
+    /// The caret at a point in the root's coordinates, as
+    /// `caretFromPoint(x, y, rootElement)` from `@lexical/clipboard`
+    /// hit-tests the DOM, which drop and drag handlers ask for the
+    /// position of a `MouseEvent` (`clientX`, `clientY`). It is read
+    /// inside an update. `None` (the default) when no caret resolves
+    /// there.
+    fn caret_from_point(&self, _x: f64, _y: f64) -> Option<crate::caret::PointCaret> {
+        None
+    }
 }
 
 /// A root element, compared by identity.
@@ -512,6 +527,8 @@ pub(crate) struct EditorInner {
     namespace: String,
     /// `_parentEditor`.
     parent_editor: Option<Editor>,
+    /// `_key`.
+    key: String,
     /// `_editable`.
     editable: Cell<bool>,
     /// `_slotsUsed`: whether a slot was ever set in this editor, or in a
@@ -631,6 +648,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         dom: RefCell::new(args.dom.unwrap_or_default()),
         namespace,
         parent_editor,
+        key: create_uid(),
         editable: Cell::new(true),
         slots_used: Cell::new(false),
         root_element: RefCell::new(None),
@@ -682,6 +700,20 @@ impl Editor {
     /// ([`CreateEditorArgs::parent_editor`]), if any.
     pub fn parent_editor(&self) -> Option<&Editor> {
         self.0.parent_editor.as_ref()
+    }
+
+    /// `getKey()`: the editor's own random key (`createUID()`), which a
+    /// drag from it is marked with (`$writeDragSourceToDataTransfer`).
+    pub fn get_key(&self) -> &str {
+        &self.0.key
+    }
+
+    /// `blur()`: the root element gives up the focus and its selection
+    /// ([`RootElement::blur`]).
+    pub fn blur(&self) {
+        if let Some(root) = self.get_root_element() {
+            root.0.blur();
+        }
     }
 
     /// `isEditable()`.
@@ -1216,7 +1248,7 @@ impl Editor {
     /// [`register_command`](Self::register_command), but at the start of
     /// `priority`'s queue (JS's `COMMAND_PRIORITY_BEFORE_EDITOR` is the
     /// start of the editor queue).
-    #[cfg(feature = "auto-embed")]
+    #[cfg(any(feature = "auto-embed", feature = "list"))]
     pub(crate) fn register_command_before<P: 'static>(
         &self,
         command: &LexicalCommand<P>,

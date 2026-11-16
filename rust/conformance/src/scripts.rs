@@ -71,11 +71,12 @@ use lexical::selection::{self, set_blocks_type};
 use lexical::utils;
 use lexical::{
     BEFORE_INPUT_COMMAND, CLICK_COMMAND, COMPOSITION_END_COMMAND, COMPOSITION_START_COMMAND,
-    COPY_COMMAND, CUT_COMMAND, ClipboardOrKeyboardEvent, CompositionEvent, Event, InputEvent,
-    KEY_ARROW_DOWN_COMMAND, KEY_ARROW_LEFT_COMMAND, KEY_ARROW_RIGHT_COMMAND, KEY_ARROW_UP_COMMAND,
-    KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND, KEY_DOWN_COMMAND, KEY_ESCAPE_COMMAND,
-    KEY_MODIFIER_COMMAND, KEY_SPACE_COMMAND, KEY_TAB_COMMAND, MOVE_TO_END, MOVE_TO_START,
-    MouseEvent, PASTE_COMMAND, PasteCommandType, with_is_apple,
+    COPY_COMMAND, CUT_COMMAND, ClipboardEvent, ClipboardOrKeyboardEvent, CompositionEvent,
+    DRAGEND_COMMAND, DRAGOVER_COMMAND, DRAGSTART_COMMAND, DROP_COMMAND, DataTransferFile,
+    DragEvent, Event, InputEvent, KEY_ARROW_DOWN_COMMAND, KEY_ARROW_LEFT_COMMAND,
+    KEY_ARROW_RIGHT_COMMAND, KEY_ARROW_UP_COMMAND, KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND,
+    KEY_DOWN_COMMAND, KEY_ESCAPE_COMMAND, KEY_MODIFIER_COMMAND, KEY_SPACE_COMMAND, KEY_TAB_COMMAND,
+    MOVE_TO_END, MOVE_TO_START, MouseEvent, PASTE_COMMAND, PasteCommandType, with_is_apple,
 };
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
@@ -484,6 +485,10 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
         "INSERT_PARAGRAPH_COMMAND" => ScriptCommand::Void(INSERT_PARAGRAPH_COMMAND),
         "INSERT_TAB_COMMAND" => ScriptCommand::Void(INSERT_TAB_COMMAND),
         "BEFORE_INPUT_COMMAND" => ScriptCommand::Input(BEFORE_INPUT_COMMAND),
+        "DRAGEND_COMMAND" => ScriptCommand::Drag(DRAGEND_COMMAND, "dragend"),
+        "DRAGOVER_COMMAND" => ScriptCommand::Drag(DRAGOVER_COMMAND, "dragover"),
+        "DRAGSTART_COMMAND" => ScriptCommand::Drag(DRAGSTART_COMMAND, "dragstart"),
+        "DROP_COMMAND" => ScriptCommand::Drag(DROP_COMMAND, "drop"),
         "COMPOSITION_END_COMMAND" => {
             ScriptCommand::Composition(COMPOSITION_END_COMMAND, "compositionend")
         }
@@ -523,6 +528,7 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
         "INSERT_HORIZONTAL_RULE_COMMAND" => {
             ScriptCommand::Void(ext::INSERT_HORIZONTAL_RULE_COMMAND)
         }
+        "DRAG_DROP_PASTE" => ScriptCommand::Files(lexical::rich_text::DRAG_DROP_PASTE),
         _ => return None,
     })
 }
@@ -549,13 +555,22 @@ pub(crate) enum ScriptCommand {
     Input(LexicalCommand<Rc<InputEvent>>),
     /// A composition command and its event's type: `{data}`.
     Composition(LexicalCommand<Rc<CompositionEvent>>, &'static str),
-    /// `CLICK_COMMAND`: `{targetKey, altKey, ctrlKey, metaKey, shiftKey}`,
+    /// `CLICK_COMMAND`: `{targetKey, clientX, clientY, button, detail}` and
+    /// the modifier flags,
     /// where JS's target is the DOM of the node `targetKey` and Rust's
     /// `target_key` is the key.
     Mouse(LexicalCommand<Rc<MouseEvent>>),
-    /// `PASTE_COMMAND`, which scripts only listen to: the keydown and
-    /// beforeinput handlers dispatch it with their event.
+    /// A drag command and its event's type: a mouse event's fields and
+    /// `dataTransfer`, `{data: {type: data...}, files: [{name, type,
+    /// text}...]}` or `null`.
+    Drag(LexicalCommand<Rc<DragEvent>>, &'static str),
+    /// `PASTE_COMMAND`: a `paste` `ClipboardEvent` of `clipboardData`, a
+    /// data transfer as a drag event's. The keydown and beforeinput
+    /// handlers dispatch it with their event.
     Paste(LexicalCommand<PasteCommandType>),
+    /// `DRAG_DROP_PASTE`, which scripts only listen to: its files are
+    /// logged as `[{name, type}...]`.
+    Files(LexicalCommand<Vec<DataTransferFile>>),
     /// `COPY_COMMAND` and `CUT_COMMAND`, which scripts only listen to.
     ClipboardOrKeyboard(LexicalCommand<Option<ClipboardOrKeyboardEvent>>),
     /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
@@ -661,26 +676,6 @@ fn keyboard_event_of(payload: &Value) -> Option<Rc<KeyboardEvent>> {
     }))
 }
 
-/// `eventPayload`'s `MouseEvent`: a cancelable `click` of the modifier
-/// flags of a JSON object, whose target is the node `targetKey` (none when
-/// it is absent or `null`). JS's target is `editor.getElementByKey`, which
-/// the click scripts reach through a root element.
-fn mouse_event_of(payload: &Value) -> Option<Rc<MouseEvent>> {
-    let object = payload.as_object()?;
-    let flag = |key: &str| object.get(key).and_then(Value::as_bool) == Some(true);
-    Some(Rc::new(MouseEvent {
-        alt_key: flag("altKey"),
-        ctrl_key: flag("ctrlKey"),
-        meta_key: flag("metaKey"),
-        shift_key: flag("shiftKey"),
-        target_key: object
-            .get("targetKey")
-            .and_then(Value::as_str)
-            .map(str::to_owned),
-        ..MouseEvent::new("click")
-    }))
-}
-
 /// `eventPayload`'s `InputEvent`: a cancelable `beforeinput` of
 /// `inputType`, with `data` when it is a string.
 fn input_event_of(payload: &Value) -> Option<Rc<InputEvent>> {
@@ -696,6 +691,109 @@ fn input_event_of(payload: &Value) -> Option<Rc<InputEvent>> {
             .map(str::to_owned),
         ..InputEvent::new(&input_type)
     }))
+}
+
+/// `eventPayload`'s `MouseEvent` of `type_`: `clientX`, `clientY`,
+/// `button`, `detail` and the modifier flags of a JSON object, cancelable,
+/// whose target is the node `targetKey` (none when it is absent or `null`).
+/// JS's target is `editor.getElementByKey`, which the click scripts reach
+/// through a root element.
+fn mouse_event_of(type_: &str, payload: &Value) -> Option<MouseEvent> {
+    let object = payload.as_object()?;
+    let number = |key: &str| object.get(key).and_then(Value::as_f64);
+    let flag = |key: &str| object.get(key).and_then(Value::as_bool) == Some(true);
+    Some(MouseEvent {
+        client_x: number("clientX").unwrap_or(0.0),
+        client_y: number("clientY").unwrap_or(0.0),
+        button: number("button").unwrap_or(0.0) as i32,
+        detail: number("detail").unwrap_or(1.0) as i32,
+        alt_key: flag("altKey"),
+        ctrl_key: flag("ctrlKey"),
+        meta_key: flag("metaKey"),
+        shift_key: flag("shiftKey"),
+        target_key: object
+            .get("targetKey")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        ..MouseEvent::new(type_)
+    })
+}
+
+/// `scriptDataTransfer`: a data transfer's JSON, `{data: {type: data...},
+/// files: [{name, type, text}...]}`, or `None` for anything else (`null`).
+fn script_data_transfer(json: Option<&Value>) -> Result<Option<Rc<DataTransfer>>, LexicalError> {
+    let Some(object) = json.and_then(Value::as_object) else {
+        return Ok(None);
+    };
+    let data_transfer = match object.get("data") {
+        Some(data) => data_transfer_of(data)?,
+        None => DataTransfer::new(),
+    };
+    let files = match object.get("files") {
+        None => Vec::new(),
+        Some(files) => files
+            .as_array()
+            .ok_or_else(|| err(format!("expected files, got {files}")))?
+            .iter()
+            .map(|file| {
+                let field = |key: &str| file.get(key).and_then(Value::as_str);
+                let name = field("name").ok_or_else(|| err(format!("no name in {file}")))?;
+                let type_ = field("type").ok_or_else(|| err(format!("no type in {file}")))?;
+                let text = field("text").unwrap_or("");
+                Ok(DataTransferFile::new(name, type_, text.as_bytes().to_vec()))
+            })
+            .collect::<Result<Vec<_>, LexicalError>>()?,
+    };
+    data_transfer.set_files(files);
+    Ok(Some(Rc::new(data_transfer)))
+}
+
+/// `['dataTransfer', [[type, data]...]]` of what a drag event's data
+/// transfer carries: the drag marker of this editor
+/// (`application/x-lexical-drag` of its `editorKey`), whose key is random,
+/// as `'<this editor>'`.
+fn data_transfer_entry(data_transfer: &DataTransfer, editor: &Editor) -> Vec<Value> {
+    let mut types = data_transfer.types();
+    if !data_transfer.files().is_empty() {
+        types.pop();
+    }
+    let entries = types
+        .into_iter()
+        .map(|type_| {
+            let data = data_transfer.get_data(&type_);
+            let this_editor = type_ == "application/x-lexical-drag"
+                && lexical::json::parse(&data).ok().and_then(|marker| {
+                    marker
+                        .get("editorKey")
+                        .and_then(Value::as_str)
+                        .map(|key| key == editor.get_key())
+                }) == Some(true);
+            Value::Array(vec![
+                type_.as_str().into(),
+                if this_editor {
+                    "<this editor>".into()
+                } else {
+                    data.into()
+                },
+            ])
+        })
+        .collect();
+    vec!["dataTransfer".into(), Value::Array(entries)]
+}
+
+/// `payloadJson` of files: `[{name, type}...]`.
+fn files_json(files: &[DataTransferFile]) -> Value {
+    Value::Array(
+        files
+            .iter()
+            .map(|file| {
+                let mut json = Object::new();
+                json.insert("name", file.name.as_str().into());
+                json.insert("type", file.type_.as_str().into());
+                json.into()
+            })
+            .collect(),
+    )
 }
 
 /// `payloadJson` of a `KeyboardEvent`, its keys in order; a keyboard event
@@ -740,18 +838,22 @@ fn no_json(event: &Event) -> LexicalError {
     err(format!("no JSON for a {} event", event.type_))
 }
 
+/// What a dispatch did: whether a handler handled it, whether the event
+/// the payload became had its default prevented, and for a drag event with
+/// a data transfer, its `['dataTransfer', ...]` entry (`data_transfer_entry`).
+pub(crate) type Dispatched = (bool, Option<bool>, Option<Vec<Value>>);
+
 /// What `dispatchLogged` logs of a dispatch: `['dispatched', name,
 /// handled]`, then `['defaultPrevented', prevented]` when the payload
-/// became an event.
-pub(crate) fn log_dispatched(
-    log: impl Fn(Vec<Value>),
-    name: &str,
-    dispatched: (bool, Option<bool>),
-) {
-    let (handled, default_prevented) = dispatched;
+/// became an event, then a drag event's `['dataTransfer', ...]`.
+pub(crate) fn log_dispatched(log: impl Fn(Vec<Value>), name: &str, dispatched: Dispatched) {
+    let (handled, default_prevented, data_transfer) = dispatched;
     log(vec!["dispatched".into(), name.into(), handled.into()]);
     if let Some(prevented) = default_prevented {
         log(vec!["defaultPrevented".into(), prevented.into()]);
+    }
+    if let Some(entry) = data_transfer {
+        log(entry);
     }
 }
 
@@ -763,7 +865,7 @@ impl ScriptCommand {
         &self,
         editor: &Editor,
         payload: Value,
-    ) -> Result<(bool, Option<bool>), LexicalError> {
+    ) -> Result<Dispatched, LexicalError> {
         let not_taken = || err(format!("{payload} is not a payload this command takes"));
         match self {
             ScriptCommand::Keyboard(command) if payload.is_null() => {
@@ -771,38 +873,60 @@ impl ScriptCommand {
                     event: Event::new(""),
                     ..KeyboardEvent::default()
                 });
-                Ok((editor.dispatch_command(command, event)?, None))
+                Ok((editor.dispatch_command(command, event)?, None, None))
             }
             ScriptCommand::Keyboard(command) => {
                 let event = keyboard_event_of(&payload).ok_or_else(not_taken)?;
                 let handled = editor.dispatch_command(command, event.clone())?;
-                Ok((handled, Some(event.default_prevented())))
+                Ok((handled, Some(event.default_prevented()), None))
             }
             ScriptCommand::Key(command) if !payload.is_null() => {
                 let event = keyboard_event_of(&payload).ok_or_else(not_taken)?;
                 let handled = editor.dispatch_command(command, Some(event.clone()))?;
-                Ok((handled, Some(event.default_prevented())))
+                Ok((handled, Some(event.default_prevented()), None))
             }
             ScriptCommand::Input(command) => {
                 let event = input_event_of(&payload).ok_or_else(not_taken)?;
                 let handled = editor.dispatch_command(command, event.clone())?;
-                Ok((handled, Some(event.default_prevented())))
-            }
-            ScriptCommand::Mouse(command) => {
-                let event = mouse_event_of(&payload).ok_or_else(not_taken)?;
-                let handled = editor.dispatch_command(command, event.clone())?;
-                Ok((handled, Some(event.default_prevented())))
+                Ok((handled, Some(event.default_prevented()), None))
             }
             ScriptCommand::Composition(command, type_) => {
                 let object = payload.as_object().ok_or_else(not_taken)?;
                 let data = object.get("data").and_then(Value::as_str).unwrap_or("");
                 let event = Rc::new(CompositionEvent::new(type_, data));
                 let handled = editor.dispatch_command(command, event.clone())?;
-                Ok((handled, Some(event.default_prevented())))
+                Ok((handled, Some(event.default_prevented()), None))
+            }
+            ScriptCommand::Mouse(command) => {
+                let event = Rc::new(mouse_event_of("click", &payload).ok_or_else(not_taken)?);
+                let handled = editor.dispatch_command(command, event.clone())?;
+                Ok((handled, Some(event.default_prevented()), None))
+            }
+            ScriptCommand::Drag(command, type_) => {
+                let mouse = mouse_event_of(type_, &payload).ok_or_else(not_taken)?;
+                let data_transfer = script_data_transfer(payload.get("dataTransfer"))?;
+                let event = Rc::new(DragEvent {
+                    mouse,
+                    data_transfer: data_transfer.clone(),
+                });
+                let handled = editor.dispatch_command(command, event.clone())?;
+                Ok((
+                    handled,
+                    Some(event.default_prevented()),
+                    data_transfer.map(|data_transfer| data_transfer_entry(&data_transfer, editor)),
+                ))
+            }
+            ScriptCommand::Paste(command) => {
+                let object = payload.as_object().ok_or_else(not_taken)?;
+                let clipboard_data = script_data_transfer(object.get("clipboardData"))?;
+                let event = Rc::new(ClipboardEvent::new("paste", clipboard_data));
+                let handled =
+                    editor.dispatch_command(command, PasteCommandType::Clipboard(event.clone()))?;
+                Ok((handled, Some(event.default_prevented()), None))
             }
             _ => self
                 .dispatch_json(editor, payload)
-                .map(|handled| (handled, None)),
+                .map(|handled| (handled, None, None)),
         }
     }
 
@@ -934,6 +1058,16 @@ impl ScriptCommand {
                     };
                     listener(&json, editor)
                 },
+                priority,
+            ),
+            ScriptCommand::Drag(command, _) => editor.register_command(
+                command,
+                move |payload, _| Err(no_json(&payload.mouse.event)),
+                priority,
+            ),
+            ScriptCommand::Files(command) => editor.register_command(
+                command,
+                move |payload, editor| listener(&files_json(payload), editor),
                 priority,
             ),
             ScriptCommand::ListStart(command) => editor.register_command(
@@ -2501,9 +2635,9 @@ fn run_selection_utils_action(
                 |n: &NodeRef| n.is_element() && types.iter().any(|t| t == n.get_type());
             let direction = action.str("direction").map_err(err)?;
             let result = if direction == "up" {
-                utils::on_escape_up(is_container)?
+                utils::on_escape_up(is_container, None)?
             } else {
-                utils::on_escape_down(is_container)?
+                utils::on_escape_down(is_container, None)?
             };
             ctx.log(vec!["escape".into(), direction.into(), result.into()]);
         }
@@ -2912,7 +3046,8 @@ impl Session {
             let _unregister = lexical::code::register_code(&editor);
             match code_highlight {
                 None => {
-                    let _unregister = lexical::code::register_code_indentation(&editor, None);
+                    let _unregister =
+                        lexical::code::register_code_indentation(&editor, None, false);
                 }
                 Some(spec) => {
                     unregister_code_highlighting = Some(

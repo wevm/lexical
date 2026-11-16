@@ -3,7 +3,10 @@
 use super::link_node::{
     LinkAttributes, TOGGLE_LINK_COMMAND, ToggleLinkPayload, link_node_transform, toggle_link,
 };
-use crate::editor::COMMAND_PRIORITY_EDITOR;
+use crate::commands::PASTE_COMMAND;
+use crate::editor::{COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_LOW};
+use crate::events::PasteCommandType;
+use crate::lexical_selection::get_selection;
 use crate::{Editor, Unregister};
 use std::fmt;
 use std::rc::Rc;
@@ -15,8 +18,8 @@ pub type ValidateUrl = Rc<dyn Fn(&str) -> bool>;
 #[derive(Clone, Default)]
 pub struct LinkConfig {
     /// `validateUrl`: when set, `TOGGLE_LINK_COMMAND` rejects (doesn't
-    /// handle) a URL it returns false for. JS also links the selection when
-    /// such a URL is pasted, which needs clipboard data and isn't ported.
+    /// handle) a URL it returns false for, and pasting a URL it accepts
+    /// over a selection of text links the selection to it.
     pub validate_url: Option<ValidateUrl>,
     /// `attributes`: the attributes `TOGGLE_LINK_COMMAND` gives a link when
     /// its payload doesn't.
@@ -41,22 +44,75 @@ pub(super) fn merge(unregisters: Vec<Unregister>) -> Unregister {
 }
 
 /// `registerLink(editor, stores)`: [`link_node_transform`] for `LinkNode`
-/// and the `TOGGLE_LINK_COMMAND` handler, and returns what unregisters
-/// them. JS reads the config from signals each time; here it is fixed when
-/// registering (`LinkExtension` passes its signals).
-///
-/// With `validateUrl` set, JS also handles `PASTE_COMMAND`, linking the
-/// selection to a pasted URL; that reads a `ClipboardEvent`'s data and waits
-/// for an input layer.
+/// and the `TOGGLE_LINK_COMMAND` handler, and with `validateUrl` set the
+/// `PASTE_COMMAND` handler ([`register_link_paste`]), and returns what
+/// unregisters them. JS reads the config from signals; here it is fixed
+/// when registering (`LinkExtension` passes its signals).
 pub fn register_link(editor: &Editor, config: LinkConfig) -> Unregister {
     let LinkConfig {
         validate_url,
         attributes,
     } = config;
-    register_link_with(
+    let paste = validate_url
+        .clone()
+        .map(|validate_url| register_link_paste(editor, validate_url, attributes.clone()));
+    let unregister = register_link_with(
         editor,
         Rc::new(move || validate_url.clone()),
         Rc::new(move || attributes.clone()),
+    );
+    merge(std::iter::once(unregister).chain(paste).collect())
+}
+
+/// The `PASTE_COMMAND` handler `registerLink` registers while `validateUrl`
+/// is set, at `COMMAND_PRIORITY_LOW`: a paste of a clipboard event whose
+/// text `validate_url` accepts, over a range selection of simple text
+/// only, dispatches `TOGGLE_LINK_COMMAND` with the text and `attributes`
+/// (linking the selection) and prevents the paste's default.
+pub fn register_link_paste(
+    editor: &Editor,
+    validate_url: ValidateUrl,
+    attributes: Option<LinkAttributes>,
+) -> Unregister {
+    let attributes = attributes.unwrap_or_default();
+    editor.register_command(
+        &PASTE_COMMAND,
+        move |event, editor| {
+            let Some(selection) = get_selection().filter(|s| s.is_range()) else {
+                return Ok(false);
+            };
+            if selection.range().is_some_and(|r| r.is_collapsed()) {
+                return Ok(false);
+            }
+            let PasteCommandType::Clipboard(event) = event else {
+                return Ok(false);
+            };
+            let Some(clipboard_data) = &event.clipboard_data else {
+                return Ok(false);
+            };
+            let clipboard_text = clipboard_data.get_data("text");
+            if !validate_url(&clipboard_text) {
+                return Ok(false);
+            }
+            // Skip link wrapping for non-simple text nodes (e.g. code blocks).
+            let nodes = selection.get_nodes()?;
+            if !nodes
+                .iter()
+                .any(|node| node.is_element() || (node.is_text() && !node.is_simple_text()))
+            {
+                editor.dispatch_command(
+                    &TOGGLE_LINK_COMMAND,
+                    Some(ToggleLinkPayload::Attributes {
+                        url: clipboard_text,
+                        attributes: attributes.clone(),
+                    }),
+                )?;
+                event.prevent_default();
+                return Ok(true);
+            }
+            Ok(false)
+        },
+        COMMAND_PRIORITY_LOW,
     )
 }
 
@@ -114,8 +170,8 @@ pub use extension::*;
 
 #[cfg(feature = "extension")]
 mod extension {
-    use super::{LinkConfig, ValidateUrl, register_link_with};
-    use crate::extension::signals::{Signal, signal};
+    use super::{LinkConfig, ValidateUrl, merge, register_link_paste, register_link_with};
+    use crate::extension::signals::{Signal, effect, signal};
     use crate::extension_core::{
         ExtensionBuildState, ExtensionConfigBase, ExtensionRegisterState, LexicalExtension,
         define_extension,
@@ -208,11 +264,22 @@ mod extension {
                  state: &ExtensionRegisterState<(), LinkOutput>| {
                     let stores = state.get_output().expect("LinkExtension has a build");
                     let attributes = stores.attributes.clone();
-                    Ok(register_link_with(
+                    let validate_url = stores.validate_url.clone();
+                    let unregister = register_link_with(
                         editor,
-                        Rc::new(move || stores.validate_url.peek().map(|v| v.0)),
+                        Rc::new(move || validate_url.peek().map(|v| v.0)),
                         Rc::new(move || attributes.peek()),
-                    ))
+                    );
+                    // The paste handler, registered again when `validateUrl`
+                    // or `attributes` change, while `validateUrl` is set.
+                    let weak = editor.weak();
+                    let unregister_paste = effect(move || {
+                        let validate_url = stores.validate_url.value()?.0;
+                        let attributes = stores.attributes.value();
+                        let editor = weak.upgrade().map(Editor)?;
+                        Some(register_link_paste(&editor, validate_url, attributes))
+                    });
+                    Ok(merge(vec![unregister, unregister_paste]))
                 },
             )),
             ..LexicalExtension::new("@lexical/link/Link", LinkConfig::default())
@@ -223,9 +290,9 @@ mod extension {
         static LINK_EXTENSION: Rc<LinkExtensionType> = make();
     }
 
-    /// `LinkExtension`: `LinkNode` and `TOGGLE_LINK_COMMAND`
-    /// ([`register_link`](super::register_link)), reading its config from
-    /// the signals of its output when the command is handled.
+    /// `LinkExtension`: `LinkNode`, `TOGGLE_LINK_COMMAND` and the paste of
+    /// a URL ([`register_link`](super::register_link)), reading its config
+    /// from the signals of its output.
     pub fn link_extension() -> Rc<LinkExtensionType> {
         LINK_EXTENSION.with(Rc::clone)
     }

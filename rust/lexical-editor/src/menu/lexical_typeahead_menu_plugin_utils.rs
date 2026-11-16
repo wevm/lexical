@@ -195,3 +195,18 @@ pub fn basic_typeahead_trigger_match(trigger: &str, options: TypeaheadTriggerOpt
         })
     })
 }
+
+/// `SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND`'s payload: the option an
+/// arrow key highlighted, and its index.
+#[derive(Clone)]
+pub struct ScrollTypeaheadOptionIntoViewPayload {
+    pub index: usize,
+    pub option: std::rc::Rc<dyn super::MenuOption>,
+}
+
+/// `SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND`: dispatched while a menu is
+/// open, when an arrow key highlights an option, for the view that draws
+/// the menu to scroll it into view.
+pub const SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND: crate::LexicalCommand<
+    ScrollTypeaheadOptionIntoViewPayload,
+> = crate::LexicalCommand::constant(u64::MAX - 59, "SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND");

@@ -1,15 +1,16 @@
 //! `@lexical/list` (the `list` feature), from `packages/lexical-list/src`:
 //! `ListNode` and `ListItemNode` with their generated JSON
 //! (`LexicalListGeneratedJSON.ts`), the model functions of `formatList.ts`
-//! and `utils.ts`, `registerList`'s command handlers and transforms
-//! ([`register_list`]), and the model part of `registerCheckList`
+//! and `utils.ts`, `registerList`'s command handlers (Backspace at an
+//! item's start among them) and transforms ([`register_list`]), and the
+//! model part of `registerCheckList`
 //! ([`register_check_list`]).
 //!
 //! Not ported: the DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
 //! `importDOM`, `ListImportExtension`, `WordListImportExtension`), which come
-//! with `html`; and `registerList`'s `KEY_BACKSPACE_COMMAND` handler and
-//! `registerCheckList`'s pointer, focus and key handlers, which wait for an
-//! input layer (rust/PARITY.md). With the `extension` feature,
+//! with `html`; and `registerCheckList`'s pointer, focus and key handlers,
+//! which hit-test the DOM or act on the item with DOM focus
+//! (rust/PARITY.md). With the `extension` feature,
 //! [`list_extension`] and [`check_list_extension`] are `ListExtension` and
 //! `CheckListExtension`.
 

@@ -159,6 +159,7 @@ import {
   $createHeadingNode,
   $createQuoteNode,
   $isHeadingNode,
+  DRAG_DROP_PASTE,
   HeadingAnnounceExtension,
   HeadingNode,
   type HeadingTagType,
@@ -285,6 +286,10 @@ import {
   DELETE_CHARACTER_COMMAND,
   DELETE_LINE_COMMAND,
   DELETE_WORD_COMMAND,
+  DRAGEND_COMMAND,
+  DRAGOVER_COMMAND,
+  DRAGSTART_COMMAND,
+  DROP_COMMAND,
   type EditorState,
   ElementNode,
   enumValue,
@@ -1682,6 +1687,8 @@ function mountStep(
  */
 class ScriptDataTransfer {
   entries: [string, string][] = [];
+  /** `files`, which `types` reports as `Files`, last. */
+  fileList: File[] = [];
 
   static format(format: string): string {
     const lower = format.toLowerCase();
@@ -1693,7 +1700,12 @@ class ScriptDataTransfer {
   }
 
   get types(): string[] {
-    return this.entries.map(([type]) => type);
+    const types = this.entries.map(([type]) => type);
+    return this.fileList.length > 0 ? [...types, 'Files'] : types;
+  }
+
+  get files(): File[] {
+    return this.fileList;
   }
 
   getData(format: string): string {
@@ -3163,6 +3175,10 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['DELETE_CHARACTER_COMMAND', DELETE_CHARACTER_COMMAND],
   ['DELETE_LINE_COMMAND', DELETE_LINE_COMMAND],
   ['DELETE_WORD_COMMAND', DELETE_WORD_COMMAND],
+  ['DRAGEND_COMMAND', DRAGEND_COMMAND],
+  ['DRAGOVER_COMMAND', DRAGOVER_COMMAND],
+  ['DRAGSTART_COMMAND', DRAGSTART_COMMAND],
+  ['DROP_COMMAND', DROP_COMMAND],
   ['FORMAT_ELEMENT_COMMAND', FORMAT_ELEMENT_COMMAND],
   ['FORMAT_TEXT_COMMAND', FORMAT_TEXT_COMMAND],
   ['INDENT_CONTENT_COMMAND', INDENT_CONTENT_COMMAND],
@@ -3193,8 +3209,10 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
 ]);
 
 /**
- * The commands of the packages a script registers (`list`, `link`, and
- * `HorizontalRuleExtension`'s), named as their package exports them.
+ * The commands of the packages a script registers (`list`, `link`,
+ * `richText` and `HorizontalRuleExtension`'s), named as their package
+ * exports them. `DRAG_DROP_PASTE`'s payload, the dropped or pasted files, is
+ * logged as `[{name, type}...]`.
  */
 const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['INSERT_CHECK_LIST_COMMAND', INSERT_CHECK_LIST_COMMAND],
@@ -3205,6 +3223,7 @@ const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['TOGGLE_LINK_COMMAND', TOGGLE_LINK_COMMAND],
   ['INSERT_EMBED_COMMAND', INSERT_EMBED_COMMAND],
   ['INSERT_HORIZONTAL_RULE_COMMAND', INSERT_HORIZONTAL_RULE_COMMAND],
+  ['DRAG_DROP_PASTE', DRAG_DROP_PASTE],
 ]);
 
 /**
@@ -3212,11 +3231,15 @@ const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
  * makes for them (`eventPayload`): `keydown` (a `KeyboardEvent` of `key`,
  * `code` and the modifier flags), `beforeinput` (an `InputEvent` of
  * `inputType` and `data`), a composition event (a `CompositionEvent` of
- * `data`) or `click` (a `MouseEvent` of the modifier flags whose `target` is
+ * `data`), `click` (a `MouseEvent` of `clientX`, `clientY`, `button`,
+ * `detail` and the modifier flags whose `target` is
  * `editor.getElementByKey(targetKey)`, the DOM the reconciler made for the
- * node `targetKey`, or `null` when `targetKey` is absent or `null`). A
+ * node `targetKey`, or `null` when `targetKey` is absent or `null`), a drag
+ * event (a `DragEvent` of `clientX`, `clientY` and `dataTransfer`) or
+ * `paste` (a `ClipboardEvent` of `clipboardData`). A data transfer is
+ * `{data: {type: data...}, files: [{name, type, text}...]}`, or `null`. A
  * `null` payload stays `null`, as `KEY_ENTER_COMMAND` and
- * `SELECT_ALL_COMMAND` take it. `PASTE_COMMAND`, `COPY_COMMAND` and
+ * `SELECT_ALL_COMMAND` take it. `COPY_COMMAND` and
  * `CUT_COMMAND` are only listened to, as the keydown and beforeinput
  * handlers dispatch them with their event.
  */
@@ -3225,6 +3248,11 @@ const EVENT_COMMANDS = new Map<string, string>([
   ['CLICK_COMMAND', 'click'],
   ['COMPOSITION_END_COMMAND', 'compositionend'],
   ['COMPOSITION_START_COMMAND', 'compositionstart'],
+  ['DRAGEND_COMMAND', 'dragend'],
+  ['DRAGOVER_COMMAND', 'dragover'],
+  ['DRAGSTART_COMMAND', 'dragstart'],
+  ['DROP_COMMAND', 'drop'],
+  ['PASTE_COMMAND', 'paste'],
   ...[
     'KEY_ARROW_DOWN_COMMAND',
     'KEY_ARROW_LEFT_COMMAND',
@@ -3243,6 +3271,86 @@ const EVENT_COMMANDS = new Map<string, string>([
     'SELECT_ALL_COMMAND',
   ].map(name => [name, 'keydown'] as [string, string]),
 ]);
+
+const DRAG_EVENTS = new Set(['dragend', 'dragover', 'dragstart', 'drop']);
+
+/**
+ * The event classes the packages' handlers name, which Node lacks: their
+ * handlers tell a paste's or a drag's event by its class's name
+ * (`objectKlassEquals(event, ClipboardEvent)` in `eventFiles` and
+ * `onPasteForRichText`), as a browser's globals let them. jsdom has no
+ * `ClipboardEvent` or `DragEvent`, so these are made on its `Event` and
+ * `MouseEvent`; the others are jsdom's. They are put on `globalThis` the
+ * first time a script makes such an event.
+ */
+type EventClasses = {
+  ClipboardEvent: new (
+    type: string,
+    init: EventInit & {clipboardData: ScriptDataTransfer | null},
+  ) => Event & {clipboardData: ScriptDataTransfer | null};
+  DragEvent: new (
+    type: string,
+    init: MouseEventInit & {dataTransfer: ScriptDataTransfer | null},
+  ) => MouseEvent & {dataTransfer: ScriptDataTransfer | null};
+};
+
+let eventClasses: EventClasses | null = null;
+
+function scriptEventClasses(
+  win: ReturnType<typeof browserWindow>,
+): EventClasses {
+  if (eventClasses !== null) {
+    return eventClasses;
+  }
+  class ClipboardEvent extends win.Event {
+    clipboardData: ScriptDataTransfer | null;
+    constructor(
+      type: string,
+      init: EventInit & {clipboardData: ScriptDataTransfer | null},
+    ) {
+      super(type, init);
+      this.clipboardData = init.clipboardData;
+    }
+  }
+  class DragEvent extends win.MouseEvent {
+    dataTransfer: ScriptDataTransfer | null;
+    constructor(
+      type: string,
+      init: MouseEventInit & {dataTransfer: ScriptDataTransfer | null},
+    ) {
+      super(type, init);
+      this.dataTransfer = init.dataTransfer;
+    }
+  }
+  eventClasses = {ClipboardEvent, DragEvent} as unknown as EventClasses;
+  const globals = globalThis as Record<string, unknown>;
+  for (const [name, klass] of [
+    ['ClipboardEvent', ClipboardEvent],
+    ['DragEvent', DragEvent],
+    ['InputEvent', win.InputEvent],
+    ['KeyboardEvent', win.KeyboardEvent],
+    ['MouseEvent', win.MouseEvent],
+  ] as const) {
+    globals[name] ??= klass;
+  }
+  return eventClasses;
+}
+
+/** A data transfer's JSON (`eventPayload`) as a `ScriptDataTransfer`. */
+function scriptDataTransfer(json: Json | undefined): ScriptDataTransfer | null {
+  if (json === null || json === undefined || typeof json !== 'object') {
+    return null;
+  }
+  const {data, files} = json as {
+    data?: Record<string, string>;
+    files?: {name: string; type: string; text?: string}[];
+  };
+  const dataTransfer = ScriptDataTransfer.of(data ?? {});
+  dataTransfer.fileList = (files ?? []).map(
+    file => new File([file.text ?? ''], file.name, {type: file.type}),
+  );
+  return dataTransfer;
+}
 
 /** The jsdom window the events of `eventPayload` come from. */
 let eventWindow: ReturnType<typeof browserWindow> | null = null;
@@ -3272,14 +3380,27 @@ function eventPayload(
       metaKey: p.metaKey === true,
       shiftKey: p.shiftKey === true,
     });
-  } else if (type === 'click') {
-    const event = new win.MouseEvent(type, {
-      altKey: p.altKey === true,
+  } else if (type === 'beforeinput') {
+    return new win.InputEvent(type, {
       cancelable: true,
-      ctrlKey: p.ctrlKey === true,
-      metaKey: p.metaKey === true,
-      shiftKey: p.shiftKey === true,
+      data: typeof p.data === 'string' ? p.data : null,
+      inputType: String(p.inputType),
     });
+  }
+  const mouse = {
+    altKey: p.altKey === true,
+    button: typeof p.button === 'number' ? p.button : 0,
+    cancelable: true,
+    clientX: typeof p.clientX === 'number' ? p.clientX : 0,
+    clientY: typeof p.clientY === 'number' ? p.clientY : 0,
+    ctrlKey: p.ctrlKey === true,
+    detail: typeof p.detail === 'number' ? p.detail : 1,
+    metaKey: p.metaKey === true,
+    shiftKey: p.shiftKey === true,
+  };
+  if (type === 'click') {
+    scriptEventClasses(win);
+    const event = new win.MouseEvent(type, mouse);
     // As if the browser dispatched it on that element: a handler reads only
     // `event.target`.
     Object.defineProperty(event, 'target', {
@@ -3289,11 +3410,15 @@ function eventPayload(
           : null,
     });
     return event;
-  } else if (type === 'beforeinput') {
-    return new win.InputEvent(type, {
+  } else if (DRAG_EVENTS.has(type)) {
+    return new (scriptEventClasses(win).DragEvent)(type, {
+      ...mouse,
+      dataTransfer: scriptDataTransfer(p.dataTransfer),
+    });
+  } else if (type === 'paste') {
+    return new (scriptEventClasses(win).ClipboardEvent)(type, {
       cancelable: true,
-      data: typeof p.data === 'string' ? p.data : null,
-      inputType: String(p.inputType),
+      clipboardData: scriptDataTransfer(p.clipboardData),
     });
   }
   return new win.CompositionEvent(type, {
@@ -3305,9 +3430,13 @@ function eventPayload(
  * A command's payload as a handler logs it: an event as the fields Lexical
  * reads of it (`{type, key, code, altKey, ctrlKey, metaKey, shiftKey}` for a
  * `KeyboardEvent`, `{type, inputType, data}` for an `InputEvent`, `{type,
- * data}` for a `CompositionEvent`), anything else as it is.
+ * data}` for a `CompositionEvent`), files as `[{name, type}...]`, anything
+ * else as it is.
  */
 function payloadJson(payload: unknown): Json {
+  if (Array.isArray(payload) && payload.every(item => item instanceof File)) {
+    return payload.map(({name, type}) => ({name, type}));
+  }
   if (eventWindow === null || !(payload instanceof eventWindow.Event)) {
     return payload as Json;
   }
@@ -3329,7 +3458,11 @@ function payloadJson(payload: unknown): Json {
 /**
  * `editor.dispatchCommand(command(ctx, name), payload)`, logged as
  * `['dispatched', name, handled]`, then, when the payload is an event,
- * `['defaultPrevented', event.defaultPrevented]`.
+ * `['defaultPrevented', event.defaultPrevented]`, and for a drag event with
+ * a data transfer, `['dataTransfer', [[type, data]...]]` of what it carries
+ * then. The data of `application/x-lexical-drag`, the marker of the editor
+ * the drag started in, is `'<this editor>'` when its `editorKey` is this
+ * editor's, whose key is random.
  */
 function dispatchLogged(
   ctx: Context,
@@ -3345,6 +3478,22 @@ function dispatchLogged(
   ]);
   if (event !== payload) {
     ctx.log.push(['defaultPrevented', (event as Event).defaultPrevented]);
+    const dataTransfer = DRAG_EVENTS.has((event as Event).type)
+      ? (event as {dataTransfer: ScriptDataTransfer | null}).dataTransfer
+      : null;
+    if (dataTransfer !== null) {
+      ctx.log.push([
+        'dataTransfer',
+        dataTransfer.entries.map(([type, data]) => [
+          type,
+          type === 'application/x-lexical-drag' &&
+          (JSON.parse(data) as {editorKey?: string}).editorKey ===
+            target.getKey()
+            ? '<this editor>'
+            : data,
+        ]),
+      ]);
+    }
   }
 }
 
@@ -3492,7 +3641,8 @@ export const PREFILLED_HISTORY_STATE =
  * ['log']` logs `['autoLink', url, prevUrl]`; `$canIndent: 'never'`
  * (TabIndentationExtension) indents nothing; `createInitialHistoryState:
  * 'prefilled'` (HistoryExtension) starts with PREFILLED_HISTORY_STATE on the
- * undo stack. BlockIdExtension's `generateId: 'counter'` returns `id1`,
+ * undo stack; `shouldHandlePasteAsFiles: 'always'` (RichTextExtension)
+ * pastes the files of a paste that has any, with text or not. BlockIdExtension's `generateId: 'counter'` returns `id1`,
  * `id2`..., `'stutter'` returns each of those twice in a row, and
  * `'invalid'` always `not valid`; its `$isIdentifiedBlock: 'rootChild'` is
  * `$isRootChildBlock`. NestedEditorExtension's `$getParentEditor: 'parent'`
@@ -3512,6 +3662,8 @@ function configPreset(ctx: Context, field: string, name: string): unknown {
       };
     case '$canIndent:never':
       return () => false;
+    case 'shouldHandlePasteAsFiles:always':
+      return (files: File[]) => files.length > 0;
     case 'generateId:counter': {
       let n = 0;
       return () => `id${++n}`;
@@ -3549,6 +3701,7 @@ function configPreset(ctx: Context, field: string, name: string): unknown {
 
 /** The config fields whose string value names a preset (`configPreset`). */
 const PRESET_FIELDS = new Set([
+  'shouldHandlePasteAsFiles',
   'validateUrl',
   '$canIndent',
   'createInitialHistoryState',

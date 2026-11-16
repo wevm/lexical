@@ -24,15 +24,17 @@ selection = []
 # @lexical/utils.
 utils = ["selection"]
 # @lexical/rich-text: HeadingNode, QuoteNode and registerRichText's model
-# command handlers, with its copy, cut and paste handlers (@lexical/clipboard),
-# and @lexical/react's table of contents (LexicalTableOfContentsPlugin.tsx),
+# command handlers (its key, click, drag and drop handlers among them), with
+# its copy, cut, paste and drop handlers (@lexical/clipboard), and @lexical/react's table of contents (LexicalTableOfContentsPlugin.tsx),
 # whose mutation listeners hear from the core's reconciler once the editor has
 # a root element.
 rich-text = ["selection", "utils", "clipboard"]
 # @lexical/plain-text: registerPlainText's model command handlers, with its
-# copy, cut and paste handlers (@lexical/clipboard). Upstream it also depends
-# on @lexical/dragon, @lexical/extension, @lexical/selection and
-# @lexical/utils, which those handlers don't use.
+# copy, cut, paste and drop handlers (@lexical/clipboard) and its arrow keys
+# ($moveCharacter, @lexical/selection, which `clipboard` brings). Upstream it
+# also depends on @lexical/dragon and @lexical/extension, for
+# PlainTextExtension's dependencies, and on @lexical/utils for
+# objectKlassEquals, which a Rust enum stands for.
 plain-text = ["clipboard"]
 # @lexical/clipboard: copy and paste (clipboard.ts and
 # ClipboardImportExtension.ts), as JSON and plain text, as HTML when `html` is
@@ -54,10 +56,10 @@ link = ["utils"]
 autolink = ["link", "dep:regex"]
 # @lexical/code-core: CodeNode, CodeHighlightNode, FlatStructureUtils and the
 # model parts of CodeExtension and registerCodeIndentation, with the DOM parts
-# when `html` is on too. Upstream it also depends on @lexical/extension and
-# @lexical/utils, for the extensions and the arrow-key handlers, which aren't
-# ported.
-code = []
+# when `html` is on too. Like upstream it depends on @lexical/utils, for the
+# arrow-key handlers ($onEscapeUp, $onEscapeDown); upstream also depends on
+# @lexical/extension, for the extensions, which `extension` brings.
+code = ["utils"]
 # The highlighting loop of @lexical/code-prism (CodeHighlighterPrism.ts:
 # registerCodeHighlighting, registerHighlightingOnly, and with `extension`
 # CodePrismExtension), with the lazy languages of @lexical/code-shiki, over a
@@ -127,7 +129,8 @@ decorator-block = []
 # (LexicalTypeaheadMenuPluginUtils.ts and the platform-neutral parts of
 # shared/LexicalMenu.tsx and LexicalTypeaheadMenuPlugin.tsx): the trigger
 # match (without the `regex` crate), $splitNodeContainingQuery, the text
-# before the caret, and the menu's state and option selection.
+# before the caret, and the menu's state, option selection and keyboard
+# commands.
 menu = []
 # @lexical/react's auto-embed (LexicalAutoEmbedPluginUtils.ts and the logic of
 # LexicalAutoEmbedPlugin.tsx): URL_MATCHER (without the `regex` crate),

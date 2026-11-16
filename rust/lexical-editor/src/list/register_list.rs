@@ -8,8 +8,8 @@ use super::format_list::{
 use super::list_item_node::is_list_item_node;
 use super::list_node::{ListType, is_list_node};
 use super::utils::get_list_depth;
-use crate::commands::INSERT_PARAGRAPH_COMMAND;
-use crate::editor::{COMMAND_PRIORITY_LOW, LexicalCommand};
+use crate::commands::{INSERT_PARAGRAPH_COMMAND, KEY_BACKSPACE_COMMAND};
+use crate::editor::{COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_LOW, LexicalCommand};
 use crate::lexical_selection::{SelectionRef, Which, get_selection};
 use crate::lexical_utils::get_node_by_key;
 use crate::node::{NodeKey, NodeRef};
@@ -68,12 +68,10 @@ fn merge(unregisters: Vec<Unregister>) -> Unregister {
 }
 
 /// `registerList(editor, options)`: the list commands, Enter in an empty
-/// item, and the transforms that keep an item's text format and style in
-/// step with its first text, and returns what unregisters them.
-///
-/// JS also handles `KEY_BACKSPACE_COMMAND`, a DOM key event, by calling
-/// `collapseAtStart` on the item at the caret; without an input layer that
-/// waits, and `deleteCharacter` reaches the same `collapseAtStart`.
+/// item, Backspace at the start of an item (`collapseAtStart`, at
+/// `COMMAND_PRIORITY_BEFORE_EDITOR`: first in the editor's queue), and the transforms that keep an
+/// item's text format and style in step with its first text, and returns
+/// what unregisters them.
 pub fn register_list(editor: &Editor, options: RegisterListOptions) -> Unregister {
     merge(vec![
         editor.register_command(
@@ -119,6 +117,34 @@ pub fn register_list(editor: &Editor, options: RegisterListOptions) -> Unregiste
             &INSERT_PARAGRAPH_COMMAND,
             move |_, _| handle_list_insert_paragraph(options.restore_numbering),
             COMMAND_PRIORITY_LOW,
+        ),
+        editor.register_command_before(
+            &KEY_BACKSPACE_COMMAND,
+            |event, _| {
+                let Some(range) = get_selection().and_then(|s| s.range()) else {
+                    return Ok(false);
+                };
+                if !range.is_collapsed() || range.anchor.offset != 0 {
+                    return Ok(false);
+                }
+                let mut current = range.anchor.get_node()?;
+                while !is_list_item_node(&current) {
+                    if current.get_previous_sibling().is_some() {
+                        return Ok(false);
+                    }
+                    let Some(parent) = current.get_parent() else {
+                        return Ok(false);
+                    };
+                    current = parent;
+                }
+                let selection = get_selection().expect("a range selection");
+                if current.collapse_at_start(&selection)? {
+                    event.prevent_default();
+                    return Ok(true);
+                }
+                Ok(false)
+            },
+            COMMAND_PRIORITY_EDITOR,
         ),
         editor.register_node_transform("listitem", |node| {
             match node.get_first_child() {

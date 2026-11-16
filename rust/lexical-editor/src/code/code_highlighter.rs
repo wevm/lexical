@@ -422,7 +422,7 @@ pub fn register_code_highlighting(
     );
     Ok(super::merge(vec![
         register_highlighting_only(editor, tokenizer),
-        register_code_indentation(editor, None),
+        register_code_indentation(editor, None, false),
     ]))
 }
 

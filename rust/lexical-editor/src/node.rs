@@ -1007,6 +1007,56 @@ impl NodeRef {
         }
     }
 
+    /// `getNodesBetween(targetNode)`: the nodes from this one to `target`,
+    /// both included, in document order, with the ancestors the walk
+    /// enters or leaves on the way.
+    pub fn get_nodes_between(&self, target: &NodeRef) -> Vec<NodeRef> {
+        let forward = self.is_before(target);
+        let mut nodes = Vec::new();
+        let mut node = Some(self.clone());
+        let mut entering = true;
+        let mut open_elements = 0usize;
+        while let Some(current) = node {
+            // Only ancestors above the starting point lack an enter event.
+            // Count open elements to recognize their first visit without a
+            // visited set.
+            if entering || open_elements == 0 {
+                nodes.push(current.clone());
+            }
+            if &current == target {
+                break;
+            }
+            if !entering && open_elements > 0 {
+                open_elements -= 1;
+            }
+            let child = if entering && current.is_element() {
+                if forward {
+                    current.get_first_child()
+                } else {
+                    current.get_last_child()
+                }
+            } else {
+                None
+            };
+            if child.is_some() {
+                open_elements += 1;
+            }
+            let adjacent = child.or_else(|| {
+                if forward {
+                    current.get_next_sibling()
+                } else {
+                    current.get_previous_sibling()
+                }
+            });
+            entering = adjacent.is_some();
+            node = adjacent.or_else(|| current.get_parent());
+        }
+        if !forward {
+            nodes.reverse();
+        }
+        nodes
+    }
+
     /// `isSelected()` for a node selection. Range selections come with
     /// `getNodes`.
     fn is_selected_by_node_selection(&self, selection: &SelectionRef) -> bool {

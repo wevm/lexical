@@ -31,8 +31,7 @@
 //! `importDOM`, which come with `html`; `applyFormatFromStyle`, which reads
 //! a CSS style declaration; `HorizontalRuleExtension`'s selected class,
 //! which it sets on a rule's DOM; `PreventSelectAllExtension`'s root element
-//! listener; `TabIndentationExtension`'s `KEY_TAB_COMMAND` handler, which
-//! reads a `KeyboardEvent`; and the package's other extensions
+//! listener; and the package's other extensions
 //! (rust/PARITY.md).
 
 mod block_handles;

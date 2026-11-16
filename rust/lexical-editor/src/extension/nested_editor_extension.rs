@@ -197,6 +197,8 @@ mod tests {
 
     /// The JS unit tests `it sets _parentEditor implicitly` and
     /// `$getParentEditor can be overridden`.
+    // upstream: lexical-extension/src/__tests__/unit/NestedEditorExtension.test.ts::NestedEditorExtension > it sets _parentEditor implicitly
+    // upstream: lexical-extension/src/__tests__/unit/NestedEditorExtension.test.ts::NestedEditorExtension > $getParentEditor can be overridden
     #[test]
     fn sets_the_parent_editor() {
         let parent = build("parent", None, vec![]);
@@ -228,6 +230,8 @@ mod tests {
 
     /// `The theme is inherited by default` and `If the child has a theme it
     /// is not inherited`.
+    // upstream: lexical-extension/src/__tests__/unit/NestedEditorExtension.test.ts::NestedEditorExtension > The theme is inherited by default
+    // upstream: lexical-extension/src/__tests__/unit/NestedEditorExtension.test.ts::NestedEditorExtension > If the child has a theme it is not inherited
     #[test]
     fn inherits_the_theme() {
         let parent = build(
@@ -251,6 +255,7 @@ mod tests {
     }
 
     /// `inheritEditableFromParent defaults false but can be enabled later`.
+    // upstream: lexical-extension/src/__tests__/unit/NestedEditorExtension.test.ts::NestedEditorExtension > inheritEditableFromParent defaults false but can be enabled later
     #[test]
     fn inherits_the_editable_mode() {
         let parent = build("parent", None, vec![]);
@@ -268,6 +273,8 @@ mod tests {
 
     /// `Commands delegate to parent synchronously when parent is not
     /// updating` and `... asynchronously when parent is updating`.
+    // upstream: lexical-extension/src/__tests__/unit/NestedEditorExtension.test.ts::NestedEditorExtension > Commands delegate to parent synchronously when parent is not updating
+    // upstream: lexical-extension/src/__tests__/unit/NestedEditorExtension.test.ts::NestedEditorExtension > Commands delegate to parent asynchronously when parent is updating
     #[test]
     fn commands_delegate_to_the_parent() {
         let command = create_command::<String>("TEST_COMMAND");

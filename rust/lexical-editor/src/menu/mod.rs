@@ -1057,6 +1057,8 @@ mod tests {
         assert_eq!(f.menu.resolution(), None);
     }
 
+    // upstream: lexical-react/src/__tests__/unit/LexicalMenu.test.tsx::LexicalMenu > default rendering (without menuRenderFn) > should select an option when Enter is pressed without Shift
+    // upstream: lexical-react/src/__tests__/unit/LexicalMenuEmptyOptions.test.tsx::LexicalMenu arrow keys with no options > still consumes ArrowUp when there are options
     #[test]
     fn arrows_wrap_and_enter_chooses() {
         let f = Fixture::new();
@@ -1108,6 +1110,7 @@ mod tests {
         assert_eq!(f.menu.resolution(), None);
     }
 
+    // upstream: lexical-react/src/__tests__/unit/LexicalMenu.test.tsx::LexicalMenu > default rendering (without menuRenderFn) > should not select an option when Enter is pressed with Shift (line break / fall-through)
     #[test]
     fn tab_chooses_and_shift_enter_is_left_to_rich_text() {
         let f = Fixture::new();
@@ -1127,6 +1130,8 @@ mod tests {
         assert_eq!(*f.chosen.borrow(), ["a"]);
     }
 
+    // upstream: lexical-react/src/__tests__/unit/LexicalMenuEmptyOptions.test.tsx::LexicalMenu arrow keys with no options > lets ArrowDown through when there are no options
+    // upstream: lexical-react/src/__tests__/unit/LexicalMenuEmptyOptions.test.tsx::LexicalMenu arrow keys with no options > still consumes ArrowDown when a custom renderer draws an empty menu
     #[test]
     fn escape_closes_and_keys_pass_through_when_closed_or_empty() {
         let f = Fixture::new();

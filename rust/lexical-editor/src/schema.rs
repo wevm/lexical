@@ -1561,7 +1561,7 @@ mod tests {
         own.iter().chain(base).copied().collect()
     }
 
-    // upstream: lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts
+    // upstream: lexical/src/__tests__/unit/LexicalGeneratedJSON.test.ts::generated exportJSON > every generated parser agrees with the schema-driven walk
     #[test]
     fn generated_json_is_the_walk_of_the_schema() {
         check_agrees(

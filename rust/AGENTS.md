@@ -23,6 +23,26 @@ you port.
 - Vectors come from `packages/lexical-conformance` (JS). Never edit one by
   hand or write one from Rust; see `swift/AGENTS.md`, "Vectors".
 
+## Parity ledger
+
+Every upstream unit test of a package in `parity/packages.json` is either
+ported, with a `// upstream: <id>` line directly above its `#[test]` (ids
+are in `../swift/parity/upstream-tests.json`, the list both ports share;
+one id per line, written as it is, or as a JSON string literal when it has
+leading or trailing whitespace; an id is marked once), or listed in
+`parity/skips.json` with a reason, `dom-only`, `react-only`,
+`out-of-scope-package`, `covered-by-vector` or `deviation`, and a note
+saying why for Rust. Mark only a test that checks what the upstream test
+checks. Copy a Swift skip only where its reason holds for Rust: the `html`
+feature has a DOM, Rust's deviations are PARITY.md's, and Rust's
+`covered-by-vector` names what its runner checks. A package is marked
+`"enforced"` once each of its tests is ported or skipped; CI then fails on
+anything neither. An `out-of-scope-package` skip lists the directory names
+of the packages it needs in `packages`; once all of them are enforced, the
+ledger fails until the test is ported. `pnpm --filter lexical-conformance
+run check-ledger` checks both ports and prints the counts (DESIGN.md,
+Parity ledger).
+
 ## Checks
 
 Before opening or updating a pull request, in `rust/`:
@@ -33,6 +53,7 @@ cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 cargo test --workspace --all-features --locked
 cargo run -p lexical-conformance
 RUSTDOCFLAGS='-D warnings' cargo doc --workspace --all-features --no-deps --locked
+pnpm --filter lexical-conformance run check-ledger
 ```
 
 Pull requests follow `swift/AGENTS.md` (conventional-commit titles such as

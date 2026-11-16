@@ -1194,6 +1194,11 @@ mod tests {
     use super::format_url;
 
     /// `formatUrl` as Node gives it for these inputs.
+    // upstream: lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::formatUrl > should not modify URLs with protocols
+    // upstream: lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::formatUrl > should not modify relative paths
+    // upstream: lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::formatUrl > should add mailto: to email addresses
+    // upstream: lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::formatUrl > should add tel: to phone numbers
+    // upstream: lexical-link/src/__tests__/unit/LexicalLinkNode.test.ts::formatUrl > should add https:// to URLs without protocols
     #[test]
     fn format_url_matches_js() {
         for (url, formatted) in [

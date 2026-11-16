@@ -482,7 +482,11 @@ touches:
   (`$createDOM`, `$exportDOM`, `$extractWithChild`, `$shouldInclude`,
   `$shouldExclude`), and toggling an override through
   `$setRenderContextValue` recompiles the config without the full
-  reconcile JS runs to recreate the DOM.
+  reconcile JS runs to recreate the DOM. `precompileDOMRenderConfigOverrides`'
+  table (consecutive class overrides merged into `'types'` buckets by
+  `getRegisteredSubtypeMap`, then the guards) isn't kept: each class
+  override is a step behind an `instanceof` guard, in the same order, which
+  composes the same hooks (`html::internal::compile_dom_render_config_overrides`).
 - Of `@lexical/clipboard` (the `clipboard` feature):
   - `trustHTML`: there are no Trusted Types outside a browser, so the
     HTML is parsed as is (as in Swift). `ClipboardDOMImportExtension` puts

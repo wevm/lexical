@@ -6,7 +6,7 @@
 //! new tokens are replaced, and a caret inside the block keeps its text
 //! offset.
 
-use super::code_highlight_node::{CodeHighlightNode, is_code_highlight_node};
+use super::code_highlight_node::is_code_highlight_node;
 use super::code_indentation::register_code_indentation;
 use super::code_node::is_code_node;
 use super::code_tokenizer::{CodeLanguageState, Tokenizer};
@@ -371,12 +371,9 @@ fn get_diff_range<'a>(
 /// tabs and line breaks. Any other text node differs, so it becomes a
 /// token.
 fn is_equal(node_a: &NodeRef, node_b: &NodeRef) -> bool {
-    let (a, b) = (node_a.get_latest(), node_b.get_latest());
-    if let (Some(a), Some(b)) = (
-        a.downcast_ref::<CodeHighlightNode>(),
-        b.downcast_ref::<CodeHighlightNode>(),
-    ) {
-        return a.text.text == b.text.text && a.highlight_type == b.highlight_type;
+    if is_code_highlight_node(node_a) && is_code_highlight_node(node_b) {
+        return node_a.get_text_content() == node_b.get_text_content()
+            && node_a.get_highlight_type() == node_b.get_highlight_type();
     }
     (is_tab_node(node_a) && is_tab_node(node_b))
         || (is_line_break_node(node_a) && is_line_break_node(node_b))

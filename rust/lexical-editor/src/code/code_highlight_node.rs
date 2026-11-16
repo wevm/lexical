@@ -48,14 +48,17 @@ pub fn create_code_highlight_node(text: &str, highlight_type: Option<&str>) -> N
     })))
 }
 
-/// `$isCodeHighlightNode(node)`.
+/// `$isCodeHighlightNode(node)`: `instanceof CodeHighlightNode`, so a
+/// class that extends it ([`LexicalNode::super_types`]) is one too.
 pub fn is_code_highlight_node(node: &NodeRef) -> bool {
-    node.get_latest().is::<CodeHighlightNode>()
+    let latest = node.get_latest();
+    latest.is::<CodeHighlightNode>() || latest.super_types().contains(&"code-highlight")
 }
 
 impl NodeRef {
     /// `CodeHighlightNode.getHighlightType()`; `None` when it is
-    /// `undefined`, or for any other node.
+    /// `undefined`, or for any other node (a class that extends it keeps no
+    /// highlight type of its own here).
     pub fn get_highlight_type(&self) -> Option<String> {
         self.get_latest()
             .downcast_ref::<CodeHighlightNode>()
@@ -65,7 +68,7 @@ impl NodeRef {
     /// `CodeHighlightNode.setHighlightType(highlightType)`: an empty one is
     /// `undefined`. Does nothing to any other node.
     pub fn set_highlight_type(&self, highlight_type: Option<&str>) {
-        if is_code_highlight_node(self) {
+        if self.get_latest().is::<CodeHighlightNode>() {
             with_writable(self.get_key(), |n| {
                 n.downcast_mut::<CodeHighlightNode>()
                     .expect("a code highlight node")

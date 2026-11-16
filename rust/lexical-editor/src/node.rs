@@ -155,9 +155,13 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
     }
 
     /// `DecoratorNode.decorate(editor, config)`: the value an app's renderer
-    /// shows for the decorator, or `None` (the default). JS's reconciler
-    /// collects these in `editor._decorators`; with no DOM, nothing in the
-    /// port calls it, and an app's own renderer may.
+    /// shows for the decorator, or `None` (the default). Once the editor has
+    /// a root element, the reconciler calls it for each decorator it
+    /// creates or reconciles and collects the values in
+    /// [`Editor::get_decorators`](crate::Editor::get_decorators), which the
+    /// decorator listeners hear of when they change. A value is the app's
+    /// own, type-erased (JS's `T`, Swift's `Any`), and compared by identity:
+    /// returning the same `Rc` again changes nothing.
     fn decorate(&self, editor: &crate::Editor) -> Option<Rc<dyn Any>> {
         let _ = editor;
         None

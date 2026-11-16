@@ -284,6 +284,79 @@ private func withWarnings<T>(
     { [unowned ctx] message in ctx.log.append(.array([.string("warn"), .string(message)])) }, body)
 }
 
+/// `TestDecoratorNode` in ops.ts (`test-decorator`): an inline decorator
+/// whose `decorate()` returns a new object on every call,
+/// `{decorator: 'fresh', key}`.
+final class TestDecoratorNode: DecoratorNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(TestDecoratorNode.self, type: "test-decorator", extends: DecoratorNode.self)
+  }
+
+  override func decorate(_ editor: Editor) throws -> Any? {
+    TestDecoration(
+      .object(JSONObject([("decorator", .string("fresh")), ("key", .string(__key))])))
+  }
+}
+
+/// A decoration of the test decorators: an object, compared by identity as
+/// JS compares what `decorate()` returns, with the JSON it logs as.
+final class TestDecoration {
+  let json: JSONValue
+  init(_ json: JSONValue) { self.json = json }
+}
+
+/// `SHARED_DECORATION` in ops.ts.
+nonisolated(unsafe) private let sharedDecoration = TestDecoration(
+  .object(JSONObject([("decorator", .string("shared"))])))
+
+/// `TestSharedDecoratorNode` in ops.ts (`test-shared-decorator`): an inline
+/// decorator whose `decorate()` returns one object, `{decorator: 'shared'}`,
+/// for every node and call.
+final class TestSharedDecoratorNode: DecoratorNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(
+      TestSharedDecoratorNode.self, type: "test-shared-decorator", extends: DecoratorNode.self)
+  }
+
+  override func decorate(_ editor: Editor) throws -> Any? { sharedDecoration }
+}
+
+/// `decoratorEntries(decorators)` in ops.ts: `[[key, decoration]...]` in
+/// `Object.entries` order (the keys are array indices, so ascending).
+func decoratorEntries(_ decorators: [NodeKey: Any]) -> JSONValue {
+  let keys = decorators.keys.sorted { a, b in
+    switch (Int(a), Int(b)) {
+    case (let x?, let y?): return x < y
+    case (.some, nil): return true
+    case (nil, .some): return false
+    case (nil, nil): return a < b
+    }
+  }
+  return .array(
+    keys.map { key in
+      .array([.string(key), (decorators[key] as? TestDecoration)?.json ?? .null])
+    })
+}
+
+/// `textFormatsEntry(editor, keys)` in ops.ts: `['textFormats', [[key,
+/// textFormat, textStyle]...]]`, `null`s for a key that isn't an element.
+func textFormatsEntry(_ editor: Editor, _ keys: [String]) throws -> JSONValue {
+  try editor.getEditorState().read {
+    .array([
+      .string("textFormats"),
+      .array(
+        try keys.map { key in
+          guard let element = try getNodeByKey(key) as? ElementNode else {
+            return .array([.string(key), .null, .null])
+          }
+          return .array([
+            .string(key), .int(try element.getTextFormat()), .string(try element.getTextStyle()),
+          ])
+        }),
+    ])
+  }
+}
+
 /// `testSchemaFlagsState` in ops.ts: a set NodeState of `TestSchemaNode`,
 /// kept in canonical order.
 nonisolated(unsafe) private let testSchemaFlagsState = createState(
@@ -1637,6 +1710,9 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
         .string("fullMatchOffset"), .string(documentText), .string(entryText), .int(offset),
         .int(getFullMatchOffset(documentText, entryText, offset)),
       ]))
+  case "logDecorators":
+    ctx.log.append(
+      .array([.string("getDecorators"), decoratorEntries(ctx.editor.getDecorators())]))
   case "logDecoratorBlock":
     let key = try action["key"]?.stringValue.orThrow() ?? ""
     let n = try node(key)
@@ -2115,6 +2191,9 @@ private func makeEditor(_ script: JSONValue) throws -> Editor {
   if script["replaceText"]?.boolValue == true {
     nodes += [.replacement(textReplacement(false))]
   }
+  if script["testDecorators"]?.boolValue == true {
+    nodes += [.klass(TestDecoratorNode.self), .klass(TestSharedDecoratorNode.self)]
+  }
   // ops.ts's `NAMESPACE`, which a clipboard payload names.
   let args = CreateEditorArgs(
     namespace: "conformance", nodes: nodes, onError: { throw $0 },
@@ -2228,6 +2307,11 @@ private func runSteps(
           ]))
       }, skipInitialization: true)
   }
+  if script["decorators"]?.boolValue == true {
+    editor.registerDecoratorListener { decorators in
+      ctx.log.append(.array([.string("decorators"), decoratorEntries(decorators)]))
+    }
+  }
   if script["listen"]?.boolValue == true {
     editor.registerUpdateListener { payload in
       ctx.log.append(
@@ -2330,6 +2414,9 @@ private func runSteps(
               try match.map { .bool(try isSelectionOnEntityBoundary($0.leadOffset)) } ?? .null,
             ]))
         }
+      } else if let name = step["setEditorState"]?.stringValue {
+        guard let state = ctx.saved[name] else { throw ScriptError("no saved state \(name)") }
+        try editor.setEditorState(state)
       } else if step["characterLimit"] != nil || step["tableOfContents"] != nil {
         try mountStep(step, ctx)
       } else if let name = step["registerNodeStructure"]?.stringValue {
@@ -2380,6 +2467,9 @@ private func runSteps(
     }
     if script["codeHighlight"] != nil {
       ctx.log.append(try codeBlocksEntry(editor))
+    }
+    if let keys = script["textFormats"]?.arrayValue {
+      ctx.log.append(try textFormatsEntry(editor, keys.compactMap(\.stringValue)))
     }
     if let parent = ctx.parent {
       ctx.log.append(try nestedEntry(editor, parent))

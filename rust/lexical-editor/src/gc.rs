@@ -1,7 +1,7 @@
 //! `LexicalGC.ts`: dropping the nodes an update detached, with the slot
-//! subtrees of a detached host. `$garbageCollectDetachedDecorators` prunes
-//! `editor._decorators`, which only the DOM reconciler fills, so it comes
-//! with the DOM.
+//! subtrees of a detached host. `$garbageCollectDetachedDecorators`, which
+//! prunes the reconciler's `editor._decorators`, is with them in
+//! `reconciler.rs`.
 
 use crate::editor_state::NodeMap;
 use crate::ordered::{OrderedMap, OrderedSet};

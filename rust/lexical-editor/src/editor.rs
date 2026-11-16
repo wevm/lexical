@@ -12,6 +12,7 @@ use crate::nodes::{
     root::RootNode, tab::TabNode, text::TextNode,
 };
 use crate::ordered::{OrderedMap, OrderedSet};
+use crate::reconciler::Decorators;
 use crate::selection_deletion::SelectionMovement;
 use crate::structure::{
     DeclaredNodeStructure, NodeStructureRegistration, get_declared_node_structure,
@@ -460,6 +461,9 @@ pub struct MutationListenerOptions {
     pub skip_initialization: bool,
 }
 
+/// A decorator listener (`DecoratorListener`).
+pub(crate) type DecoratorListener = Rc<dyn Fn(&Decorators)>;
+
 /// A mutation listener.
 pub(crate) type MutationListener = Rc<dyn Fn(&NodeMutations, &MutationListenerPayload)>;
 
@@ -769,6 +773,14 @@ pub(crate) struct EditorInner {
     /// text content on, and that text. JS keeps it on the root node, which
     /// a clone resets; here the cache names the root by identity.
     pub(crate) root_text_cache: RefCell<Option<(Rc<dyn LexicalNode>, String)>>,
+    /// `_keyToDOMMap`: what the reconciler keeps of each node it rendered.
+    pub(crate) key_to_dom_map: RefCell<crate::reconciler::KeyToDomMap>,
+    /// `_decorators`.
+    pub(crate) decorators: RefCell<Decorators>,
+    /// `_pendingDecorators`.
+    pub(crate) pending_decorators: RefCell<Option<Decorators>>,
+    /// `_listeners.decorator`.
+    decorator_listeners: Listeners<dyn Fn(&Decorators)>,
     /// The `LexicalBuilder` that built the editor (JS's
     /// `editor[builderSymbol]`).
     #[cfg(feature = "extension")]
@@ -898,6 +910,10 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         input_state: RefCell::new(crate::events::InputState::default()),
         key_down_shortcuts: RefCell::new(None),
         root_text_cache: RefCell::new(None),
+        key_to_dom_map: RefCell::new(HashMap::new()),
+        decorators: RefCell::new(Decorators::default()),
+        pending_decorators: RefCell::new(None),
+        decorator_listeners: RefCell::new(Vec::new()),
         #[cfg(feature = "extension")]
         builder: RefCell::new(None),
     }));
@@ -1062,6 +1078,45 @@ impl Editor {
         })
     }
 
+    /// `getDecorators()`: what each decorator decorated to
+    /// ([`LexicalNode::decorate`]), as the reconciler last collected it.
+    /// It is empty until the editor has a root element.
+    pub fn get_decorators(&self) -> Decorators {
+        self.0.decorators.borrow().clone()
+    }
+
+    /// `registerDecoratorListener(listener)`: `listener` hears each commit
+    /// that changed [`get_decorators`](Self::get_decorators), with the new
+    /// decorators.
+    pub fn register_decorator_listener(
+        &self,
+        listener: impl Fn(&Decorators) + 'static,
+    ) -> Unregister {
+        let id = self.next_id();
+        self.0
+            .decorator_listeners
+            .borrow_mut()
+            .push((id, Rc::new(listener)));
+        let weak = self.weak();
+        Box::new(move || {
+            if let Some(inner) = weak.upgrade() {
+                inner
+                    .decorator_listeners
+                    .borrow_mut()
+                    .retain(|(i, _)| *i != id);
+            }
+        })
+    }
+
+    pub(crate) fn decorator_listeners(&self) -> Vec<DecoratorListener> {
+        self.0
+            .decorator_listeners
+            .borrow()
+            .iter()
+            .map(|(_, l)| l.clone())
+            .collect()
+    }
+
     /// `getRootElement()`.
     pub fn get_root_element(&self) -> Option<RootElementRef> {
         self.0.root_element.borrow().clone()
@@ -1092,6 +1147,7 @@ impl Editor {
         *self.0.pending.borrow_mut() = Some(pending_editor_state);
         *self.0.composition_key.borrow_mut() = None;
         *self.0.dirty.borrow_mut() = Dirty::default();
+        crate::reconciler::reset_key_to_dom_map(self, next_root_element.is_some());
         if next_root_element.is_some() {
             self.0.dirty.borrow_mut().dirty_type = DirtyType::FullReconcile;
         }

@@ -35,6 +35,7 @@ updated with each milestone.
 | `formatList.ts`, `registerList` and `registerCheckList` (the `list` feature) | `formatList.ts` (`$insertList`, `$createListOrMerge`, `mergeLists`, `$removeList`, `updateChildrenListItemValue`, `mergeNextSiblingListIfSameType`, `$handleIndent`, `$handleOutdent`, `$outdentFromItemWithContent`, `$handleListInsertParagraph`); `registerList.ts` `registerList` (`INSERT_ORDERED_LIST_COMMAND`, `INSERT_UNORDERED_LIST_COMMAND`, `REMOVE_LIST_COMMAND`, `UPDATE_LIST_START_COMMAND`, `INSERT_PARAGRAPH_COMMAND`, and the `ListItemNode` and `TextNode` transforms), with `RegisterListOptions`; `checkList.ts` `INSERT_CHECK_LIST_COMMAND` and its handler | `list::format_list`, `list::register_list` | `scripts/list` |
 | Link nodes (the `link` feature) | `packages/lexical-link/src/LexicalLinkNode.ts` (`LinkNode`: `getURL`, `setURL`, `getTarget`, `setTarget`, `getRel`, `setRel`, `getTitle`, `setTitle`, `insertNewAfter`, `canInsertTextBefore`, `canInsertTextAfter`, `canBeEmpty`, `isInline`, `extractWithChild`, `isEmailURI`, `isWebSiteURI`, `shouldMergeAdjacentLink`; `AutoLinkNode`: `getIsUnlinked`, `setIsUnlinked`, its `shouldMergeAdjacentLink`), `$createLinkNode`, `$isLinkNode`, `$createAutoLinkNode`, `$isAutoLinkNode`, `$linkNodeTransform`, `formatUrl`; their generated JSON (`LexicalLinkGeneratedJSON.ts`, with `afterCloneLinkNode` and `afterCloneAutoLinkNode` as `Clone`); `ElementNode.extractWithChild` as a node hook and `isParentOf`; from the core `RangeSelection.extract` and `NodeSelection.extract` | `link`, `node`, `selection_editing` | `serialization/link`, the link cases of `property/documents`, `scripts/link` |
 | `$toggleLink` and `registerLink` (the `link` feature) | `LexicalLinkNode.ts` (`TOGGLE_LINK_COMMAND`, `$toggleLink`, `$withSelectedNodes`, `$getPointNode`, `$splitLinkAtSelection`); `LexicalLinkExtension.ts` `registerLink` (the `LinkNode` transform and the `TOGGLE_LINK_COMMAND` handler, with `validateUrl` and `attributes` from `LinkConfig`) | `link::register_link`, `link::toggle_link` | `scripts/link` |
+| `registerAutoLink` (the `autolink` feature) | `packages/lexical-link/src/LexicalAutoLinkExtension.ts`: `registerAutoLink` (the `TextNode` transform, `$handleLinkCreation`, `handleLinkEdit`, `handleBadNeighbors`, `$createAutoLinkNode_`, `extractMatchingNodes`, `isContentAroundIsValid`, `isPreviousNodeValid`, `isNextNodeValid`, `startsWithTLD`, the separator checks, `getTextNodesToMatch`, `replaceWithChildren`, and the `TOGGLE_LINK_COMMAND` handler that flips `isUnlinked`), `AutoLinkConfig` and its defaults (`changeHandlers`, `excludeParents`, `matchers`, `separatorRegex`), `ChangeHandler`, `LinkMatcher`, `LinkMatcherResult`, `createLinkMatcherWithRegExp`, `autoLinkUrlMatcher` (with its parenthesis balancing) and `autoLinkEmailMatcher`, on the `regex` crate | `link::register_auto_link` | `scripts/autolink`, `entities/autolink-match` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
 
@@ -85,11 +86,10 @@ touches:
   (`register_link` with `LinkConfig::default()` is what its defaults do,
   and the config is a value where JS reads signals); `registerLink`'s
   `PASTE_COMMAND` handler (registered only with `validateUrl`), which reads
-  a `ClipboardEvent`'s data; `registerAutoLink` (`AutoLinkExtension`,
-  `createLinkMatcherWithRegExp`, `autoLinkUrlMatcher`,
-  `autoLinkEmailMatcher`), whose URL and email matchers use `\p{L}` and
-  `\p{N}`, which need Unicode property tables (a follow-up; documents with
-  an `AutoLinkNode` parse, serialize and edit already);
+  a `ClipboardEvent`'s data; `AutoLinkExtension`, which needs the extension
+  API (`register_auto_link` with `AutoLinkConfig::default()` and the
+  matchers is what it does with them; its `mergeConfig`, which concatenates
+  configured arrays, is the caller's to do);
   `ClickableLinkExtension` and `AutoLinkAnnounceExtension`, which need a
   DOM. What `NodeStructureExtension` does for links where it enforces node
   structure (lifting blocks, merging equal adjacent links, which
@@ -137,6 +137,37 @@ touches:
   `false` where JS passes `editor.isComposing()`, as a headless JS editor
   does; the `composition-start` and `composition-end` tags work as in JS.
 
+How `registerAutoLink`'s regular expressions run on the `regex` crate (the
+`autolink` feature), where JS's `RegExp` behaves differently:
+
+- `regex` reports UTF-8 byte offsets; `LinkMatcherResult`'s `index` and
+  `length` are UTF-16 code units, as JS's `match.index` and
+  `match[0].length`.
+- JS's `\s` is ECMAScript's WhiteSpace and LineTerminator, with U+FEFF and
+  without U+0085; `regex`'s is Unicode's White_Space, the other way round.
+  The patterns spell out JS's set (`link::JS_WHITESPACE`), in `EMAIL_REGEX`,
+  the default `separatorRegex` (`/[.,;\s]/`) and `getTextNodesToMatch`'s
+  `/[\s]/`.
+- JS's `.` excludes `\n`, `\r`, U+2028 and U+2029; `regex`'s only `\n`.
+  `EMAIL_REGEX`'s quoted local part spells out JS's.
+- `URL_REGEX` has the `u` flag and matches code points, as `regex` does.
+  `EMAIL_REGEX` doesn't, so JS matches it on UTF-16 code units: a
+  character outside the BMP counts twice towards `{1,64}`, and a match may
+  start at the second half of a pair. The port runs it on a string with one
+  character per code unit (a surrogate standing as U+E000, which every
+  class in the pattern treats alike). `createLinkMatcherWithRegExp` takes a
+  `regex::Regex`, which matches as a `u` regex does, and JS's `g` and `y`
+  flags have no counterpart.
+- JS reads `[` in a class as itself; `regex` starts a nested class, so it
+  is escaped.
+- Both engines' `find` is leftmost-first with the same preferences (the
+  patterns have no backreferences or lookaround), so they find the same
+  match.
+- `separatorRegex` is tested on one UTF-16 code unit, as JS tests
+  `text[i]` (half a surrogate pair as U+FFFD, under the unpaired surrogate
+  exception below), or on the string `undefined` past either end of a text,
+  as JS does.
+
 ## Documented exceptions
 
 Cases that match JS only under one of these are counted apart in the
@@ -148,6 +179,15 @@ report.
   and UTF-16 offsets still agree with JS (U+FFFD is one unit); only the text
   differs. The vectors keep offsets off pair interiors, so no case relies on
   this yet.
+
+- **Unicode version of `\p{L}` and `\p{N}`** (the `autolink` feature).
+  `regex` 1.13's tables are Unicode 16.0; Node 24's, which recorded the
+  vectors, are Unicode 17.0. The 4,657 letters and numbers Unicode 17 added
+  (among them U+088F, U+0C5C, U+0CDC, U+A7CE–U+A7CF, U+A7D2, U+A7D4,
+  U+A7F1, Sidetic U+10940–U+10959, Tolong Siki U+11DB0–U+11DE9, Beria Erfe
+  U+16EA0–U+16ED3, Tai Yo U+1E6C0–U+1E6FF and CJK Extension J
+  U+323B0–U+33479) are part of a URL in JS and not in Rust. No vector uses
+  them, so no case is counted under this exception.
 
 Swift's other Tier 1 deviation, integer properties (`model/integer-properties`),
 does not apply: Rust keeps those properties as the `f64` JS stores.

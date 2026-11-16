@@ -1,11 +1,13 @@
 import Lexical
 import LexicalExtension
 import LexicalHashtag
+import LexicalLink
 import LexicalText
 import Testing
 
 /// Replays `vectors/entities/*.json`: `@lexical/hashtag`'s default matcher,
-/// and the documents its text entity transforms make.
+/// the documents its text entity transforms make, and `@lexical/link`'s
+/// autolink matchers.
 @Suite(.enabled(if: Vectors.available))
 struct EntitiesTests {
   struct MatchCase: Decodable, CustomTestStringConvertible, Sendable {
@@ -37,10 +39,34 @@ struct EntitiesTests {
     var testDescription: String { text }
   }
 
+  struct AutoLinkMatchCase: Decodable, CustomTestStringConvertible, Sendable {
+    struct Match: Decodable, Equatable, Sendable {
+      let index: Int
+      let length: Int
+      let text: String
+      let url: String
+    }
+    let text: String
+    let url: Match?
+    let email: Match?
+    var testDescription: String { text }
+  }
+
   static let matchCases: [MatchCase] = (try? Vectors.load("entities/hashtag-match")) ?? []
   static let documentCases: [DocumentCase] =
     (try? Vectors.load("entities/hashtag-documents")) ?? []
   static let typingCases: [TypingCase] = (try? Vectors.load("entities/hashtag-typing")) ?? []
+  static let autoLinkMatchCases: [AutoLinkMatchCase] =
+    (try? Vectors.load("entities/autolink-match")) ?? []
+
+  @Test(arguments: autoLinkMatchCases)
+  func autoLinkMatch(_ vector: AutoLinkMatchCase) {
+    func match(_ result: LinkMatcherResult?) -> AutoLinkMatchCase.Match? {
+      result.map { .init(index: $0.index, length: $0.length, text: $0.text, url: $0.url) }
+    }
+    #expect(match(autoLinkUrlMatcher(vector.text)) == vector.url)
+    #expect(match(autoLinkEmailMatcher(vector.text)) == vector.email)
+  }
 
   @Test(arguments: matchCases)
   func hashtagMatch(_ vector: MatchCase) {

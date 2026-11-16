@@ -72,4 +72,21 @@ impl LexicalNode for RootNode {
     fn collapse_at_start(&self, _: &NodeRef, _: &SelectionRef) -> Result<bool, LexicalError> {
         Ok(true)
     }
+    /// `RootNode.splice`: the root takes only elements and decorators, then
+    /// `ElementNode`'s splice.
+    fn splice(
+        &self,
+        this: &NodeRef,
+        start: usize,
+        delete_count: usize,
+        nodes_to_insert: &[NodeRef],
+    ) -> Result<(), LexicalError> {
+        for node in nodes_to_insert {
+            crate::error::invariant!(
+                node.is_element() || node.is_decorator(),
+                "rootNode.splice: Only element or decorator nodes can be inserted to the root node"
+            );
+        }
+        crate::nodes::element::splice(this, start, delete_count, nodes_to_insert)
+    }
 }

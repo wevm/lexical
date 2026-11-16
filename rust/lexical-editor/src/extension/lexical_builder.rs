@@ -525,7 +525,7 @@ const UNSAFE_KEYS: [&str; 3] = ["__proto__", "constructor", "prototype"];
 /// both are objects, `a` with each key of `b` merged into it in turn
 /// (but the unsafe keys); otherwise `b`. (JS merges into an array `a` too,
 /// as properties a theme's JSON never shows.)
-fn deep_theme_merge_in_place(a: Value, b: Value) -> Value {
+pub(crate) fn deep_theme_merge_in_place(a: Value, b: Value) -> Value {
     match (a, b) {
         (Value::Object(mut a), Value::Object(b)) => {
             for (k, v) in b.iter() {

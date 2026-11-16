@@ -400,7 +400,9 @@ fn cached_node_structure(node: &dyn LexicalNode) -> Rc<CachedNodeStructure> {
         out.merge_adjacent = None;
         out.declared_by.merge_adjacent = None;
     }
-    let is_overflow = node.element().is_some() && chain_types.contains(&"overflow");
+    // `isOverflowClass`: a link of type `overflow` that extends `ElementNode`
+    // directly, the last of the chain (`ElementNode` itself is not in it).
+    let is_overflow = node.element().is_some() && chain_types.last() == Some(&"overflow");
     let result = Rc::new(CachedNodeStructure {
         declared: out,
         chain_types,
@@ -428,7 +430,7 @@ fn is_instance_of(node: &NodeRef, node_type: &str) -> bool {
 }
 
 /// `isOverflowNode(node)`: `OverflowNode` (`@lexical/overflow`) or a class
-/// that extends it, an element whose chain names the type `overflow`. It is
+/// that extends it, an element whose chain ends with the type `overflow`. It is
 /// inline content although its `isInline()` is false.
 fn is_overflow_node(node: &NodeRef) -> bool {
     cached_of(node).is_overflow
@@ -438,8 +440,9 @@ fn is_line_break(node: &NodeRef) -> bool {
     node.get_latest().is::<LineBreakNode>()
 }
 
+/// `$isParagraphNode(node)`: `ParagraphNode` or a class that extends it.
 fn is_paragraph(node: &NodeRef) -> bool {
-    node.get_latest().is::<ParagraphNode>()
+    node.get_latest().is::<ParagraphNode>() || is_instance_of(node, "paragraph")
 }
 
 fn is_inline_child(node: &NodeRef) -> bool {

@@ -157,7 +157,10 @@ touches:
   it; `dispose` removes the root element first, then unregisters, as JS's
   `mergeRegister` does, and `scripts/input-extensions` records it);
   `builderSymbol`'s version
-  and copy checks in `maybeFromEditor`, which one crate can't break; the
+  and copy checks in `maybeFromEditor`, which one crate can't break; a
+  dependency cycle, which JS builds by mutating a defined extension's
+  `dependencies` and Rust can't, as a defined extension is an immutable
+  `Rc` (the builder keeps the cycle invariant, unreachable); the
   `nodes` thunk form (`nodes` is a list); `HMRExtension`. Configs are Rust
   types that name their overrides' type (`ExtensionConfigBase::Partial`);
   a JSON `Object` merges as JS does. Signal values compare with `==`

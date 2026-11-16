@@ -7003,5 +7003,41 @@
   "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > markable nodes > by default TextNode, LineBreakNode and inline decorators, including DecoratorTextNode": {
     "reason": "dom-only",
     "note": "Its last assertion finds the ids attribute $decorateMarkIDs wrote on the DecoratorTextNode's rendered element (root.querySelector). The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM). The default markable nodes are checked in 'line breaks, inline decorators and links' and 'extending the default with a block decorator' (not with a DecoratorTextNode, which 'a guard function' marks)."
+  },
+  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a LinkNode subclass whose isInline() returns false": {
+    "reason": "deviation",
+    "note": "Builds a LinkNode subclass (BlockLinkNode, made with new BlockLinkNode(url)) whose isInline() returns false. Rust has no class inheritance: a node class is a struct of its own, so a subclass of a built-in node (LinkNode, ListNode) can't be written: their fields, methods and schema accessors are bound to their structs (link_of, ListNode's downcasts), and a struct that copies their config chain is not one of them (rust/DESIGN.md, Schemas)."
+  },
+  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > a ListNode subclass with an extra field and a legacy exportJSON": {
+    "reason": "deviation",
+    "note": "Round-trips a ListNode subclass that adds a field through a legacy exportJSON and importJSON. Rust has no class inheritance: a node class is a struct of its own, so a subclass of a built-in node (LinkNode, ListNode) can't be written: their fields, methods and schema accessors are bound to their structs (link_of, ListNode's downcasts), and a struct that copies their config chain is not one of them (rust/DESIGN.md, Schemas)."
+  },
+  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::existing subclasses that inherit a declaration > isInline() is synthesized only for a class that declares inline itself": {
+    "reason": "deviation",
+    "note": "Checks which JS prototypes own an isInline() method (Object.prototype.hasOwnProperty), i.e. where injectDeclaredIsInline installed one. A Rust node's is_inline is a trait method whose default reads the nearest declaration (structure::declared_inline); there is no synthesized method to find on a prototype."
+  },
+  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a subclass override of shouldMergeAdjacentLink keeps deciding": {
+    "reason": "deviation",
+    "note": "Overrides LinkNode.shouldMergeAdjacentLink in a subclass. Rust has no class inheritance: a node class is a struct of its own, so a subclass of a built-in node (LinkNode, ListNode) can't be written: their fields, methods and schema accessors are bound to their structs (link_of, ListNode's downcasts), and a struct that copies their config chain is not one of them (rust/DESIGN.md, Schemas). NodeRef::should_merge_adjacent_link is LinkNode's, not an overridable trait method."
+  },
+  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::merging > a ListNode subclass merges as it does without the extension": {
+    "reason": "deviation",
+    "note": "Merges a ListNode subclass made with $create(SubListNode).setListType(...). Rust has no class inheritance: a node class is a struct of its own, so a subclass of a built-in node (LinkNode, ListNode) can't be written: their fields, methods and schema accessors are bound to their structs (link_of, ListNode's downcasts), and a struct that copies their config chain is not one of them (rust/DESIGN.md, Schemas)."
+  },
+  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::getDeclaredNodeStructure > returns immutable results": {
+    "reason": "deviation",
+    "note": "Checks Object.isFrozen on the result. get_declared_node_structure returns an owned clone of the cached value; Rust has no frozen objects, and the borrow rules already keep a caller from mutating the cache."
+  },
+  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::getDeclaredNodeStructure > an inherited inline is dropped when the subclass isInline() cannot be evaluated without an instance": {
+    "reason": "deviation",
+    "note": "A LinkNode subclass whose isInline() reads this.getLatest(), which throws on JS's prototype probe. Rust has no class inheritance: a node class is a struct of its own, so a subclass of a built-in node (LinkNode, ListNode) can't be written: their fields, methods and schema accessors are bound to their structs (link_of, ListNode's downcasts), and a struct that copies their config chain is not one of them (rust/DESIGN.md, Schemas). Rust also always asks is_inline of a default instance, so there is no probe that can throw."
+  },
+  "lexical-extension/src/__tests__/unit/LexicalBuilder.test.ts::LexicalBuilder > handles circular dependencies": {
+    "reason": "deviation",
+    "note": "The test builds a cycle by pushing onto a defined extension's dependencies array. A Rust extension is an immutable Rc once defined, so no cycle of extensions can be constructed; the builder's Circular dependency invariant (extension/lexical_builder.rs) is unreachable from safe code."
+  },
+  "lexical-extension/src/__tests__/unit/BlockIdExtension.format.test.ts::block id format > utf8 matches the standard, lone surrogates included": {
+    "reason": "deviation",
+    "note": "Tests the JS utf8() encoder of positionalBlockId.ts, which exists because JS strings are UTF-16 and may hold lone surrogates. A Rust str is always valid UTF-8 and cannot hold a lone surrogate, so the port hashes str::as_bytes and has no encoder to test."
   }
 }

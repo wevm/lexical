@@ -39,10 +39,24 @@ pub struct NodeClass {
     /// element; every ported class answers the same for all its nodes.
     #[cfg_attr(not(feature = "extension"), allow(dead_code))]
     pub(crate) is_inline_element: fn() -> bool,
+    /// The `slots` of the class's `$config()` (`getDeclaredSlots`).
+    pub(crate) declared_slots: fn() -> &'static [&'static str],
+    /// Whether the class is `TextNode` or a subclass of it
+    /// (`klass.prototype instanceof TextNode`).
+    #[cfg_attr(not(feature = "extension"), allow(dead_code))]
+    pub(crate) is_text: fn() -> bool,
+}
+
+fn declared_slots_of<T: LexicalNode + Default>() -> &'static [&'static str] {
+    T::default().declared_slots()
 }
 
 fn state_configs_of<T: LexicalNode + Default>() -> Vec<RequiredNodeStateConfig> {
     T::default().state_configs()
+}
+
+fn is_text_of<T: LexicalNode + Default>() -> bool {
+    T::default().text().is_some()
 }
 
 fn is_inline_element_of<T: LexicalNode + Default>() -> bool {
@@ -67,6 +81,8 @@ impl NodeClass {
             import_json: import_default::<T>,
             state_configs: state_configs_of::<T>,
             is_inline_element: is_inline_element_of::<T>,
+            declared_slots: declared_slots_of::<T>,
+            is_text: is_text_of::<T>,
         }
     }
 
@@ -81,6 +97,8 @@ impl NodeClass {
             import_json,
             state_configs: Vec::new,
             is_inline_element: || false,
+            declared_slots: || &[],
+            is_text: || false,
         }
     }
 
@@ -88,6 +106,10 @@ impl NodeClass {
         self.node_type
     }
 }
+
+/// `COLLABORATION_TAG` (`LexicalUpdateTags.ts`): the update applies changes
+/// that came from another replica.
+pub const COLLABORATION_TAG: &str = "collaboration";
 
 /// `HISTORIC_TAG` (`LexicalUpdateTags.ts`): the update applies a state from
 /// the undo or redo stack.
@@ -275,6 +297,10 @@ type CommandListeners = [Vec<(u64, Rc<dyn Any>)>; 5];
 
 pub(crate) struct EditorInner {
     nodes: HashMap<&'static str, NodeClass>,
+    /// The types of `nodes` in the order JS's `_nodes` map holds them: the
+    /// core nodes, then `args.nodes`, each type where it first came.
+    #[cfg_attr(not(feature = "extension"), allow(dead_code))]
+    node_order: Vec<&'static str>,
     /// Each registered node's `sharedNodeState`.
     shared_node_states: HashMap<&'static str, Rc<SharedNodeState>>,
     pub(crate) editor_state: RefCell<EditorState>,
@@ -296,6 +322,9 @@ pub(crate) struct EditorInner {
     namespace: String,
     /// `_editable`.
     editable: Cell<bool>,
+    /// `_slotsUsed`: whether a slot was ever set in this editor, or in a
+    /// state it was given. Latched for the editor's lifetime.
+    pub(crate) slots_used: Cell<bool>,
     /// The `LexicalBuilder` that built the editor (JS's
     /// `editor[builderSymbol]`).
     #[cfg(feature = "extension")]
@@ -319,9 +348,15 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         NodeClass::of::<TabNode>(),
         NodeClass::of::<ParagraphNode>(),
     ];
-    let nodes: HashMap<&'static str, NodeClass> = core
+    let classes: Vec<NodeClass> = core.into_iter().chain(args.nodes).collect();
+    let mut node_order: Vec<&'static str> = Vec::new();
+    for class in &classes {
+        if !node_order.contains(&class.node_type) {
+            node_order.push(class.node_type);
+        }
+    }
+    let nodes: HashMap<&'static str, NodeClass> = classes
         .into_iter()
-        .chain(args.nodes)
         .map(|class| (class.node_type, class))
         .collect();
     let shared_node_states = nodes
@@ -333,6 +368,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         .collect();
     Editor(Rc::new(EditorInner {
         nodes,
+        node_order,
         shared_node_states,
         editor_state: RefCell::new(create_empty_editor_state()),
         pending: RefCell::new(None),
@@ -350,6 +386,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         selection_movement: RefCell::new(None),
         namespace,
         editable: Cell::new(true),
+        slots_used: Cell::new(false),
         #[cfg(feature = "extension")]
         builder: RefCell::new(None),
     }))
@@ -379,6 +416,16 @@ impl Editor {
 
     pub(crate) fn registered_nodes(&self) -> &HashMap<&'static str, NodeClass> {
         &self.0.nodes
+    }
+
+    /// The registered node classes in the order JS's `_nodes` holds them.
+    #[cfg(feature = "extension")]
+    pub(crate) fn registered_nodes_in_order(&self) -> Vec<NodeClass> {
+        self.0
+            .node_order
+            .iter()
+            .map(|node_type| self.0.nodes[node_type])
+            .collect()
     }
 
     /// The `sharedNodeState` of a registered node type.
@@ -493,6 +540,9 @@ impl Editor {
             dirty.dirty_type = DirtyType::FullReconcile;
             dirty.elements.set("root", false);
         }
+        self.0
+            .slots_used
+            .set(self.0.slots_used.get() || editor_state.0.slots_used.get());
         let parsed = editor_state.0.parsed.get();
         let options = UpdateOptions {
             discrete: true,
@@ -721,6 +771,18 @@ impl Editor {
             set.add(tag);
         }
     }
+}
+
+/// `$hasUpdateTag(tag)`: whether the running update has the tag. Panics
+/// outside an update or a read of an editor, as JS's `getActiveEditor()`
+/// throws.
+pub fn has_update_tag(tag: &str) -> bool {
+    crate::updates::get_active_editor()
+        .expect("Unable to find an active editor. This method can only be used synchronously during the callback of editor.update() or editor.read().")
+        .0
+        .tags
+        .borrow()
+        .contains(tag)
 }
 
 /// `markNodesWithTypesAsDirty(editor, types)`: an update that marks every

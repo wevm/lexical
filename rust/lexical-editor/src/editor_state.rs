@@ -29,6 +29,9 @@ pub(crate) struct EditorStateInner {
     pub(crate) flush_sync: Cell<bool>,
     /// `_parsed`: made by `parseEditorState`, so no transform has run on it.
     pub(crate) parsed: Cell<bool>,
+    /// `_slotsUsed`: the state was built with slots, which an editor it is
+    /// given latches.
+    pub(crate) slots_used: Cell<bool>,
     /// Tells this state from every other on the thread: a node version
     /// records the one it was made writable in (`NodeBase::written_in`),
     /// which is how a NodeState knows its version, as JS knows its object.
@@ -46,6 +49,7 @@ fn new_editor_state(node_map: NodeMap) -> EditorState {
         read_only: Cell::new(false),
         flush_sync: Cell::new(false),
         parsed: Cell::new(false),
+        slots_used: Cell::new(false),
         id: NEXT_EDITOR_STATE_ID.with(|n| n.replace(n.get() + 1)),
     }))
 }
@@ -59,11 +63,13 @@ pub(crate) fn create_empty_editor_state() -> EditorState {
 
 /// `cloneEditorState(current)`: the same nodes, no selection, writable.
 pub(crate) fn clone_editor_state(current: &EditorState) -> EditorState {
-    new_editor_state(current.0.node_map.borrow().clone())
+    let state = new_editor_state(current.0.node_map.borrow().clone());
+    state.0.slots_used.set(current.0.slots_used.get());
+    state
 }
 
-/// `$exportNodeToJSON(node)`: the node and its children. Slots come with
-/// their port.
+/// `$exportNodeToJSON(node)`: the node, its children and its slots
+/// (`$slots`).
 fn export_node_to_json(node: &NodeRef) -> Value {
     let mut serialized_node: Object = export_node_json(&*node.get_latest());
     if node.is_element() {
@@ -73,6 +79,20 @@ fn export_node_to_json(node: &NodeRef) -> Value {
             .map(export_node_to_json)
             .collect();
         serialized_node.insert("children", Value::Array(children));
+    }
+    let slot_names = crate::slot::get_slot_names(node);
+    if !slot_names.is_empty() {
+        let mut serialized_slots = Object::new();
+        for name in slot_names {
+            let Some(slot_node) = crate::slot::get_slot(node, &name) else {
+                panic!(
+                    "LexicalNode: Node {} has slot \"{name}\" but it resolved to no node during export.",
+                    node.get_type()
+                );
+            };
+            serialized_slots.insert(&name, export_node_to_json(&slot_node));
+        }
+        serialized_node.insert("$slots", Value::Object(serialized_slots));
     }
     Value::Object(serialized_node)
 }

@@ -5,8 +5,7 @@
 //! Not ported: the DOM helpers (`markSelection`, `positionNodeOnRange`,
 //! `selectionAlwaysOnDisplay`, `dedupeSelectionRects`, `calculateZoomLevel`,
 //! `getScrollParent`, `mediaFileReader`, `eventFiles`, `isMimeType`, the
-//! class name helpers and the DOM predicates), the slot-aware traversals
-//! (`$dfsWithSlots` and its kin), as slots aren't ported, and the helpers
+//! class name helpers and the DOM predicates), and the helpers
 //! of things the port has no counterpart for (`$isEditorIsNestedEditor`,
 //! `objectKlassEquals`); see `rust/PARITY.md`.
 
@@ -82,6 +81,119 @@ pub fn reverse_dfs_iterator(
     end_node: Option<&NodeRef>,
 ) -> impl Iterator<Item = DFSNode> + use<> {
     dfs_caret_iterator(CaretDirection::Previous, start_node, end_node)
+}
+
+/// `$dfsWithSlots(startNode, endNode)` (`@experimental`): [`dfs`], with
+/// each slot host's slot subtrees right after the host and before its
+/// children. `end_node` stops the walk before its slots too; an `end_node`
+/// inside a slot subtree is never reached.
+pub fn dfs_with_slots(start_node: Option<&NodeRef>, end_node: Option<&NodeRef>) -> Vec<DFSNode> {
+    let mut out = Vec::new();
+    for dfs_node in dfs_iterator(start_node, end_node) {
+        let (node, depth) = (dfs_node.node.clone(), dfs_node.depth);
+        out.push(dfs_node);
+        if crate::slot::is_slot_host(&node) && end_node != Some(&node) {
+            for name in crate::slot::get_slot_names(&node) {
+                if let Some(slot) = crate::slot::get_slot(&node, &name) {
+                    dfs_subtree(&slot, depth + 1, &mut out);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// `$dfsWithSlotsIterator(startNode, endNode)` (`@experimental`):
+/// [`dfs_with_slots`] as an iterator (walked before the first item, unlike
+/// JS's generator).
+pub fn dfs_with_slots_iterator(
+    start_node: Option<&NodeRef>,
+    end_node: Option<&NodeRef>,
+) -> impl Iterator<Item = DFSNode> + use<> {
+    dfs_with_slots(start_node, end_node).into_iter()
+}
+
+/// `$dfsSubtreeIterator(node, depth)`: a slots-first preorder of a slot
+/// subtree.
+fn dfs_subtree(node: &NodeRef, depth: usize, out: &mut Vec<DFSNode>) {
+    out.push(DFSNode {
+        depth,
+        node: node.clone(),
+    });
+    if crate::slot::is_slot_host(node) {
+        for name in crate::slot::get_slot_names(node) {
+            if let Some(slot) = crate::slot::get_slot(node, &name) {
+                dfs_subtree(&slot, depth + 1, out);
+            }
+        }
+    }
+    for child in node.get_children() {
+        dfs_subtree(&child, depth + 1, out);
+    }
+}
+
+/// `$reverseDfsWithSlots(startNode, endNode)` (`@experimental`): the
+/// right-to-left mirror of [`dfs_with_slots`]: a host's slot subtrees, in
+/// reverse slot order, after its children.
+pub fn reverse_dfs_with_slots(
+    start_node: Option<&NodeRef>,
+    end_node: Option<&NodeRef>,
+) -> Vec<DFSNode> {
+    let mut out = Vec::new();
+    let mut pending: Vec<(NodeRef, usize)> = Vec::new();
+    for dfs_node in reverse_dfs_iterator(start_node, end_node) {
+        while pending
+            .last()
+            .is_some_and(|(_, depth)| dfs_node.depth <= *depth)
+        {
+            let (host, depth) = pending.pop().expect("a pending host");
+            reverse_slots_of(&host, depth + 1, &mut out);
+        }
+        let (node, depth) = (dfs_node.node.clone(), dfs_node.depth);
+        out.push(dfs_node);
+        if crate::slot::is_slot_host(&node)
+            && !crate::slot::get_slot_names(&node).is_empty()
+            && end_node != Some(&node)
+        {
+            pending.push((node, depth));
+        }
+    }
+    while let Some((host, depth)) = pending.pop() {
+        reverse_slots_of(&host, depth + 1, &mut out);
+    }
+    out
+}
+
+/// `$reverseDfsWithSlotsIterator(startNode, endNode)` (`@experimental`):
+/// [`reverse_dfs_with_slots`] as an iterator (walked before the first item).
+pub fn reverse_dfs_with_slots_iterator(
+    start_node: Option<&NodeRef>,
+    end_node: Option<&NodeRef>,
+) -> impl Iterator<Item = DFSNode> + use<> {
+    reverse_dfs_with_slots(start_node, end_node).into_iter()
+}
+
+/// `$reverseSlotsOf(host, childDepth)`.
+fn reverse_slots_of(host: &NodeRef, child_depth: usize, out: &mut Vec<DFSNode>) {
+    for name in crate::slot::get_slot_names(host).iter().rev() {
+        if let Some(slot) = crate::slot::get_slot(host, name) {
+            reverse_dfs_subtree(&slot, child_depth, out);
+        }
+    }
+}
+
+/// `$reverseDfsSubtreeIterator(node, depth)`.
+fn reverse_dfs_subtree(node: &NodeRef, depth: usize, out: &mut Vec<DFSNode>) {
+    out.push(DFSNode {
+        depth,
+        node: node.clone(),
+    });
+    for child in node.get_children().iter().rev() {
+        reverse_dfs_subtree(child, depth + 1, out);
+    }
+    if crate::slot::is_slot_host(node) {
+        reverse_slots_of(node, depth + 1, out);
+    }
 }
 
 /// `$getAdjacentCaret(caret)`: `caret.getAdjacentCaret()`, or `None`.
@@ -165,14 +277,16 @@ pub fn get_next_sibling_or_parent_sibling(node: &NodeRef) -> Option<(NodeRef, is
 }
 
 /// `$getDepth(node)`: the number of ancestors of the node (the root's is
-/// 0), or -1 for `None`. (A slotted node climbs its slot host in JS; slots
-/// aren't ported.)
+/// 0), or -1 for `None`, climbing slot hosts too.
 pub fn get_depth(node: Option<&NodeRef>) -> isize {
     let mut depth = -1;
     let mut inner_node = node.cloned();
     while let Some(node) = inner_node {
         depth += 1;
-        inner_node = node.get_parent();
+        // A slotted node has no parent; climb its slot host instead.
+        inner_node = node
+            .get_parent()
+            .or_else(|| crate::slot::get_slot_host(&node));
     }
     depth
 }

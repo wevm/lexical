@@ -118,8 +118,8 @@ fn on_range<P: 'static>(
 /// that act on the model, at `COMMAND_PRIORITY_EDITOR`, and returns what
 /// unregisters them. Enter (`INSERT_PARAGRAPH_COMMAND`) inserts a line
 /// break. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form,
-/// and `SELECT_ALL_COMMAND` always selects the whole document, as JS does
-/// outside a slot (slots aren't ported).
+/// and `SELECT_ALL_COMMAND` selects the whole document, or the slot frame
+/// the caret is in.
 pub fn register_plain_text(editor: &Editor) -> Unregister {
     let unregisters: Vec<Unregister> = vec![
         on_range(
@@ -152,7 +152,24 @@ pub fn register_plain_text(editor: &Editor) -> Unregister {
         editor.register_command(
             &SELECT_ALL_COMMAND,
             |_, _| {
-                select_all()?;
+                // Scoped to the slot frame the caret is in, if any: a
+                // whole-document select-all would escape the slot.
+                match get_selection().filter(SelectionRef::is_range) {
+                    Some(selection)
+                        if crate::slot::get_slot_frame(
+                            &selection
+                                .point(crate::Which::Anchor)
+                                .expect("a range")
+                                .get_node()?,
+                        )
+                        .is_some() =>
+                    {
+                        crate::selection_insert_nodes::select_all_in(&selection)?;
+                    }
+                    _ => {
+                        select_all()?;
+                    }
+                }
                 Ok(true)
             },
             COMMAND_PRIORITY_EDITOR,

@@ -20,9 +20,10 @@
 //! of that resolution is ported. Without one, this port throws where
 //! headless JS does.
 //!
-//! Slots and shadow roots other than the root are not ported, so the
-//! branches for them are no-ops (each is noted where JS has it), as are the
-//! parts that read a decorator's DOM.
+//! Shadow roots other than the root are not ported, so the branches for
+//! them are no-ops (each is noted where JS has it), as are the parts that
+//! read a decorator's DOM. Slot boundaries are kept, but for the stop where
+//! `Selection.modify` lands in another slot frame (as in Swift).
 
 use crate::LexicalError;
 use crate::caret::{
@@ -249,7 +250,11 @@ impl SelectionRef {
                     }
                 }
                 if let MergeState::MergeBlock { caret, block } = state {
-                    // `$getSlotNames(block)` is empty: slots are not ported.
+                    // Merging would remove `block`, and with it its slots:
+                    // leave the caret where it is.
+                    if !crate::slot::get_slot_names(&block).is_empty() {
+                        return Ok(());
+                    }
                     let origin = caret.origin();
                     // Empty adjacent block at the same nesting level: remove
                     // it instead of merging, so the current block's type
@@ -272,8 +277,18 @@ impl SelectionRef {
                     )?;
                     return self.remove_text();
                 }
-                // JS stops here when the caret sits at the edge of a slot
-                // value; slots are not ported.
+                // Nothing in scope to delete: the caret sits at a slot edge
+                // when it is in a slot value, where the deletion stops.
+                let mut node = Some(self.range().expect("a range selection").anchor.get_node()?);
+                while let Some(n) = node {
+                    if crate::slot::get_slot_host_key(&n).is_some() {
+                        return Ok(());
+                    }
+                    if n.is_element() && n.get_latest().is_shadow_root() {
+                        break;
+                    }
+                    node = n.get_parent();
+                }
             }
 
             // Handle the deletion around decorators.
@@ -351,9 +366,14 @@ impl SelectionRef {
     /// `NodeSelection.deleteNodes()`: removes the selected nodes, first
     /// moving the selection to just after the first of them when this is
     /// the current (or last committed) selection, and gives an emptied root
-    /// a paragraph. (JS skips slotted nodes; slots are not ported.)
+    /// a paragraph. Slotted nodes are fixed parts of their host, and are
+    /// left alone.
     pub fn delete_nodes(&self) -> Result<(), LexicalError> {
-        let nodes = self.get_nodes()?;
+        let nodes: Vec<NodeRef> = self
+            .get_nodes()?
+            .into_iter()
+            .filter(|n| crate::slot::get_slot_host_key(n).is_none())
+            .collect();
         let current = get_selection().or_else(get_previous_selection);
         if let (Some(current), Some(first)) = (current, nodes.first())
             && current.ptr_eq(self)
@@ -603,8 +623,9 @@ impl SelectionRef {
 
 /// `$extendSelectionForDeletion(selection, isBackward, granularity)`:
 /// extends the collapsed selection over what the deletion removes. Returns
-/// true when the focus stopped at a slot boundary (never, as slots are not
-/// ported).
+/// true when the focus stopped at a slot boundary (never here: the stop
+/// where `Selection.modify` lands in another slot frame, the `'deletion'`
+/// mode of `$setPointAtSlotBoundary`, isn't ported, as in Swift).
 ///
 /// The moves across blocks are resolved in the model; every other move is
 /// measured by the editor's [`SelectionMovement`] where JS uses the DOM
@@ -704,7 +725,8 @@ fn extend_selection_for_deletion(
             return Ok(false);
         }
     }
-    // JS stops the focus at a slot boundary here; slots are not ported.
+    // JS stops the focus at a slot boundary here when the landed point is
+    // in another slot frame; not ported (see above).
 
     // General path: the [original .. landed] range a native extend would
     // have produced, in document order.
@@ -955,10 +977,15 @@ fn swap_points(selection: &SelectionRef) -> Result<(), LexicalError> {
     selection.point_set(Which::Focus, &anchor.key, anchor.offset, anchor.point_type)
 }
 
-/// `$getNearestRootOrShadowRoot(node)` (slots are not ported).
-fn get_nearest_root_or_shadow_root(node: &NodeRef) -> Result<NodeRef, LexicalError> {
+/// `$getNearestRootOrShadowRoot(node)`: the node itself when it is a slotted
+/// element (a slot is the root of its own scope), or the nearest root or
+/// shadow root above it.
+pub(crate) fn get_nearest_root_or_shadow_root(node: &NodeRef) -> Result<NodeRef, LexicalError> {
     let mut current = node.clone();
     loop {
+        if crate::slot::get_slot_host_key(&current).is_some() && current.is_element() {
+            return Ok(current);
+        }
         let parent = current.get_parent_or_throw()?;
         if is_root_or_shadow_root(&*parent.get_latest()) {
             return Ok(parent);
@@ -1140,8 +1167,8 @@ pub(crate) fn internal_expand_selection_to_whole_document(
 }
 
 /// `$isBlockFullySelected(blockNode, selection)`: whether the selection
-/// covers everything in the block. (Slot frames are not ported, so every
-/// node is in the same frame.) JS also takes a `CaretRange`.
+/// covers everything in the block. A range in another slot frame never
+/// does. JS also takes a `CaretRange`.
 pub fn is_block_fully_selected(
     block: &NodeRef,
     selection: &RangeSelection,
@@ -1150,6 +1177,11 @@ pub fn is_block_fully_selected(
         &caret_range_from_selection(selection)?,
         CaretDirection::Next,
     )?;
+    let anchor_frame = crate::slot::get_slot_frame(range.anchor.origin());
+    let block_frame = crate::slot::get_slot_frame(block);
+    if anchor_frame != block_frame {
+        return Ok(false);
+    }
     let block_start = normalize_caret(
         &get_child_caret(block, CaretDirection::Next).expect("a block is an element"),
     );
@@ -1165,12 +1197,14 @@ pub fn is_block_fully_selected(
     )
 }
 
-/// `$ensureRootHasParagraph()`: gives an empty root a selected paragraph.
-/// (A selection in a slot keeps it from doing so in JS; slots are not
-/// ported.)
+/// `$ensureRootHasParagraph()`: gives an empty root a selected paragraph,
+/// unless the selection is in a slot (a root slot does not replace the
+/// document body).
 fn ensure_root_has_paragraph() -> Result<(), LexicalError> {
     let root = get_root();
-    if root.get_children_size() == 0 {
+    if root.get_children_size() == 0
+        && crate::slot::get_selection_slot_frame(get_selection().as_ref())?.is_none()
+    {
         let paragraph = create_paragraph_node();
         root.append(std::slice::from_ref(&paragraph))?;
         paragraph.select(None, None)?;

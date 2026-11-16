@@ -82,9 +82,17 @@ fn clear_links(node: &str) {
 }
 
 /// `$detachNode(writableNode)`: unlinks a writable node from its parent.
-pub(crate) fn detach_node(node: &NodeRef) {
+/// A slotted node is refused: it has a host, not a parent.
+pub(crate) fn detach_node(node: &NodeRef) -> Result<(), LexicalError> {
+    let slot_host_key = crate::slot::get_slot_host_key(node);
+    invariant!(
+        slot_host_key.is_none(),
+        "$removeFromParent: node {} is slotted into host {}; a slotted node and a child are mutually exclusive. Remove it from its slot first.",
+        node.get_key(),
+        slot_host_key.unwrap_or_default()
+    );
     let Some(parent) = node.get_parent() else {
-        return;
+        return Ok(());
     };
     get_writable(parent.get_key());
     let previous = node.get_previous_sibling();
@@ -102,6 +110,7 @@ pub(crate) fn detach_node(node: &NodeRef) {
     );
     clear_links(node.get_key());
     add_size(parent.get_key(), -1);
+    Ok(())
 }
 
 /// `$detachSiblingRange(writableParent, first, count, before)`: unlinks
@@ -174,7 +183,7 @@ pub(crate) fn detach_node_with_selection(
         // tree.
         selection.is_backward()?;
     }
-    detach_node(node);
+    detach_node(node)?;
     if let (Some(selection), Some(parent), Some(index)) = (selection, &parent, index) {
         update_element_selection_on_create_delete_node(selection, parent, index, -1)?;
     }
@@ -212,7 +221,7 @@ pub(crate) fn insert_sibling(
     error_on_insert_text_node_on_root(origin, node)?;
     get_writable(origin.get_key());
     get_writable(node.get_key());
-    origin.get_parent_or_throw()?;
+    crate::slot::error_on_slot_cycle_child(&origin.get_parent_or_throw()?, node)?;
     let selection = get_selection().filter(|s| restore_selection && s.is_range());
     let points = detach_node_with_selection(node, selection.as_ref())?;
     let parent = origin.get_parent_or_throw()?;
@@ -265,6 +274,14 @@ pub(crate) fn select_adjacent_node(
     focus_offset: Option<usize>,
 ) -> Result<SelectionRef, LexicalError> {
     error_on_read_only();
+    // A slot value has no parent: its host's own method selects next to it.
+    if let Some(slot_host) = crate::slot::get_slot_host(origin) {
+        return if is_next {
+            slot_host.select_next(anchor_offset, focus_offset)
+        } else {
+            slot_host.select_previous(anchor_offset, focus_offset)
+        };
+    }
     let sibling = if is_next {
         origin.get_next_sibling()
     } else {

@@ -1,8 +1,8 @@
 //! `caret/LexicalCaretUtils.ts`: carets from selection points and back,
 //! normalization, and removing the text and nodes of a caret range.
 //!
-//! Slots and the text edit log are not ported, so the parts of
-//! `$removeTextFromCaretRange` that keep a slot host or record deletions do
+//! The text edit log is not ported, so the parts of
+//! `$removeTextFromCaretRange` that record deletions do
 //! nothing here; a segmented node made plain text carries its NodeState
 //! (`$carryNodeState`) as in JS.
 
@@ -251,7 +251,7 @@ pub fn remove_text_from_caret_range(
             removed_parents.push(parent);
         }
         // `$recordDeleted(node)`: the text edit log isn't ported.
-        remove_from_parent(node);
+        remove_from_parent(node)?;
     }
     // Remove inline wrappers (canBeEmpty=false) that became empty
     for parent in &removed_parents {
@@ -344,7 +344,7 @@ pub fn remove_text_from_caret_range(
             && !focus_block_parent.is_root()
             && focus_block.is_empty()
             && seen_start.contains(focus_block.get_key())
-            // A slot host keeps its block, once slots are ported.
+            && crate::slot::get_slot_names(focus_block).is_empty()
             && topmost_shadow_root.is_none_or(|r| seen_start.contains(r.get_key()))
         {
             focus_block.remove(true)?;
@@ -460,8 +460,10 @@ fn get_block_merge_targets(
     let anchor_block = get_block(&anchor_parent, false)?;
     let focus_block = get_block(&focus_parent, true)?;
     // Removing a host must not silently discard its slots during a block
-    // merge, once slots are ported.
-    Some((anchor_block, focus_block))
+    // merge.
+    crate::slot::get_slot_names(&focus_block)
+        .is_empty()
+        .then_some((anchor_block, focus_block))
 }
 
 /// `$getDeepestChildOrSelf(initialCaret)`: the deepest child caret under

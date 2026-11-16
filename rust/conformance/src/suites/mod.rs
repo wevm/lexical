@@ -203,6 +203,16 @@ pub fn all() -> Vec<Suite> {
             check: crate::scripts::check,
         },
         Suite {
+            file: "scripts/slots",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/block-id",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
             file: "fuzz/core",
             variant: None,
             check: crate::scripts::check,

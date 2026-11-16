@@ -98,11 +98,11 @@ pub(crate) fn is_block(node: &NodeRef) -> bool {
 
 /// `$removeFromParent(node)`: detaches the node without repairing the
 /// selection.
-pub(crate) fn remove_from_parent(node: &NodeRef) {
+pub(crate) fn remove_from_parent(node: &NodeRef) -> Result<(), LexicalError> {
     if node.get_parent().is_some() {
         get_writable(node.get_key());
     }
-    detach_node(node);
+    detach_node(node)
 }
 
 /// `$restoreEmptyContainerParagraph(container, removedChild)`: appends an
@@ -116,10 +116,14 @@ pub(crate) fn restore_empty_container_paragraph(
     else {
         return Ok(None);
     };
-    // Root slots (such as footnotes) do not replace the editable body, once
-    // slots are ported.
+    // Root slots (such as footnotes) do not replace the editable body.
+    let has_content = if container.is_root() {
+        container.get_children_size() != 0
+    } else {
+        !container.is_empty()
+    };
     if !container.is_attached()
-        || !container.is_empty()
+        || has_content
         || !(container.is_root() || removed_child.is_some_and(is_block))
     {
         return Ok(None);
@@ -251,7 +255,14 @@ pub(crate) fn internal_mark_node_as_dirty(key: &str) {
         let node = node_map
             .get(key)
             .unwrap_or_else(|| panic!("internalMarkNodeAsDirty: node {key} does not exist"));
-        (node.base().parent.clone(), node.element().is_some())
+        // A slotted node's up-link is its slot host: an edit in a slot
+        // dirties the host too.
+        let parent = node
+            .base()
+            .parent
+            .clone()
+            .or_else(|| crate::slot::slot_host_key_field(&**node).cloned());
+        (parent, node.element().is_some())
     };
     {
         let node_map = editor_state.0.node_map.borrow();
@@ -266,7 +277,11 @@ pub(crate) fn internal_mark_node_as_dirty(key: &str) {
                 break;
             };
             dirty.elements.set(&parent_key, false);
-            next_parent = node.base().parent.clone();
+            next_parent = node
+                .base()
+                .parent
+                .clone()
+                .or_else(|| crate::slot::slot_host_key_field(&**node).cloned());
         }
         if dirty.dirty_type == DirtyType::None {
             dirty.dirty_type = DirtyType::HasDirtyNodes;

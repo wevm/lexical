@@ -340,12 +340,6 @@ fn parse_serialized_node_impl(
             "parseEditorState: type \"{shown}\" + not found"
         )));
     };
-    // Not ported yet; refused rather than dropped (rust/PARITY.md).
-    invariant!(
-        !object.contains_key("$slots"),
-        "parseEditorState: slots (\"$slots\") are not ported to Rust yet"
-    );
-
     let node = (registered.import_json)(object)?;
     // What `updateFromJSON` applies besides the class's own properties:
     // the nested NodeState (`$updateStateFromJSON`), then the flat states
@@ -360,7 +354,40 @@ fn parse_serialized_node_impl(
             node.append(&[child])?;
         }
     }
+    // `$slots` is truthy for any object (an array too, whose indices are its
+    // names) and any other truthy value, whose `for...in` finds nothing.
+    if let Some(slots) = object.get("$slots").filter(|v| is_truthy(v)) {
+        invariant!(
+            crate::slot::is_slot_host(&node),
+            "$parseSerializedNode: node {} has slots but is not a valid slot host; only ElementNodes and DecoratorNodes can host slots.",
+            node.get_type()
+        );
+        let entries: Vec<(String, Value)> = match slots {
+            Value::Object(o) => o.iter().map(|(k, v)| (k.to_owned(), v.clone())).collect(),
+            Value::Array(a) => a
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (i.to_string(), v.clone()))
+                .collect(),
+            _ => Vec::new(),
+        };
+        for (name, value) in entries {
+            let slot_node = parse_serialized_node_impl(&value, registered_nodes)?;
+            crate::slot::set_slot(&node, &name, &slot_node)?;
+        }
+    }
     Ok(node)
+}
+
+/// Whether a JSON value is truthy in JS.
+fn is_truthy(value: &Value) -> bool {
+    match value {
+        Value::Undefined | Value::Null => false,
+        Value::Bool(b) => *b,
+        Value::Number(n) => *n != 0.0 && !n.is_nan(),
+        Value::String(s) => !s.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
 }
 
 /// `$parseSerializedNode(serializedNode)`: a node, and its children, from
@@ -609,6 +636,10 @@ pub(crate) fn begin_update(
                 garbage_collect_detached_nodes(&current, &pending, editor);
             }
             if let Some(selection) = pending.selection() {
+                // A range selection must not straddle a slot boundary.
+                if selection.is_range() && editor.0.slots_used.get() {
+                    crate::lexical_selection::clamp_range_selection_to_slot_frame(&selection)?;
+                }
                 if let Some(range) = selection.range() {
                     let node_map = pending.0.node_map.borrow();
                     invariant!(

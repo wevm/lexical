@@ -31,6 +31,13 @@ pub fn slice_from(text: &str, start: usize) -> String {
     slice(text, start, usize::MAX)
 }
 
+/// How JS's `<` orders two strings: by UTF-16 code units, which differs
+/// from Rust's order (by code points) where a character outside the BMP
+/// meets one from U+E000 to U+FFFF.
+pub fn cmp(a: &str, b: &str) -> std::cmp::Ordering {
+    a.encode_utf16().cmp(b.encode_utf16())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

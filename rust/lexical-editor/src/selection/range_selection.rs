@@ -97,9 +97,8 @@ pub type AfterCreateElement = dyn Fn(&NodeRef, &NodeRef) -> Result<(), LexicalEr
 /// before the replacement, [`copy_block_format_indent`] when `None`, as in
 /// JS. `NodeRef::replace` (and `ListItemNode`'s override) remaps the points
 /// on a replaced block. Nothing happens without a selection.
-///
-/// Slots aren't ported, so JS's skipping of a block that is a named slot's
-/// value (`$getSlotHost(prevNode) !== null`) has nothing to skip.
+/// A block that is a named slot's value is left alone: its slot belongs to
+/// the node or extension that owns it.
 pub fn set_blocks_type(
     selection: Option<&SelectionRef>,
     create_element: impl Fn() -> NodeRef,
@@ -168,6 +167,9 @@ pub fn set_blocks_type(
     // ListItemNode.replace override): both remap an element-anchored point
     // on the replaced block to {key: replacement, offset: prevSize + offset}.
     for prev_node in block_map {
+        if crate::slot::get_slot_host(&prev_node).is_some() {
+            continue;
+        }
         if is_block_container(&prev_node) {
             // An empty declared container (roots and shadow roots are never
             // in the map) is not a block to convert: with a selection point
@@ -346,8 +348,8 @@ fn inline_run(child: &NodeRef) -> Vec<NodeRef> {
 /// blocks' alignment and indent and go where the first block is, all inside
 /// `wrapping_element` when given. A selection in an empty element wraps
 /// that element's block alone; separate block containers among the nodes
-/// are wrapped apart. (A selection in a slot value is left alone in JS;
-/// slots aren't ported.)
+/// are wrapped apart. A selection in a slot value that is not a block
+/// container is left alone, as for [`set_blocks_type`].
 pub fn wrap_nodes(
     selection: &SelectionRef,
     create_element: impl Fn() -> NodeRef,
@@ -356,6 +358,12 @@ pub fn wrap_nodes(
     let anchor = selection.point(Which::Anchor);
     let nodes = selection.get_nodes()?;
     let nodes_length = nodes.len();
+    if let Some(anchor) = &anchor
+        && let Some(slot_frame) = crate::slot::get_slot_frame(&anchor.get_node()?)
+        && !crate::selection_insert_nodes::is_block_container(&slot_frame)
+    {
+        return Ok(());
+    }
     if let Some(anchor) = &anchor {
         let anchor_node = anchor.get_node()?;
         if nodes_length == 0

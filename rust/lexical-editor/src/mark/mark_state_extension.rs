@@ -9,8 +9,8 @@
 //! the `markableNodes` config, mark flavors (`defineMarkExtension`,
 //! `MarkBaseExtension`, the flavor-first forms, `$getMarkIDsByFlavor`), the
 //! `markIDNodeKeys` output and `registerMarkIDsListener`, the inserted-text
-//! rule, rendering and HTML import and export. Slots aren't ported, so the
-//! slots of a node are not looked through.
+//! rule, rendering and HTML import and export. The slots of a node are
+//! looked through (`$forEachSlot`).
 
 use crate::error::invariant;
 use crate::json::Value;
@@ -178,12 +178,26 @@ fn markable_nodes_in_selection(selection: &SelectionRef) -> Result<Vec<NodeRef>,
     }
     let mut nodes = Vec::new();
     let mut seen = HashSet::new();
+    // `extract()` does not include the content of slots, which is collected
+    // from each selected slot host.
     for node in selection.extract()? {
         if is_markable_node(&node) && seen.insert(node.get_key().to_owned()) {
-            nodes.push(node);
+            nodes.push(node.clone());
         }
+        for_each_slot(&node, |slot| {
+            collect_markable_nodes(slot, &mut nodes, &mut seen)
+        });
     }
     Ok(nodes)
+}
+
+/// `$forEachSlot(node, fn)`: `f` of the value of each slot of `node`.
+fn for_each_slot(node: &NodeRef, mut f: impl FnMut(&NodeRef)) {
+    for name in crate::slot::get_slot_names(node) {
+        if let Some(slot) = crate::slot::get_slot(node, &name) {
+            f(&slot);
+        }
+    }
 }
 
 /// `$addMarkID(id, selection)`: adds the mark `id` to every markable node
@@ -214,6 +228,7 @@ fn collect_markable_nodes(node: &NodeRef, out: &mut Vec<NodeRef>, seen: &mut Has
             child = c.get_next_sibling();
         }
     }
+    for_each_slot(node, |slot| collect_markable_nodes(slot, out, seen));
 }
 
 /// `$markableNodesIn(flavor, node)`.
@@ -414,6 +429,11 @@ pub fn migrate_mark_nodes_to_mark_state(node: Option<&NodeRef>) -> Result<usize,
             if current.is_element() {
                 for child in current.get_children() {
                     visit(&child, inherited, count)?;
+                }
+            }
+            for name in crate::slot::get_slot_names(current) {
+                if let Some(slot) = crate::slot::get_slot(current, &name) {
+                    visit(&slot, inherited, count)?;
                 }
             }
         }

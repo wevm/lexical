@@ -22,6 +22,11 @@ pub struct ParagraphNode {
 }
 
 impl LexicalNode for ParagraphNode {
+    /// `children: 'inline'` in its `$config()`.
+    fn declares_inline_children(&self) -> bool {
+        true
+    }
+
     fn get_type(&self) -> &'static str {
         "paragraph"
     }

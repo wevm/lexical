@@ -11,6 +11,9 @@
 
 use super::{Ctx, err};
 use lexical::extension::{
+    BlockIdConfigOverrides, GenerateId, IsIdentifiedBlock, block_id_extension, is_root_child_block,
+};
+use lexical::extension::{
     CanIndentPredicate, LexicalBuilder, NormalizeInlineElementsConfigOverrides,
     SelectBlockConfigOverrides, TabIndentationConfigOverrides, normalize_inline_elements_extension,
     select_block_extension, tab_indentation_extension,
@@ -30,6 +33,7 @@ use lexical::{
     create_text_node, declare_peer_dependency, define_extension, get_root, shallow_merge_config,
 };
 use lexical::{code, hashtag, history, link, list, overflow, plain_text, rich_text};
+use std::cell::Cell;
 use std::rc::Rc;
 
 /// A test extension: its config is JSON, its output the `namedSignals` of
@@ -47,6 +51,7 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "DecoratorTextExtension" => decorator_text_extension().into(),
         "EditorStateExtension" => editor_state_extension().into(),
         "AutoLinkExtension" => link::auto_link_extension().into(),
+        "BlockIdExtension" => block_id_extension().into(),
         "CheckListExtension" => list::check_list_extension().into(),
         "CodeExtension" => code::code_extension().into(),
         "CodeIndentExtension" => code::code_indent_extension().into(),
@@ -277,6 +282,40 @@ fn real_configured(
                 _ => unknown(field, v)?,
             }),
         ),
+        "BlockIdExtension" => config_extension(
+            &block_id_extension(),
+            overrides!(BlockIdConfigOverrides, |o, field, v| match field {
+                "disabled" => o.disabled = Some(bool_of(field, v)?),
+                "repairTransforms" => o.repair_transforms = Some(bool_of(field, v)?),
+                "generateId" => {
+                    o.generate_id = Some(match v.as_str() {
+                        // `id1`, `id2`...
+                        Some("counter") => {
+                            let n = Rc::new(Cell::new(0u64));
+                            GenerateId(Rc::new(move || {
+                                n.set(n.get() + 1);
+                                format!("id{}", n.get())
+                            }))
+                        }
+                        // Each of `id1`, `id2`... twice in a row.
+                        Some("stutter") => {
+                            let n = Rc::new(Cell::new(0u64));
+                            GenerateId(Rc::new(move || {
+                                let id = format!("id{}", (n.get() >> 1) + 1);
+                                n.set(n.get() + 1);
+                                id
+                            }))
+                        }
+                        Some("invalid") => GenerateId(Rc::new(|| "not valid".to_owned())),
+                        _ => return Err(bad_config(key, field, v)),
+                    })
+                }
+                "$isIdentifiedBlock" if v.as_str() == Some("rootChild") => {
+                    o.is_identified_block = Some(IsIdentifiedBlock(Rc::new(is_root_child_block)))
+                }
+                _ => unknown(field, v)?,
+            }),
+        ),
         "SelectBlockExtension" => config_extension(
             &select_block_extension(),
             overrides!(SelectBlockConfigOverrides, |o, field, v| match field {
@@ -354,6 +393,9 @@ fn set_real_signal(
                         v => Some(v.as_f64().ok_or_else(bad)?),
                     })
             }
+            ("BlockIdExtension", "disabled") => output(editor, &block_id_extension())?
+                .disabled
+                .set_value(as_bool()?),
             ("SelectBlockExtension", "disabled") => output(editor, &select_block_extension())?
                 .disabled
                 .set_value(as_bool()?),

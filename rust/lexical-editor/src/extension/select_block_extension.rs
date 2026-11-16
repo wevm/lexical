@@ -50,11 +50,15 @@ fn make_prevent_select_all() -> Rc<PreventSelectAllExtensionType> {
 }
 
 /// `node.getTopLevelElement()`: the ancestor (or `node`) whose parent is
-/// the root or a shadow root. (Slots aren't ported.)
+/// the root or a shadow root, or that is a slot value (the top of its
+/// isolated scope).
 fn get_top_level_element(node: &NodeRef) -> Option<NodeRef> {
     let mut node = Some(node.clone());
     while let Some(n) = node {
         let parent = n.get_parent();
+        if crate::slot::get_slot_host_key(&n).is_some() {
+            return Some(n);
+        }
         if parent
             .as_ref()
             .is_some_and(|p| is_root_or_shadow_root(&*p.get_latest()))
@@ -120,8 +124,17 @@ fn handle_select_all() -> Result<bool, LexicalError> {
         block_node.select(Some(0), Some(block_node.get_children_size()))?;
         return Ok(true);
     }
-    // JS then expands to the innermost slot frame not yet fully selected;
-    // slots aren't ported.
+    // Named slots are isolated scopes between the block and the document:
+    // expand to the innermost enclosing slot frame not yet fully selected,
+    // then outward.
+    let mut frame = crate::slot::get_slot_frame(&anchor_node);
+    while let Some(f) = frame {
+        if f.is_element() && !is_block_fully_selected(&f, &range)? {
+            f.select(Some(0), Some(f.get_children_size()))?;
+            return Ok(true);
+        }
+        frame = crate::slot::get_slot_host(&f).and_then(|host| crate::slot::get_slot_frame(&host));
+    }
     if !is_block_fully_selected(&get_root(), &range)? {
         // Don't select all if the document is already fully selected.
         select_all()?;

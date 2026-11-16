@@ -3,8 +3,9 @@
 //!
 //! What JS does differently where `NodeStructureExtension` enforces node
 //! structure (`$keptTops`, `$listTarget`, joining only items whose only
-//! child is a nested list) and for lists in named slots isn't ported, as
-//! neither is.
+//! child is a nested list) isn't ported, as `NodeStructureExtension` isn't;
+//! nor is `$insertList`'s skipping of a named slot's value, which no vector
+//! covers yet.
 
 use super::ListItemNode;
 use super::list_item_node::{create_list_item_node, is_list_item_node};

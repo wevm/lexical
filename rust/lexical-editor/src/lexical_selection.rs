@@ -337,8 +337,20 @@ impl SelectionRef {
                 if !prev_was_element {
                     text_content.push('\n');
                 }
-                // Slot text comes first once slots are ported.
-                prev_was_element = !node.is_empty();
+                // `getNodes()` never goes into slots: a selection around the
+                // host carries their text here, first.
+                let mut slot_text = String::new();
+                for slot_name in crate::slot::get_slot_names(node) {
+                    if let Some(slot) = crate::slot::get_slot(node, &slot_name) {
+                        slot_text.push_str(&slot.get_text_content());
+                    }
+                }
+                if !slot_text.is_empty() {
+                    text_content.push_str(&slot_text);
+                    prev_was_element = false;
+                } else {
+                    prev_was_element = !node.is_empty();
+                }
             } else {
                 prev_was_element = false;
                 if node.is_text() {
@@ -557,8 +569,147 @@ pub fn set_selection(selection: Option<SelectionRef>) {
     if let Some(selection) = &selection {
         selection.set_dirty(true);
         selection.set_cached_nodes(None);
+        // A range selection set through the API must not straddle a slot
+        // boundary either.
+        if selection.is_range()
+            && crate::updates::get_active_editor().is_some_and(|e| e.0.slots_used.get())
+        {
+            clamp_range_selection_to_slot_frame(selection)
+                .expect("clamping a selection to its slot frame");
+        }
     }
     *get_active_editor_state().0.selection.borrow_mut() = selection;
+}
+
+/// `$getPointSlotFrame(point)`: the slot frame of the point's node.
+pub fn get_point_slot_frame(point: &Point) -> Option<NodeRef> {
+    get_node_by_key(&point.key).and_then(|node| crate::slot::get_slot_frame(&node))
+}
+
+/// `$isSameFrame(a, b)`.
+pub fn is_same_frame(a: Option<&NodeRef>, b: Option<&NodeRef>) -> bool {
+    a == b
+}
+
+/// `$setPointToFrameEdge(point, frame, atEnd)`.
+fn set_point_to_frame_edge(
+    selection: &SelectionRef,
+    which: Which,
+    frame: &NodeRef,
+    at_end: bool,
+) -> Result<(), LexicalError> {
+    if frame.is_element() {
+        let offset = if at_end { frame.get_children_size() } else { 0 };
+        selection.point_set(which, frame.get_key(), offset, PointType::Element)
+    } else {
+        let offset = if at_end {
+            frame.get_text_content_size()
+        } else {
+            0
+        };
+        selection.point_set(which, frame.get_key(), offset, PointType::Text)
+    }
+}
+
+/// `$getSlotHostInFrame(frame, target)`: the host whose own frame is
+/// `target` (`None` for the main tree) and that owns `frame`, directly or
+/// through nested slots.
+fn get_slot_host_in_frame(frame: &NodeRef, target: Option<&NodeRef>) -> Option<NodeRef> {
+    let mut host = crate::slot::get_slot_host(frame);
+    while let Some(h) = host {
+        let host_frame = crate::slot::get_slot_frame(&h);
+        if is_same_frame(host_frame.as_ref(), target) {
+            // A host outside every slot is in the main tree only when
+            // attached.
+            return (host_frame.is_some() || h.is_attached()).then_some(h);
+        }
+        host = host_frame.and_then(|f| crate::slot::get_slot_host(&f));
+    }
+    None
+}
+
+/// `$setPointAtSlotBoundary(point, anchorNode, anchorFrame, focusFrame,
+/// 'selection', resolveFocusAfterAnchor)`: sets the focus of a selection
+/// whose anchor is in `anchor_frame` and whose focus is in `focus_frame` to
+/// the slot boundary in the anchor's frame. Its `'deletion'` mode isn't
+/// ported (see `selection_deletion`).
+fn set_point_at_slot_boundary(
+    selection: &SelectionRef,
+    which: Which,
+    anchor_node: Option<&NodeRef>,
+    anchor_frame: Option<&NodeRef>,
+    focus_frame: Option<&NodeRef>,
+    resolve_focus_after_anchor: impl FnOnce() -> Result<bool, LexicalError>,
+) -> Result<bool, LexicalError> {
+    let host = focus_frame.and_then(|f| get_slot_host_in_frame(f, anchor_frame));
+    if host.is_none() && anchor_frame.is_none() {
+        return Ok(false);
+    }
+    let focus_after_anchor = resolve_focus_after_anchor()?;
+    let host_parent = host.as_ref().and_then(NodeRef::get_parent);
+    let (parent, offset) = match (&host, &host_parent) {
+        (Some(host), Some(host_parent))
+            if !anchor_node.is_some_and(|a| host == a || host.is_parent_of(a)) =>
+        {
+            let index = host.get_index_within_parent().unwrap_or(0);
+            (host_parent.clone(), index + usize::from(focus_after_anchor))
+        }
+        _ => {
+            let edge = host.clone().or_else(|| anchor_frame.cloned());
+            let Some(edge) = edge.filter(NodeRef::is_element) else {
+                if let Some(edge) = host.or_else(|| anchor_frame.cloned()) {
+                    set_point_to_frame_edge(selection, which, &edge, focus_after_anchor)?;
+                }
+                return Ok(true);
+            };
+            let offset = if focus_after_anchor {
+                edge.get_children_size()
+            } else {
+                0
+            };
+            (edge, offset)
+        }
+    };
+    selection.point_set(which, parent.get_key(), offset, PointType::Element)?;
+    Ok(true)
+}
+
+/// `$clampRangeSelectionToSlotFrame(selection)` (`@experimental`): keeps the
+/// focus of a range selection in the anchor's slot frame, at the boundary
+/// on the side the focus was, in the default slots-before-children order
+/// ([`compare_point_caret_next_across_slots`](crate::compare_point_caret_next_across_slots)).
+/// Returns whether it moved the focus, which marks the selection dirty.
+pub fn clamp_range_selection_to_slot_frame(selection: &SelectionRef) -> Result<bool, LexicalError> {
+    let Some(range) = selection.range() else {
+        return Ok(false);
+    };
+    let anchor_frame = get_point_slot_frame(&range.anchor);
+    let focus_frame = get_point_slot_frame(&range.focus);
+    if is_same_frame(anchor_frame.as_ref(), focus_frame.as_ref()) {
+        return Ok(false);
+    }
+    let anchor_node = get_node_by_key(&range.anchor.key);
+    let clamped = set_point_at_slot_boundary(
+        selection,
+        Which::Focus,
+        anchor_node.as_ref(),
+        anchor_frame.as_ref(),
+        focus_frame.as_ref(),
+        || {
+            // Points are not normalized: that would move a point just
+            // before an element host into its children, past its slots.
+            let anchor = caret_from_point(&range.anchor, CaretDirection::Next)?;
+            let focus = caret_from_point(&range.focus, CaretDirection::Next)?;
+            Ok(
+                crate::caret::compare_point_caret_next_across_slots(&anchor, &focus)
+                    != Some(std::cmp::Ordering::Greater),
+            )
+        },
+    )?;
+    if clamped {
+        selection.set_dirty(true);
+    }
+    Ok(clamped)
 }
 
 /// `$createRangeSelection()`: a selection at the start of the root, not

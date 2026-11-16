@@ -297,6 +297,11 @@ fn extract_with_child(
 }
 
 impl LexicalNode for LinkNode {
+    /// `children: 'inline'` in its `$config()`.
+    fn declares_inline_children(&self) -> bool {
+        true
+    }
+
     fn get_type(&self) -> &'static str {
         "link"
     }
@@ -375,6 +380,11 @@ impl LexicalNode for LinkNode {
 /// `canInsertTextAfter` either, whatever its class comment says), so each
 /// hook is `LinkNode`'s.
 impl LexicalNode for AutoLinkNode {
+    /// `children: 'inline'` in its `$config()`.
+    fn declares_inline_children(&self) -> bool {
+        true
+    }
+
     fn get_type(&self) -> &'static str {
         "autolink"
     }

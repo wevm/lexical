@@ -2,8 +2,11 @@
 
 A Rust port of [Lexical](https://lexical.dev)'s model and headless packages,
 at parity with the JS implementation: the same documents give the same
-editor state and the same JSON, byte for byte. Early work; nothing is
-published, and the crate name (`lexical-editor`) may change.
+editor state and the same JSON, byte for byte. Early work: the crate name
+(`lexical-editor`) may change before its first release. It's developed in
+[wevm/lexical](https://github.com/wevm/lexical) under `rust/`, and each
+release is mirrored to [wevm/lexical-rust](https://github.com/wevm/lexical-rust);
+[CHANGELOG.md](CHANGELOG.md) lists them.
 
 ```rust
 use lexical_editor::{create_editor, get_root, CreateEditorArgs};

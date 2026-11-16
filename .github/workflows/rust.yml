@@ -6,6 +6,8 @@ name: Rust
 # swift.yml checks that the checked-in vectors match the JS behavior.
 
 on:
+  # The release workflow starts this on its version pull request's branch.
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
@@ -58,6 +60,12 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --workspace --all-features --no-deps --locked
+      # Packages the crate as crates.io would get it and builds the package
+      # with every feature, without uploading: the manifest's metadata, the
+      # files it ships and that it builds outside the workspace
+      # (rust-release.yml publishes it).
+      - name: Package
+        run: cargo publish --dry-run -p lexical-editor --locked --all-features
       # The crate has no third-party dependencies in its default build, nor
       # with every feature but `autolink` (rust/DESIGN.md): any normal or
       # build dependency fails. `autolink` brings in `regex` and its own

@@ -27,26 +27,28 @@ pull request.
 
 | Path                  | Crate                 | Published | What                                                      |
 | --------------------- | --------------------- | --------- | --------------------------------------------------------- |
-| `rust/lexical-editor` | `lexical-editor`      | not yet   | The port: core, and one feature per upstream package      |
+| `rust/lexical-editor` | `lexical-editor`      | crates.io | The port: core, and one feature per upstream package      |
 | `rust/conformance`    | `lexical-conformance` | never     | The conformance runner: replays every vector file         |
 | `rust/apps/lexical-playground-core` | `lexical-playground-core` | never | The playgrounds' binding to `lexical-editor` |
 | `rust/apps/lexical-playground-rune` | `lexical-playground-rune` | never | The playground on Rune (a workspace of its own) |
 | `rust/apps/lexical-playground-gpui` | `lexical-playground-gpui` | never | The playground on GPUI (a workspace of its own) |
 
 `rust/` is developed in wevm/lexical, with its own CI
-(`.github/workflows/rust.yml`), so it can later be mirrored to
-wevm/lexical-rust on release the way `swift/` is mirrored to
-wevm/lexical-swift (see Releases).
+(`.github/workflows/rust.yml`), and mirrored to wevm/lexical-rust on
+release the way `swift/` is mirrored to wevm/lexical-swift (see Releases).
 
 ### The name
 
 tmm: "let's use lexical-editor as the name right now. We might change it
-later before we publish." So nothing is published, and the name lives in
-few places: `name` in `lexical-editor/Cargo.toml`, the `package` of the
+later before we publish." It was free on crates.io on 2026-11-16, and stays
+changeable until tmm's first publish (see Releases). The name lives in few
+places: `name` in `lexical-editor/Cargo.toml`, the `package` of the
 `lexical` entry in the workspace's `[workspace.dependencies]`, the
-directory, the doc example in `lib.rs`, and the `cargo tree` check in
-`rust.yml`. Every other crate in the workspace depends on it as `lexical`,
-so a rename doesn't touch their code.
+directory, the doc example in `lib.rs`, the `cargo tree` and `cargo
+publish` checks in `rust.yml`, `rust-release.yml`,
+`scripts/version-packages.sh` and the changesets' frontmatter. Every other
+crate in the workspace depends on it as `lexical`, so a rename doesn't touch
+their code.
 
 ## Packages and features
 
@@ -312,7 +314,7 @@ thread.
 | M4 | `html`: a DOM abstraction over an HTML parser, CSS declarations, export and import; with it `@lexical/clipboard`'s HTML path (`$getHtmlContent`, the `text/html` importer) | `html/*`, `css/*`, `property/documents` (HTML) | done ([HTML thread](https://ampcode.com/threads/T-506c8fa1-4309-40f1-9810-732b311eaeab)): the DOM (`dom`: nodes, `DOMParser`, the serializer, the inline style declaration and its tables), `getStyleObjectFromCSS`, the core nodes' and the node packages' DOM hooks, and `@lexical/html`'s export and import, are done (every `html/*` and `css/*` file and `property/documents`' HTML pass), and so are the `DOMImportExtension` pipeline with `CoreImportRules` and `$inlineStylesFromStyleSheets` (`html/import-extension` passes) the `DOMRenderExtension` pipeline (`html/export-render` passes) the packages' import rules (`html/import-packages` passes), `clipboard`'s HTML path with its extensions (`html/clipboard` passes) and `BlockIdHTMLExtension` (`html/block-id` passes) (clipboard's JSON and plain-text paths are done, see M6) |
 | M5 | `markdown`, and Markdown shortcuts in both playgrounds | `markdown/import-export`, `property/documents` (Markdown), `scripts/markdown-shortcuts` | done ([Markdown thread](https://ampcode.com/threads/T-01a1daf1-150e-709b-aaed-996443a64459)): import, export, the transformers and `registerMarkdownShortcuts` (`markdown/import-export`, the Markdown of `property/documents` and `scripts/markdown-shortcuts` pass), registered in `lexical-playground-core`, whose Return dispatches `KEY_ENTER_COMMAND`, so both desktop playgrounds have the shortcuts |
 | M6 | The rest of Swift's feature set: the extension API's bundled extensions (`ClearEditor`, `InitialState`, `EditorState`, `TabIndentation`, `NodeStructure`, `SelectBlock` and the others Swift has), clipboard (JSON copy and paste first, HTML once M4 lands), the rest of `selection` and `utils` (style helpers, `$wrapNodes`, `$splitNode`, `$dfs`...), `mark`, `file`, the devtools tree view, `text`'s root helpers, `a11y`'s announcements, code highlighting (Swift uses tree-sitter where JS uses Prism), the character limit, the menu, auto-embed, decorator block and table of contents logic, the remaining built-in commands, slots, node schemas and editable mode | `file/*`, `devtools/tree`, `scripts/text`, `scripts/extensions`, `scripts/mark`, `scripts/mark-extension`, `serialization/mark`, `html/mark-state`, `scripts/clipboard`, `scripts/package-extensions`, `scripts/selection-utils`, `scripts/nested-editor`, `scripts/character-limit`, `scripts/table-of-contents`, `scripts/code-highlight`, and new JS vectors for the rest | in progress (this thread's owner: the [Rust port thread](https://ampcode.com/threads/T-16d45229-bfa8-417a-a091-d3e3888d830d), which also owns M1's extension API and the merges): `file`, the devtools tree view and `text`'s root helpers are done (`file/*`, `devtools/tree` and `scripts/text` pass); `mark`'s model is done (`MarkNode` and its generated JSON, `$wrapSelectionInMarkNode`, `$unwrapMarkNode`, `$getMarkIDs`, and the `MarkStateExtension.ts` functions that need no extension; `scripts/mark` and `serialization/mark` pass), and so are `MarkExtension`, `MarkStateExtension`, `MarkBaseExtension` and the mark flavors of `defineMarkExtension` (`markableNodes`, `disabled`, the `markIDNodeKeys` output, `registerMarkIDsListener`, the inserted-text rule with composition, and the HTML export and import of the ids; `scripts/mark-extension` and `html/mark-state` pass), less the renderer's `$decorateMarkIDs` and `isMarkIDShown` (rust/PARITY.md); the model of `selection` and `utils` is done (the style helpers, `$wrapNodes`, `$splitNode`, `$dfs` and the rest Swift has but what needs the DOM, computed styles or `File`, with `$dfsWithSlots` and its forms since slots landed; `scripts/selection-utils` and `scripts/slots` pass); `clipboard`'s JSON and plain-text paths are done (`scripts/clipboard` passes, with `registerRichText`'s and `registerPlainText`'s copy, cut and paste handlers), and its HTML path comes with M4; of the bundled extensions, `ClearEditor`, `InitialState`, `EditorState`, `NormalizeInlineElements`, `TabIndentation`, `SelectBlock`, `PreventSelectAll`'s config and `BlockId` (ids, their repair, positional and derived ids, handles; `scripts/block-id` passes) are done (`scripts/extensions`, `scripts/package-extensions`); the character limit is done (`useCharacterLimit.ts` under `overflow`, with grapheme clusters from generated Unicode tables; `scripts/character-limit` passes), and so is the table of contents (`LexicalTableOfContentsPlugin.tsx` under `rich-text`, on the core's root element and mutation listeners; `scripts/table-of-contents` passes); `NodeStructure` is done (`LexicalStructure.ts` with its core and package call sites and `NodeStructureExtension`; `scripts/node-structure` passes, and `BlockId`'s peer on it resolves); `NestedEditor` is done (the core's parent editor, command propagation to it and `read(mode)`, `NestedEditorExtension`, and with them `$isEditorIsNestedEditor`, `SharedHistoryExtension`'s default parent and `SelectBlockExtension`'s `cascadeSelection`; `scripts/nested-editor` passes); `NodeSelection` and `HorizontalRule` are done (`scripts/horizontal-rule` passes), less the rule's selected class, which needs its DOM; the input extensions are done on the commands an app's view sends (`KeyboardShortcuts` with `formatKeyboardShortcut`, `ClickAfterLastBlock`, `NormalizeTripleClickSelection`, `IME`, `AutoFocus`, `@lexical/link`'s `ClickableLink` with an app's `LinkWindow`, and the builder's `namespace` and disposal; `scripts/input-extensions` passes), and so is `BlockWithAlignableContents` as an extension, as Swift has it; `a11y`'s announcements are done (the live region model with an app's `LiveRegionHost`, `AriaLiveRegionExtension`, `HistoryAnnounceExtension`, `EditorModeAnnounceExtension`, `HeadingAnnounceExtension` and `AutoLinkAnnounceExtension`, on the core's new root element, mutation listeners, the reconciler's model half, editable listeners and `$onUpdate`; `scripts/a11y` passes), and so are `DecoratorBlockNode` (`scripts/decorator-block`, `serialization/decorator-block`), the menu's text matching and state (`scripts/menu`) and auto-embed (`scripts/auto-embed`), less the a11y focus helpers (rust/PARITY.md); code highlighting's loop is done (`code-highlight`: `registerCodeHighlighting`, `registerHighlightingOnly` and `CodePrismExtension` over a `Tokenizer` trait, with Shiki's lazy languages; `scripts/code-highlight` passes), without a tokenizer: Prism's grammars and Swift's tree-sitter would be third-party dependencies, so apps supply one; the remaining built-in commands are done (the DOM event commands and their payloads, `LexicalKeyboardShortcuts.ts`, and `LexicalEvents.ts`' keydown, beforeinput and composition handlers with composition through the core; `scripts/events` and `scripts/events-apple` pass), and so are the packages' handlers of them that Swift has at the model level (rich and plain text's keys, clicks, pastes of files and drag and drop with `RichTextConfig`, the list's Backspace, code indentation's keys, `TabIndentationExtension`'s Tab, the link's paste of a URL and the menus' keys; `scripts/key-handlers` passes), less the check list's focus keys (rust/PARITY.md) |
-| M7 | Releases: the mirror, changesets, a name tmm settles | | |
+| M7 | Releases: the mirror, changesets, a name tmm settles | | the release process is in (see Releases); waiting on tmm's one-time steps and first publish |
 
 The `scenarios/*` vectors, recorded from a real browser, need a text
 layout behind `Selection.modify`; the playgrounds' binding replays them once
@@ -356,10 +358,52 @@ later; the crate stays on 1.88), and both depend on
 - To try one: `cargo run --release` in its directory. On macOS a
   `bundle.sh` runner makes a `.app` that stays in the Dock, as zbugs' do.
 
-## Releases (planned for M7)
+## Releases
 
-Like the Swift port: a Changesets-versioned `rust/`, a `rust-release.yml`
-that, on a merged version pull request, pushes a subtree split of `rust/` to
-wevm/lexical-rust (github-sts, as `swift/` does), tags it and creates a
-GitHub release. crates.io's first publish is by hand by tmm, after the name
-is settled; nothing is published before then.
+As the Swift port releases (`swift/AGENTS.md`, Releases), with crates.io on
+top:
+
+- **Changesets.** A user-facing change to `lexical-editor` adds a changeset
+  in `rust/.changeset/` (its README has the format; bodies are in the past
+  tense). The crate's version is the one in `lexical-editor/Cargo.toml`;
+  `CHANGELOG.md` has a section per release, naming `UPSTREAM_VERSION`.
+  Neither is edited by hand. The other crates stay at the workspace's
+  `0.0.0` and are never published.
+- **The version pull request.** While changesets are pending,
+  `.github/workflows/rust-release.yml` keeps a `chore(rust): version
+  packages` pull request open, made by `scripts/version-packages.sh` (which
+  also bumps the crate's entry in `Cargo.lock` and the playgrounds'
+  lockfiles), and starts the Rust workflow on it. It merges, squashed, once
+  that run is green; no one approves it.
+- **The release.** On the merge, the workflow pushes a subtree split of
+  `rust/` to wevm/lexical-rust (github-sts, with the policy in
+  `rust/.github/sts/mirror.sts.yaml` and the `rust-release` environment),
+  tags the version there, creates a GitHub release from the version's
+  `CHANGELOG.md` section, then publishes the crate with `cargo publish`
+  when the `CARGO_REGISTRY_TOKEN` secret exists. Each step is skipped when
+  it has happened, so a failed run can be rerun. `rust.yml` packages the
+  crate on every run (`cargo publish --dry-run --all-features`).
+- **The first release** (0.1.0, from `rust/.changeset/first-release.md`)
+  needs tmm first, once:
+  1. Create the `rust-release` environment on wevm/lexical, with
+     deployments limited to `main` and no reviewers, as `swift-release`.
+  2. Create wevm/lexical-rust, public and empty (no README or license), and
+     add it to the GitHub STS app's installation, as wevm/lexical-swift is.
+  3. Push the first split by hand, from a `main` that has
+     `rust/.github/sts/mirror.sts.yaml` (the STS policy is read from the
+     mirror's `main`, so the workflow can't push the first one):
+     `git clone https://github.com/wevm/lexical.git && cd lexical && git subtree split --prefix=rust -b rust-mirror && git push git@github.com:wevm/lexical-rust.git rust-mirror:main`.
+  4. Then the version pull request merges, and the workflow tags 0.1.0 on
+     the mirror and creates its release; the crate step is skipped with a
+     notice, as there's no token yet. Until step 2 is done, the workflow
+     fails with an error naming the missing mirror.
+  5. Publish 0.1.0 by hand, so the crate is registered to tmm. `cargo
+     login` takes a crates.io API token with the `publish-new` scope (and
+     crates.io needs a verified email):
+     `git clone --branch 0.1.0 https://github.com/wevm/lexical-rust.git && cd lexical-rust && cargo login && cargo publish -p lexical-editor --locked`.
+  6. Create a crates.io API token (Account Settings, API Tokens) with the
+     `publish-update` scope for the crate `lexical-editor`, and add it as
+     the `CARGO_REGISTRY_TOKEN` secret of the `rust-release` environment.
+     From then on, CI publishes each release.
+
+  A rename comes before step 5 (see The name).

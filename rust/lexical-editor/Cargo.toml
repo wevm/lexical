@@ -1,6 +1,8 @@
 [package]
 name = "lexical-editor"
-version.workspace = true
+# The released version: rust/scripts/version-packages.sh bumps it from the
+# changesets in rust/.changeset (its README). Don't edit it by hand.
+version = "0.0.0"
 description = "A Rust port of Lexical's model and headless packages, at parity with the JS implementation."
 edition.workspace = true
 rust-version.workspace = true
@@ -9,8 +11,12 @@ repository.workspace = true
 readme = "README.md"
 keywords = ["lexical", "editor", "rich-text"]
 categories = ["text-processing"]
-# Nothing is published until tmm settles the name (rust/DESIGN.md).
-publish = false
+# Published to crates.io by .github/workflows/rust-release.yml (rust/DESIGN.md,
+# Releases); never by hand, except tmm's first publish.
+
+# docs.rs documents every feature, as `cargo doc --all-features` does in CI.
+[package.metadata.docs.rs]
+all-features = true
 
 # One feature per upstream package, added as each package is ported
 # (rust/DESIGN.md, "Packages and features"). The core (`lexical`) is always

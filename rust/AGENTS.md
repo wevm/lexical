@@ -19,7 +19,8 @@ you port.
 - **No third-party dependencies** in the default build; put one behind an
   opt-in feature.
 - **The crate name is provisional.** Other crates depend on it as `lexical`;
-  don't spread `lexical_editor` further than DESIGN.md lists. Never publish.
+  don't spread `lexical_editor` further than DESIGN.md lists. Never publish
+  by hand: `rust-release.yml` publishes (see Releases).
 - Vectors come from `packages/lexical-conformance` (JS). Never edit one by
   hand or write one from Rust; see `swift/AGENTS.md`, "Vectors".
 
@@ -58,3 +59,24 @@ pnpm --filter lexical-conformance run check-ledger
 
 Pull requests follow `swift/AGENTS.md` (conventional-commit titles such as
 `feat(rust): ...`, squash-merged, merged once CI is green).
+
+## Changesets
+
+A user-facing change to the `lexical-editor` crate (API, behavior, types,
+features, minimum Rust version) adds a changeset in `rust/.changeset/` in
+the same pull request; its README has the format. Write its body in the
+past tense ("Added …", "Changed …", "Fixed …"). A break needs a `minor`
+changeset below 1.0. Tests, the conformance runner, the playgrounds and CI
+need none. Don't edit `rust/CHANGELOG.md` or the crate's version by hand.
+
+## Releases
+
+While changesets are pending, the Rust Release workflow keeps a
+`chore(rust): version packages` pull request open, made by
+`rust/scripts/version-packages.sh`, and starts the Rust workflow on it.
+Merging it (squash, once that run is green) is the release: the workflow
+publishes the mirror (wevm/lexical-rust), the tag, the GitHub release from
+that version's `CHANGELOG.md` section, and the crate on crates.io. The
+`rust-release` environment only limits deployments to `main`; no one
+approves them. DESIGN.md, Releases, has the one-time steps tmm takes before
+the first release.

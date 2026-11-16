@@ -5,6 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
+import {CodeExtension} from '@lexical/code-core';
 import {
   buildEditorFromExtensions,
   HorizontalRuleExtension,
@@ -23,12 +24,16 @@ import {
   contextValue,
   CoreImportExtension,
   createRenderState,
+  DOMImportExtension,
   domOverride,
   type DOMRenderConfig,
   DOMRenderExtension,
   RenderContextExport,
   RenderContextRoot,
 } from '@lexical/html';
+import {LinkExtension} from '@lexical/link';
+import {CheckListExtension, WordListImportExtension} from '@lexical/list';
+import {RichTextExtension, ShadowRootQuoteRule} from '@lexical/rich-text';
 import {JSDOM} from 'jsdom';
 import {
   $createLineBreakNode,
@@ -677,6 +682,115 @@ test('html/export-render', () => {
     'html/export-render',
     'html-export-render',
     'Documents (a fixed one and seeded random core-node ones) exported through DOMRenderExtension overrides, by scenario: overrides by class, predicate and wildcard composed in order, $createDOM, $shouldInclude with $extractWithChild, $shouldExclude, disabledForEditor (and $setRenderContextValue lifting it), disabledForSession, and render context values. Each is exported with $generateHtmlFromNodes (`html`), $generateDOMFromRoot (`root`), and, for `context`, inside $withRenderContext (`scoped`), in jsdom. The scenarios are code in html.test.ts that each runner repeats.',
+    cases,
+  );
+});
+
+/**
+ * HTML for the packages' import rules (`RichTextImportRules`,
+ * `ListImportRules`, `LinkImportRules`, `CodeImportRules` with its VS Code
+ * overlay, and `WordListImportExtension`) that NODES_IMPORT_CORPUS doesn't
+ * reach.
+ */
+const PACKAGE_IMPORT_CORPUS = [
+  '<h2 data-lexical-indent="1" style="text-align: right" dir="rtl">h <b>b</b></h2>',
+  '<blockquote data-lexical-indent="1"><h1>h</h1>x<p>p</p></blockquote>',
+  '<span style="font-size: 26pt">bare title</span><p><span style="font-size: 26pt">t</span> after</p>',
+  '<p><b>x</b><span style="font-size: 26pt">not first</span></p>',
+  '<ul><li>1<div>2</div>3</li><li>a<blockquote>q</blockquote><h3>h</h3>b</li></ul>',
+  '<ul><li>a<hr>b</li><li><p>one</p><p>two</p></li></ul>',
+  '<ul><li><p style="text-align: center">c</p></li><li style="text-align: left"><p style="text-align: right">kept</p></li></ul>',
+  '<ul style="text-align: center" dir="rtl"><li>a</li><li style="text-align: left">b</li></ul>',
+  '<ol start="0"><li>z</li></ol><ol><li>a<ol><li>b</li><li>c</li></ol></li><li>d</li></ol>',
+  '<ul><li>x<ul><li>y</li></ul>z</li></ul>',
+  '<ul><li class="task-list-item">no box</li><li class="task-list-item"><span><input type="checkbox" checked></span>deep</li><li class="task-list-item"><input type="radio" checked>radio</li></ul>',
+  '<ul><li class="joplin-checkbox">no wrapper</li><li class="joplin-checkbox"><div class="checkbox-wrapper">none</div>x</li></ul>',
+  '<ul><li><span aria-checked="true">s</span></li></ul><ul><li aria-checked="mixed">m</li></ul>',
+  '<a href="https://a.test"><h1>head</h1>tail<div>div</div></a>',
+  '<a href="x" rel="nofollow"></a><a href="y"><img></a><p><a>no href</a></p>',
+  '<pre>a<br>b<div>c</div>d</pre><pre data-language="py"><span>x</span>\n<b>y</b></pre>',
+  '<code>a\r\nb</code><code data-language="ts" data-theme="t"><span>one<br>two</span></code>',
+  '<div style="font-family: Courier, monospace"><p>p1</p><p>p2</p>tail</div>',
+  '<div style="font-family: monospace"><div style="font-family: monospace">inner</div></div>',
+  '<table class="js-file-line-container"><tbody><tr><td>1</td><td class="js-file-line"><span>x</span>\ty</td></tr></tbody></table>',
+  '<td class="js-file-line">stray cell</td><p>p</p>',
+  '<div style="font-family: Menlo, Monaco, monospace; white-space: pre"><div>line 1</div><br><div>  line 3</div></div>',
+  '<div style="font-family: Menlo, monospace; white-space: pre">a</div><div style="font-family: Menlo, monospace; white-space: pre">b</div><br style="font-family: Menlo, monospace; white-space: pre"><div style="font-family: Menlo, monospace; white-space: pre">d</div>',
+  '<div style="font-family: monospace; white-space: pre">only one</div><p>after</p>',
+  '<div style="font-family: monospace; white-space: pre-wrap"><span>x</span>y<div>z</div></div>',
+  '<html><head><meta name="Generator" content="Microsoft Word 15"></head><body><p class="MsoListParagraphCxSpFirst" style="mso-list:l0 level1 lfo1"><span><span style="mso-list:Ignore">1.<span>  </span></span></span>one<o:p></o:p></p><p class="MsoListParagraphCxSpMiddle" style="mso-list:l0 level2 lfo1"><span><span style="mso-list:Ignore">a)<span> </span></span></span>nested</p><p class="MsoListParagraphCxSpLast" style="mso-list:l0 level1 lfo1"><span style="mso-list:Ignore">2.</span>two</p><p class="MsoNormal">after<o:p></o:p></p></body></html>',
+  '<html><head><meta name="Generator" content="Microsoft Word 15"></head><body><p class="MsoListParagraph" style="mso-list:l1 level1 lfo2"><span style="mso-list:Ignore">·<span> </span></span>single</p><p class="MsoListParagraph" style="mso-list:l1 level1 lfo2"><span style="mso-list:Ignore">·</span>second</p></body></html>',
+  '<p class="MsoListParagraph" style="mso-list:l0 level1 lfo1"><span style="mso-list:Ignore">1.</span>not word</p>',
+];
+
+/** Blockquotes, imported with `ShadowRootQuoteRule` too. */
+const SHADOW_ROOT_QUOTE_CORPUS = [
+  '<blockquote><p>a</p><p>b</p></blockquote>',
+  '<blockquote style="text-align: right" dir="ltr">quote<br>more</blockquote>',
+  '<blockquote data-lexical-indent="1"><h1>h</h1>x<p>p</p></blockquote>',
+];
+
+// Builds an editor per case (about 4.5 s in all), near vitest's 5 s default.
+test('html/import-packages', {timeout: 60_000}, () => {
+  const htmls: [string, boolean][] = [
+    ...[
+      ...IMPORT_CORPUS,
+      ...IMPORT_EXTENSION_CORPUS,
+      ...NODES_IMPORT_CORPUS,
+      ...PACKAGE_IMPORT_CORPUS,
+      ...JSON.parse(
+        readFileSync(
+          new URL('../vectors/property/documents.json', import.meta.url),
+          'utf8',
+        ),
+      )
+        .cases.map((c: {html?: string | null}) => c.html)
+        .filter((html: unknown): html is string => typeof html === 'string'),
+    ].map(html => [html, false] as [string, boolean]),
+    ...SHADOW_ROOT_QUOTE_CORPUS.map(html => [html, true] as [string, boolean]),
+  ];
+  const cases: (ImportCase & {shadowRootQuote?: boolean})[] = htmls.map(
+    ([html, shadowRootQuote]) => {
+      const editor = buildEditorFromExtensions(
+        defineExtension({
+          dependencies: [
+            RichTextExtension,
+            CheckListExtension,
+            LinkExtension,
+            CodeExtension,
+            WordListImportExtension,
+            HorizontalRuleExtension,
+            ...(shadowRootQuote
+              ? [
+                  configExtension(DOMImportExtension, {
+                    rules: [ShadowRootQuoteRule],
+                  }),
+                ]
+              : []),
+          ],
+          name: '[conformance]',
+        }),
+      );
+      let nodes = '';
+      withJSDOM(() => {
+        const dom = new JSDOM(html).window.document;
+        editor.update(
+          () => {
+            nodes = JSON.stringify(
+              $generateNodesFromDOMViaExtension(dom).map($nodeToJSON),
+            );
+          },
+          {discrete: true},
+        );
+      });
+      editor.dispose();
+      return {html, nodes, ...(shadowRootQuote ? {shadowRootQuote} : {})};
+    },
+  );
+  emitVectors(
+    'html/import-packages',
+    'html-import',
+    "HTML (the html/import, html/import-extension and html/import-nodes corpora, curated cases for each package's import rules, and every property/documents HTML export) and the nodes DOMImportExtension's $generateNodesFromDOM makes from it in a jsdom document, in an editor built from RichTextExtension, CheckListExtension, LinkExtension, CodeExtension, WordListImportExtension and HorizontalRuleExtension (and, for `shadowRootQuote`, ShadowRootQuoteRule), each as exportJSON with its children.",
     cases,
   );
 });

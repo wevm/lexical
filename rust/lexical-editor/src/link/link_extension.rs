@@ -193,9 +193,13 @@ mod extension {
                     })
                 },
             )),
-            // JS's dependencies, `CoreImportExtension` and
-            // `DOMImportExtension` with `LinkImportRules`, are the HTML
-            // import, which comes with `html`.
+            // `CoreImportExtension` and `DOMImportExtension` with
+            // `LinkImportRules`: the HTML import, with `html`.
+            #[cfg(feature = "html")]
+            dependencies: crate::html::import::package_import_dependencies(
+                crate::link::link_import_rules(),
+                Vec::new(),
+            ),
             merge_config: Some(Rc::new(merge_link_config)),
             nodes: vec![NodeClass::of::<LinkNode>()],
             register: Some(Rc::new(

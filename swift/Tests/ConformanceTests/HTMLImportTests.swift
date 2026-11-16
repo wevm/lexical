@@ -15,18 +15,22 @@ import Testing
 /// node packages' (those of `property/documents` and `HorizontalRuleNode`).
 /// And `vectors/html/import-extension.json`: `DOMImportExtension`'s import,
 /// in an editor built from `CoreImportExtension` and `HorizontalRuleNode`,
-/// makes the nodes it made in a jsdom document.
+/// makes the nodes it made in a jsdom document. And
+/// `vectors/html/import-packages.json`: the same with the packages' import
+/// rules, in an editor built from their extensions.
 @Suite(.enabled(if: Vectors.available))
 struct HTMLImportTests {
   struct Case: Decodable, CustomTestStringConvertible, Sendable {
     let html: String
     let nodes: String
+    let shadowRootQuote: Bool?
     var testDescription: String { String(html.prefix(60)) }
   }
 
   static let cases: [Case] = (try? Vectors.load("html/import")) ?? []
   static let nodesCases: [Case] = (try? Vectors.load("html/import-nodes")) ?? []
   static let extensionCases: [Case] = (try? Vectors.load("html/import-extension")) ?? []
+  static let packageCases: [Case] = (try? Vectors.load("html/import-packages")) ?? []
 
   @Test func vectorsLoad() throws {
     #expect(try Vectors.load("html/import", as: Case.self).count == Self.cases.count)
@@ -36,6 +40,9 @@ struct HTMLImportTests {
     #expect(
       try Vectors.load("html/import-extension", as: Case.self).count == Self.extensionCases.count)
     #expect(!Self.extensionCases.isEmpty)
+    #expect(
+      try Vectors.load("html/import-packages", as: Case.self).count == Self.packageCases.count)
+    #expect(!Self.packageCases.isEmpty)
   }
 
   /// A node and its subtree, as `exportJSON` writes each node.
@@ -71,6 +78,29 @@ struct HTMLImportTests {
       defineExtension(
         name: "[conformance]", dependencies: [CoreImportExtension],
         nodes: { [.klass(HorizontalRuleNode.self)] }))
+    defer { editor.dispose() }
+    let dom = DOMParser().parseFromString(vector.html, "text/html")
+    var nodes = ""
+    try editor.update(
+      {
+        nodes = try JSONValue.array(generateNodesFromDOMViaExtension(dom).map(Self.nodeToJSON))
+          .stringify()
+      }, EditorUpdateOptions(discrete: true))
+    #expect(nodes == vector.nodes)
+  }
+
+  @Test(arguments: packageCases)
+  func importViaPackageExtensions(_ vector: Case) throws {
+    var dependencies: [any AnyLexicalExtensionArgument] = [
+      RichTextExtension, CheckListExtension, LinkExtension, CodeExtension,
+      WordListImportExtension, HorizontalRuleExtension,
+    ]
+    if vector.shadowRootQuote == true {
+      dependencies.append(
+        configExtension(DOMImportExtension) { $0.rules = [ShadowRootQuoteRule.entry] })
+    }
+    let editor = try buildEditorFromExtensions(
+      defineExtension(name: "[conformance]", dependencies: dependencies))
     defer { editor.dispose() }
     let dom = DOMParser().parseFromString(vector.html, "text/html")
     var nodes = ""

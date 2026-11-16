@@ -56,9 +56,14 @@ mod extension {
 
     fn make_code_extension() -> Rc<CodeExtensionType> {
         define_extension(LexicalExtension {
-            // JS's dependencies, `CoreImportExtension` and
-            // `DOMImportExtension` with `CodeImportRules` and the VS Code
-            // paste overlay, are the HTML import, which comes with `html`.
+            // `CoreImportExtension` and `DOMImportExtension` with
+            // `CodeImportRules` and the VS Code paste overlay: the HTML
+            // import, with `html`.
+            #[cfg(feature = "html")]
+            dependencies: crate::html::import::package_import_dependencies(
+                crate::code::code_import_rules(),
+                vec![crate::code::install_vscode_code_paste_overlay()],
+            ),
             nodes: code_nodes(),
             register: Some(Rc::new(
                 |editor: &Editor, _: &(), _: &ExtensionRegisterState<(), ()>| {

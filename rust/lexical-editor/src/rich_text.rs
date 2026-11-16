@@ -44,12 +44,16 @@ use crate::{CUT_TAG, Editor, LexicalError, NodeClass, PASTE_TAG, Unregister, Upd
 
 #[cfg(feature = "extension")]
 mod lexical_rich_text_extension;
+#[cfg(all(feature = "html", feature = "extension"))]
+mod rich_text_import_extension;
 mod table_of_contents;
 
 pub use table_of_contents::{TableOfContentsEntry, register_table_of_contents};
 
 #[cfg(feature = "extension")]
 pub use lexical_rich_text_extension::{RichTextExtensionType, rich_text_extension};
+#[cfg(all(feature = "html", feature = "extension"))]
+pub use rich_text_import_extension::{rich_text_import_rules, shadow_root_quote_rule};
 #[cfg(feature = "a11y")]
 mod heading_announce_extension;
 #[cfg(feature = "a11y")]

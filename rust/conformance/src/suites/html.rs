@@ -398,3 +398,60 @@ pub fn check_export_render(case: &Value, _file: &Value) -> Result<Outcome, Strin
     )?;
     Ok(Outcome::Pass)
 }
+
+/// `html/import-packages`: `DOMImportExtension`'s import with the
+/// packages' rules, in an editor built from `RichTextExtension`,
+/// `CheckListExtension`, `LinkExtension`, `CodeExtension`,
+/// `WordListImportExtension` and `HorizontalRuleNode` (and, for
+/// `shadowRootQuote`, `ShadowRootQuoteRule`).
+pub fn check_import_packages(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    use lexical::html::import::{
+        DomImportConfigOverrides, dom_import_extension, generate_nodes_from_dom_via_extension,
+    };
+    use lexical::{LexicalExtension, config_extension, define_extension};
+    let mut dependencies = vec![
+        lexical::rich_text::rich_text_extension().into(),
+        lexical::list::check_list_extension().into(),
+        lexical::link::link_extension().into(),
+        lexical::code::code_extension().into(),
+        lexical::list::word_list_import_extension().into(),
+    ];
+    if case.get("shadowRootQuote").and_then(Value::as_bool) == Some(true) {
+        dependencies.push(config_extension(
+            &dom_import_extension(),
+            [DomImportConfigOverrides {
+                rules: Some(vec![lexical::rich_text::shadow_root_quote_rule().into()]),
+                ..Default::default()
+            }],
+        ));
+    }
+    // `HorizontalRuleExtension` isn't ported; its node is.
+    let host = define_extension(LexicalExtension::<(), (), ()> {
+        dependencies,
+        nodes: lexical::extension::extension_nodes()
+            .into_iter()
+            .filter(|class| class.node_type() == "horizontalrule")
+            .collect(),
+        ..LexicalExtension::new("[conformance]", ())
+    });
+    let editor = lexical::extension::build_editor_from_extensions([host.into()])
+        .map_err(|e| e.to_string())?;
+    let dom = parse_from_string(case.str("html")?);
+    let nodes = Rc::new(RefCell::new(String::new()));
+    let out = nodes.clone();
+    let result = editor.update(
+        move || {
+            let nodes = generate_nodes_from_dom_via_extension(&dom, None)?;
+            *out.borrow_mut() = Value::Array(nodes.iter().map(node_to_json).collect()).to_string();
+            Ok(())
+        },
+        UpdateOptions {
+            discrete: true,
+            ..UpdateOptions::default()
+        },
+    );
+    editor.dispose();
+    result.map_err(|e| e.to_string())?;
+    same("nodes", nodes.borrow().as_str(), case.str("nodes")?)?;
+    Ok(Outcome::Pass)
+}

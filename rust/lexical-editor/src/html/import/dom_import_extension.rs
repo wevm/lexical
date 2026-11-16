@@ -292,3 +292,29 @@ pub fn generate_nodes_from_dom_via_extension(
         .ok_or_else(|| LexicalError::new("DOMImportExtension has a build"))?
         .generate_nodes_from_dom(dom, options)
 }
+
+/// The dependencies a node package's extension gives itself for HTML
+/// import: `CoreImportExtension`, and `DOMImportExtension` with the
+/// package's `rules` and `preprocess`.
+#[cfg(any(
+    feature = "rich-text",
+    feature = "list",
+    feature = "link",
+    feature = "code"
+))]
+pub(crate) fn package_import_dependencies(
+    rules: Vec<DomImportRule>,
+    preprocess: Vec<DomPreprocessFn>,
+) -> Vec<crate::extension_core::AnyLexicalExtensionArgument> {
+    vec![
+        core_import_extension().into(),
+        config_extension(
+            &dom_import_extension(),
+            [DomImportConfigOverrides {
+                rules: (!rules.is_empty()).then(|| rules.into_iter().map(Into::into).collect()),
+                preprocess: (!preprocess.is_empty()).then_some(preprocess),
+                ..DomImportConfigOverrides::default()
+            }],
+        ),
+    ]
+}

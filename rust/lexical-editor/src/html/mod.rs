@@ -6,16 +6,39 @@
 //!
 //! From `packages/lexical-html/src/index.ts`. [`import`] has
 //! `$inlineStylesFromStyleSheets`, and with the `extension` feature too the
-//! `DOMImportExtension` pipeline.
+//! `DOMImportExtension` pipeline. With the `extension` feature this module
+//! also has `DOMRenderExtension` ([`dom_render_extension`]), whose
+//! overrides and render context the export reads.
 
 pub mod import;
 #[cfg(feature = "extension")]
 pub(crate) mod internal;
 
+#[cfg(feature = "extension")]
+pub use internal::dom_render_extension::{
+    DomRenderExtensionOutput, DomRenderExtensionType, DomRenderInitResult, dom_override,
+    dom_render_extension,
+};
+#[cfg(feature = "extension")]
+pub use internal::dom_render_runtime::DomRenderRuntime;
+#[cfg(feature = "extension")]
+pub use internal::render_context::{
+    create_render_state, get_render_context_value, get_session_dom_render_config,
+    render_context_export, render_context_root, set_render_context_value,
+    update_render_context_value, with_render_context,
+};
+#[cfg(feature = "extension")]
+pub use internal::types::{
+    CreateDomOverride, DomOverrideOptions, DomRenderConfig, DomRenderConfigOverrides,
+    DomRenderMatch, DomRenderMatchConfig, ExportDomOverride, ExtractWithChildOverride, NodeMatch,
+    NodePredicate, RenderContextReader, RenderGate, RenderNext, RenderStateConfig,
+    SelectionOverride,
+};
+
 use crate::dom::DomNode;
 use crate::lexical_dom::{
-    DomChildConversion, DomConversionNode, export_dom, extract_with_child, get_conversion_function,
-    get_document, is_block_dom_node, is_inline_dom_node, should_exclude, should_include,
+    DomChildConversion, DomConversionNode, EditorDomRenderConfig, get_conversion_function,
+    get_document, is_block_dom_node, is_inline_dom_node,
 };
 use crate::lexical_selection::SelectionRef;
 use crate::node::{LexicalNode, NodeRef};
@@ -61,27 +84,67 @@ pub fn generate_nodes_from_dom(
     Ok(lexical_nodes)
 }
 
+/// `$getSessionDOMRenderConfig(editor)`: the render config for this
+/// export, which overrides change only with the `extension` feature.
+fn session_dom_render_config(editor: &Editor) -> Result<EditorDomRenderConfig, LexicalError> {
+    #[cfg(feature = "extension")]
+    return get_session_dom_render_config(editor);
+    #[cfg(not(feature = "extension"))]
+    Ok(crate::lexical_dom::get_editor_dom_render_config(editor))
+}
+
+/// `$withRenderContext([RenderContextExport: true, RenderContextRoot:
+/// root], editor)(f)`, with the `extension` feature.
+fn with_export_context<T>(
+    editor: &Editor,
+    root: bool,
+    f: impl FnOnce() -> Result<T, LexicalError>,
+) -> Result<T, LexicalError> {
+    #[cfg(feature = "extension")]
+    {
+        use internal::context_record::context_value;
+        let mut cfg = vec![context_value(&render_context_export(), true)];
+        if root {
+            cfg.push(context_value(&render_context_root(), true));
+        }
+        with_render_context(&cfg, editor, f)
+    }
+    #[cfg(not(feature = "extension"))]
+    {
+        let _ = (editor, root);
+        f()
+    }
+}
+
 /// `$generateDOMFromNodes(container, selection, editor)`: appends the DOM
-/// of the root's children (or of what `selection` covers) to `container`.
+/// of the root's children (or of what `selection` covers) to `container`,
+/// through the editor's render config, with `RenderContextExport` set.
 pub fn generate_dom_from_nodes(
     container: &DomNode,
     selection: Option<&SelectionRef>,
     editor: &Editor,
 ) -> Result<(), LexicalError> {
-    for top_level_node in get_root().get_children() {
-        append_nodes_to_html(editor, &top_level_node, container, selection)?;
-    }
-    Ok(())
+    with_export_context(editor, false, || {
+        let dom_config = session_dom_render_config(editor)?;
+        for top_level_node in get_root().get_children() {
+            append_nodes_to_html(editor, &top_level_node, container, selection, &dom_config)?;
+        }
+        Ok(())
+    })
 }
 
 /// `$generateDOMFromRoot(container, root)`: appends the DOM of `root`,
-/// itself included, to `container`.
+/// itself included, to `container`, through the editor's render config,
+/// with `RenderContextExport` and `RenderContextRoot` set.
 pub fn generate_dom_from_root(
     container: &DomNode,
     root: &NodeRef,
     editor: &Editor,
 ) -> Result<(), LexicalError> {
-    append_nodes_to_html(editor, root, container, None).map(|_| ())
+    with_export_context(editor, true, || {
+        let dom_config = session_dom_render_config(editor)?;
+        append_nodes_to_html(editor, root, container, None, &dom_config).map(|_| ())
+    })
 }
 
 /// `$generateHtmlFromNodes(editor, selection)`: the HTML of the editor
@@ -105,7 +168,10 @@ pub fn append_node_to_html(
     parent_element: &DomNode,
     selection: Option<&SelectionRef>,
 ) -> Result<bool, LexicalError> {
-    append_nodes_to_html(editor, node, parent_element, selection)
+    // Through the session, so the overrides apply to a slot subtree as to
+    // the content around it.
+    let dom_config = session_dom_render_config(editor)?;
+    append_nodes_to_html(editor, node, parent_element, selection, &dom_config)
 }
 
 /// `$appendTerminatingLineBreak(element, lastIncludedChild)`: a block
@@ -192,16 +258,17 @@ fn append_nodes_to_html(
     current_node: &NodeRef,
     parent: &DomNode,
     selection: Option<&SelectionRef>,
+    dom_config: &EditorDomRenderConfig,
 ) -> Result<bool, LexicalError> {
-    let mut include = should_include(current_node, selection)?;
-    let exclude = should_exclude(current_node);
+    let mut include = (dom_config.should_include)(current_node, selection, editor)?;
+    let exclude = (dom_config.should_exclude)(current_node, selection, editor)?;
     let target = match selection {
         Some(selection) if current_node.is_text() => {
             slice_selected_text_node_content(selection, current_node)?
         }
         _ => current_node.get_latest(),
     };
-    let export_props = export_dom(&*target, current_node, editor)?;
+    let export_props = (dom_config.export_dom)(&*target, current_node, editor)?;
     let Some(element) = export_props.element else {
         return Ok(false);
     };
@@ -220,13 +287,14 @@ fn append_nodes_to_html(
         };
     let mut last_included_child = None;
     for child_node in &children {
-        let include_child = append_nodes_to_html(editor, child_node, &fragment, child_selection)?;
+        let include_child =
+            append_nodes_to_html(editor, child_node, &fragment, child_selection, dom_config)?;
         if include_child {
             last_included_child = Some(child_node.clone());
         }
         if !include
             && include_child
-            && extract_with_child(current_node, child_node, selection, "html")?
+            && (dom_config.extract_with_child)(current_node, child_node, selection, "html", editor)?
         {
             include = true;
         }

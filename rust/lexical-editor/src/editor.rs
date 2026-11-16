@@ -189,7 +189,7 @@ pub const COMPOSITION_END_TAG: &str = "composition-end";
 /// `CreateEditorArgs`: the node classes to register besides the core ones,
 /// the editor's `namespace` (a random one, `createUID()`, when empty), the
 /// theme, and (with the `html` feature) the HTML import and export
-/// overrides.
+/// overrides and the render config.
 #[derive(Clone, Default)]
 pub struct CreateEditorArgs {
     pub nodes: Vec<NodeClass>,
@@ -201,6 +201,9 @@ pub struct CreateEditorArgs {
     /// `html`: export overrides by node type and extra import conversions.
     #[cfg(feature = "html")]
     pub html: crate::lexical_dom::HtmlConfig,
+    /// `dom`: the render config; `None` for the default.
+    #[cfg(feature = "html")]
+    pub dom: Option<crate::lexical_dom::EditorDomRenderConfig>,
 }
 
 /// `EditorConfig` (`editor._config`): what `createDOM` reads.
@@ -479,6 +482,10 @@ pub(crate) struct EditorInner {
     /// The `exportDOM` overrides of `html.export`, by node type.
     #[cfg(feature = "html")]
     pub(crate) html_export: HashMap<&'static str, crate::lexical_dom::ExportOverride>,
+    /// `_config.dom`, which `DOMRenderExtension` replaces when its overrides
+    /// change (here, not in [`EditorConfig`], which nodes borrow).
+    #[cfg(feature = "html")]
+    pub(crate) dom: RefCell<crate::lexical_dom::EditorDomRenderConfig>,
     /// `_config.namespace`.
     namespace: String,
     /// `_editable`.
@@ -577,6 +584,8 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         html_conversions,
         #[cfg(feature = "html")]
         html_export: args.html.export.into_iter().collect(),
+        #[cfg(feature = "html")]
+        dom: RefCell::new(args.dom.unwrap_or_default()),
         namespace,
         editable: Cell::new(true),
         slots_used: Cell::new(false),

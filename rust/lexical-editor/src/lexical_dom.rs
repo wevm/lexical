@@ -7,8 +7,11 @@
 //! `utils/classNames.ts` and `nodes/LexicalLineBreakNode.ts` that nodes and
 //! `@lexical/html` use. The DOM is [`crate::dom`].
 //!
-//! `DOMRenderExtension`'s overrides of the render config need the extension
-//! API, so an editor's render config is always the default one.
+//! An editor's render config ([`EditorDomRenderConfig`]) has the hooks of
+//! JS's that export reaches. The reconciler's (`$updateDOM`,
+//! `$decorateDOM`, `$getDOMSlot`, `$getSlotTargetElement`) have no use
+//! without a DOM to reconcile. `DOMRenderExtension`
+//! ([`crate::html::dom_render_extension`]) layers overrides over it.
 
 use crate::dom::DomNode;
 use crate::editor::NodeClass;
@@ -183,7 +186,65 @@ pub(crate) fn get_conversion_function(
     current.map(|c| c.conversion)
 }
 
-// `DEFAULT_EDITOR_DOM_CONFIG`.
+/// `$createDOM(node, editor)`: the DOM for a node value and its handle.
+pub type CreateDomHook =
+    Rc<dyn Fn(&dyn LexicalNode, &NodeRef, &Editor) -> Result<DomNode, LexicalError>>;
+
+/// `$exportDOM(node, editor)`: the DOM a node value (a sliced copy of a
+/// text node, when a selection cuts it) and its handle export.
+pub type ExportDomHook =
+    Rc<dyn Fn(&dyn LexicalNode, &NodeRef, &Editor) -> Result<DomExportOutput, LexicalError>>;
+
+/// `$extractWithChild(node, childNode, selection, destination, editor)`.
+pub type ExtractWithChildHook = Rc<
+    dyn Fn(&NodeRef, &NodeRef, Option<&SelectionRef>, &str, &Editor) -> Result<bool, LexicalError>,
+>;
+
+/// `$shouldInclude` and `$shouldExclude(node, selection, editor)`.
+pub type SelectionHook =
+    Rc<dyn Fn(&NodeRef, Option<&SelectionRef>, &Editor) -> Result<bool, LexicalError>>;
+
+/// `EditorDOMRenderConfig` (`@experimental`): how an editor turns nodes
+/// into DOM when it exports. [`Default`] is `DEFAULT_EDITOR_DOM_CONFIG`;
+/// replace hooks to change it, as `DOMRenderExtension` does.
+#[derive(Clone)]
+pub struct EditorDomRenderConfig {
+    pub create_dom: CreateDomHook,
+    pub export_dom: ExportDomHook,
+    pub extract_with_child: ExtractWithChildHook,
+    pub should_exclude: SelectionHook,
+    pub should_include: SelectionHook,
+}
+
+impl Default for EditorDomRenderConfig {
+    /// `DEFAULT_EDITOR_DOM_CONFIG`: [`create_dom`], [`export_dom`],
+    /// [`extract_with_child`], [`should_exclude`] and [`should_include`].
+    fn default() -> Self {
+        Self {
+            create_dom: Rc::new(create_dom),
+            export_dom: Rc::new(export_dom),
+            extract_with_child: Rc::new(|node, child, selection, destination, _| {
+                extract_with_child(node, child, selection, destination)
+            }),
+            should_exclude: Rc::new(|node, _, _| Ok(should_exclude(node))),
+            should_include: Rc::new(|node, selection, _| should_include(node, selection)),
+        }
+    }
+}
+
+/// `$getEditorDOMRenderConfig(editor)`: the editor's render config (its
+/// `dom`, or the default).
+pub fn get_editor_dom_render_config(editor: &Editor) -> EditorDomRenderConfig {
+    editor.0.dom.borrow().clone()
+}
+
+/// `editor._config.dom = dom`.
+#[cfg_attr(not(feature = "extension"), allow(dead_code))]
+pub(crate) fn set_editor_dom_render_config(editor: &Editor, dom: EditorDomRenderConfig) {
+    *editor.0.dom.borrow_mut() = dom;
+}
+
+// `DEFAULT_EDITOR_DOM_CONFIG`'s hooks.
 
 /// `$createDOM(node, editor)`: `node.createDOM(editor._config, editor)`.
 pub fn create_dom(
@@ -237,13 +298,15 @@ pub fn should_include(
     }
 }
 
-/// `LexicalNode.exportDOM(editor)`: the element `$createDOM` makes. The
-/// `ElementNode` and `TextNode` overrides call it.
+/// `LexicalNode.exportDOM(editor)`: the element the editor's render
+/// config's `$createDOM` makes. The `ElementNode` and `TextNode` overrides
+/// call it.
 pub fn export_dom_base(
     node: &dyn LexicalNode,
     this: &NodeRef,
     editor: &Editor,
 ) -> Result<DomExportOutput, LexicalError> {
+    let create_dom = get_editor_dom_render_config(editor).create_dom;
     Ok(DomExportOutput::element(create_dom(node, this, editor)?))
 }
 

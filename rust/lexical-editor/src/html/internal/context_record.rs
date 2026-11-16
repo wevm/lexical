@@ -14,12 +14,12 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-/// Which pipeline a record belongs to (JS `DOMImportContextSymbol`; the
-/// render pipeline's `DOMRenderContextSymbol` comes with
-/// `DOMRenderExtension`).
+/// Which pipeline a record belongs to (JS `DOMImportContextSymbol` and
+/// `DOMRenderContextSymbol`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ContextKind {
     Import,
+    Render,
 }
 
 thread_local! {

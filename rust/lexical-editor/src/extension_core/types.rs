@@ -79,15 +79,23 @@ pub type InitialEditorStateFn = Rc<dyn Fn(&Editor) -> Result<(), LexicalError>>;
 
 /// `InitialEditorConfig`: the editor configuration an extension contributes,
 /// and what `init` may change. Of JS's fields, the ones the port has: the
-/// node classes and `$initialEditorState`. `namespace`, `theme`, `html`,
-/// `editable`, `onError`, `onWarn`, `parentEditor`, `disableEvents` and
-/// `dom` are editor options a headless Rust editor doesn't have.
+/// node classes, `$initialEditorState`, and (with the `html` feature)
+/// `html` and `dom`. `namespace`, `theme`, `editable`, `onError`,
+/// `onWarn`, `parentEditor` and `disableEvents` aren't wired through the
+/// builder yet.
 #[derive(Clone, Default)]
 pub struct InitialEditorConfig {
     /// `nodes`.
     pub nodes: Vec<NodeClass>,
     /// `$initialEditorState`; `None` is JS's `undefined`.
     pub initial_editor_state: Option<InitialEditorStateType>,
+    /// `html`: the extensions' export overrides and import conversions.
+    #[cfg(feature = "html")]
+    pub html: crate::lexical_dom::HtmlConfig,
+    /// `dom`: the render config, which only `init` sets (as
+    /// `DOMRenderExtension` does); `None` for the default.
+    #[cfg(feature = "html")]
+    pub dom: Option<crate::lexical_dom::EditorDomRenderConfig>,
 }
 
 /// `init` (`LexicalExtension.init`).
@@ -143,6 +151,9 @@ pub struct LexicalExtension<
     pub nodes: Vec<NodeClass>,
     /// `$initialEditorState`.
     pub initial_editor_state: Option<InitialEditorStateType>,
+    /// `html`: `exportDOM` overrides by node type and import conversions.
+    #[cfg(feature = "html")]
+    pub html: crate::lexical_dom::HtmlConfig,
     pub init: Option<ExtensionInitFn<Config, Init>>,
     pub build: Option<ExtensionBuildFn<Config, Output, Init>>,
     pub register: Option<ExtensionRegisterFn<Config, Output, Init>>,
@@ -163,6 +174,8 @@ impl<Config: ExtensionConfigBase, Output: 'static, Init: 'static>
             merge_config: None,
             nodes: Vec::new(),
             initial_editor_state: None,
+            #[cfg(feature = "html")]
+            html: Default::default(),
             init: None,
             build: None,
             register: None,
@@ -187,6 +200,8 @@ pub trait AnyLexicalExtension: sealed::Sealed + 'static {
     fn peer_dependencies(&self) -> &[NormalizedPeerDependency];
     fn nodes(&self) -> &[NodeClass];
     fn initial_editor_state(&self) -> Option<&InitialEditorStateType>;
+    #[cfg(feature = "html")]
+    fn html(&self) -> &crate::lexical_dom::HtmlConfig;
     /// Whether it defines `init` (`getInitResult` requires it).
     fn has_init(&self) -> bool;
     #[doc(hidden)]
@@ -243,6 +258,10 @@ impl<C: ExtensionConfigBase, O: 'static, I: 'static> AnyLexicalExtension
     }
     fn initial_editor_state(&self) -> Option<&InitialEditorStateType> {
         self.initial_editor_state.as_ref()
+    }
+    #[cfg(feature = "html")]
+    fn html(&self) -> &crate::lexical_dom::HtmlConfig {
+        &self.html
     }
     fn has_init(&self) -> bool {
         self.init.is_some()

@@ -450,6 +450,13 @@ private func element(_ node: LexicalNode) throws -> ElementNode {
   return element
 }
 
+private func codeNode(_ node: LexicalNode) throws -> CodeNode {
+  guard let code = node as? CodeNode else {
+    throw ScriptError("\(node.getKey()) is not a code node")
+  }
+  return code
+}
+
 private func markNode(_ node: LexicalNode) throws -> MarkNode {
   guard let mark = node as? MarkNode else {
     throw ScriptError("\(node.getKey()) is not a mark node")
@@ -643,6 +650,10 @@ private func runNodeMethod(
   case "setIDs":
     try markNode(n).setIDs((a0.arrayValue.orThrow()).map { try $0.stringValue.orThrow() })
   case "setIndent": try element(n).setIndent(a0.int.orThrow())
+  case "setIsSyntaxHighlightSupported":
+    try codeNode(n).setIsSyntaxHighlightSupported(a0.boolValue.orThrow())
+  // `null` is `undefined`.
+  case "setLanguage": try codeNode(n).setLanguage(a0.stringValue)
   case "setTag":
     guard let heading = n as? HeadingNode else {
       throw ScriptError("\(n.getKey()) is not a heading")
@@ -1447,6 +1458,7 @@ private func runSteps(
   _ script: JSONValue, _ ctx: ScriptContext, _ extensions: TestExtensions?
 ) throws -> [StepRecord] {
   let editor: Editor = ctx.editor
+  var unregisterCodeHighlighting: (() -> Void)?
   if script["richText"]?.boolValue == true {
     _ = registerRichText(editor)
   }
@@ -1484,7 +1496,15 @@ private func runSteps(
         try node.setFormat(0)
       }
     }
-    _ = registerCodeIndentation(editor)
+    // `codeHighlight`: `registerCodeHighlighting` in place of
+    // `registerCodeIndentation`, over ops.ts's tokenizer
+    // (CodeHighlightOps.swift); `unregisterCodeHighlighting` unregisters it.
+    if let spec = script["codeHighlight"] {
+      unregisterCodeHighlighting = try registerCodeHighlighting(
+        editor, try scriptCodeTokenizer(spec))
+    } else {
+      _ = registerCodeIndentation(editor)
+    }
   }
   if script["hashtag"]?.boolValue == true {
     _ = try registerLexicalHashtag(editor)
@@ -1580,6 +1600,10 @@ private func runSteps(
         try editor.setEditable(editable)
       } else if let text = step["announce"]?.stringValue {
         try getExtensionDependencyFromEditor(editor, AriaLiveRegionExtension).output.announce(text)
+      } else if step["unregisterCodeHighlighting"] != nil {
+        let unregister = try unregisterCodeHighlighting.orThrow()
+        unregisterCodeHighlighting = nil
+        unregister()
       } else if let spec = step["typeahead"] {
         try editor.getEditorState().read {
           let (text, match) = try typeaheadMatch(spec, editor)
@@ -1605,6 +1629,9 @@ private func runSteps(
     }
     if script["liveRegion"]?.boolValue == true {
       ctx.log.append(ctx.liveRegionEntry())
+    }
+    if script["codeHighlight"] != nil {
+      ctx.log.append(try codeBlocksEntry(editor))
     }
     let (selection, content) = try editor.read {
       (try selectionSnapshot(), try getRoot().getTextContent())

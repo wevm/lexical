@@ -121,13 +121,20 @@ private func codeNodeTransform(
       return false
     }
     // Otherwise the tokens are compared with the children first, and only
-    // those that differ become nodes.
+    // those that differ become nodes. JS's `$getHighlightNodes` (or
+    // `$plainifyCodeContent`) makes a node of every token, and each takes a
+    // key, so the nodes made here take the keys JS gives them and the key
+    // counter then skips the rest.
     let code = try currentNode.getTextContent()
     let runs = try codeRuns(
       isLoaded && currentLanguage != nil
         ? tokenizer.tokenize(code, currentLanguage!) : [.text(code)])
     let (from, to, runsForReplacement) = getDiffRange(children, runs)
+    let context = ThreadContext.current
+    let firstKey = context.keyCounter
+    defer { context.keyCounter = firstKey + runs.count }
     if from != to || !runsForReplacement.isEmpty {
+      context.keyCounter = firstKey + from
       try node.splice(from, to - from, runsForReplacement.map { try $0.createNode() })
       return true
     }

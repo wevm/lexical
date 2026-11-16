@@ -13,9 +13,9 @@ import {defineConfig} from 'vitest/config';
 /**
  * Module-private functions of the pinned upstream sources that the vectors
  * record, by the end of the module's path. Each is re-exported unchanged as
- * `INTERNAL_<name>` (see `src/ops.ts`'s `ReactInternals` and
- * `CharacterLimitInternals`), so the vectors run the real function bodies;
- * nothing else in those modules changes.
+ * `INTERNAL_<name>` (see `src/ops.ts`'s `ReactInternals`,
+ * `CharacterLimitInternals` and `PrismInternals`), so the vectors run the real
+ * function bodies; nothing else in those modules changes.
  */
 const INTERNAL_EXPORTS: [string, string][] = [
   [
@@ -31,6 +31,14 @@ const INTERNAL_EXPORTS: [string, string][] = [
     "export {useCharacterLimit as INTERNAL_useCharacterLimit, findOffset as INTERNAL_findOffset, $wrapOverflowedNodes as INTERNAL_$wrapOverflowedNodes, $mergePrevious as INTERNAL_$mergePrevious} from './shared/useCharacterLimit';",
   ],
   ['/lexical-react/src/shared/useCharacterLimit.ts', 'export {findOffset};'],
+  [
+    '/lexical-code-prism/src/FacadePrism.ts',
+    'export {$mapTokensToLexicalStructure as INTERNAL_$mapTokensToLexicalStructure};',
+  ],
+  [
+    '/lexical-code-prism/src/index.ts',
+    "export {INTERNAL_$mapTokensToLexicalStructure} from './FacadePrism';",
+  ],
 ];
 
 /**

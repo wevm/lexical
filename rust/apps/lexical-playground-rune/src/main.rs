@@ -194,8 +194,12 @@ impl State {
 }
 
 /// The field's model for `doc`: its text, a mark per format the field
-/// draws, its links, a Rune block per line, and its line breaks as soft
-/// breaks.
+/// draws, a Rune block per line, and its line breaks as soft breaks.
+///
+/// Links are not `Mark::Link`s: a field with link marks is hit only on its
+/// links (Rune's `push_link_hits`), so a click anywhere else in the editor
+/// fell through to its box and took the keyboard from it. [`decorations`]
+/// draws them instead.
 pub fn mirror(doc: &Document, selection: Option<Sel>) -> TextEdit {
     let mut marks = Vec::new();
     let mut blocks = Vec::new();
@@ -223,9 +227,6 @@ pub fn mirror(doc: &Document, selection: Option<Sel>) -> TextEdit {
                     if run.has_format(name) || (checked && mark == Mark::Strike) {
                         marks.push(MarkRange::new(range.clone(), mark));
                     }
-                }
-                if let Some(url) = &run.link {
-                    marks.push(MarkRange::new(range, Mark::Link(url.clone())));
                 }
             }
         }
@@ -277,8 +278,9 @@ fn heading_style(tag: &str) -> Option<(f32, f32)> {
     })
 }
 
-/// Headings, highlight, subscript and superscript, which the field has no
-/// marks or blocks for, drawn over it. `dark` is the window's appearance: highlight is a marker
+/// Headings, links, highlight, subscript and superscript, which the field
+/// has no marks or blocks for (or, for links, can't take: see [`mirror`]),
+/// drawn over it. A link draws as Rune's `Mark::Link` does. `dark` is the window's appearance: highlight is a marker
 /// yellow behind dark text and a deep amber behind light text.
 pub fn decorations(doc: &Document, dark: bool) -> Vec<rune::Span> {
     let mut spans = Vec::new();
@@ -295,6 +297,13 @@ pub fn decorations(doc: &Document, dark: bool) -> Vec<rune::Span> {
             let (start, end) = (offset + run.start, offset + run.end());
             if run.kind != RunKind::Text || start == end {
                 continue;
+            }
+            if run.link.is_some() {
+                let link = rune::RichStyle::default().link;
+                let mut span = rune::Span::new(start, end);
+                span.color = Some(link);
+                span.underline = Some(link.alpha(0.65));
+                spans.push(span);
             }
             if run.has_format("highlight") {
                 let mut span = rune::Span::new(start, end);

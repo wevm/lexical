@@ -23,8 +23,10 @@ private let HIGHLIGHT_LANGUAGE_DATA_ATTRIBUTE = "data-highlight-language"
 private let THEME_DATA_ATTRIBUTE = "data-theme"
 
 /// `CodeNode`: a code block, whose children are `CodeHighlightNode`s,
-/// `TabNode`s and `LineBreakNode`s.
-open class CodeNode: ElementNode {
+/// `TabNode`s and `LineBreakNode`s. It is a `CodeLanguageNode`, as JS's has
+/// the `__language` that `RangeSelection.insertNodes` looks for, so nodes
+/// inserted in it stay in it.
+open class CodeNode: ElementNode, CodeLanguageNode {
   public var __language: String?
   public var __theme: String?
   /// Not serialized: the highlighter extensions set it as they run.

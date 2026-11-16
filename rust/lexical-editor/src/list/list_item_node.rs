@@ -180,6 +180,28 @@ impl LexicalNode for ListItemNode {
         true
     }
 
+    /// `ListItemNode.extractWithChild(child, selection)`: an item goes with
+    /// a child of a range selection inside it that covers all of its text
+    /// (compared by UTF-16 length, as JS does).
+    fn extract_with_child(
+        &self,
+        this: &NodeRef,
+        _: &NodeRef,
+        selection: Option<&SelectionRef>,
+        _: &str,
+    ) -> Result<bool, LexicalError> {
+        let Some(selection) = selection.filter(|s| s.is_range()) else {
+            return Ok(false);
+        };
+        let range = selection.range().expect("a range selection");
+        let anchor_node = range.anchor.get_node()?;
+        let focus_node = range.focus.get_node()?;
+        Ok(this.is_parent_of(&anchor_node)
+            && this.is_parent_of(&focus_node)
+            && crate::utf16::len(&this.get_text_content())
+                == crate::utf16::len(&selection.get_text_content()?))
+    }
+
     /// `exportListItemNode` and `exportCompactListItemNode`.
     fn export_json(&self, compact: bool) -> Object {
         let (checked, indent) = self.exported_checked_and_indent();

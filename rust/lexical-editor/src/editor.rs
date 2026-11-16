@@ -294,7 +294,8 @@ pub(crate) struct EditorInner {
 }
 
 /// `createEditor(config)`: registers the core nodes (root, text, line
-/// break, tab, paragraph) and `args.nodes`.
+/// break, tab, paragraph) and `args.nodes`, in `args.namespace`. (JS takes
+/// a parent editor's namespace too; nested editors aren't ported.)
 pub fn create_editor(args: CreateEditorArgs) -> Editor {
     // `config.namespace || createUID()` (an editor has no parent here).
     let namespace = if args.namespace.is_empty() {

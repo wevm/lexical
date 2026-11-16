@@ -1122,7 +1122,7 @@ fn collapse_at_start(selection: &SelectionRef, start_node: &NodeRef) -> Result<b
 /// `INTERNAL_$expandSelectionToWholeDocument(selection)`: widens a
 /// selection that covers the whole document to the root's element points,
 /// so a deletion removes the blocks rather than emptying them.
-fn internal_expand_selection_to_whole_document(
+pub(crate) fn internal_expand_selection_to_whole_document(
     selection: &SelectionRef,
 ) -> Result<(), LexicalError> {
     let root = get_root();
@@ -1142,7 +1142,7 @@ fn internal_expand_selection_to_whole_document(
 /// `$isBlockFullySelected(blockNode, selection)`: whether the selection
 /// covers everything in the block. (Slot frames are not ported, so every
 /// node is in the same frame.)
-fn is_block_fully_selected(
+pub(crate) fn is_block_fully_selected(
     block: &NodeRef,
     selection: &RangeSelection,
 ) -> Result<bool, LexicalError> {

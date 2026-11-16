@@ -5,6 +5,10 @@
 //! down from `u64::MAX`, where `create_command`'s count up from 1.
 
 use crate::editor::LexicalCommand;
+use crate::events::DataTransfer;
+use crate::lexical_selection::SelectionRef;
+use crate::node::NodeRef;
+use std::rc::Rc;
 
 /// `UNDO_COMMAND`: dispatched on undo (⌘Z on macOS, Ctrl+Z elsewhere).
 pub const UNDO_COMMAND: LexicalCommand<()> = LexicalCommand::constant(u64::MAX, "UNDO_COMMAND");
@@ -103,3 +107,37 @@ pub const FORMAT_ELEMENT_COMMAND: LexicalCommand<String> =
 /// the keyboard event, which no handler reads.
 pub const SELECT_ALL_COMMAND: LexicalCommand<()> =
     LexicalCommand::constant(u64::MAX - 19, "SELECT_ALL_COMMAND");
+
+/// `SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`'s payload: the nodes a paste
+/// made and the selection to insert them at.
+#[derive(Clone, Debug)]
+pub struct InsertClipboardNodesPayload {
+    pub nodes: Vec<NodeRef>,
+    pub selection: SelectionRef,
+}
+
+/// `SELECTION_INSERT_CLIPBOARD_NODES_COMMAND`: dispatched by
+/// `$insertGeneratedNodes` (the `clipboard` feature) before it inserts the
+/// nodes of a paste; a handler that returns `true` inserts them itself.
+pub const SELECTION_INSERT_CLIPBOARD_NODES_COMMAND: LexicalCommand<InsertClipboardNodesPayload> =
+    LexicalCommand::constant(u64::MAX - 26, "SELECTION_INSERT_CLIPBOARD_NODES_COMMAND");
+
+/// `PASTE_COMMAND`: dispatched on a paste. JS's payload is the
+/// `ClipboardEvent` (or the `KeyboardEvent` or `InputEvent` that pasted);
+/// without a DOM it is what the handlers read of it, the event's
+/// `clipboardData`: `Some` for a clipboard event, `None` for the others,
+/// which carry none.
+pub const PASTE_COMMAND: LexicalCommand<Option<Rc<DataTransfer>>> =
+    LexicalCommand::constant(u64::MAX - 27, "PASTE_COMMAND");
+
+/// `COPY_COMMAND`: dispatched on a copy. JS's payload is the
+/// `ClipboardEvent`, a `KeyboardEvent` or `null`; without a DOM it is the
+/// event's `clipboardData`, which the handlers fill, or `None` where JS has
+/// no clipboard event (and goes through the DOM to get one).
+pub const COPY_COMMAND: LexicalCommand<Option<Rc<DataTransfer>>> =
+    LexicalCommand::constant(u64::MAX - 28, "COPY_COMMAND");
+
+/// `CUT_COMMAND`: dispatched on a cut; the payload is as
+/// [`COPY_COMMAND`]'s.
+pub const CUT_COMMAND: LexicalCommand<Option<Rc<DataTransfer>>> =
+    LexicalCommand::constant(u64::MAX - 29, "CUT_COMMAND");

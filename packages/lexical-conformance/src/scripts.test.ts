@@ -15,6 +15,7 @@ import {
   type ExtensionSpec,
   type HandlerSpec,
   type Json,
+  NAMESPACE,
   runScript,
   type Script,
   type Step,
@@ -4304,6 +4305,420 @@ test('scripts/mark', () => {
         mark: true,
         name: 'migrateMarkNodesToMarkState with an invalid id',
         steps: [doc(p(mark(['a b'], t('a')))), update(migrate())],
+      },
+    ],
+  );
+});
+
+test('scripts/clipboard', () => {
+  // @lexical/clipboard's JSON and plain-text paths: what a copy puts on the
+  // clipboard (`$getLexicalContent` and the selection's text, written by
+  // `setLexicalClipboardDataTransfer`; `text/html` needs a DOM and is left
+  // out, see ops.ts), `$generateJSONFromSelectedNodes` (`excludeFromCopy`,
+  // `extractWithChild`, the text slices at the selection's edges), and
+  // pasting with `$insertDataTransferForRichText` (the
+  // `application/x-lexical-editor`, `text/plain` and `text/uri-list`
+  // importers) and `$insertDataTransferForPlainText`, with
+  // `$insertGeneratedNodes` and the selection's format after it.
+  const richText = true;
+  const copy: Action = {do: 'copy'};
+  const generateJSON: Action = {do: 'generateJSON'};
+  const whole: Action = {do: 'generateJSON', whole: true};
+  const pasteLexical = (...nodes: Node[]): Action => ({
+    do: 'pasteLexical',
+    nodes,
+  });
+  const pasteData = (data: Record<string, string>, plain = false): Action =>
+    plain ? {data, do: 'pasteData', plain} : {data, do: 'pasteData'};
+  const pasteClipboard = (plain = false): Action =>
+    plain ? {do: 'pasteClipboard', plain} : {do: 'pasteClipboard'};
+  const selectNodes = (...keys: string[]): Action => ({
+    do: 'selectNodes',
+    keys,
+  });
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const dt = (): Node => ({type: 'decorator-text', version: 1}) as Node;
+  emit(
+    'clipboard',
+    "@lexical/clipboard's JSON and plain-text paths: copying ($getLexicalContent, the selection's text and setLexicalClipboardDataTransfer, without text/html), $generateJSONFromSelectedNodes across text, blocks, list items, links, code, decorators and an overflow node (excludeFromCopy, extractWithChild, the text slices at the selection's edges, backward and node selections), and pasting Lexical JSON, plain text and URI lists with $insertDataTransferForRichText and $insertDataTransferForPlainText (collapsed, over a range, in a list item, a code block and a link, in rich and plain editors, falling back past a bad payload), $insertGeneratedNodes with the selection's format after it, and copying then pasting elsewhere.",
+    [
+      {
+        // Keys: the paragraph 1, "hello world" 2, the heading 3, "second"
+        // (bold) 4, the quote 5, "quote" 6.
+        name: 'copying text and blocks',
+        richText,
+        steps: [
+          doc(
+            p(t('hello world')),
+            h('h2', t('second', {format: 1})),
+            q(t('quote')),
+          ),
+          // Part of one text node.
+          update(
+            select(['2', 1, 'text'], ['2', 5, 'text']),
+            copy,
+            generateJSON,
+          ),
+          // Across blocks: the heading comes with its text
+          // (`HeadingNode.extractWithChild`), the paragraph doesn't.
+          update(select(['2', 6, 'text'], ['4', 3, 'text']), copy),
+          // The same, backward.
+          update(select(['4', 3, 'text'], ['2', 6, 'text']), copy),
+          // All the text: the quote's text comes without it.
+          update(select(['2', 0, 'text'], ['6', 5, 'text']), copy),
+          // The root's children, by element points.
+          update(
+            select(['root', 0, 'element'], ['root', 3, 'element']),
+            copy,
+            generateJSON,
+          ),
+          // Edges that slice text nodes to nothing.
+          update(select(['2', 11, 'text'], ['4', 0, 'text']), copy),
+          // Collapsed: no Lexical content.
+          update(select(['2', 3, 'text']), copy),
+          // A node selection of a block takes its whole subtree.
+          update(selectNodes('3'), copy),
+          update(selectNodes('2', '6'), copy),
+          // No selection, and the whole document.
+          update({do: 'clearSelection'}, copy, whole),
+        ],
+      },
+      {
+        // Keys: the centered, indented paragraph 1, "centered" 2, the
+        // paragraph 3, "plain" 4.
+        name: 'copying a paragraph with an alignment',
+        richText,
+        steps: [
+          doc(
+            {...p(t('centered')), format: 'center', indent: 1} as Node,
+            p(t('plain')),
+          ),
+          // All of it: it comes as a block (`ParagraphNode.extractWithChild`).
+          update(select(['2', 0, 'text'], ['2', 8, 'text']), copy),
+          // Part of it: just the text.
+          update(select(['2', 2, 'text'], ['2', 8, 'text']), copy),
+          update(select(['2', 0, 'text'], ['4', 2, 'text']), copy),
+          update(select(['1', 0, 'element'], ['1', 1, 'element']), copy),
+        ],
+      },
+      {
+        // Keys: the list 1, its items 2, 4 and 6 with "one" 3, "two" 5 and
+        // "three" 7, the paragraph 8, "after" 9.
+        list: true,
+        name: 'copying list items',
+        richText,
+        steps: [
+          doc(
+            list('bullet', li(t('one')), li(t('two')), li(t('three'))),
+            p(t('after')),
+          ),
+          // Part of an item: just the text.
+          update(select(['3', 1, 'text'], ['3', 3, 'text']), copy),
+          // All of an item's text: the item and its list come with it.
+          update(select(['5', 0, 'text'], ['5', 3, 'text']), copy),
+          // Across items.
+          update(select(['3', 1, 'text'], ['7', 2, 'text']), copy),
+          // From an item to the paragraph after the list.
+          update(select(['5', 1, 'text'], ['9', 2, 'text']), copy),
+          update(select(['7', 5, 'text'], ['3', 0, 'text']), copy),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "see " 2, the link 3, "the docs" 4, " now"
+        // 5.
+        link: true,
+        name: 'copying links',
+        richText,
+        steps: [
+          doc(p(t('see '), a('https://lexical.dev', t('the docs')), t(' now'))),
+          // Inside the link: it comes with its text
+          // (`LinkNode.extractWithChild`).
+          update(select(['4', 1, 'text'], ['4', 5, 'text']), copy),
+          // Into it from before.
+          update(select(['2', 1, 'text'], ['4', 3, 'text']), copy),
+          // Out of it, backward.
+          update(select(['5', 3, 'text'], ['4', 4, 'text']), copy),
+          update(select(['5', 0, 'text'], ['5', 4, 'text']), copy),
+        ],
+      },
+      {
+        // Keys: the code block 1, "const" 2, " x = 1" 3, the line break 4,
+        // "x" 5.
+        code: true,
+        name: 'copying code',
+        richText,
+        steps: [
+          doc(
+            codeBlock(
+              'javascript',
+              ch('const', {highlightType: 'keyword'}),
+              ch(' x = 1'),
+              br(),
+              ch('x'),
+            ),
+          ),
+          update(select(['2', 2, 'text'], ['3', 3, 'text']), copy),
+          // From the end of a token: the empty slice is left out.
+          update(select(['2', 5, 'text'], ['5', 1, 'text']), copy),
+          update(select(['root', 0, 'element'], ['root', 1, 'element']), copy),
+          update(select(['1', 0, 'element'], ['1', 4, 'element']), copy),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "ab" 2, the inline decorator 3, "cd" 4, the
+        // rule 5, the paragraph 6, "ef" 7, the paragraph 8, "gh" 9, the
+        // inline decorator 10.
+        extension: true,
+        name: 'copying decorators',
+        richText,
+        steps: [
+          doc(p(t('ab'), dt(), t('cd')), hr(), p(t('ef')), p(t('gh'), dt())),
+          update(selectNodes('5'), copy, generateJSON),
+          update(selectNodes('3'), copy),
+          update(selectNodes('3', '5'), copy),
+          update(select(['2', 1, 'text'], ['4', 1, 'text']), copy),
+          update(select(['1', 1, 'element'], ['1', 2, 'element']), copy),
+          update(select(['2', 0, 'text'], ['7', 2, 'text']), copy),
+          // From the end of a paragraph that ends with an inline decorator:
+          // the decorator isn't selected (`isSelected`).
+          update(select(['8', 2, 'element'], ['root', 4, 'element']), copy),
+          update(select(['9', 0, 'text'], ['8', 2, 'element']), copy),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "within " 2, the overflow node 3, "past"
+        // (italic) 4, " the limit" 5.
+        name: 'copying an overflow node',
+        overflow: true,
+        richText,
+        steps: [
+          doc(
+            p(t('within '), overflow(t('past', {format: 2}), t(' the limit'))),
+          ),
+          // `excludeFromCopy`: its children come without it.
+          update(select(['2', 0, 'text'], ['5', 10, 'text']), copy),
+          update(select(['4', 1, 'text'], ['5', 4, 'text']), copy),
+          update(selectNodes('3'), copy),
+          update(whole),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "hello world" 2, the paragraph 3, "second"
+        // 4.
+        name: 'pasting Lexical JSON',
+        richText,
+        steps: [
+          doc(p(t('hello world')), p(t('second'))),
+          // Collapsed: the selection takes the pasted text's format.
+          update(select(['2', 5, 'text']), pasteLexical(t('X', {format: 1}))),
+          // Blocks over a range.
+          update(
+            select(['2', 0, 'text'], ['2', 2, 'text']),
+            pasteLexical(p(t('para one')), p(t('para two'))),
+          ),
+          // A heading at the end of the document.
+          update(select(['4', 6, 'text']), pasteLexical(h('h1', t('head')))),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "hello" 2.
+        name: 'pasting a payload the editor does not take',
+        richText,
+        steps: [
+          doc(p(t('hello'))),
+          // Another namespace: the text instead.
+          update(
+            select(['2', 5, 'text']),
+            pasteData({
+              'application/x-lexical-editor': JSON.stringify({
+                namespace: 'other',
+                nodes: [t('no')],
+              }),
+              'text/plain': ' other',
+            }),
+          ),
+          // Not JSON.
+          update(
+            pasteData({
+              'application/x-lexical-editor': '{oops',
+              'text/plain': ' bad',
+            }),
+          ),
+          // No nodes.
+          update(
+            pasteData({
+              'application/x-lexical-editor': JSON.stringify({
+                namespace: NAMESPACE,
+              }),
+              'text/plain': ' none',
+            }),
+          ),
+          // A node type the editor doesn't have, after one it has.
+          update(
+            pasteData({
+              'application/x-lexical-editor': JSON.stringify({
+                namespace: NAMESPACE,
+                nodes: [t('kept'), {type: 'nope', version: 1}],
+              }),
+              'text/plain': ' unknown',
+            }),
+          ),
+          // Only a URI list.
+          update(pasteData({'text/uri-list': ' https://lexical.dev'})),
+          // HTML that is the plain text is skipped for it.
+          update(pasteData({'text/html': ' same', 'text/plain': ' same'})),
+          // Nothing to paste.
+          update(pasteData({})),
+        ],
+      },
+      {
+        // Keys: the list 1, its items 2 and 4 with "one" 3 and "two" 5.
+        list: true,
+        name: 'pasting in a list item',
+        richText,
+        steps: [
+          doc(list('bullet', li(t('one')), li(t('two')))),
+          update(select(['3', 3, 'text']), pasteLexical(t(' more'))),
+          update(pasteLexical(p(t('para')))),
+          update(
+            select(['5', 1, 'text']),
+            pasteLexical(list('number', li(t('a')), li(t('b')))),
+          ),
+          update(pasteData({'text/plain': 'x\ny'})),
+        ],
+      },
+      {
+        // Keys: the code block 1, "let a" 2.
+        code: true,
+        name: 'pasting in a code block',
+        richText,
+        steps: [
+          doc(codeBlock('javascript', ch('let a'))),
+          update(select(['2', 3, 'text']), pasteData({'text/plain': 'b\n\tc'})),
+          update(pasteLexical(t('plain'))),
+          update(pasteLexical(p(t('para')))),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "a " 2, the link 3, "link" 4, " b" 5.
+        link: true,
+        name: 'pasting in a link',
+        richText,
+        steps: [
+          doc(p(t('a '), a('https://x.test', t('link')), t(' b'))),
+          update(select(['4', 2, 'text']), pasteLexical(t('IN'))),
+          update(pasteData({'text/plain': 'one\ntwo'})),
+          update(pasteLexical(a('https://y.test', t('other')))),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "start end" 2, the paragraph 3, "bold"
+        // (bold) 4.
+        name: 'plain text with line breaks in a rich text editor',
+        richText,
+        steps: [
+          doc(p(t('start end')), p(t('bold', {format: 1}))),
+          update(
+            select(['2', 6, 'text']),
+            pasteData({'text/plain': 'line1\nline2\r\nline3\tx'}),
+          ),
+          // Over bold text: it keeps the format.
+          update(
+            select(['4', 1, 'text'], ['4', 3, 'text']),
+            pasteData({'text/plain': 'a\nb'}),
+          ),
+          update({do: 'pastePlainText', text: 'raw\nline'}),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "start end" 2.
+        name: 'plain text with line breaks in a plain text editor',
+        plainText: true,
+        steps: [
+          doc(p(t('start end'))),
+          update(select(['2', 6, 'text']), {
+            do: 'pastePlainText',
+            text: 'line1\nline2\r\nline3\tx',
+          }),
+          // The plain text path takes only text/plain and text/uri-list.
+          update(
+            pasteData(
+              {
+                'application/x-lexical-editor': JSON.stringify({
+                  namespace: NAMESPACE,
+                  nodes: [t('json')],
+                }),
+                'text/plain': 'text',
+              },
+              true,
+            ),
+          ),
+          update(pasteData({'text/uri-list': 'https://lexical.dev'}, true)),
+          // An empty paste over a range changes nothing.
+          update(
+            select(['2', 0, 'text'], ['2', 2, 'text']),
+            pasteData({}, true),
+          ),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "ab" (bold) 2, "cd" 3.
+        name: 'insertGeneratedNodes',
+        richText,
+        steps: [
+          doc(p(t('ab', {format: 1}), t('cd'))),
+          update(select(['3', 0, 'text']), {
+            do: 'insertGeneratedNodes',
+            nodes: [t('X', {format: 2})],
+          }),
+          update(select(['1', 0, 'element']), {
+            do: 'insertGeneratedNodes',
+            nodes: [p(t('blk'))],
+          }),
+          update(select(['2', 1, 'text'], ['3', 1, 'text']), {
+            do: 'insertGeneratedNodes',
+            nodes: [t('Z')],
+          }),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "ab" 2, the rule 3, the paragraph 4, "cd"
+        // 5.
+        extension: true,
+        name: 'pasting over a node selection',
+        richText,
+        steps: [
+          doc(p(t('ab')), hr(), p(t('cd'))),
+          update(selectNodes('3'), pasteLexical(p(t('in place')))),
+          // Plain text into a node selection inserts nothing.
+          update(selectNodes('5'), pasteData({'text/plain': 'x'})),
+        ],
+      },
+      {
+        // Keys: the paragraph 1, "Hello " 2, the link 3, "Lexical" 4, "!"
+        // (bold) 5, the list 6, its items 7 and 9 with "first" 8 and
+        // "second" 10, the paragraph 11, "target" 12.
+        link: true,
+        list: true,
+        name: 'copying, then pasting elsewhere',
+        richText,
+        steps: [
+          doc(
+            p(
+              t('Hello '),
+              a('https://lexical.dev', t('Lexical')),
+              t('!', {format: 1}),
+            ),
+            list('number', li(t('first')), li(t('second'))),
+            p(t('target')),
+          ),
+          update(select(['4', 2, 'text'], ['8', 3, 'text']), copy),
+          update(select(['12', 3, 'text']), pasteClipboard()),
+          update(select(['root', 0, 'element'], ['root', 1, 'element']), copy),
+          update(node('root', 'selectEnd'), pasteClipboard()),
+          // The same clipboard as plain text.
+          update(pasteClipboard(true)),
+        ],
       },
     ],
   );

@@ -195,8 +195,22 @@ fn range_selection_insert_nodes(
 
     let last = nodes.last().expect("not empty");
 
-    // CASE 1: insert inside a code block. CodeNode (`__language`) is not
-    // ported.
+    // CASE 1: insert inside a code block. JS asks for a `__language` field,
+    // which of the ported nodes only `CodeNode` has.
+    #[cfg(feature = "code")]
+    if let Some(first_block) = first_block
+        .as_ref()
+        .filter(|b| crate::code::is_code_node(b))
+    {
+        if crate::code::is_code_node(&nodes[0]) {
+            selection.insert_text(&nodes[0].get_text_content())?;
+        } else {
+            let (_, index) = remove_text_and_split_block(selection, false)?;
+            first_block.splice(index, 0, nodes)?;
+            last.select_end()?;
+        }
+        return Ok(());
+    }
 
     // CASE 2: All elements of the array are inline
     let not_inline =

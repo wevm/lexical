@@ -1,5 +1,6 @@
 import Foundation
 import Lexical
+import LexicalClipboard
 import LexicalCodeCore
 import LexicalExtension
 import LexicalHashtag
@@ -177,6 +178,8 @@ private final class ScriptContext {
   var commands: [String: LexicalCommand<JSONValue>] = [:]
   /// The session's clock (ms): what the history listener reads as `Date.now()`.
   var clock: Double = 0
+  /// The `DataTransfer` of the last `copy`.
+  var clipboard: DataTransfer?
 
   init(_ editor: Editor? = nil) { self.editor = editor }
 
@@ -702,12 +705,78 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     let target = try action["key"]?.stringValue.map { try node($0) }
     let count = try migrateMarkNodesToMarkState(target)
     ctx.log.append(.array([.string("migrateMarkNodesToMarkState"), .int(count)]))
+  case "copy":
+    // `$clipboardDataWithoutHtml` in ops.ts: `$getClipboardDataFromSelection`
+    // with its default MIME types but `text/html`, which needs a DOM.
+    let selection = try getSelection()
+    var data: LexicalClipboardData = ["text/plain": ""]
+    if let selection {
+      if let lexical = try getLexicalContent(ctx.editor, selection) {
+        data["application/x-lexical-editor"] = lexical
+      }
+      data["text/plain"] = try selection.getTextContent()
+    }
+    let dataTransfer = DataTransfer()
+    setLexicalClipboardDataTransfer(dataTransfer, data)
+    ctx.clipboard = dataTransfer
+    ctx.log.append(
+      .array([
+        .string("copy"),
+        .array(
+          dataTransfer.types.map { .array([.string($0), .string(dataTransfer.getData($0))]) }),
+      ]))
+  case "pasteClipboard":
+    guard let dataTransfer = ctx.clipboard else { throw ScriptError("nothing copied") }
+    try insertDataTransfer(dataTransfer, plain: action["plain"]?.boolValue == true, ctx)
+  case "pasteLexical":
+    let payload = JSONObject([
+      ("namespace", .string(ctx.editor._config.namespace)), ("nodes", action["nodes"] ?? .null),
+    ])
+    let dataTransfer = DataTransfer()
+    dataTransfer.setData("application/x-lexical-editor", payload.stringify())
+    try insertDataTransfer(dataTransfer, plain: false, ctx)
+  case "pastePlainText":
+    let dataTransfer = DataTransfer()
+    dataTransfer.setData("text/plain", try action["text"]?.stringValue.orThrow() ?? "")
+    try insertDataTransfer(dataTransfer, plain: true, ctx)
+  case "pasteData":
+    let dataTransfer = DataTransfer()
+    for (type, value) in try (action["data"]?.objectValue).orThrow() {
+      dataTransfer.setData(type, try value.stringValue.orThrow())
+    }
+    try insertDataTransfer(dataTransfer, plain: action["plain"]?.boolValue == true, ctx)
+  case "generateJSON":
+    let selection = action["whole"]?.boolValue == true ? nil : try getSelection()
+    // The log is JSON, which leaves out what `JSON.stringify` does.
+    let json = try JSONValue.parse(
+      generateJSONFromSelectedNodes(ctx.editor, selection).toJSON().stringify())
+    ctx.log.append(.array([.string("generateJSON"), json]))
+  case "insertGeneratedNodes":
+    let serialized = try (action["nodes"]?.arrayValue ?? []).map { value in
+      guard let object = value.objectValue else { throw ScriptError("not a serialized node") }
+      return object
+    }
+    try insertGeneratedNodes(
+      ctx.editor, generateNodesFromSerializedNodes(serialized), anySelection())
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)
     ctx.log.append(.array([.string("dispatched"), .string(name), .bool(handled)]))
   default:
     throw ScriptError("unknown action \(String(describing: kind))")
+  }
+}
+
+/// `$insertDataTransfer(dataTransfer, plain)` in ops.ts:
+/// `insertDataTransferForRichText` (or, with `plain`,
+/// `insertDataTransferForPlainText`) at the selection.
+private func insertDataTransfer(
+  _ dataTransfer: DataTransfer, plain: Bool, _ ctx: ScriptContext
+) throws {
+  if plain {
+    try insertDataTransferForPlainText(dataTransfer, anySelection())
+  } else {
+    try insertDataTransferForRichText(dataTransfer, anySelection(), ctx.editor)
   }
 }
 
@@ -843,7 +912,8 @@ private func makeEditor(_ script: JSONValue) throws -> Editor {
     nodes += [.klass(MarkNode.self)]
   }
   return try createEditor(
-    CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))
+    // ops.ts's `NAMESPACE`, which a clipboard payload names.
+    CreateEditorArgs(namespace: "conformance", nodes: nodes, onError: { throw $0 }))
 }
 
 /// Registers the script's packages, transforms, handlers, listeners and

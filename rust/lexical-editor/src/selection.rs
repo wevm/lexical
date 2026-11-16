@@ -1,14 +1,82 @@
 //! `@lexical/selection` (the `selection` feature): what of it the ported
 //! packages use so far, and `$setBlocksType`.
 //!
-//! From `packages/lexical-selection/src/range-selection.ts`.
+//! From `packages/lexical-selection/src/range-selection.ts` and
+//! `lexical-node.ts` (`$sliceSelectedTextNodeContent`).
 
 use crate::caret::{CaretDirection, RootMode, flip_direction};
 use crate::caret_utils::{caret_from_point, is_extendable_text_point_caret};
+use crate::caret_utils::{caret_range_from_selection, get_text_point_caret_slice_for_node};
 use crate::lexical_selection::get_selection;
 use crate::lexical_utils::is_block;
+use crate::node::LexicalNode;
 use crate::selection_insert_nodes::{find_matching_parent, is_block_container};
-use crate::{LexicalError, NodeRef, Point, PointType, SelectionRef, Which};
+use crate::selection_insert_text::is_token_or_segmented;
+use crate::{LexicalError, NodeRef, Point, PointType, SelectionRef, Which, utf16};
+use std::rc::Rc;
+
+/// `$sliceSelectedTextNodeContent(selection, textNode, 'clone')`: the text
+/// node, or, when the selection starts or ends inside it, a clone of it
+/// holding only the selected text, which is in no editor state. What a copy
+/// serializes for a text node at the edge of the selection.
+///
+/// JS's `'self'` mode, which writes the node's text without `getWritable`,
+/// has no counterpart: a node's committed value can't change in place here,
+/// and the ported callers all pass `'clone'`.
+pub fn slice_selected_text_node_content(
+    selection: &SelectionRef,
+    text_node: &NodeRef,
+) -> Result<Rc<dyn LexicalNode>, LexicalError> {
+    let latest = text_node.get_latest();
+    // `getStartEndPoints()`: `null` for a node selection.
+    let Some(range) = selection.range() else {
+        return Ok(latest);
+    };
+    let key = text_node.get_key();
+    // Only the node of a text point can be cut short; checking that first
+    // keeps a caller that slices every selected node from working out the
+    // selection for each of them.
+    if !((range.anchor.key == key || range.focus.key == key)
+        && text_node.is_selected(Some(selection))?
+        && !is_token_or_segmented(text_node))
+    {
+        return Ok(latest);
+    }
+    let (start, end) = if selection.is_backward()? {
+        (&range.focus, &range.anchor)
+    } else {
+        (&range.anchor, &range.focus)
+    };
+    // Text endpoints can trim directly. Element endpoints need caret
+    // normalization so equivalent mixed points produce an empty interval.
+    let slices = if start.point_type == PointType::Element || end.point_type == PointType::Element {
+        Some(caret_range_from_selection(&range)?.get_text_slices())
+    } else {
+        None
+    };
+    let slice = slices
+        .as_ref()
+        .and_then(|slices| get_text_point_caret_slice_for_node(slices, text_node));
+    let (start_offset, end_offset) = match slice {
+        Some(slice) => {
+            let (start, end) = slice.get_slice_indices();
+            (start, Some(end))
+        }
+        None => (
+            if start.key == key { start.offset } else { 0 },
+            (end.key == key).then_some(end.offset),
+        ),
+    };
+    let current = &latest.text().expect("a text node").text;
+    let text = utf16::slice(current, start_offset, end_offset.unwrap_or(usize::MAX));
+    if text == *current {
+        return Ok(latest);
+    }
+    // `$cloneWithPropertiesEphemeral`: a clone that is in no editor state.
+    let mut clone = latest.clone_node();
+    clone.text_mut().expect("a text node").text = text;
+    Ok(Rc::from(clone))
+}
 
 /// `$copyBlockFormatIndent(srcNode, destNode)`: gives `dest_node` the
 /// alignment and the indent of `src_node`, setting each only where they

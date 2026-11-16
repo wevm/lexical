@@ -41,6 +41,7 @@
 //! is counted as waiting on that part of `lexical`, never as passing.
 
 use crate::case::{Case, Outcome, same};
+use lexical::clipboard;
 use lexical::history::{create_empty_history_state, register_history};
 use lexical::json::{Object, Value};
 use lexical::link;
@@ -51,13 +52,13 @@ use lexical::selection::set_blocks_type;
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
     COMMAND_PRIORITY_EDITOR, CONTROLLED_TEXT_INSERTION_COMMAND, CaretDirection, CreateEditorArgs,
-    DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, Direction, Editor,
-    FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND,
-    INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, LexicalCommand, LexicalError, NodeRef,
-    OUTDENT_CONTENT_COMMAND, PointCaret, PointType, REDO_COMMAND, REMOVE_TEXT_COMMAND,
-    RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND, SelectionAlter,
-    SelectionGranularity, SelectionRef, SliceMode, StateConfig, StateValueConfig, TextOffset,
-    TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
+    DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, DataTransfer, Direction,
+    Editor, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
+    INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, LexicalCommand,
+    LexicalError, NodeRef, OUTDENT_CONTENT_COMMAND, PointCaret, PointType, REDO_COMMAND,
+    REMOVE_TEXT_COMMAND, RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
+    SelectionAlter, SelectionGranularity, SelectionRef, SliceMode, StateConfig, StateValueConfig,
+    TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
     caret_range_from_selection, create_command, create_editor, create_node_selection,
     create_paragraph_node, create_range_selection, create_state, create_state_with,
     get_caret_range, get_child_caret, get_node_by_key, get_root, get_selection, get_sibling_caret,
@@ -81,6 +82,8 @@ struct Ctx {
     extensions: RefCell<HashMap<String, Rc<extensions::TestExtension>>>,
     /// `script.extensionDefs`.
     extension_defs: RefCell<Object>,
+    /// The `DataTransfer` of the last `copy`.
+    clipboard: RefCell<Option<Rc<DataTransfer>>>,
 }
 
 /// `ops.ts`'s `STATES`, one set per session (JS's are shared by every
@@ -432,7 +435,14 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "removeMarkID"
             | "logNodeMarkIDs"
             | "logMarkIDsAtSelection"
-            | "migrateMarkNodesToMarkState",
+            | "migrateMarkNodesToMarkState"
+            | "copy"
+            | "pasteClipboard"
+            | "pasteLexical"
+            | "pastePlainText"
+            | "pasteData"
+            | "generateJSON"
+            | "insertGeneratedNodes",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -1125,6 +1135,78 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             ]);
             Ok(())
         }
+        Some("copy") => {
+            let data_transfer = Rc::new(DataTransfer::new());
+            let data = clipboard::get_clipboard_data_from_selection(get_selection().as_ref())?;
+            clipboard::set_lexical_clipboard_data_transfer(&data_transfer, &data);
+            let entries = data_transfer
+                .types()
+                .into_iter()
+                .map(|t| {
+                    let data = data_transfer.get_data(&t);
+                    Value::Array(vec![t.into(), data.into()])
+                })
+                .collect();
+            ctx.log(vec!["copy".into(), Value::Array(entries)]);
+            *ctx.clipboard.borrow_mut() = Some(data_transfer);
+            Ok(())
+        }
+        Some("pasteClipboard") => {
+            let data_transfer = ctx
+                .clipboard
+                .borrow()
+                .clone()
+                .ok_or_else(|| err("nothing copied"))?;
+            let plain = action.get("plain").and_then(Value::as_bool) == Some(true);
+            insert_data_transfer(&data_transfer, plain, editor)
+        }
+        Some("pasteLexical") => {
+            let mut payload = Object::new();
+            payload.insert("namespace", editor.get_namespace().into());
+            payload.insert("nodes", action.get("nodes").cloned().unwrap_or(Value::Null));
+            let data_transfer = DataTransfer::new();
+            data_transfer.set_data(
+                clipboard::LEXICAL_MIME_TYPE,
+                &Value::from(payload).to_string(),
+            );
+            insert_data_transfer(&data_transfer, false, editor)
+        }
+        Some("pastePlainText") => {
+            let data_transfer = DataTransfer::new();
+            data_transfer.set_data(
+                "text/plain",
+                &string(action.get("text").unwrap_or(&Value::Null))?,
+            );
+            insert_data_transfer(&data_transfer, true, editor)
+        }
+        Some("pasteData") => {
+            let data_transfer = data_transfer_of(action.get("data").unwrap_or(&Value::Null))?;
+            let plain = action.get("plain").and_then(Value::as_bool) == Some(true);
+            insert_data_transfer(&data_transfer, plain, editor)
+        }
+        Some("generateJSON") => {
+            let selection = if action.get("whole").and_then(Value::as_bool) == Some(true) {
+                None
+            } else {
+                get_selection()
+            };
+            let json = clipboard::generate_json_from_selected_nodes(editor, selection.as_ref())?;
+            // The log is JSON, which leaves out the `undefined` properties
+            // of JS's object (an element's `textFormat` in the legacy form).
+            let json = lexical::json::parse(&json.to_json().to_string())
+                .map_err(|e| err(format!("{e:?}")))?;
+            ctx.log(vec!["generateJSON".into(), json]);
+            Ok(())
+        }
+        Some("insertGeneratedNodes") => {
+            let serialized = action
+                .get("nodes")
+                .and_then(Value::as_array)
+                .ok_or_else(|| err("expected an array of nodes"))?;
+            let nodes = clipboard::generate_nodes_from_serialized_nodes(serialized)?;
+            let selection = get_selection().ok_or_else(|| err("no selection"))?;
+            clipboard::insert_generated_nodes(editor, nodes, &selection)
+        }
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");
             let payload = action.get("payload").cloned().unwrap_or(Value::Null);
@@ -1239,6 +1321,38 @@ fn transform_name(name: &str) -> Option<&'static str> {
     ]
     .into_iter()
     .find(|n| *n == name)
+}
+
+/// `ops.ts`'s `NAMESPACE`: every session's editor namespace, which a
+/// clipboard payload names.
+const NAMESPACE: &str = "conformance";
+
+/// `ScriptDataTransfer.of(data)`: a `DataTransfer` with `data` set in key
+/// order.
+fn data_transfer_of(data: &Value) -> Result<DataTransfer, LexicalError> {
+    let data_transfer = DataTransfer::new();
+    for (format, value) in data
+        .as_object()
+        .ok_or_else(|| err(format!("expected an object, got {data}")))?
+        .iter()
+    {
+        data_transfer.set_data(format, &string(value)?);
+    }
+    Ok(data_transfer)
+}
+
+/// `$insertDataTransfer(dataTransfer, plain)` in ops.ts.
+fn insert_data_transfer(
+    data_transfer: &DataTransfer,
+    plain: bool,
+    editor: &Editor,
+) -> Result<(), LexicalError> {
+    let selection = get_selection().ok_or_else(|| err("no selection"))?;
+    if plain {
+        clipboard::insert_data_transfer_for_plain_text(data_transfer, &selection)
+    } else {
+        clipboard::insert_data_transfer_for_rich_text(data_transfer, &selection, editor)
+    }
 }
 
 /// A script's editor, set up with its transforms, command handlers and
@@ -1386,7 +1500,7 @@ impl Session {
         }
         let editor = create_editor(CreateEditorArgs {
             nodes,
-            ..CreateEditorArgs::default()
+            namespace: NAMESPACE.to_owned(),
         });
         let ctx = Rc::new(Ctx::default());
         Self::start_on(script, editor, ctx)

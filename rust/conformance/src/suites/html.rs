@@ -861,3 +861,88 @@ pub fn check_block_id(case: &Value, _file: &Value) -> Result<Outcome, String> {
     result?;
     Ok(Outcome::Pass)
 }
+
+/// The editor of an `html/mark-state` case: `RichTextExtension`,
+/// `LinkExtension` and the scenario's mark flavors (`MARK_STATE_SCENARIOS`).
+fn mark_state_editor(
+    scenario: &str,
+) -> Result<lexical::extension::LexicalEditorWithDispose, String> {
+    use lexical::mark::{MarkStateConfigOverrides, mark_state_extension};
+    use lexical::{
+        AnyLexicalExtensionArgument, LexicalExtension, config_extension, define_extension,
+    };
+    let export = || MarkStateConfigOverrides {
+        export_ids_to_html: Some(true),
+        ..Default::default()
+    };
+    let flavor = |key: &str| {
+        crate::scripts::mark_flavor(key).ok_or_else(|| format!("unknown mark flavor {key}"))
+    };
+    let flavors: Vec<AnyLexicalExtensionArgument> = match scenario {
+        "default" => vec![mark_state_extension().into()],
+        "export" => vec![config_extension(&mark_state_extension(), [export()])],
+        "flavors" => vec![
+            config_extension(&mark_state_extension(), [export()]),
+            config_extension(&flavor("CommentMarks")?, [export()]),
+            flavor("SuggestionMarks")?.into(),
+        ],
+        other => return Err(format!("unknown scenario {other}")),
+    };
+    let host = define_extension(LexicalExtension::<(), (), ()> {
+        dependencies: [
+            vec![
+                lexical::rich_text::rich_text_extension().into(),
+                lexical::link::link_extension().into(),
+            ],
+            flavors,
+        ]
+        .concat(),
+        ..LexicalExtension::new("[conformance]", ())
+    });
+    lexical::extension::build_editor_from_extensions([host.into()]).map_err(|e| e.to_string())
+}
+
+/// `html/mark-state`: the HTML export of a document's mark ids
+/// (`exportIDsToHTML`), and the nodes the ids attribute's import rule makes.
+pub fn check_mark_state(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    use lexical::html::import::generate_nodes_from_dom_via_extension;
+    let built = mark_state_editor(case.str("scenario")?)?;
+    let editor = (*built).clone();
+    let result = (|| -> Result<(), String> {
+        let Some(import_html) = case.get("importHtml").and_then(Value::as_str) else {
+            let state = editor
+                .parse_editor_state(case.str("editorState")?)
+                .map_err(|e| format!("editorState: {e}"))?;
+            editor
+                .set_editor_state(&state, None)
+                .map_err(|e| e.to_string())?;
+            let html = editor
+                .read(|| generate_html_from_nodes(&editor, None))
+                .and_then(|html| html)
+                .map_err(|e| e.to_string())?;
+            return same("html", html.as_str(), case.str("html")?);
+        };
+        let dom = parse_from_string(import_html);
+        let nodes = Rc::new(RefCell::new(String::new()));
+        let out = nodes.clone();
+        editor
+            .update(
+                move || {
+                    let nodes = generate_nodes_from_dom_via_extension(&dom, None)?;
+                    *out.borrow_mut() =
+                        Value::Array(nodes.iter().map(node_to_json).collect()).to_string();
+                    Ok(())
+                },
+                UpdateOptions {
+                    discrete: true,
+                    ..UpdateOptions::default()
+                },
+            )
+            .map_err(|e| e.to_string())?;
+        let nodes = nodes.borrow().clone();
+        same("nodes", nodes.as_str(), case.str("nodes")?)
+    })();
+    built.dispose();
+    result?;
+    Ok(Outcome::Pass)
+}

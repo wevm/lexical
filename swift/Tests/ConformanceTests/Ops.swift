@@ -1398,30 +1398,50 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
       .array([.string("markIDs"), .string(key), .int(offset), ids.map(strings) ?? .null]))
   case "addMarkID":
     let id = try action["id"]?.stringValue.orThrow() ?? ""
-    let nodes = try addMarkID(id, anySelection())
+    let nodes =
+      try markFlavor(of: action).map { try addMarkID($0, id, anySelection()) }
+      ?? addMarkID(id, anySelection())
     ctx.log.append(
       .array([.string("addMarkID"), .string(id), .array(nodes.map { .string($0.getKey()) })]))
   case "removeMarkID":
     let id = try action["id"]?.stringValue.orThrow() ?? ""
-    if action["inSelection"]?.boolValue == true {
-      try removeMarkID(id, anySelection())
+    let selection: (any BaseSelection)? =
+      action["inSelection"]?.boolValue == true ? try anySelection() : nil
+    if let flavor = try markFlavor(of: action) {
+      try removeMarkID(flavor, id, selection)
     } else {
-      try removeMarkID(id)
+      try removeMarkID(id, selection)
     }
   case "logNodeMarkIDs":
     let key = try action["key"]?.stringValue.orThrow() ?? ""
-    ctx.log.append(
-      .array([.string("nodeMarkIDs"), .string(key), strings(try getNodeMarkIDs(node(key)))]))
+    let ids =
+      try markFlavor(of: action).map { try getNodeMarkIDs($0, node(key)) }
+      ?? getNodeMarkIDs(node(key))
+    ctx.log.append(.array([.string("nodeMarkIDs"), .string(key), strings(ids)]))
   case "logMarkIDsAtSelection":
     let mode = action["mode"]?.stringValue
     let selection: (any BaseSelection)? = try getSelection()
-    let ids = try getMarkIDsAtSelection(selection, mode == "all" ? .all : .any)
+    let markIDsMode: MarkIDsMode = mode == "all" ? .all : .any
+    let ids =
+      try markFlavor(of: action).map { try getMarkIDsAtSelection($0, selection, markIDsMode) }
+      ?? getMarkIDsAtSelection(selection, markIDsMode)
     ctx.log.append(
       .array([.string("markIDsAtSelection"), mode.map { .string($0) } ?? .null, strings(ids)]))
   case "migrateMarkNodesToMarkState":
     let target = try action["key"]?.stringValue.map { try node($0) }
-    let count = try migrateMarkNodesToMarkState(target)
+    let count =
+      try markFlavor(of: action).map { try migrateMarkNodesToMarkState($0, target) }
+      ?? migrateMarkNodesToMarkState(target)
     ctx.log.append(.array([.string("migrateMarkNodesToMarkState"), .int(count)]))
+  case "logMarkIDsByFlavor":
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    let byFlavor = try getMarkIDsByFlavor(node(key))
+    let stateKeys = byFlavor.keys.sorted { $0.utf16.lexicographicallyPrecedes($1.utf16) }
+    ctx.log.append(
+      .array([
+        .string("markIDsByFlavor"), .string(key),
+        .array(stateKeys.map { .array([.string($0), strings(byFlavor[$0] ?? [])]) }),
+      ]))
   case "copy":
     // `$clipboardDataWithoutHtml` in ops.ts: `$getClipboardDataFromSelection`
     // with its default MIME types but `text/html`, which needs a DOM.

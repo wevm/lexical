@@ -4653,6 +4653,486 @@ test('scripts/mark', () => {
   );
 });
 
+test('scripts/mark-extension', () => {
+  // @lexical/mark's extensions: MarkExtension, MarkStateExtension and the
+  // flavors defineMarkExtension makes (MARK_FLAVORS in ops.ts), with
+  // MarkBaseExtension under them: the flavor-first forms of the MarkState
+  // functions, $getMarkIDsByFlavor, the `markableNodes` config, `disabled`,
+  // the `markIDNodeKeys` output (which $removeMarkID reads), the ids
+  // listener's reports, the stateKey and attribute clashes, and
+  // registerMarkState's inserted-text rule: text typed inside, at the edge
+  // of and between marked runs, replacing a selection (recorded from
+  // CONTROLLED_TEXT_INSERTION_COMMAND and PASTE_COMMAND), pasted with ids of
+  // its own, composed, re-created by a transform (hashtags) or moved into a
+  // list, and undone. Commands are dispatched outside an update, as an
+  // input layer does, after an update that selects; the composition
+  // sessions have a root element, so each of their updates selects (see
+  // `setRootElement`).
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const typeIn = (text: string): Action => ({
+    command: 'CONTROLLED_TEXT_INSERTION_COMMAND',
+    do: 'dispatch',
+    payload: text,
+  });
+  const composition = (
+    command: 'COMPOSITION_START_COMMAND' | 'COMPOSITION_END_COMMAND',
+    data: string,
+  ): Action => ({command, do: 'dispatch', payload: {data}});
+  const paste = (text: string): Step =>
+    run('PASTE_COMMAND', {clipboardData: {data: {'text/plain': text}}});
+  const enter = run('INSERT_PARAGRAPH_COMMAND');
+  const backspace = run('DELETE_CHARACTER_COMMAND', true);
+  const start = (...blocks: Node[]): Step =>
+    update(node('root', 'clear'), {do: 'append', key: 'root', nodes: blocks});
+  const addMarkID = (id: string, flavor?: string): Action =>
+    flavor === undefined
+      ? {do: 'addMarkID', id}
+      : {do: 'addMarkID', flavor, id};
+  const removeMarkID = (
+    id: string,
+    flavor?: string,
+    inSelection?: boolean,
+  ): Action => ({
+    do: 'removeMarkID',
+    id,
+    ...(flavor === undefined ? {} : {flavor}),
+    ...(inSelection === undefined ? {} : {inSelection}),
+  });
+  const nodeMarkIDs = (key: string, flavor?: string): Action =>
+    flavor === undefined
+      ? {do: 'logNodeMarkIDs', key}
+      : {do: 'logNodeMarkIDs', flavor, key};
+  const atSelection = (flavor: string, mode?: 'any' | 'all'): Action =>
+    mode === undefined
+      ? {do: 'logMarkIDsAtSelection', flavor}
+      : {do: 'logMarkIDsAtSelection', flavor, mode};
+  const byFlavor = (key: string): Action => ({do: 'logMarkIDsByFlavor', key});
+  const children = (key: string): Action => ({do: 'logChildren', key});
+  const listen = (name: string, flavor = 'MarkStateExtension'): Step =>
+    ({registerMarkIDsListener: {flavor, name}}) as Step;
+  const unlisten = (name: string): Step =>
+    ({unregisterMarkIDsListener: name}) as Step;
+  const nodeKeys = (flavor = 'MarkStateExtension'): Step =>
+    ({logMarkIDNodeKeys: flavor}) as Step;
+  const disabled = (flavor: string, value: boolean): Step =>
+    ({setSignals: [[flavor, 'disabled', value]]}) as Step;
+  const ids = (...markIds: string[]) => ({$: {markIds}});
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const dt = (): Node => ({type: 'decorator-text', version: 1}) as Node;
+  const state = ['RichTextExtension', 'MarkStateExtension'];
+  emit(
+    'mark-extension',
+    "@lexical/mark's extensions: MarkExtension, MarkStateExtension and flavors made with defineMarkExtension (with MarkBaseExtension): the flavor-first $ functions, $getMarkIDsByFlavor, markableNodes, disabled, the markIDNodeKeys output, registerMarkIDsListener's reports, stateKey and attribute clashes, and registerMarkState's inserted-text rule (typing inside, at the edges of and between marked runs, replacing a selection from CONTROLLED_TEXT_INSERTION_COMMAND and PASTE_COMMAND, pasting nodes with ids, composition, hashtags, lists, Enter, Backspace, undo).",
+    [
+      {
+        extensions: ['MarkExtension'],
+        name: 'MarkExtension registers MarkNode; the functions run without MarkStateExtension',
+        steps: [
+          // Keys: the paragraph 2, "ab" 3, the mark 4, "cd" 5.
+          start(p(t('ab'), mark(['x'], t('cd')))),
+          update(select(['3', 0, 'text'], ['5', 1, 'text']), addMarkID('a')),
+          update(removeMarkID('a')),
+          {
+            hasExtensions: [
+              '@lexical/mark',
+              '@lexical/mark/MarkState',
+              '@lexical/mark/MarkBase',
+            ],
+          } as Step,
+        ],
+      },
+      {
+        extensions: state,
+        name: 'markIDNodeKeys and the ids listener',
+        steps: [
+          nodeKeys(),
+          // Keys: the paragraph 2, "ab" 3, "cd" 4, "ef" 5.
+          start(p(t('ab', ids('c1')), t('cd'), t('ef', ids('c1', 'c2')))),
+          nodeKeys(),
+          // Called at once with the ids in the document.
+          listen('l1'),
+          update(select(['4', 0, 'text'], ['4', 2, 'text']), addMarkID('c3')),
+          nodeKeys(),
+          // Found through the output, not by walking the document.
+          update(removeMarkID('c2')),
+          nodeKeys(),
+          update(
+            select(['3', 0, 'text'], ['4', 2, 'text']),
+            call('removeText'),
+          ),
+          nodeKeys(),
+          listen('l2'),
+          update(node('5', 'remove')),
+          nodeKeys(),
+          unlisten('l1'),
+          update(select(['2', 0, 'element']), {
+            do: 'insertNodes',
+            nodes: [t('back', ids('c1'))],
+          }),
+          nodeKeys(),
+          unlisten('l2'),
+        ],
+      },
+      {
+        extensions: [
+          'RichTextExtension',
+          ['MarkStateExtension', {disabled: true}],
+        ],
+        name: 'disabled: no output, no reports, no inserted-text rule',
+        steps: [
+          // Keys: the paragraph 2, "ab" 3, "cd" 4.
+          start(p(t('ab', ids('c1')), t('cd'))),
+          // Not called: nothing is tracked while disabled.
+          listen('l1'),
+          nodeKeys(),
+          // Typed into the marked node, it keeps its ids.
+          update(select(['3', 2, 'text'])),
+          type('x'),
+          update(nodeMarkIDs('3')),
+          // Enabled: the listener gets every id.
+          disabled('MarkStateExtension', false),
+          nodeKeys(),
+          // Typed at the end of the run, it does not join it.
+          update(select(['3', 3, 'text'])),
+          type('y'),
+          nodeKeys(),
+          // Disabled again: the output is emptied, unreported.
+          disabled('MarkStateExtension', true),
+          nodeKeys(),
+          update(removeMarkID('c1')),
+          // Enabled: the listener gets the net change.
+          disabled('MarkStateExtension', false),
+          nodeKeys(),
+        ],
+      },
+      {
+        extensions: [
+          'RichTextExtension',
+          'MarkExtension',
+          'MarkStateExtension',
+          'CommentMarks',
+          'SuggestionMarks',
+        ],
+        name: 'flavors keep their ids apart',
+        steps: [
+          // Keys: the paragraph 2, "abcdef" 3.
+          start(p(t('abcdef'))),
+          listen('marks'),
+          listen('comments', 'CommentMarks'),
+          listen('suggestions', 'SuggestionMarks'),
+          update(
+            select(['3', 1, 'text'], ['3', 4, 'text']),
+            addMarkID('m1'),
+            addMarkID('c1', 'CommentMarks'),
+          ),
+          // Keys: "a" 3, "bcd" 4, "ef" 5; then "b" 4 and "cd" 6.
+          update(
+            select(['3', 0, 'text'], ['4', 1, 'text']),
+            addMarkID('s1', 'SuggestionMarks'),
+            children('2'),
+          ),
+          update(
+            byFlavor('3'),
+            byFlavor('4'),
+            byFlavor('6'),
+            byFlavor('5'),
+            nodeMarkIDs('4'),
+            nodeMarkIDs('4', 'CommentMarks'),
+            nodeMarkIDs('4', 'SuggestionMarks'),
+            select(['3', 0, 'text'], ['6', 1, 'text']),
+            atSelection('MarkStateExtension'),
+            atSelection('CommentMarks', 'all'),
+            atSelection('SuggestionMarks', 'any'),
+          ),
+          nodeKeys(),
+          nodeKeys('CommentMarks'),
+          nodeKeys('SuggestionMarks'),
+          // Inside every run of the comments and marks, at the end of the
+          // suggestion.
+          update(select(['4', 1, 'text'])),
+          type('x'),
+          update(children('2')),
+          nodeKeys('SuggestionMarks'),
+          update(removeMarkID('c1', 'CommentMarks')),
+          nodeKeys(),
+          nodeKeys('CommentMarks'),
+          update(
+            {
+              do: 'append',
+              key: 'root',
+              nodes: [p(mark(['x', 'y'], t('m')), t('n'))],
+            },
+            {do: 'migrateMarkNodesToMarkState', flavor: 'CommentMarks'},
+          ),
+          nodeKeys('CommentMarks'),
+        ],
+      },
+      {
+        extensions: ['CommentMarks', 'ClashingMarks'],
+        name: 'two flavors with one stateKey',
+        steps: [],
+      },
+      {
+        extensions: ['CommentMarks', 'AttributeClashMarks'],
+        name: 'two flavors with one attribute',
+        steps: [],
+      },
+      {
+        extensions: ['MarkStateExtension'],
+        name: 'registerMarkIDsListener of a flavor the editor lacks',
+        steps: [listen('l1', 'CommentMarks')],
+      },
+      {
+        extensions: [
+          'RichTextExtension',
+          'DecoratorTextExtension',
+          'HorizontalRuleExtension',
+          'MarkStateExtension',
+          ['CommentMarks', {markableNodes: 'text'}],
+          ['SuggestionMarks', {markableNodes: 'decorators'}],
+        ],
+        name: 'markableNodes',
+        steps: [
+          // Keys: the paragraph 2, "a" 3, the line break 4, "b" 5, the
+          // inline decorator 6, "c" 7, the rule 8, the paragraph 9, "d" 10.
+          start(p(t('a'), br(), t('b'), dt(), t('c')), hr(), p(t('d'))),
+          update(
+            select(['3', 0, 'text'], ['10', 1, 'text']),
+            addMarkID('m1'),
+            addMarkID('c1', 'CommentMarks'),
+            addMarkID('s1', 'SuggestionMarks'),
+            byFlavor('4'),
+            byFlavor('6'),
+            byFlavor('8'),
+            nodeMarkIDs('8', 'SuggestionMarks'),
+          ),
+          nodeKeys(),
+          nodeKeys('CommentMarks'),
+          nodeKeys('SuggestionMarks'),
+          update(
+            select(['3', 0, 'text'], ['10', 1, 'text']),
+            atSelection('SuggestionMarks', 'all'),
+            atSelection('CommentMarks', 'all'),
+          ),
+        ],
+      },
+      {
+        extensions: state,
+        name: 'typing inside and at the edges of a marked run',
+        steps: [
+          // Keys: the paragraph 2, "ab" 3, "cd" 4, "ef" 5.
+          start(p(t('ab'), t('cd', ids('c1')), t('ef'))),
+          // Inside: joins it.
+          update(select(['4', 1, 'text'])),
+          type('x'),
+          // At its end: does not ("y" goes to "ef", as 6).
+          update(select(['4', 3, 'text'])),
+          type('y'),
+          update(children('2')),
+          // At its start, in the text before it: does not.
+          update(select(['3', 2, 'text'])),
+          type('z'),
+          // At its start, in the run ("w" joins "abz", "cxd" is 7).
+          update(select(['4', 0, 'text'])),
+          type('w'),
+          update(children('2')),
+          // Enter inside it: both halves keep it.
+          update(select(['7', 2, 'text'])),
+          enter,
+          nodeKeys(),
+          // Backspace joins the blocks again.
+          backspace,
+          nodeKeys(),
+        ],
+      },
+      {
+        extensions: state,
+        name: 'typing between runs and replacing selections',
+        steps: [
+          // Keys: the paragraph 2, "ab" 3, "cd" 4, "ef" 5.
+          start(
+            p(t('ab', ids('c1')), t('cd', ids('c1', 'c2')), t('ef', ids('c2'))),
+          ),
+          // Between "ab" and "cd": the ids both have.
+          update(select(['3', 2, 'text'])),
+          type('x'),
+          // A selection in "cd": its ids.
+          update(select(['4', 0, 'text'], ['4', 1, 'text'])),
+          type('X'),
+          // From "ab" into "ef": none is on all of it.
+          update(select(['3', 1, 'text'], ['5', 1, 'text'])),
+          type('Y'),
+          // A backward selection of a whole run ("Z" is 8).
+          update(select(['3', 1, 'text'], ['3', 0, 'text'])),
+          type('Z'),
+          update(children('2')),
+          // Pasted over a selection: as typed.
+          update(select(['8', 0, 'text'], ['8', 1, 'text'])),
+          paste('P'),
+          update(children('2')),
+          nodeKeys(),
+        ],
+      },
+      {
+        extensions: state,
+        name: 'inserted nodes keep their own ids',
+        steps: [
+          // Keys: the paragraph 2, "ab" 3, "cd" 4.
+          start(p(t('ab', ids('c1')), t('cd'))),
+          update(select(['3', 1, 'text']), {
+            do: 'pasteLexical',
+            nodes: [t('own', ids('p1'))],
+          }),
+          update(select(['4', 1, 'text']), {
+            do: 'insertNodes',
+            nodes: [t('in', ids('p2')), t('plain')],
+          }),
+          // An id removed in the update that inserts is not given back.
+          update(
+            select(['3', 1, 'text']),
+            removeMarkID('c1'),
+            call('insertText', 'q'),
+          ),
+          nodeKeys(),
+        ],
+      },
+      {
+        extensions: state,
+        name: 'composition in and at the edge of a marked run',
+        steps: [
+          {now: 1000, setRootElement: true},
+          // Keys: the paragraph 2, "ab" 3, "cd" 4, "ef" 5.
+          update(
+            node('root', 'clear'),
+            {
+              do: 'append',
+              key: 'root',
+              nodes: [p(t('ab'), t('cd', ids('c1')), t('ef'))],
+            },
+            select(['4', 1, 'text']),
+          ),
+          update(
+            select(['4', 1, 'text']),
+            composition('COMPOSITION_START_COMMAND', ''),
+          ),
+          update(select(['4', 1, 'text']), typeIn('か')),
+          update(select(['4', 1, 'text'], ['4', 2, 'text']), typeIn('漢字')),
+          update(
+            select(['4', 3, 'text']),
+            composition('COMPOSITION_END_COMMAND', '漢字'),
+          ),
+          nodeKeys(),
+          // At the end of the run.
+          update(
+            select(['4', 5, 'text']),
+            composition('COMPOSITION_START_COMMAND', ''),
+          ),
+          update(select(['4', 5, 'text']), typeIn('k')),
+          update(
+            select(['4', 6, 'text']),
+            composition('COMPOSITION_END_COMMAND', 'k'),
+          ),
+          nodeKeys(),
+          // Replacing a selection of the run, which the first update of the
+          // composition types over: the replaced selection is the base
+          // state's. (The input layer collapses the selection itself: JS's
+          // placeholder for a composition over a selection, the empty space
+          // heuristic, is not ported to Rust or Swift.)
+          update(select(['4', 1, 'text'], ['4', 3, 'text'])),
+          update(
+            select(['4', 1, 'text']),
+            composition('COMPOSITION_START_COMMAND', ''),
+          ),
+          update(select(['4', 1, 'text'], ['4', 3, 'text']), typeIn('z')),
+          update(
+            select(['4', 2, 'text']),
+            composition('COMPOSITION_END_COMMAND', 'z'),
+          ),
+          nodeKeys(),
+          // Replacing the start of the run, which the update that starts the
+          // composition removes (the empty placeholder): "w" gets its ids
+          // though it is typed at the end of "ab".
+          update(select(['4', 0, 'text'], ['4', 3, 'text'])),
+          update(
+            select(['4', 0, 'text'], ['4', 3, 'text']),
+            call('removeText'),
+            composition('COMPOSITION_START_COMMAND', ''),
+          ),
+          update(select(['3', 2, 'text']), typeIn('w')),
+          update(
+            select(['3', 3, 'text']),
+            composition('COMPOSITION_END_COMMAND', 'w'),
+          ),
+          // "wk" is 6.
+          update(select(['6', 1, 'text']), children('2')),
+          nodeKeys(),
+        ],
+      },
+      {
+        extensions: [...state, 'HashtagExtension'],
+        name: 'a hashtag made of marked text keeps its ids',
+        steps: [
+          // Keys: the paragraph 2, "a b" 3.
+          start(p(t('a b', ids('c1')))),
+          update(select(['3', 2, 'text'])),
+          type('#'),
+          type('t'),
+          nodeKeys(),
+          // Typed after the hashtag, at the end of the run.
+          type(' x'),
+          nodeKeys(),
+        ],
+      },
+      {
+        extensions: [...state, 'ListExtension'],
+        name: 'marked text moved into a list keeps its ids',
+        steps: [
+          // Keys: the paragraph 2, "one" 3, the paragraph 4, "two" 5.
+          start(p(t('one', ids('c1'))), p(t('two'))),
+          update(select(['3', 1, 'text'])),
+          run('INSERT_UNORDERED_LIST_COMMAND'),
+          nodeKeys(),
+          update(select(['3', 3, 'text'])),
+          type('!'),
+          enter,
+          type('n'),
+          nodeKeys(),
+        ],
+      },
+      {
+        extensions: [...state, ['HistoryExtension', {disabled: false}]],
+        name: 'undo and redo bring ids back',
+        steps: [
+          // Keys: the paragraph 2, "abc" 3.
+          start(p(t('abc'))),
+          listen('l1'),
+          {
+            now: 1000,
+            update: [
+              select(['3', 0, 'text'], ['3', 2, 'text']),
+              addMarkID('c1'),
+            ],
+          },
+          {now: 2000, update: [select(['3', 1, 'text'])]},
+          {now: 3000, ...type('x')},
+          {now: 4000, update: [removeMarkID('c1')]},
+          nodeKeys(),
+          {now: 5000, ...run('UNDO_COMMAND')},
+          nodeKeys(),
+          {now: 6000, ...run('UNDO_COMMAND')},
+          {now: 7000, ...run('UNDO_COMMAND')},
+          nodeKeys(),
+          {now: 8000, ...run('REDO_COMMAND')},
+          nodeKeys(),
+        ],
+      },
+    ],
+  );
+});
+
 test('scripts/clipboard', () => {
   // @lexical/clipboard's JSON and plain-text paths: what a copy puts on the
   // clipboard (`$getLexicalContent` and the selection's text, written by

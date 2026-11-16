@@ -31,7 +31,8 @@
 //! with `extension: true` `@lexical/extension`'s decorators
 //! (`HorizontalRuleNode`, `DecoratorTextNode`), and one with `mark: true`
 //! `@lexical/mark`'s `MarkNode`; the MarkState actions (`addMarkID`...) run
-//! without `MarkStateExtension`, as in `ops.ts`. A script with `code: true`
+//! without `MarkStateExtension` unless the script is built with it, and take
+//! a mark flavor of `MARK_FLAVORS` (`flavor`), as in `ops.ts`. A script with `code: true`
 //! and `codeHighlight` registers `registerCodeHighlighting` in place of
 //! `registerCodeIndentation`, over `ops.ts`'s conformance tokenizer
 //! (`code_highlight`) or tokens it recorded from Prism, and the step
@@ -138,6 +139,8 @@ struct Ctx {
     parent: RefCell<Option<lexical::extension::LexicalEditorWithDispose>>,
     /// The effects `watchNodeKey` made, by key.
     watchers: RefCell<HashMap<String, Unregister>>,
+    /// The disposers `registerMarkIDsListener` returned, by name.
+    mark_ids_listeners: RefCell<HashMap<String, Unregister>>,
 }
 
 /// The session's root element (`sessionDOM(ctx).root`): a `div` whose
@@ -237,6 +240,7 @@ impl LexicalNode for TestDecoratorBlockNode {
     }
 }
 
+pub(crate) use extensions::mark_flavor;
 pub(crate) use schema_node::test_schema_nodes;
 
 /// `TestDecoratorBlockNode`'s class.
@@ -1120,6 +1124,7 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "logNodeMarkIDs"
             | "logMarkIDsAtSelection"
             | "migrateMarkNodesToMarkState"
+            | "logMarkIDsByFlavor"
             | "copy"
             | "pasteClipboard"
             | "pasteLexical"
@@ -2077,7 +2082,10 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
         Some("addMarkID") => {
             let id = action.str("id").map_err(err)?;
             let selection = get_selection().ok_or_else(|| err("no selection"))?;
-            let nodes = mark::add_mark_id(id, &selection)?;
+            let nodes = match extensions::mark_flavor_of(action)? {
+                None => mark::add_mark_id(id, &selection)?,
+                Some(flavor) => mark::add_mark_id_for(&flavor, id, &selection)?,
+            };
             ctx.log(vec![
                 "addMarkID".into(),
                 id.into(),
@@ -2087,28 +2095,38 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
         }
         Some("removeMarkID") => {
             let id = action.str("id").map_err(err)?;
-            if action.get("inSelection").and_then(Value::as_bool) == Some(true) {
-                let selection = get_selection().ok_or_else(|| err("no selection"))?;
-                mark::remove_mark_id(id, Some(&selection))
+            let selection = if action.get("inSelection").and_then(Value::as_bool) == Some(true) {
+                Some(get_selection().ok_or_else(|| err("no selection"))?)
             } else {
-                mark::remove_mark_id(id, None)
+                None
+            };
+            match extensions::mark_flavor_of(action)? {
+                None => mark::remove_mark_id(id, selection.as_ref()),
+                Some(flavor) => mark::remove_mark_id_for(&flavor, id, selection.as_ref()),
             }
         }
         Some("logNodeMarkIDs") => {
             let key = action.str("key").map_err(err)?;
-            let ids = mark::get_node_mark_ids(&node(key)?)?;
+            let ids = match extensions::mark_flavor_of(action)? {
+                None => mark::get_node_mark_ids(&node(key)?)?,
+                Some(flavor) => mark::get_node_mark_ids_for(&flavor, &node(key)?)?,
+            };
             ctx.log(vec!["nodeMarkIDs".into(), key.into(), strings(&ids)]);
             Ok(())
         }
         Some("logMarkIDsAtSelection") => {
             let mode = action.get("mode").and_then(Value::as_str);
-            let ids = mark::get_mark_ids_at_selection(
-                get_selection().as_ref(),
-                match mode {
-                    Some("all") => mark::MarkIDsMode::All,
-                    _ => mark::MarkIDsMode::Any,
-                },
-            )?;
+            let mode_of = match mode {
+                Some("all") => mark::MarkIDsMode::All,
+                _ => mark::MarkIDsMode::Any,
+            };
+            let selection = get_selection();
+            let ids = match extensions::mark_flavor_of(action)? {
+                None => mark::get_mark_ids_at_selection(selection.as_ref(), mode_of)?,
+                Some(flavor) => {
+                    mark::get_mark_ids_at_selection_for(&flavor, selection.as_ref(), mode_of)?
+                }
+            };
             ctx.log(vec![
                 "markIDsAtSelection".into(),
                 mode.map_or(Value::Null, Value::from),
@@ -2121,10 +2139,33 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
                 Some(key) => Some(node(key)?),
                 None => None,
             };
-            let count = mark::migrate_mark_nodes_to_mark_state(target.as_ref())?;
+            let count = match extensions::mark_flavor_of(action)? {
+                None => mark::migrate_mark_nodes_to_mark_state(target.as_ref())?,
+                Some(flavor) => {
+                    mark::migrate_mark_nodes_to_mark_state_for(&flavor, target.as_ref())?
+                }
+            };
             ctx.log(vec![
                 "migrateMarkNodesToMarkState".into(),
                 (count as f64).into(),
+            ]);
+            Ok(())
+        }
+        Some("logMarkIDsByFlavor") => {
+            let key = action.str("key").map_err(err)?;
+            let mut entries = mark::get_mark_ids_by_flavor(&node(key)?)?;
+            entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+            ctx.log(vec![
+                "markIDsByFlavor".into(),
+                key.into(),
+                Value::Array(
+                    entries
+                        .iter()
+                        .map(|(state_key, ids)| {
+                            Value::Array(vec![state_key.as_str().into(), strings(ids)])
+                        })
+                        .collect(),
+                ),
             ]);
             Ok(())
         }

@@ -51,7 +51,7 @@ import {
   CheckListExtension,
   WordListImportExtension,
 } from '@lexical/list';
-import {$createMarkNode, MarkNode} from '@lexical/mark';
+import {$createMarkNode, MarkNode, MarkStateExtension} from '@lexical/mark';
 import {
   $createHeadingNode,
   $createQuoteNode,
@@ -94,6 +94,7 @@ import {readFileSync} from 'node:fs';
 import {test} from 'vitest';
 
 import {browserWindow} from './browserWindow';
+import {MARK_FLAVORS} from './ops';
 import {DOCUMENT_NODES} from './property';
 import {emitVectors} from './vectors';
 
@@ -1464,6 +1465,194 @@ test('html/block-id', {timeout: 120_000}, () => {
     'html/block-id',
     'html-block-id',
     "BlockIdHTMLExtension in an editor built from RichTextExtension, CheckListExtension, LinkExtension, CodeExtension and BlockIdExtension (generated ids id1, id2...): the HTML $generateHtmlFromNodes writes in jsdom for the property/documents documents and three with items that only wrap a nested list (positional ids; with the default config, `handles: true` and `export: false`), and the editor state after DOMImportExtension's import of HTML carrying ids is appended to the root (each document's export, into an empty editor and into itself; curated HTML with valid, invalid, repeated, inline and wrapper ids, also with `import: false`).",
+    cases,
+  );
+});
+
+type MarkStateCase = {
+  name: string;
+  /**
+   * The mark flavors' config: `default` (MarkStateExtension as it comes),
+   * `export` (its `exportIDsToHTML: true`) or `flavors` (that, CommentMarks
+   * with `exportIDsToHTML: true` and SuggestionMarks as it comes, from
+   * ops.ts's MARK_FLAVORS).
+   */
+  scenario: string;
+  /** `export`: the document, set on the editor. */
+  editorState?: string;
+  /** `export`: `$generateHtmlFromNodes(editor)`. */
+  html?: string;
+  /** `import`: the HTML. */
+  importHtml?: string;
+  /** `import`: the nodes DOMImportExtension made of it, as html/import. */
+  nodes?: string;
+};
+
+const MARK_STATE_SCENARIOS: Record<string, AnyLexicalExtensionArgument[]> = {
+  default: [MarkStateExtension],
+  export: [configExtension(MarkStateExtension, {exportIDsToHTML: true})],
+  flavors: [
+    configExtension(MarkStateExtension, {exportIDsToHTML: true}),
+    configExtension(MARK_FLAVORS.get('CommentMarks')!, {exportIDsToHTML: true}),
+    MARK_FLAVORS.get('SuggestionMarks')!,
+  ],
+};
+
+function runMarkStateCase(c: MarkStateCase): MarkStateCase {
+  const editor = buildEditorFromExtensions(
+    defineExtension({
+      dependencies: [
+        RichTextExtension,
+        LinkExtension,
+        ...MARK_STATE_SCENARIOS[c.scenario],
+      ],
+      name: '[conformance]',
+    }),
+  );
+  try {
+    return withJSDOM(win => {
+      if (c.importHtml === undefined) {
+        editor.setEditorState(editor.parseEditorState(c.editorState!));
+        return {
+          ...c,
+          html: editor.read(() => $generateHtmlFromNodes(editor)),
+        };
+      }
+      const dom = new win.DOMParser().parseFromString(
+        c.importHtml,
+        'text/html',
+      );
+      let nodes = '';
+      editor.update(
+        () => {
+          nodes = JSON.stringify(
+            $generateNodesFromDOMViaExtension(dom).map($nodeToJSON),
+          );
+        },
+        {discrete: true},
+      );
+      return {...c, nodes};
+    });
+  } finally {
+    editor.dispose();
+  }
+}
+
+/** Documents whose leaves carry the ids of each flavor. */
+function markStateDocuments(): string[] {
+  const text = (value: string, state?: Record<string, string[]>) => ({
+    detail: 0,
+    format: 0,
+    mode: 'normal',
+    style: '',
+    text: value,
+    type: 'text',
+    version: 1,
+    ...(state === undefined ? {} : {$: state}),
+  });
+  const paragraph = (...children: unknown[]) => ({
+    children,
+    direction: null,
+    format: '',
+    indent: 0,
+    textFormat: 0,
+    textStyle: '',
+    type: 'paragraph',
+    version: 1,
+  });
+  const doc = (...children: unknown[]) =>
+    JSON.stringify({
+      root: {
+        children,
+        direction: null,
+        format: '',
+        indent: 0,
+        type: 'root',
+        version: 1,
+      },
+    });
+  return [
+    doc(
+      paragraph(
+        text('plain '),
+        text('one', {markIds: ['a']}),
+        text('two', {markIds: ['a', 'b']}),
+      ),
+    ),
+    doc(
+      paragraph(
+        {...text('bold', {markIds: ['é']}), format: 1},
+        {$: {markIds: ['a']}, type: 'linebreak', version: 1},
+        {
+          children: [text('link', {markIds: ['a']})],
+          direction: null,
+          format: '',
+          indent: 0,
+          rel: null,
+          target: null,
+          title: null,
+          type: 'link',
+          url: 'https://a.test',
+          version: 1,
+        },
+        {...text('\t', {markIds: ['a']}), type: 'tab'},
+      ),
+    ),
+    doc(
+      paragraph(
+        text('all', {
+          commentIds: ['c1', 'c2'],
+          markIds: ['m1'],
+          suggestionIds: ['s1'],
+        }),
+        text('comment', {commentIds: ['c1']}),
+        text('suggestion', {suggestionIds: ['s1']}),
+      ),
+    ),
+  ];
+}
+
+/** HTML carrying ids: on leaves, blocks and links, invalid and repeated. */
+const MARK_STATE_IMPORT_CORPUS = [
+  '<p><span data-lexical-mark-ids="a b">x</span>y</p>',
+  '<p data-lexical-mark-ids="p1">block <b>bold</b><br>after</p>',
+  '<span data-lexical-mark-ids="  a\tb  a ">spaced</span><span data-lexical-mark-ids="">empty</span>',
+  '<span data-lexical-mark-ids="o"><span data-lexical-mark-ids="i">in</span>out</span>',
+  '<a href="https://a.test" data-lexical-mark-ids="l1">link</a>',
+  '<span data-lexical-comment-ids="c1" data-suggestion="s1" data-lexical-mark-ids="m1">all</span>',
+];
+
+test('html/mark-state', () => {
+  const documents = markStateDocuments();
+  const cases: MarkStateCase[] = [];
+  documents.forEach((editorState, i) => {
+    for (const scenario of Object.keys(MARK_STATE_SCENARIOS)) {
+      cases.push(
+        runMarkStateCase({
+          editorState,
+          name: `export ${scenario} document ${i}`,
+          scenario,
+        }),
+      );
+    }
+  });
+  const exported = cases.map(c => c.html!);
+  // `export` imports as `default` does: the config is the export's.
+  [...MARK_STATE_IMPORT_CORPUS, ...exported].forEach((importHtml, i) => {
+    for (const scenario of ['default', 'flavors']) {
+      cases.push(
+        runMarkStateCase({
+          importHtml,
+          name: `import ${scenario} html ${i}`,
+          scenario,
+        }),
+      );
+    }
+  });
+  emitVectors(
+    'html/mark-state',
+    'html-mark-state',
+    "MarkStateExtension's HTML export (exportIDsToHTML) and the import rule of its ids attribute, in an editor built from RichTextExtension and LinkExtension with the scenario's mark flavors (`default`: MarkStateExtension; `export`: with exportIDsToHTML; `flavors`: that, ops.ts's CommentMarks with exportIDsToHTML and SuggestionMarks): the HTML $generateHtmlFromNodes writes in jsdom for documents with ids on text, a line break, a link's text and a tab, and the nodes DOMImportExtension's $generateNodesFromDOM makes of HTML carrying ids (curated, and each export; in `default` and `flavors`), each as exportJSON with its children.",
     cases,
   );
 });

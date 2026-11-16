@@ -37,6 +37,11 @@ pub fn all() -> Vec<Suite> {
             check: html::check_block_id,
         },
         Suite {
+            file: "html/mark-state",
+            variant: None,
+            check: html::check_mark_state,
+        },
+        Suite {
             file: "html/clipboard",
             variant: None,
             check: html::check_clipboard,
@@ -233,6 +238,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "scripts/mark",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/mark-extension",
             variant: None,
             check: crate::scripts::check,
         },

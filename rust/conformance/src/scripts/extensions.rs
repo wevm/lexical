@@ -35,7 +35,7 @@ use lexical::{
     LexicalError, LexicalExtension, NodeClass, Unregister, config_extension, create_paragraph_node,
     create_text_node, declare_peer_dependency, define_extension, get_root, shallow_merge_config,
 };
-use lexical::{a11y, code, hashtag, history, link, list, overflow, plain_text, rich_text};
+use lexical::{a11y, code, hashtag, history, link, list, mark, overflow, plain_text, rich_text};
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -77,8 +77,95 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "EditorModeAnnounceExtension" => a11y::editor_mode_announce_extension().into(),
         "HeadingAnnounceExtension" => rich_text::heading_announce_extension().into(),
         "HistoryAnnounceExtension" => a11y::history_announce_extension().into(),
-        _ => return None,
+        "MarkExtension" => mark::mark_extension().into(),
+        "MarkBaseExtension" => mark::mark_base_extension().into(),
+        _ => return mark_flavor(key).map(Into::into),
     })
+}
+
+thread_local! {
+    /// `MARK_FLAVORS`: the mark flavors an `ExtensionArg` or a MarkState
+    /// action's `flavor` may name. `ClashingMarks` shares CommentMarks'
+    /// `stateKey`, and `AttributeClashMarks` its attribute.
+    static MARK_FLAVORS: Vec<(&'static str, mark::MarkFlavorExtension)> = {
+        let define = |name: &str, state_key: &str, attribute: Option<&str>, class_name: Option<&str>, overlap: Option<&str>| {
+            mark::define_mark_extension(&mark::MarkFlavorDefinition {
+                name: name.to_owned(),
+                state_key: state_key.to_owned(),
+                attribute: attribute.map(str::to_owned),
+                class_name: class_name.map(str::to_owned),
+                overlap_class_name: overlap.map(str::to_owned),
+                ..Default::default()
+            })
+            .expect("a valid flavor")
+        };
+        vec![
+            ("MarkStateExtension", mark::mark_state_extension()),
+            (
+                "CommentMarks",
+                define(
+                    "@conformance/CommentMarks",
+                    "commentIds",
+                    None,
+                    Some("comment"),
+                    Some("comment-overlap"),
+                ),
+            ),
+            (
+                "SuggestionMarks",
+                define(
+                    "@conformance/SuggestionMarks",
+                    "suggestionIds",
+                    Some("data-Suggestion"),
+                    None,
+                    None,
+                ),
+            ),
+            (
+                "ClashingMarks",
+                define("@conformance/ClashingMarks", "commentIds", None, None, None),
+            ),
+            (
+                "AttributeClashMarks",
+                define(
+                    "@conformance/AttributeClashMarks",
+                    "otherIds",
+                    Some("data-lexical-comment-ids"),
+                    None,
+                    None,
+                ),
+            ),
+        ]
+    };
+}
+
+/// The mark flavor of `MARK_FLAVORS` named `key`, if any.
+pub(crate) fn mark_flavor(key: &str) -> Option<mark::MarkFlavorExtension> {
+    MARK_FLAVORS.with(|flavors| {
+        flavors
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, flavor)| flavor.clone())
+    })
+}
+
+/// `markFlavor(action.flavor)`: the flavor a MarkState action names, if it
+/// names one.
+pub(super) fn mark_flavor_of(
+    action: &Value,
+) -> Result<Option<mark::MarkFlavorExtension>, LexicalError> {
+    match action.get("flavor").and_then(Value::as_str) {
+        None => Ok(None),
+        Some(key) => mark_flavor(key)
+            .map(Some)
+            .ok_or_else(|| err(format!("unknown mark flavor {key}"))),
+    }
+}
+
+/// JS's default sort of strings: by UTF-16 code units.
+fn js_sorted(mut strings: Vec<String>) -> Value {
+    strings.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
+    Value::Array(strings.into_iter().map(Value::from).collect())
 }
 
 /// `REAL_EXTENSIONS` in a session: `HistoryExtension` reads the session's
@@ -497,6 +584,26 @@ fn real_configured(
                 }
             ),
         ),
+        _ if mark_flavor(key).is_some() => config_extension(
+            &mark_flavor(key).expect("a mark flavor"),
+            overrides!(mark::MarkStateConfigOverrides, |o, field, v| match field {
+                "disabled" => o.disabled = Some(bool_of(field, v)?),
+                "exportIDsToHTML" => o.export_ids_to_html = Some(bool_of(field, v)?),
+                // `CONFIG_PRESETS`' `markableNodes: 'text'` is `[TextNode]`,
+                // and `'decorators'` `[...DEFAULT_MARKABLE_NODES,
+                // $isDecoratorNode]`.
+                "markableNodes" if v.as_str() == Some("text") => {
+                    o.markable_nodes =
+                        Some(vec![mark::MarkableNodeMatch::new(|node| node.is_text())])
+                }
+                "markableNodes" if v.as_str() == Some("decorators") => {
+                    let mut nodes = mark::default_markable_nodes();
+                    nodes.push(mark::MarkableNodeMatch::new(|node| node.is_decorator()));
+                    o.markable_nodes = Some(nodes)
+                }
+                _ => unknown(field, v)?,
+            }),
+        ),
         _ => return Err(err(format!("{key} takes no config overrides"))),
     })
 }
@@ -631,6 +738,14 @@ fn set_real_signal(
                     "destroyed" => o.destroyed.set_value(as_string()?),
                     "destroyedMany" => o.destroyed_many.set_value(as_string()?),
                     "disabled" => o.disabled.set_value(as_bool()?),
+                    _ => return Err(err(format!("no signal {name} of {key}"))),
+                }
+            }
+            (flavor, field) if mark_flavor(flavor).is_some() => {
+                let o = output(editor, &mark_flavor(flavor).expect("a mark flavor"))?;
+                match field {
+                    "disabled" => o.disabled.set_value(as_bool()?),
+                    "exportIDsToHTML" => o.export_ids_to_html.set_value(as_bool()?),
                     _ => return Err(err(format!("no signal {name} of {key}"))),
                 }
             }
@@ -1176,6 +1291,59 @@ pub(super) fn run_step(
             None
         });
         ctx.watchers.borrow_mut().insert(key.to_owned(), dispose);
+    } else if let Some(spec) = step.get("registerMarkIDsListener") {
+        let name = spec.get("name").and_then(Value::as_str).unwrap_or("");
+        let key = spec.get("flavor").and_then(Value::as_str).unwrap_or("");
+        if ctx.mark_ids_listeners.borrow().contains_key(name) {
+            return Err(err(format!("already listening as {name}")));
+        }
+        let flavor = mark_flavor(key).ok_or_else(|| err(format!("unknown mark flavor {key}")))?;
+        let (log_ctx, log_name) = (Rc::downgrade(ctx), name.to_owned());
+        let dispose = mark::register_mark_ids_listener(editor, &flavor, move |change| {
+            if let Some(ctx) = log_ctx.upgrade() {
+                ctx.log(vec![
+                    "markIDsChange".into(),
+                    log_name.as_str().into(),
+                    js_sorted(change.added.clone()),
+                    js_sorted(change.removed.clone()),
+                    js_sorted(change.ids.clone()),
+                    js_sorted(change.tags.clone()),
+                ]);
+            }
+        })?;
+        ctx.mark_ids_listeners
+            .borrow_mut()
+            .insert(name.to_owned(), dispose);
+    } else if let Some(name) = step
+        .get("unregisterMarkIDsListener")
+        .and_then(Value::as_str)
+    {
+        let dispose = ctx.mark_ids_listeners.borrow_mut().remove(name);
+        match dispose {
+            None => return Err(err(format!("no listener {name}"))),
+            Some(dispose) => dispose(),
+        }
+    } else if let Some(key) = step.get("logMarkIDNodeKeys").and_then(Value::as_str) {
+        let flavor = mark_flavor(key).ok_or_else(|| err(format!("unknown mark flavor {key}")))?;
+        let keys = get_extension_dependency_from_editor(editor, &flavor)?
+            .output
+            .ok_or_else(|| err("no output"))?
+            .mark_id_node_keys
+            .peek();
+        let mut ids: Vec<(String, Vec<String>)> = keys
+            .iter()
+            .map(|(id, keys)| (id.to_owned(), keys.to_vec()))
+            .collect();
+        ids.sort_by(|(a, _), (b, _)| a.encode_utf16().cmp(b.encode_utf16()));
+        ctx.log(vec![
+            "markIDNodeKeys".into(),
+            key.into(),
+            Value::Array(
+                ids.into_iter()
+                    .map(|(id, keys)| Value::Array(vec![id.into(), js_sorted(keys)]))
+                    .collect(),
+            ),
+        ]);
     } else if let Some(key) = step.get("unwatchNodeKey").and_then(Value::as_str) {
         let dispose = ctx.watchers.borrow_mut().remove(key);
         match dispose {

@@ -69,11 +69,13 @@ code = ["utils"]
 # is registerCodeGutter, which writes to the DOM.
 code-highlight = ["code"]
 # @lexical/mark: MarkNode, $wrapSelectionInMarkNode, $unwrapMarkNode,
-# $getMarkIDs, and the functions of MarkStateExtension.ts that need no
-# extension. Upstream it depends on @lexical/utils, which it enables as
-# upstream does (nothing ported uses it yet), and on @lexical/extension and
-# @lexical/html, for MarkExtension, MarkStateExtension and the DOM, which
-# aren't ported.
+# $getMarkIDs, and the functions of MarkStateExtension.ts; with `extension`,
+# MarkExtension, MarkStateExtension, MarkBaseExtension and the flavors of
+# defineMarkExtension, and with `html` too their HTML export and import of the
+# ids. Upstream it depends on @lexical/utils, which it enables as upstream does
+# (nothing ported uses it yet), and on @lexical/extension and @lexical/html,
+# which it uses when those features are on; the renderer's $decorateMarkIDs and
+# isMarkIDShown need a reconciled DOM and aren't ported.
 mark = ["utils"]
 # @lexical/overflow: OverflowNode; with @lexical/react's character limit
 # (shared/useCharacterLimit.ts), which wraps the text past a limit in overflow

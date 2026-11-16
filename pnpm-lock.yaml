@@ -734,6 +734,9 @@ importers:
       '@lexical/list':
         specifier: workspace:*
         version: link:../lexical-list
+      '@lexical/mark':
+        specifier: workspace:*
+        version: link:../lexical-mark
       '@lexical/markdown':
         specifier: workspace:*
         version: link:../lexical-markdown

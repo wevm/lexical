@@ -73,6 +73,11 @@ pub fn all() -> Vec<Suite> {
             check: serialization::check,
         },
         Suite {
+            file: "serialization/mark",
+            variant: None,
+            check: serialization::check,
+        },
+        Suite {
             file: "serialization/overflow",
             variant: None,
             check: serialization::check,
@@ -129,6 +134,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "scripts/overflow",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/mark",
             variant: None,
             check: crate::scripts::check,
         },
@@ -200,7 +210,8 @@ pub fn all() -> Vec<Suite> {
 pub fn package_of(node_type: &str) -> Option<&'static str> {
     Some(match node_type {
         "root" | "paragraph" | "text" | "linebreak" | "tab" | "heading" | "quote" | "list"
-        | "listitem" | "link" | "autolink" | "code" | "code-highlight" | "overflow" | "hashtag" => {
+        | "listitem" | "link" | "autolink" | "code" | "code-highlight" | "overflow" | "hashtag"
+        | "mark" => {
             return None;
         }
         _ => "unknown",

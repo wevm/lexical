@@ -3798,3 +3798,513 @@ test('scripts/extensions', () => {
     ],
   );
 });
+
+function mark(ids: unknown, ...children: Node[]): Node {
+  return {
+    children,
+    direction: null,
+    format: '',
+    ids,
+    indent: 0,
+    type: 'mark',
+    version: 1,
+  } as Node;
+}
+
+test('scripts/mark', () => {
+  // @lexical/mark: MarkNode (its ids, its insertion behavior through typing,
+  // Enter and deletion at its edges, extractWithChild and excludeFromCopy),
+  // $wrapSelectionInMarkNode, $unwrapMarkNode and $getMarkIDs (index.ts),
+  // and the MarkState functions of MarkStateExtension.ts that need no
+  // extension ($addMarkID, $removeMarkID, $getNodeMarkIDs,
+  // $getMarkIDsAtSelection, $migrateMarkNodesToMarkState), which store ids as
+  // the `markIds` NodeState of the leaves. Commands are dispatched outside an
+  // update, as an input layer does.
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const dt = (): Node => ({type: 'decorator-text', version: 1}) as Node;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const enter = run('INSERT_PARAGRAPH_COMMAND');
+  const backspace = run('DELETE_CHARACTER_COMMAND', true);
+  const del = run('DELETE_CHARACTER_COMMAND', false);
+  const wrap = (id: string, isBackward = false): Action => ({
+    do: 'wrapSelectionInMarkNode',
+    id,
+    isBackward,
+  });
+  const unwrap = (key: string): Action => ({do: 'unwrapMarkNode', key});
+  const markIDs = (key: string, offset: number): Action => ({
+    do: 'logMarkIDs',
+    key,
+    offset,
+  });
+  const addMarkID = (id: string): Action => ({do: 'addMarkID', id});
+  const removeMarkID = (id: string, inSelection?: boolean): Action =>
+    inSelection === undefined
+      ? {do: 'removeMarkID', id}
+      : {do: 'removeMarkID', id, inSelection};
+  const nodeMarkIDs = (key: string): Action => ({do: 'logNodeMarkIDs', key});
+  const atSelection = (mode?: 'any' | 'all'): Action =>
+    mode === undefined
+      ? {do: 'logMarkIDsAtSelection'}
+      : {do: 'logMarkIDsAtSelection', mode};
+  const migrate = (key?: string): Action =>
+    key === undefined
+      ? {do: 'migrateMarkNodesToMarkState'}
+      : {do: 'migrateMarkNodesToMarkState', key};
+  const ids = (...markIds: unknown[]) => ({$: {markIds}});
+  const extension = true;
+  const link = true;
+  const richText = true;
+  // Keys: the paragraph 1, "ab" 2, the mark 3, "cd" 4, "ef" 5.
+  const edges = doc(p(t('ab'), mark(['a'], t('cd')), t('ef')));
+  emit(
+    'mark',
+    "@lexical/mark: $wrapSelectionInMarkNode across text nodes, partial text, blocks, backward selections, overlapping marks, line breaks, decorators and inline elements; $getMarkIDs; $unwrapMarkNode; MarkNode's ids (addID, deleteID down to none, setIDs, hasID, getIDs), its JSON, and its insertion behavior (canInsertTextBefore/After, canBeEmpty, isInline, insertNewAfter, extractWithChild, excludeFromCopy) through typing, Enter and deletion at its edges; and the MarkState functions that need no extension ($addMarkID, $removeMarkID, $getNodeMarkIDs, $getMarkIDsAtSelection, $migrateMarkNodesToMarkState).",
+    [
+      {
+        mark: true,
+        name: 'wrapping text nodes and partial text',
+        steps: [
+          doc(p(t('Hello '), t('bold', {format: 1}), t(' world')), p(t('one'))),
+          update(select(['2', 2, 'text'], ['4', 3, 'text']), wrap('a')),
+          update(select(['6', 1, 'text'], ['6', 2, 'text']), wrap('b')),
+          update(select(['6', 0, 'text'], ['6', 0, 'text']), wrap('c')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'wrapping backward selections',
+        steps: [
+          doc(
+            p(t('Hello '), t('bold', {format: 1}), t(' world')),
+            p(t('abcdef')),
+          ),
+          update(select(['4', 3, 'text'], ['2', 2, 'text']), wrap('a', true)),
+          update(select(['6', 5, 'text'], ['6', 1, 'text']), wrap('b')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'wrapping across blocks',
+        steps: [
+          doc(p(t('one')), p(t('two'), t('2', {format: 1})), p(t('three'))),
+          update(select(['2', 1, 'text'], ['7', 2, 'text']), wrap('a')),
+          update(
+            select(['root', 0, 'element'], ['root', 3, 'element']),
+            wrap('b'),
+          ),
+        ],
+      },
+      {
+        mark: true,
+        name: 'overlapping marks',
+        steps: [
+          doc(p(t('abcdef'))),
+          update(select(['2', 1, 'text'], ['2', 4, 'text']), wrap('a')),
+          update(select(['3', 1, 'text'], ['4', 1, 'text']), wrap('b')),
+        ],
+      },
+      {
+        extension,
+        link,
+        mark: true,
+        name: 'line breaks, decorators and inline elements in the range',
+        steps: [
+          // Keys: the paragraph 1, "a" 2, the line break 3, "b" 4, the link
+          // 5, "c" 6, "d" 7, the inline decorator 8, "e" 9, the rule 10, the
+          // paragraph 11, "f" 12.
+          doc(
+            p(
+              t('a'),
+              br(),
+              t('b'),
+              a('https://x', t('c')),
+              t('d'),
+              dt(),
+              t('e'),
+            ),
+            hr(),
+            p(t('f')),
+          ),
+          update(select(['2', 0, 'text'], ['12', 1, 'text']), wrap('a')),
+        ],
+      },
+      {
+        extension,
+        link,
+        mark: true,
+        name: 'wrapping from inside a link',
+        steps: [
+          doc(p(t('a'), a('https://x', t('bc')), t('d'))),
+          update(select(['4', 1, 'text'], ['5', 1, 'text']), wrap('a')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'getMarkIDs',
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, the mark 3, "cd" 4, the mark 5,
+          // "ef" 6, "gh" 7.
+          doc(
+            p(
+              t('ab'),
+              mark(['a', 'b'], t('cd'), mark(['c'], t('ef'))),
+              t('gh'),
+            ),
+          ),
+          update(
+            markIDs('2', 0),
+            markIDs('2', 1),
+            markIDs('2', 2),
+            markIDs('4', 0),
+            markIDs('4', 2),
+            markIDs('6', 1),
+            markIDs('7', 0),
+            markIDs('7', 2),
+          ),
+        ],
+      },
+      {
+        mark: true,
+        name: 'typing at the start of a mark',
+        richText,
+        steps: [edges, update(select(['4', 0, 'text'])), type('x')],
+      },
+      {
+        mark: true,
+        name: 'typing at the end of a mark',
+        richText,
+        steps: [edges, update(select(['4', 2, 'text'])), type('x')],
+      },
+      {
+        mark: true,
+        name: 'typing inside a mark',
+        richText,
+        steps: [edges, update(select(['4', 1, 'text'])), type('x')],
+      },
+      {
+        mark: true,
+        name: 'typing at element points around a mark',
+        richText,
+        steps: [
+          edges,
+          update(select(['3', 0, 'element'])),
+          type('x'),
+          update(select(['3', 1, 'element'])),
+          type('y'),
+          update(select(['1', 1, 'element'])),
+          type('z'),
+        ],
+      },
+      {
+        mark: true,
+        name: 'typing over a range that ends in a mark',
+        richText,
+        steps: [
+          edges,
+          update(select(['2', 1, 'text'], ['4', 1, 'text'])),
+          type('x'),
+        ],
+      },
+      {
+        mark: true,
+        name: 'Enter in a mark',
+        richText,
+        steps: [
+          edges,
+          update(select(['4', 1, 'text'])),
+          enter,
+          update(select(['4', 1, 'text'])),
+          enter,
+        ],
+      },
+      {
+        mark: true,
+        name: 'removing all of a mark',
+        richText,
+        steps: [
+          edges,
+          update(select(['4', 0, 'text'], ['4', 2, 'text'])),
+          run('REMOVE_TEXT_COMMAND'),
+        ],
+      },
+      {
+        mark: true,
+        name: 'removing text across a mark edge',
+        richText,
+        steps: [
+          edges,
+          update(select(['2', 1, 'text'], ['4', 1, 'text'])),
+          del,
+          update(select(['4', 1, 'text'], ['5', 1, 'text'])),
+          backspace,
+        ],
+      },
+      {
+        mark: true,
+        name: 'Backspace and Delete at mark edges',
+        richText,
+        steps: [
+          edges,
+          update(select(['4', 0, 'text'])),
+          backspace,
+          update(select(['4', 2, 'text'])),
+          del,
+          update(select(['2', 2, 'text'])),
+          del,
+        ],
+      },
+      {
+        mark: true,
+        name: 'removing the last child of a mark',
+        steps: [edges, update(node('4', 'remove'))],
+      },
+      {
+        mark: true,
+        name: 'unwrapping',
+        steps: [
+          doc(p(t('a'), mark(['x'], t('b'), t('c', {format: 1})), t('d'))),
+          update(select(['4', 1, 'text']), unwrap('3')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'unwrapping nested marks',
+        steps: [
+          // Keys: the paragraph 1, the mark 2, "a" 3, the mark 4, "b" 5.
+          doc(p(mark(['x'], t('a'), mark(['y'], t('b'))))),
+          update(select(['5', 1, 'text']), unwrap('2')),
+          update(unwrap('4')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'mark ids',
+        steps: [
+          doc(p(mark(['a'], t('x')))),
+          update(node('2', 'addID', 'b'), node('2', 'getIDs')),
+          update(node('2', 'addID', 'a'), node('2', 'getIDs')),
+          update(
+            node('2', 'hasID', 'a'),
+            node('2', 'hasID', 'z'),
+            node('2', 'deleteID', 'z'),
+          ),
+          update(node('2', 'deleteID', 'a'), node('2', 'getIDs')),
+          update(node('2', 'setIDs', ['c', 'b', 'c']), node('2', 'getIDs')),
+          update(node('2', 'deleteID', 'c'), node('2', 'getIDs')),
+          update(node('2', 'addID', 'c'), node('2', 'getIDs')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'deleting the last id',
+        steps: [
+          doc(p(t('a'), mark(['x'], t('b')), t('c'))),
+          // The mark stays, with no ids.
+          update(node('3', 'deleteID', 'x'), node('3', 'getIDs')),
+          // As the playground's CommentPlugin does next.
+          update(unwrap('3')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'MarkNode JSON with ids that are not strings',
+        steps: [
+          doc(
+            p(
+              mark(['a', 1, null, 'b'], t('x')),
+              mark('a', t('y')),
+              mark(undefined, t('z')),
+            ),
+          ),
+          update(node('2', 'getIDs'), node('4', 'getIDs'), node('6', 'getIDs')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'extractWithChild and excludeFromCopy',
+        steps: [
+          // Keys: the paragraph 1, the mark 2, "cd" 3, " " 4, the mark 5,
+          // "ef" 6, "gh" 7.
+          doc(
+            p(
+              mark(['a'], t('cd')),
+              t(' '),
+              mark(['b'], t('ef'), t('gh', {format: 1})),
+            ),
+          ),
+          update(
+            select(['3', 0, 'text'], ['3', 2, 'text']),
+            node('2', 'extractWithChild', '3', 'clone'),
+            node('2', 'extractWithChild', '3', 'html'),
+          ),
+          update(
+            select(['3', 2, 'text'], ['3', 0, 'text']),
+            node('2', 'extractWithChild', '3', 'clone'),
+          ),
+          update(
+            select(['3', 0, 'text'], ['3', 1, 'text']),
+            node('2', 'extractWithChild', '3', 'clone'),
+          ),
+          update(
+            select(['3', 0, 'text'], ['4', 1, 'text']),
+            node('2', 'extractWithChild', '3', 'clone'),
+          ),
+          update(
+            select(['6', 0, 'text'], ['7', 2, 'text']),
+            node('5', 'extractWithChild', '6', 'clone'),
+          ),
+          update(
+            select(['6', 2, 'text'], ['7', 2, 'text']),
+            node('5', 'extractWithChild', '7', 'clone'),
+          ),
+          update(
+            {do: 'selectNodes', keys: ['3']},
+            node('2', 'extractWithChild', '3', 'clone'),
+            node('2', 'excludeFromCopy', 'clone'),
+            node('2', 'excludeFromCopy', 'html'),
+          ),
+        ],
+      },
+      {
+        extension,
+        link,
+        mark: true,
+        name: 'addMarkID',
+        steps: [
+          // Keys: the paragraph 1, "Hello world" 2, the line break 3, "next"
+          // 4, the link 5, "link" 6, the inline decorator 7, "end" 8, the
+          // rule 9, the paragraph 10, "second" 11.
+          doc(
+            p(
+              t('Hello world'),
+              br(),
+              t('next'),
+              a('https://x', t('link')),
+              dt(),
+              t('end'),
+            ),
+            hr(),
+            p(t('second')),
+          ),
+          update(select(['2', 6, 'text'], ['11', 3, 'text']), addMarkID('c1')),
+          update(select(['2', 0, 'text'], ['4', 2, 'text']), addMarkID('c2')),
+          // Collapsed: nothing is marked.
+          update(select(['2', 1, 'text']), addMarkID('c3')),
+          // A node selection of the inline decorator.
+          update({do: 'selectNodes', keys: ['7']}, addMarkID('c4')),
+          // Invalid ids throw.
+          update(select(['2', 0, 'text'], ['2', 1, 'text']), addMarkID('a b')),
+          update(select(['2', 0, 'text'], ['2', 1, 'text']), addMarkID('')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'getNodeMarkIDs and getMarkIDsAtSelection',
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, "cd" 3, "ef" 4, "gh" 5.
+          doc(p(t('ab'), t('cd', ids('b', 'a')), t('ef', ids('a')), t('gh'))),
+          update(
+            nodeMarkIDs('1'),
+            nodeMarkIDs('2'),
+            nodeMarkIDs('3'),
+            nodeMarkIDs('4'),
+          ),
+          update(select(['2', 1, 'text']), atSelection()),
+          update(select(['2', 2, 'text']), atSelection()),
+          update(select(['3', 1, 'text']), atSelection()),
+          update(select(['4', 2, 'text']), atSelection()),
+          update(select(['1', 1, 'element']), atSelection()),
+          update(select(['1', 0, 'element']), atSelection()),
+          update(
+            select(['2', 1, 'text'], ['4', 1, 'text']),
+            atSelection(),
+            atSelection('any'),
+            atSelection('all'),
+          ),
+          update(
+            select(['2', 2, 'text'], ['3', 2, 'text']),
+            atSelection('all'),
+          ),
+          update(
+            select(['3', 1, 'text'], ['5', 0, 'text']),
+            atSelection('all'),
+          ),
+          update(select(['5', 0, 'text'], ['5', 2, 'text']), atSelection()),
+          update({do: 'clearSelection'}, atSelection()),
+        ],
+      },
+      {
+        mark: true,
+        name: 'mark ids from JSON',
+        steps: [
+          doc(
+            p(
+              t('x', ids('b', 'a', 'a', ' bad', 3, '', null)),
+              t(' '),
+              t('y', ids('\uff01', '\u{1f600}', 'b')),
+              t(' '),
+              t('z', {$: {markIds: 'a'}}),
+            ),
+          ),
+          update(nodeMarkIDs('2'), nodeMarkIDs('4'), nodeMarkIDs('6')),
+          update(select(['2', 0, 'text'], ['4', 1, 'text']), addMarkID('c')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'removeMarkID',
+        steps: [
+          doc(
+            p(t('one', ids('a', 'b')), t('two', ids('a')), t('three')),
+            p(t('four', ids('a'))),
+          ),
+          update(
+            select(['3', 1, 'text'], ['6', 2, 'text']),
+            removeMarkID('a', true),
+          ),
+          update(removeMarkID('a')),
+          update(removeMarkID('b')),
+          update(removeMarkID('missing')),
+        ],
+      },
+      {
+        extension,
+        link,
+        mark: true,
+        name: 'migrateMarkNodesToMarkState',
+        steps: [
+          doc(
+            p(
+              t('a'),
+              mark(['x'], t('b'), mark(['y', 'x'], t('c')), br(), dt()),
+              t('d'),
+            ),
+            p(mark(['z'], a('https://x', t('e'))), t('f')),
+          ),
+          update(migrate()),
+          update(migrate()),
+        ],
+      },
+      {
+        mark: true,
+        name: 'migrateMarkNodesToMarkState of a subtree',
+        steps: [
+          doc(p(mark(['x'], t('a'))), p(mark(['y'], t('b')))),
+          // Keys: the paragraph 1, the mark 2, "a" 3, the paragraph 4, the
+          // mark 5, "b" 6.
+          update(migrate('1')),
+          update(migrate('4')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'migrateMarkNodesToMarkState with an invalid id',
+        steps: [doc(p(mark(['a b'], t('a')))), update(migrate())],
+      },
+    ],
+  );
+});

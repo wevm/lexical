@@ -21,6 +21,11 @@ pub fn all() -> Vec<Suite> {
             check: entities::check_autolink_match,
         },
         Suite {
+            file: "serialization/code",
+            variant: None,
+            check: serialization::check,
+        },
+        Suite {
             file: "serialization/core",
             variant: None,
             check: serialization::check,
@@ -47,6 +52,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "scripts/listeners",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/code",
             variant: None,
             check: crate::scripts::check,
         },
@@ -118,8 +128,7 @@ pub fn all() -> Vec<Suite> {
 pub fn package_of(node_type: &str) -> Option<&'static str> {
     Some(match node_type {
         "root" | "paragraph" | "text" | "linebreak" | "tab" | "heading" | "quote" | "list"
-        | "listitem" | "link" | "autolink" => return None,
-        "code" | "code-highlight" => "lexical-code-core",
+        | "listitem" | "link" | "autolink" | "code" | "code-highlight" => return None,
         "overflow" => "lexical-overflow",
         "hashtag" => "lexical-hashtag",
         _ => "unknown",

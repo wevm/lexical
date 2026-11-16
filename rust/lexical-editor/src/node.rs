@@ -229,6 +229,14 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         Ok(false)
     }
 
+    /// `TextNode.setFormat(format)` on the text node `this`: sets its
+    /// `__format`, after `getWritable()`.
+    fn set_format(&self, this: &NodeRef, format: f64) {
+        with_writable(this.get_key(), |n| {
+            n.text_mut().expect("a text node").format = format
+        });
+    }
+
     /// `canInsertTextBefore()` (`TextNode` and `ElementNode`): whether text
     /// typed at the node's start goes into it.
     fn can_insert_text_before(&self) -> bool {

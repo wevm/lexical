@@ -42,7 +42,17 @@ zbugs-gpui is. macOS.
   it.
 - **Blocks.** Headings draw larger and bolder, list items with their
   marker (•, 1., ☐ or ☑) indented by depth, a checked item struck through,
-  a quote with a bar, and links in blue, underlined.
+  a quote with a bar, a code block monospaced on a tinted background, and
+  links in blue, underlined.
+- **Markdown shortcuts.** Typing markdown turns it into rich text, as
+  the web playground's `MarkdownShortcutPlugin` does
+  (`registerMarkdownShortcuts` with `TRANSFORMERS`): `# ` to `###### `
+  make headings, `> ` a quote, `- `, `* `, `+ ` and `1. ` list items,
+  `` ``` `` and a space or Return a code block, and `**bold**`, `*italic*`,
+  `~~strikethrough~~`, `` `code` ``, `==highlight==` and
+  `[text](url)` their formats and links once the closing tag is typed.
+  Undo takes a shortcut back to the text typed. Return dispatches
+  `KEY_ENTER_COMMAND`.
 - **Light and dark.** The window follows the Mac's appearance and switches
   live when it changes, as the Rune playground does.
 - **The side panel.**
@@ -90,7 +100,8 @@ Built with the `e2e` feature, the app drives its own window once it's up:
 it types, formats, composes with an input method, types an emoji and
 deletes it, adds a paragraph and a line break, undoes and redoes, and
 turns the paragraph into a heading and a list, nests and unnests the item
-with Tab and Shift-Tab and ends the list, through the input
+with Tab and Shift-Tab and ends the list, then types markdown shortcuts
+(a heading, bold text, a list item and a code block), through the input
 handler and the key bindings, checking the document after each step. It
 writes the session to `$LEXICAL_PLAYGROUND_E2E` and exits 0, or 1 with the
 step that failed. CI (`.github/workflows/rust-playground.yml`) then replays

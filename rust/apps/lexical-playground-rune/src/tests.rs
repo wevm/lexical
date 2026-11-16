@@ -263,3 +263,46 @@ fn the_toolbar_follows_a_click_before_lexical_hears_of_it() {
     assert_eq!(rt.state.playground.block_type_at(sel), "h2");
     assert_eq!(rt.state.playground.step_count(), steps);
 }
+
+#[test]
+fn markdown_shortcuts_typed_in_the_field_become_rich_text() {
+    let mut rt = runtime();
+    // A new line at the document's end (set directly: End moves to the
+    // line's end on Linux and to the document's on macOS), then markdown
+    // as typed keys.
+    let before = rt.state.playground.document().blocks.len();
+    rt.update(|s, _| {
+        let end = s.edit.text.len();
+        s.edit.set_selection(end, end);
+    });
+    press(&mut rt, Key::Enter, Mods::default());
+    typed(&mut rt, "## Title");
+    press(&mut rt, Key::Enter, Mods::default());
+    typed(&mut rt, "- **bold** item");
+    press(&mut rt, Key::Enter, Mods::default());
+    press(&mut rt, Key::Enter, Mods::default());
+    typed(&mut rt, "```");
+    press(&mut rt, Key::Enter, Mods::default());
+    typed(&mut rt, "code");
+    assert_eq!(rt.state.playground.last_error(), None);
+    let doc = rt.state.playground.document();
+    assert_eq!(doc.blocks.len(), before + 3);
+    let [heading, item, code] = &doc.blocks[before..] else {
+        unreachable!()
+    };
+    assert_eq!(heading.block_type(), "h2");
+    assert_eq!(heading.text, "Title");
+    assert_eq!(item.block_type(), "bullet");
+    assert_eq!(item.text, "bold item");
+    assert!(item.runs[0].has_format("bold"));
+    assert_eq!(code.kind, "code");
+    assert_eq!(code.text, "code");
+    assert!(matches!(rune_block(code), Block::Code));
+    // The field mirrors the document, with the caret at the code's end.
+    assert_eq!(rt.state.edit.text, doc.text());
+    let caret = doc.offset_of(Pos {
+        block: before + 2,
+        byte: 4,
+    });
+    assert_eq!(rt.state.edit.range(), (caret, caret));
+}

@@ -9,6 +9,7 @@ use crate::error::invariant;
 use crate::extension_core::{
     AbortController, AnyLexicalExtension, AnyLexicalExtensionArgument, Erased, InitialEditorConfig,
 };
+use crate::json::{Object, Value};
 use crate::merge_register::merge_register;
 use crate::ordered::{OrderedMap, OrderedSet};
 use crate::{CreateEditorArgs, Editor, LexicalError, NodeClass, Unregister, create_editor};
@@ -168,9 +169,11 @@ impl LexicalBuilder {
     pub fn construct_editor(&self) -> Result<Editor, LexicalError> {
         let config = self.build_create_editor_args()?;
         // `namespace` isn't in `InitialEditorConfig` yet, so the editor gets
-        // `createEditor`'s random one.
+        // `createEditor`'s: its parent editor's, or a random one.
         let editor = create_editor(CreateEditorArgs {
             nodes: config.nodes,
+            theme: config.theme.unwrap_or_default(),
+            parent_editor: config.parent_editor,
             #[cfg(feature = "html")]
             html: config.html,
             #[cfg(feature = "html")]
@@ -394,15 +397,19 @@ impl LexicalBuilder {
     }
 
     /// `buildCreateEditorArgs()`: the editor configuration the extensions
-    /// contribute, merged in dependency order (the last
-    /// `$initialEditorState` wins, nodes are added once), after every
-    /// extension's `init` has seen it.
+    /// contribute, merged in dependency order (the last `parentEditor` and
+    /// `$initialEditorState` win, nodes are added once, themes are merged
+    /// deeply), after every extension's `init` has seen it.
     pub fn build_create_editor_args(&self) -> Result<InitialEditorConfig, LexicalError> {
         let mut config = InitialEditorConfig::default();
         let mut nodes: Vec<NodeClass> = Vec::new();
+        let mut theme = Value::Object(Object::new());
         let extension_reps = self.sorted_extension_reps()?;
         for extension_rep in &extension_reps {
             let extension = &extension_rep.extension;
+            if let Some(parent_editor) = extension.parent_editor() {
+                config.parent_editor = Some(parent_editor.clone());
+            }
             if let Some(initial_editor_state) = extension.initial_editor_state() {
                 config.initial_editor_state = Some(initial_editor_state.clone());
             }
@@ -429,11 +436,46 @@ impl LexicalBuilder {
                     }
                 }
             }
+            if let Some(extension_theme) = extension.theme() {
+                theme = deep_theme_merge_in_place(theme, Value::Object(extension_theme.clone()));
+            }
+        }
+        if let Value::Object(theme) = theme
+            && !theme.is_empty()
+        {
+            config.theme = Some(theme);
         }
         config.nodes = nodes;
         for extension_rep in &extension_reps {
             extension_rep.init(&mut config)?;
         }
         Ok(config)
+    }
+}
+
+/// Keys `deepThemeMergeInPlace` never merges, which in JS would reach the
+/// prototype chain.
+const UNSAFE_KEYS: [&str; 3] = ["__proto__", "constructor", "prototype"];
+
+/// `deepThemeMergeInPlace(a, b)` (`internal/deepThemeMergeInPlace.ts`): when
+/// both are objects, `a` with each key of `b` merged into it in turn
+/// (but the unsafe keys); otherwise `b`. (JS merges into an array `a` too,
+/// as properties a theme's JSON never shows.)
+fn deep_theme_merge_in_place(a: Value, b: Value) -> Value {
+    match (a, b) {
+        (Value::Object(mut a), Value::Object(b)) => {
+            for (k, v) in b.iter() {
+                if UNSAFE_KEYS.contains(&k) {
+                    continue;
+                }
+                let merged = deep_theme_merge_in_place(
+                    a.get(k).cloned().unwrap_or(Value::Undefined),
+                    v.clone(),
+                );
+                a.insert(k, merged);
+            }
+            Value::Object(a)
+        }
+        (_, b) => b,
     }
 }

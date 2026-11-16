@@ -124,6 +124,8 @@ struct Ctx {
     mounted: RefCell<HashMap<String, Unregister>>,
     /// The disposers `registerNodeStructure` returned, by name.
     structures: RefCell<HashMap<String, Unregister>>,
+    /// The script's `parent` editor.
+    parent: RefCell<Option<lexical::extension::LexicalEditorWithDispose>>,
 }
 
 /// The session's root element (`sessionDOM(ctx).root`): a `div` whose
@@ -2491,7 +2493,21 @@ impl Session {
             if let Some(defs) = script.get("extensionDefs").and_then(Value::as_object) {
                 *ctx.extension_defs.borrow_mut() = defs.clone();
             }
-            return match extensions::build(&ctx, extensions) {
+            let parent_read = script.get("parentRead").and_then(Value::as_bool) != Some(false);
+            let built = match script.get("parent").and_then(Value::as_array) {
+                None => extensions::build(&ctx, extensions),
+                Some(parent_extensions) => {
+                    extensions::build(&ctx, parent_extensions).and_then(|parent| {
+                        *ctx.parent.borrow_mut() = Some(parent.clone());
+                        if parent_read {
+                            parent.read(|| extensions::build(&ctx, extensions))?
+                        } else {
+                            extensions::build(&ctx, extensions)
+                        }
+                    })
+                }
+            };
+            return match built {
                 Err(e) => {
                     let mut build = Object::new();
                     build.insert("error", e.message().into());
@@ -2501,6 +2517,11 @@ impl Session {
                 Ok(built) => {
                     if script.get("liveRegion").and_then(Value::as_bool) == Some(true) {
                         let entry = ctx.live_region_entry();
+                        ctx.log.borrow_mut().push(entry);
+                    }
+                    let parent = ctx.parent.borrow().clone();
+                    if let Some(parent) = parent {
+                        let entry = nested_entry(&built, &parent)?;
                         ctx.log.borrow_mut().push(entry);
                     }
                     let build = snapshot_of(&built, &ctx, true)?;
@@ -2786,12 +2807,54 @@ impl Session {
     /// the selection and the text, and with `snapshot` the state in both
     /// forms.
     pub fn run(&self, step: &Value, snapshot: bool) -> Result<StepResult, String> {
-        let (editor, ctx) = (&self.editor, &self.ctx);
+        let ctx = &self.ctx;
         if let Some(now) = step.get("now").and_then(Value::as_f64) {
             self.clock.set(now);
         }
         ctx.log.borrow_mut().clear();
-        let outcome = if let Some(actions) = step.get("update").and_then(Value::as_array) {
+        let parent = ctx.parent.borrow().clone();
+        let outcome = if step.get("inParent").and_then(Value::as_bool) == Some(true) {
+            match &parent {
+                Some(parent) => self.run_on(parent, Some(parent), step),
+                None => Err(err("the script has no parent editor")),
+            }
+        } else {
+            self.run_on(&self.editor, self.built.as_ref(), step)
+        };
+        let editor = &self.editor;
+        if self.live_region {
+            let entry = ctx.live_region_entry();
+            ctx.log.borrow_mut().push(entry);
+        }
+        if self.code_highlight {
+            let entry = code_highlight::code_blocks_entry(editor)?;
+            ctx.log.borrow_mut().push(entry);
+        }
+        if let Some(parent) = &parent {
+            let entry = nested_entry(editor, parent)?;
+            ctx.log.borrow_mut().push(entry);
+        }
+        let mut json = snapshot_of(editor, ctx, snapshot)?;
+        let error = outcome.err();
+        if error.is_some() {
+            json.insert("error", true.into());
+        }
+        Ok(StepResult {
+            json: Value::Object(json),
+            error,
+        })
+    }
+
+    /// Runs `step` on `editor`: the session's, or (`inParent`) the parent,
+    /// built as `built`.
+    fn run_on(
+        &self,
+        editor: &Editor,
+        built: Option<&lexical::extension::LexicalEditorWithDispose>,
+        step: &Value,
+    ) -> Result<(), LexicalError> {
+        let ctx = &self.ctx;
+        if let Some(actions) = step.get("update").and_then(Value::as_array) {
             let tags = step
                 .get("tag")
                 .and_then(Value::as_array)
@@ -2884,26 +2947,37 @@ impl Session {
                 }
             }
         } else {
-            extensions::run_step(step, ctx, self.built.as_ref())
-        };
-        if self.live_region {
-            let entry = ctx.live_region_entry();
-            ctx.log.borrow_mut().push(entry);
+            extensions::run_step(step, ctx, built)
         }
-        if self.code_highlight {
-            let entry = code_highlight::code_blocks_entry(editor)?;
-            ctx.log.borrow_mut().push(entry);
-        }
-        let mut json = snapshot_of(editor, ctx, snapshot)?;
-        let error = outcome.err();
-        if error.is_some() {
-            json.insert("error", true.into());
-        }
-        Ok(StepResult {
-            json: Value::Object(json),
-            error,
-        })
     }
+}
+
+/// `nestedEntry(editor, parent)`: `['nested', isNested, parentIsParent,
+/// sameNamespace, theme, editable, parentEditable, parentText,
+/// parentSelection]`, the theme as its `[key, value]` entries sorted by key
+/// (UTF-16 order, as JS's `sort()`), the parent read with `parent.read`.
+fn nested_entry(editor: &Editor, parent: &Editor) -> Result<Value, String> {
+    let (parent_text, parent_selection) = parent
+        .read(|| (get_root().get_text_content(), selection_snapshot()))
+        .map_err(|e| format!("committing the parent: {e}"))?;
+    let mut theme: Vec<(&str, &Value)> = editor.config().theme.iter().collect();
+    theme.sort_by(|(a, _), (b, _)| a.encode_utf16().cmp(b.encode_utf16()));
+    Ok(Value::Array(vec![
+        "nested".into(),
+        utils::is_editor_is_nested_editor(editor).into(),
+        (editor.parent_editor() == Some(parent)).into(),
+        (editor.get_namespace() == parent.get_namespace()).into(),
+        Value::Array(
+            theme
+                .into_iter()
+                .map(|(k, v)| Value::Array(vec![k.into(), v.clone()]))
+                .collect(),
+        ),
+        editor.is_editable().into(),
+        parent.is_editable().into(),
+        parent_text.into(),
+        parent_selection,
+    ]))
 }
 
 /// `scripts/*.json`: each step's result matches what JS recorded.

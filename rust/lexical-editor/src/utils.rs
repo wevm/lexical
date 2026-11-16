@@ -5,9 +5,9 @@
 //! Not ported: the DOM helpers (`markSelection`, `positionNodeOnRange`,
 //! `selectionAlwaysOnDisplay`, `dedupeSelectionRects`, `calculateZoomLevel`,
 //! `getScrollParent`, `mediaFileReader`, `eventFiles`, `isMimeType`, the
-//! class name helpers and the DOM predicates), and the helpers
-//! of things the port has no counterpart for (`$isEditorIsNestedEditor`,
-//! `objectKlassEquals`); see `rust/PARITY.md`.
+//! class name helpers and the DOM predicates), and `objectKlassEquals`,
+//! of JS constructors the port has no counterpart for; see
+//! `rust/PARITY.md`.
 
 use crate::caret::{
     CaretDirection, NodeCaret, RootMode, SiblingCaret, get_adjacent_child_caret, get_caret_range,
@@ -45,6 +45,12 @@ pub use crate::{
     get_adjacent_sibling_or_parent_sibling_caret, insert_node_to_nearest_root_at_caret,
     is_block_fully_selected, is_root_or_shadow_root, merge_register, split_node,
 };
+
+/// `$isEditorIsNestedEditor(editor)`: whether the editor has a parent
+/// editor, as `NestedEditorExtension` (or `LexicalNestedComposer`) gives it.
+pub fn is_editor_is_nested_editor(editor: &Editor) -> bool {
+    editor.parent_editor().is_some()
+}
 
 /// `DFSNode`: a node of a depth first traversal, with its depth (the root's
 /// is 0).

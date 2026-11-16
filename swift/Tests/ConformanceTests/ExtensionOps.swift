@@ -55,12 +55,14 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "HashtagExtension": HashtagExtension
   case "LinkExtension": LinkExtension
   case "ListExtension": ListExtension
+  case "NestedEditorExtension": NestedEditorExtension
   case "NodeStructureExtension": NodeStructureExtension
   case "NormalizeInlineElementsExtension": NormalizeInlineElementsExtension
   case "OverflowExtension": OverflowExtension
   case "PlainTextExtension": PlainTextExtension
   case "RichTextExtension": RichTextExtension
   case "SelectBlockExtension": SelectBlockExtension
+  case "SharedHistoryExtension": SharedHistoryExtension
   case "TabIndentationExtension": TabIndentationExtension
   case "AriaLiveRegionExtension": AriaLiveRegionExtension
   case "AutoLinkAnnounceExtension": AutoLinkAnnounceExtension
@@ -160,6 +162,9 @@ final class TestExtensions {
   /// The session's clock, which `HistoryExtension` reads as JS's reads
   /// `Date.now()` while a step runs.
   var clock: () -> Double = { 0 }
+  /// The script's `parent` editor, which NestedEditorExtension's
+  /// `$getParentEditor: 'parent'` returns.
+  var parent: Editor?
 
   init(_ defs: JSONObject) { self.defs = defs }
 
@@ -333,6 +338,34 @@ final class TestExtensions {
           }
           return true
         })
+    case "NestedEditorExtension":
+      return try configured(
+        NestedEditorExtension,
+        partials(key, configs) {
+          [unowned self] (p: inout Partial<NestedEditorConfig>, field, value) in
+          switch field {
+          case "inheritEditableFromParent": p.set(\.inheritEditableFromParent, try bool(value))
+          case "$getParentEditor" where value.stringValue == "parent":
+            p.set(\.getParentEditor) { [unowned self] in
+              guard let parent = self.parent else {
+                throw ScriptError("the script has no parent editor")
+              }
+              return parent
+            }
+          default: return false
+          }
+          return true
+        })
+    case "SharedHistoryExtension":
+      return try configured(
+        SharedHistoryExtension,
+        partials(key, configs) { (p: inout Partial<SharedHistoryConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          default: return false
+          }
+          return true
+        })
     case "NodeStructureExtension":
       return try configured(
         NodeStructureExtension,
@@ -497,6 +530,12 @@ final class TestExtensions {
     case ("SelectBlockExtension", "disabled"):
       try getExtensionDependencyFromEditor(editor, SelectBlockExtension).output.disabled.set(
         try bool(value))
+    case ("SelectBlockExtension", "cascadeSelection"):
+      try getExtensionDependencyFromEditor(editor, SelectBlockExtension).output.cascadeSelection
+        .set(try bool(value))
+    case ("NestedEditorExtension", "inheritEditableFromParent"):
+      try getExtensionDependencyFromEditor(editor, NestedEditorExtension).output
+        .inheritEditableFromParent.set(try bool(value))
     case ("AriaLiveRegionExtension", "politeness"):
       try getExtensionDependencyFromEditor(editor, AriaLiveRegionExtension).output.politeness.set(
         try politeness(value))
@@ -573,6 +612,9 @@ final class TestExtensions {
         throw ScriptError("bad initialEditorState")
       }
     default: throw ScriptError("bad initialEditorState")
+    }
+    if let theme = spec["theme"]?.objectValue {
+      editorConfig.theme = Dictionary(theme.map { ($0.0, $0.1) }, uniquingKeysWith: { $1 })
     }
     var nodes: [LexicalNodeConfig] = []
     for type in strings(spec["nodes"]) {

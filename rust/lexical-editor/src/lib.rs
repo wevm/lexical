@@ -158,10 +158,11 @@ pub use commands::{
 pub use editor::{
     COLLABORATION_TAG, COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
     COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, COMPOSITION_END_TAG, COMPOSITION_START_TAG,
-    CUT_TAG, CreateEditorArgs, Editor, EditorConfig, HISTORIC_TAG, HISTORY_MERGE_TAG,
-    HISTORY_PUSH_TAG, LexicalCommand, MutationListenerOptions, MutationListenerPayload, NodeClass,
-    NodeMutation, NodeMutations, PASTE_TAG, RootElement, RootElementRef, Transform, Unregister,
-    UpdateListenerPayload, UpdateOptions, create_command, create_editor, has_update_tag,
+    CUT_TAG, CreateEditorArgs, Editor, EditorConfig, EditorReadMode, HISTORIC_TAG,
+    HISTORY_MERGE_TAG, HISTORY_PUSH_TAG, LexicalCommand, MutationListenerOptions,
+    MutationListenerPayload, NodeClass, NodeMutation, NodeMutations, PASTE_TAG, RootElement,
+    RootElementRef, Transform, Unregister, UpdateListenerPayload, UpdateOptions, create_command,
+    create_editor, has_update_tag,
 };
 pub use editor_state::EditorState;
 pub use error::LexicalError;

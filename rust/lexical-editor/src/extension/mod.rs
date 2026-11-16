@@ -17,8 +17,8 @@
 //! `NormalizeInlineElementsExtension` (which `RichTextExtension` and
 //! `PlainTextExtension` depend on), `TabIndentationExtension`,
 //! `SelectBlockExtension`, `BlockIdExtension` (block ids, positional ids and
-//! handles), `NodeStructureExtension` (with `registerNodeStructure`) and the
-//! config of `PreventSelectAllExtension`.
+//! handles), `NodeStructureExtension` (with `registerNodeStructure`),
+//! `NestedEditorExtension` and the config of `PreventSelectAllExtension`.
 //! The other packages' extensions are in their modules, behind their
 //! features (`rich_text_extension`, `list_extension`...). The types it builds
 //! on are `lexical`'s `extension-core`, at the crate root
@@ -48,6 +48,7 @@ mod horizontal_rule_extension;
 mod initial_state_extension;
 mod lexical_builder;
 mod named_signals;
+mod nested_editor_extension;
 mod node_structure_extension;
 mod normalize_inline_elements_extension;
 mod positional_block_id;
@@ -98,6 +99,10 @@ pub use lexical_builder::{LexicalBuilder, LexicalEditorWithDispose, build_editor
 #[cfg(any(feature = "list", feature = "code", feature = "a11y"))]
 pub(crate) use named_signals::named_signals_config;
 pub use named_signals::{NamedSignalsOutput, named_signals};
+pub use nested_editor_extension::{
+    GetParentEditor, NestedEditorConfig, NestedEditorConfigOverrides, NestedEditorExtensionType,
+    NestedEditorOutput, default_get_parent_editor, nested_editor_extension,
+};
 pub use node_structure_extension::{
     NodeStructureConfig, NodeStructureConfigOverrides, NodeStructureExtensionType,
     NodeStructureOutput, node_structure_extension, register_node_structure,

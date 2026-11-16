@@ -311,13 +311,17 @@ These are reversible choices made while porting, under Q7 and Q27.
   `ReconciledNode` in place of each keyed DOM element. It reports created,
   updated and destroyed nodes to mutation listeners, fills
   `RootNode.__cachedText`, derives `__textFormat`/`__textStyle` from each
-  element's first text, collects decorators, and recovers from a failure
-  with a full reconcile, as JS does. Rendering is the views' job. Two
-  differences: the children fast paths (suffix splicing, the same-size
-  walk) are not ported, since they only save DOM work, and every element
-  other than the root takes its cached text from `getTextContent()`,
-  because Swift cannot ask whether a subclass overrides it (JS does so only
-  for elements that override it). Unit tests whose upstream editor is
+  element's first text, collects decorators, re-creates a node whose
+  `updateDOM` returns true (its subtree is created again), and recovers
+  from a failure with a full reconcile, as JS does. Rendering is the views'
+  job. Three differences: the children fast paths (suffix splicing, the
+  same-size walk) are not ported, since they only save DOM work; every
+  element other than the root takes its cached text from
+  `getTextContent()`, because Swift cannot ask whether a subclass overrides
+  it (JS does so only for elements that override it); and no DOM is kept,
+  so `updateDOM` gets what `createDOM` makes of the previous node, and a
+  class that leaves `createDOM` or `updateDOM` to the base method (a Swift
+  node need not render to the DOM) keeps its DOM, where JS throws. Unit tests whose upstream editor is
   mounted use `createMountedTestEditor()`. `@lexical/selection`'s
   `LexicalSelection.test.tsx` drives a React editor through the DOM; its
   port keeps those steps in model terms in the test (the mounted DOM shape,

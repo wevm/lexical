@@ -1702,6 +1702,14 @@ fn run_node_method(
             .set_is_syntax_highlight_supported(a(0).as_bool().ok_or_else(|| err("a boolean"))?),
         // `null` is `undefined`.
         "setLanguage" => code_node(n)?.set_language(a(0).as_str()),
+        "setListType" => {
+            if !list::is_list_node(&n) {
+                return Err(err(format!("{} is not a list", n.get_key())));
+            }
+            let list_type =
+                list::ListType::parse(&string(&a(0))?).ok_or_else(|| err("bad list type"))?;
+            n.set_list_type(list_type);
+        }
         "setTag" => {
             if !is_heading_node(&n) {
                 return Err(err(format!("{} is not a heading", n.get_key())));

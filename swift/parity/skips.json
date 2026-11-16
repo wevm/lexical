@@ -1995,7 +1995,7 @@
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > recovers from reconciler failure and trigger proper prev editor state": {
     "reason": "dom-only",
-    "note": "Makes ParagraphNode.updateDOM throw to force the recovery path; Swift nodes have no updateDOM. The recovery itself (onError, then a full reconcile) is ported in commitPendingUpdatesImpl."
+    "note": "Mocks ParagraphNode.prototype.updateDOM (vi.spyOn) to throw, to force the recovery path. The recovery itself (onError, then a full reconcile) is ported in commitPendingUpdatesImpl."
   },
   "lexical/src/__tests__/unit/LexicalEditor.test.tsx::LexicalEditor tests > rejects creating an editor with invalid LexicalNode parent class": {
     "reason": "deviation",

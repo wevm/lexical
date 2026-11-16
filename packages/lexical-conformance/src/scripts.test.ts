@@ -9009,10 +9009,11 @@ test('scripts/reconciler', () => {
   // collects from `decorate()` (`editor._decorators`, the decorator
   // listener, `getDecorators()`, and their GC), the mutations of nodes in
   // named slots (`$mountSlotChildren`, `$reconcileSlotChildren` and the
-  // destruction of a host's slots), and the `textFormat` and `textStyle` an
+  // destruction of a host's slots), the `textFormat` and `textStyle` an
   // element takes from its first text descendant when it is reconciled
-  // (`reconcileTextFormat`, `reconcileTextStyle`). In Node an update of an
-  // editor with a root starts with no selection.
+  // (`reconcileTextFormat`, `reconcileTextStyle`), and what re-creating a
+  // node whose `updateDOM` returns true does to its subtree. In Node an
+  // update of an editor with a root starts with no selection.
   const act = (action: Record<string, unknown>): Action => action as Action;
   const root = (on: boolean): Step => ({setRootElement: on});
   const dec = (): Node => ({type: 'test-decorator', version: 1}) as Node;
@@ -9035,7 +9036,7 @@ test('scripts/reconciler', () => {
   const italic = 2;
   emit(
     'reconciler',
-    "The reconciler's model half with a root element: decorate() and the decorator listener, getDecorators() and the GC of detached decorators; the mutations of nodes in named slots; and the textFormat and textStyle a reconciled element takes from its first text descendant.",
+    "The reconciler's model half with a root element: decorate() and the decorator listener, getDecorators() and the GC of detached decorators; the mutations of nodes in named slots; the textFormat and textStyle a reconciled element takes from its first text descendant; and a node created again when its updateDOM returns true.",
     [
       {
         decorators: true,
@@ -9192,6 +9193,61 @@ test('scripts/reconciler', () => {
           update(node('4', 'toggleFormat', 'underline')),
         ],
         textFormats: ['1', '3'],
+      },
+      {
+        decorators: true,
+        list: true,
+        mutatedNodes: true,
+        mutations: [
+          'heading',
+          'paragraph',
+          'text',
+          'test-decorator',
+          'list',
+          'listitem',
+        ],
+        name: 'updateDOM returning true',
+        richText: true,
+        steps: [
+          root(true),
+          // Keys: the heading 1 ("a" 2, the decorator 3, "b" 4), the
+          // paragraph 5 ("c" 6), the list 7 (items 8 and 10, with "d" 9
+          // and "e" 11).
+          doc(
+            h('h1', t('a', {format: bold}), dec(), t('b')),
+            p(t('c')),
+            list('bullet', li(t('d')), li(t('e'))),
+          ),
+          // A heading of another level is created again
+          // (`HeadingNode.updateDOM` returns true): it is updated, its
+          // children are created (none destroyed), the decorator decorates
+          // again, and the heading takes no text format from its first text.
+          update(node('1', 'setTag', 'h2')),
+          // The same level keeps the DOM: the heading's children are
+          // reconciled, so it takes its first text's format.
+          update(node('1', 'setTag', 'h2')),
+          // Created again, it keeps the format it had.
+          update(
+            node('1', 'setTag', 'h3'),
+            node('2', 'toggleFormat', 'italic'),
+          ),
+          // A child removed as the heading is created again is not reported
+          // (it isn't in the new children), and one moved into it is
+          // updated.
+          update(node('1', 'setTag', 'h4'), node('4', 'remove')),
+          update(node('1', 'setTag', 'h5'), node('3', 'insertAfter', '6')),
+          // A slot of a heading created again keeps its value, which is
+          // moved to the new slot container, not created.
+          update(setSlot('1', 'title', p(t('T')))),
+          update(node('1', 'setTag', 'h6')),
+          update(node('13', 'setTextContent', 'T!')),
+          // A list of another type is created again
+          // (`ListNode.updateDOM`), with its items.
+          update(node('7', 'setListType', 'number')),
+          update(node('9', 'setTextContent', 'D')),
+        ],
+        testDecorators: true,
+        textFormats: ['1'],
       },
     ],
   );

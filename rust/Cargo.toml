@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["lexical-editor", "conformance", "apps/lexical-playground-core"]
+members = ["lexical-ui", "conformance", "apps/lexical-playground-core"]
 
 [workspace.package]
 version = "0.0.0"
@@ -9,13 +9,13 @@ rust-version = "1.88"
 license = "MIT"
 repository = "https://github.com/wevm/lexical"
 
-# The crate's name is provisional (rust/DESIGN.md). Every crate in the
+# The crate is `lexical-ui` (rust/DESIGN.md, The name). Every crate in the
 # workspace depends on it as `lexical`, so a rename changes the package name in
-# lexical-editor/Cargo.toml and this line, not the code. No version: the
-# crates that use it aren't published, and lexical-editor's own version
-# (lexical-editor/Cargo.toml) moves with each release.
+# lexical-ui/Cargo.toml and this line, not the code. No version: the
+# crates that use it aren't published, and lexical-ui's own version
+# (lexical-ui/Cargo.toml) moves with each release.
 [workspace.dependencies]
-lexical = { package = "lexical-editor", path = "lexical-editor" }
+lexical = { package = "lexical-ui", path = "lexical-ui" }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

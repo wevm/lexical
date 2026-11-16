@@ -1,4 +1,4 @@
-# lexical-editor
+# lexical-ui
 
 A Rust port of [Lexical](https://lexical.dev)'s model and headless packages,
 at parity with the JS implementation. See the workspace's

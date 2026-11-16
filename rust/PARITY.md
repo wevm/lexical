@@ -1,6 +1,6 @@
 # Parity with JS Lexical
 
-What the Rust port (`lexical-editor`) has ported from the upstream packages,
+What the Rust port (`lexical-ui`) has ported from the upstream packages,
 how it is checked, and where it deliberately differs. The conformance runner
 (`cargo run -p lexical-conformance`) prints the live numbers; this file is
 updated with each milestone.

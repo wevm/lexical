@@ -1469,7 +1469,7 @@ impl Playground {
         let mut file = Object::new();
         file.insert(
             "description",
-            "A playground session, recorded by lexical-editor.".into(),
+            "A playground session, recorded by lexical-ui.".into(),
         );
         file.insert("formatVersion", 1.0.into());
         file.insert("kind", "script".into());
@@ -1557,7 +1557,7 @@ pub fn example() -> Vec<Value> {
             text("Hello from ", 0.0),
             text("Rust", 1.0),
             text(". This document lives in a ", 0.0),
-            text("lexical-editor", 16.0),
+            text("lexical-ui", 16.0),
             text(" editor.", 0.0),
         ]),
         paragraph(vec![text(

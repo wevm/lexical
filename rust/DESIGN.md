@@ -19,7 +19,7 @@ pull request.
   half, the WebKit scenarios) is out of scope.
 - **JS is the reference.** A difference from upstream is a Rust bug, except
   the documented exceptions in [PARITY.md](PARITY.md).
-- Conforms to the upstream release in `lexical_editor::UPSTREAM_VERSION`,
+- Conforms to the upstream release in `lexical_ui::UPSTREAM_VERSION`,
   which must match the vectors' `meta.json` (checked by the conformance
   runner).
 
@@ -27,9 +27,9 @@ pull request.
 
 | Path                  | Crate                 | Published | What                                                      |
 | --------------------- | --------------------- | --------- | --------------------------------------------------------- |
-| `rust/lexical-editor` | `lexical-editor`      | crates.io | The port: core, and one feature per upstream package      |
+| `rust/lexical-ui`     | `lexical-ui`          | crates.io | The port: core, and one feature per upstream package      |
 | `rust/conformance`    | `lexical-conformance` | never     | The conformance runner: replays every vector file         |
-| `rust/apps/lexical-playground-core` | `lexical-playground-core` | never | The playgrounds' binding to `lexical-editor` |
+| `rust/apps/lexical-playground-core` | `lexical-playground-core` | never | The playgrounds' binding to `lexical-ui` |
 | `rust/apps/lexical-playground-rune` | `lexical-playground-rune` | never | The playground on Rune (a workspace of its own) |
 | `rust/apps/lexical-playground-gpui` | `lexical-playground-gpui` | never | The playground on GPUI (a workspace of its own) |
 
@@ -39,11 +39,12 @@ release the way `swift/` is mirrored to wevm/lexical-swift (see Releases).
 
 ### The name
 
-tmm: "let's use lexical-editor as the name right now. We might change it
-later before we publish." It was free on crates.io on 2026-11-16, and stays
-changeable until tmm's first publish (see Releases). The name lives in few
-places: `name` in `lexical-editor/Cargo.toml`, the `package` of the
-`lexical` entry in the workspace's `[workspace.dependencies]`, the
+The crate is `lexical-ui` (`lexical_ui` in code): tmm chose it on
+2026-11-16 over the provisional `lexical-editor`, `lexikal` and `lexica`. It
+was free on crates.io then, and stays changeable until tmm's first publish
+(see Releases). The name lives in few places: `name` in
+`lexical-ui/Cargo.toml`, the `package` of the `lexical` entry in the
+workspace's `[workspace.dependencies]`, the
 directory, the doc example in `lib.rs`, the `cargo tree` and `cargo
 publish` checks in `rust.yml`, `rust-release.yml`,
 `scripts/version-packages.sh` and the changesets' frontmatter. Every other
@@ -84,13 +85,13 @@ depends on as the upstream package depends on them:
 | `auto-embed`| `@lexical/react`'s auto-embed (`LexicalAutoEmbedPluginUtils.ts`, the logic of `LexicalAutoEmbedPlugin.tsx`) | `link`, `menu`, `utils` |
 | `devtools`  | `@lexical/devtools-core`'s `generateContent` | (upstream lists `html`, `link`, `mark` and `table`; its HTML form is built with `html`, its link branch with `link` and its mark branch with `mark`, and its table branch isn't ported) |
 
-Each module is `lexical_editor::<package>` (`lexical_editor::rich_text`).
+Each module is `lexical_ui::<package>` (`lexical_ui::rich_text`).
 Names may change as packages land; this table is updated with them.
 
 ## Architecture
 
 - **No third-party dependencies** in the default build: `cargo tree -e
-  normal,build` of `lexical-editor` shows the crate alone, with the default
+  normal,build` of `lexical-ui` shows the crate alone, with the default
   features and with every feature but `autolink`, and CI fails otherwise. A
   dependency comes only behind an opt-in feature: `autolink` needs `regex`
   (with `regex-automata` and `regex-syntax`, which CI checks are all it
@@ -180,7 +181,7 @@ Names may change as packages land; this table is updated with them.
 
 `createDOM`, `exportDOM`, `importDOM` and HTML export and import need a
 DOM, which a browser or (in upstream's unit tests) jsdom gives JS. The
-`html` feature brings one, `lexical_editor::dom`, ported from the Swift
+`html` feature brings one, `lexical_ui::dom`, ported from the Swift
 port's (`swift/Sources/Lexical/DOM`, `swift/DESIGN.md`, "The DOM is a small
 model of jsdom's"), since the vectors record what jsdom does:
 
@@ -363,9 +364,9 @@ later; the crate stays on 1.88), and both depend on
 As the Swift port releases (`swift/AGENTS.md`, Releases), with crates.io on
 top:
 
-- **Changesets.** A user-facing change to `lexical-editor` adds a changeset
+- **Changesets.** A user-facing change to `lexical-ui` adds a changeset
   in `rust/.changeset/` (its README has the format; bodies are in the past
-  tense). The crate's version is the one in `lexical-editor/Cargo.toml`;
+  tense). The crate's version is the one in `lexical-ui/Cargo.toml`;
   `CHANGELOG.md` has a section per release, naming `UPSTREAM_VERSION`.
   Neither is edited by hand. The other crates stay at the workspace's
   `0.0.0` and are never published.
@@ -408,7 +409,7 @@ top:
      only creates a crate from an API token, so `cargo login` takes one with
      the `publish-new` scope (and crates.io needs a verified email); revoke
      it afterwards, as CI needs none:
-     `git clone --branch 0.1.0 https://github.com/wevm/lexical-rust.git && cd lexical-rust && cargo login && cargo publish -p lexical-editor --locked`.
+     `git clone --branch 0.1.0 https://github.com/wevm/lexical-rust.git && cd lexical-rust && cargo login && cargo publish -p lexical-ui --locked`.
   6. On crates.io, open the crate's Settings → Trusted Publishing, Add,
      GitHub, with repository owner `wevm`, repository name `lexical`,
      workflow filename `rust-release.yml` and environment `rust-release`,

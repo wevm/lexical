@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-// Generates rust/lexical-editor/src/overflow/grapheme_tables.rs, the
+// Generates rust/lexical-ui/src/overflow/grapheme_tables.rs, the
 // properties UAX #29's extended grapheme cluster rules read, for the Rust
 // stand-in of the `Intl.Segmenter` that @lexical/react's character limit
 // (`findOffset` in shared/useCharacterLimit.ts) segments with.
@@ -24,7 +24,7 @@
 //   node rust/scripts/generate-grapheme-tables.mjs [--ucd <dir>]
 import {readFileSync, writeFileSync} from 'node:fs';
 
-const OUT = 'rust/lexical-editor/src/overflow/grapheme_tables.rs';
+const OUT = 'rust/lexical-ui/src/overflow/grapheme_tables.rs';
 const version = `${process.versions.unicode}.0`
   .split('.')
   .slice(0, 3)

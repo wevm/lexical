@@ -1,12 +1,12 @@
 [package]
 name = "lexical-playground-rune"
 version = "0.0.0"
-description = "The Lexical playground as a native desktop app: lexical-editor drawn with the Rune UI framework."
+description = "The Lexical playground as a native desktop app: lexical-ui drawn with the Rune UI framework."
 edition = "2024"
 license = "MIT"
 publish = false
 
-# Its own workspace: Rune needs a newer Rust than lexical-editor's 1.88
+# Its own workspace: Rune needs a newer Rust than lexical-ui's 1.88
 # (rust-toolchain.toml), and the app's dependencies stay out of rust/'s.
 [workspace]
 

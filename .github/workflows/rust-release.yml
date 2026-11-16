@@ -1,15 +1,15 @@
 name: Rust Release
 
-# Releases the Rust port (the lexical-editor crate in rust/), versioned with
+# Releases the Rust port (the lexical-ui crate in rust/), versioned with
 # Changesets (rust/.changeset/README.md), as swift-release.yml releases the
 # Swift port. On each push to main:
 # - With pending changesets in rust/.changeset, opens or updates the
 #   "chore(rust): version packages" pull request, which runs
 #   rust/scripts/version-packages.sh (bumps the version in
-#   rust/lexical-editor/Cargo.toml and the lockfiles, adds the version's
+#   rust/lexical-ui/Cargo.toml and the lockfiles, adds the version's
 #   section to rust/CHANGELOG.md), and starts the Rust workflow on it: a pull
 #   request opened with GITHUB_TOKEN triggers none.
-# - Otherwise, if lexical-editor's version isn't released yet:
+# - Otherwise, if lexical-ui's version isn't released yet:
 #   - publishes rust/ to the mirror (wevm/lexical-rust) and tags the version
 #     there, so the crate's source has a repository of its own, with the
 #     workspace's Cargo.toml at its root.
@@ -75,12 +75,12 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -c "$BRANCH"
           rust/scripts/version-packages.sh
-          version="$(sed -nE '/^\[package\]/,/^\[/ s/^version = "(.*)"$/\1/p' rust/lexical-editor/Cargo.toml)"
+          version="$(sed -nE '/^\[package\]/,/^\[/ s/^version = "(.*)"$/\1/p' rust/lexical-ui/Cargo.toml)"
           git add -A rust
           git commit -q -m "chore(rust): version packages ($version)"
           git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/$BRANCH"
           {
-            echo "Merging this releases lexical-editor **$version**: the Rust Release workflow then publishes the mirror, the tag, the GitHub release and the crate."
+            echo "Merging this releases lexical-ui **$version**: the Rust Release workflow then publishes the mirror, the tag, the GitHub release and the crate."
             echo
             awk -v v="## $version" '$0 == v {f = 1; next} /^## / {f = 0} f' rust/CHANGELOG.md
           } > "$RUNNER_TEMP/body.md"
@@ -108,15 +108,15 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
-          sparse-checkout: rust/lexical-editor/Cargo.toml
+          sparse-checkout: rust/lexical-ui/Cargo.toml
           sparse-checkout-cone-mode: false
       - id: plan
         env:
           GH_TOKEN: ${{ github.token }}
-          CRATE: lexical-editor
+          CRATE: lexical-ui
         run: |
           set -euo pipefail
-          version="$(sed -nE '/^\[package\]/,/^\[/ s/^version = "(.*)"$/\1/p' rust/lexical-editor/Cargo.toml)"
+          version="$(sed -nE '/^\[package\]/,/^\[/ s/^version = "(.*)"$/\1/p' rust/lexical-ui/Cargo.toml)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [ "$version" = "0.0.0" ]; then
             echo "mirror=false" >> "$GITHUB_OUTPUT"
@@ -242,7 +242,7 @@ jobs:
     steps:
       - name: Wait for the first publish
         if: needs.plan.outputs.first == 'true'
-        run: echo "::notice::lexical-editor isn't on crates.io yet. Trusted publishing can't create a crate, so tmm publishes $VERSION by hand and adds this workflow as its trusted publisher (rust/DESIGN.md, Releases)."
+        run: echo "::notice::lexical-ui isn't on crates.io yet. Trusted publishing can't create a crate, so tmm publishes $VERSION by hand and adds this workflow as its trusted publisher (rust/DESIGN.md, Releases)."
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         if: needs.plan.outputs.first == 'false'
         with:
@@ -262,4 +262,4 @@ jobs:
         if: needs.plan.outputs.first == 'false'
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        run: cargo publish -p lexical-editor --locked
+        run: cargo publish -p lexical-ui --locked

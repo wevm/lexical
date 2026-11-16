@@ -18,8 +18,8 @@ you port.
   crate's `json` module, not `serde_json`.
 - **No third-party dependencies** in the default build; put one behind an
   opt-in feature.
-- **The crate name is provisional.** Other crates depend on it as `lexical`;
-  don't spread `lexical_editor` further than DESIGN.md lists. Never publish
+- **The crate is `lexical-ui`** (DESIGN.md, The name). Other crates depend on it
+  as `lexical`; don't spread `lexical-ui` further than DESIGN.md lists. Never publish
   by hand: `rust-release.yml` publishes (see Releases).
 - Vectors come from `packages/lexical-conformance` (JS). Never edit one by
   hand or write one from Rust; see `swift/AGENTS.md`, "Vectors".
@@ -62,7 +62,7 @@ Pull requests follow `swift/AGENTS.md` (conventional-commit titles such as
 
 ## Changesets
 
-A user-facing change to the `lexical-editor` crate (API, behavior, types,
+A user-facing change to the `lexical-ui` crate (API, behavior, types,
 features, minimum Rust version) adds a changeset in `rust/.changeset/` in
 the same pull request; its README has the format. Write its body in the
 past tense ("Added …", "Changed …", "Fixed …"). A break needs a `minor`

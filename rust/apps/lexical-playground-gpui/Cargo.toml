@@ -1,13 +1,13 @@
 [package]
 name = "lexical-playground-gpui"
 version = "0.0.0"
-description = "The Lexical playground as a native desktop app: lexical-editor drawn with GPUI."
+description = "The Lexical playground as a native desktop app: lexical-ui drawn with GPUI."
 edition = "2024"
 license = "MIT"
 publish = false
 
 # Its own workspace, beside rust/ and the Rune app: GPUI needs a newer Rust
-# than lexical-editor's 1.88 (rust-toolchain.toml).
+# than lexical-ui's 1.88 (rust-toolchain.toml).
 [workspace]
 
 [dependencies]

@@ -1,4 +1,4 @@
-//! The Lexical playground on Rune: a document in `lexical-editor`, drawn
+//! The Lexical playground on Rune: a document in `lexical-ui`, drawn
 //! and edited in a native window.
 //!
 //! Lexical owns the document and the selection. The editor is Rune's

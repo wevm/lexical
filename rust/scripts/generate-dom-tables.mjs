@@ -9,10 +9,10 @@
 // packages/lexical-conformance/scripts/css-properties.mjs and
 // html-entities.mjs do for the Swift port:
 //
-// - rust/lexical-editor/src/dom/css_properties.rs from
+// - rust/lexical-ui/src/dom/css_properties.rs from
 //   vectors/css/properties.json: the properties an inline style accepts
 //   (jsdom's CSSStyleDeclaration) and how each normalizes values.
-// - rust/lexical-editor/src/dom/html_entities.rs from
+// - rust/lexical-ui/src/dom/html_entities.rs from
 //   vectors/html/entities.json: the named character references and which of
 //   them decode without a semicolon.
 //
@@ -23,7 +23,7 @@
 import {readFileSync, writeFileSync} from 'node:fs';
 
 const VECTORS = 'packages/lexical-conformance/vectors';
-const OUT = 'rust/lexical-editor/src/dom';
+const OUT = 'rust/lexical-ui/src/dom';
 
 const load = file =>
   JSON.parse(readFileSync(`${VECTORS}/${file}.json`, 'utf8')).cases;

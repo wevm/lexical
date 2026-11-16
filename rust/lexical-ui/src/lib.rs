@@ -13,7 +13,7 @@
 //! as JS node methods do. Text offsets are UTF-16 code units, as in JS.
 //!
 //! ```
-//! use lexical_editor::{create_editor, get_root, CreateEditorArgs, UpdateOptions};
+//! use lexical_ui::{create_editor, get_root, CreateEditorArgs, UpdateOptions};
 //!
 //! let editor = create_editor(CreateEditorArgs::default());
 //! let state = editor

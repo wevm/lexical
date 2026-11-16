@@ -1,6 +1,6 @@
 # Changesets
 
-Changesets version the `lexical-editor` crate. Each user-facing change to
+Changesets version the `lexical-ui` crate. Each user-facing change to
 it (what an app that depends on the crate sees: API, behavior, types,
 features or the minimum Rust version) adds a changeset here, in the pull
 request that makes the change. Tests, the conformance runner, the
@@ -12,7 +12,7 @@ belongs to upstream Lexical's npm packages):
 
 ```md
 ---
-'lexical-editor': patch
+'lexical-ui': patch
 ---
 
 Fixed `split_text` losing a text node's format when the split was at its end.
@@ -29,8 +29,8 @@ Fixed `split_text` losing a text node's format when the split was at its end.
 On `main`, `.github/workflows/rust-release.yml` keeps a
 `chore(rust): version packages` pull request open while changesets are
 pending. It runs `rust/scripts/version-packages.sh`, which consumes them,
-bumps the version in `rust/lexical-editor/Cargo.toml` (and in the
+bumps the version in `rust/lexical-ui/Cargo.toml` (and in the
 lockfiles) and adds the version's section to `rust/CHANGELOG.md`, naming
-the upstream version in `lexical_editor::UPSTREAM_VERSION`. Merging that
+the upstream version in `lexical_ui::UPSTREAM_VERSION`. Merging that
 pull request is the release: the workflow publishes the mirror, the tag,
 the GitHub release and the crate on crates.io.

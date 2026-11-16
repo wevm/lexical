@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-// Generates rust/lexical-editor/src/hashtag/tables.rs from
+// Generates rust/lexical-ui/src/hashtag/tables.rs from
 // packages/lexical-hashtag/src/LexicalHashtagExtension.ts.
 //
 // It takes `getHashtagRegexStringChars` and `getHashtagRegexString` out of
@@ -25,7 +25,7 @@ const require = createRequire(import.meta.url);
 const ts = require(`${process.cwd()}/node_modules/typescript`);
 
 const SOURCE = 'packages/lexical-hashtag/src/LexicalHashtagExtension.ts';
-const OUT = 'rust/lexical-editor/src/hashtag/tables.rs';
+const OUT = 'rust/lexical-ui/src/hashtag/tables.rs';
 
 const source = readFileSync(SOURCE, 'utf8');
 

@@ -53,6 +53,14 @@ import {
 } from '@lexical/rich-text';
 import {$setBlocksType} from '@lexical/selection';
 import {
+  $canShowPlaceholder,
+  $canShowPlaceholderCurry,
+  $findTextIntersectionFromCharacters,
+  $isRootTextContentEmpty,
+  $isRootTextContentEmptyCurry,
+  $rootTextContent,
+} from '@lexical/text';
+import {
   $caretRangeFromSelection,
   $createNodeSelection,
   $createParagraphNode,
@@ -186,6 +194,28 @@ export type Action =
    * is `$createParagraphNode`, `$createQuoteNode` or `$createHeadingNode(tag)`.
    */
   | {do: 'setBlocksType'; block: 'paragraph' | 'quote' | HeadingTagType}
+  /** Logs `['rootTextContent', $rootTextContent()]` (@lexical/text). */
+  | {do: 'logRootTextContent'}
+  /**
+   * Logs `['rootTextContentEmpty', isComposing, trim, direct, curried]`:
+   * `$isRootTextContentEmpty(isComposing, trim)` and what
+   * `$isRootTextContentEmptyCurry(isComposing, trim)` returns, called
+   * (@lexical/text). `trim` is left out (`undefined`) when absent, and
+   * logged as `null` then.
+   */
+  | {do: 'logRootTextContentEmpty'; isComposing: boolean; trim?: boolean}
+  /**
+   * Logs `['canShowPlaceholder', isComposing, direct, curried]`:
+   * `$canShowPlaceholder(isComposing)` and what
+   * `$canShowPlaceholderCurry(isComposing)` returns, called (@lexical/text).
+   */
+  | {do: 'logCanShowPlaceholder'; isComposing: boolean}
+  /**
+   * Logs `['textIntersection', characters, [key, offset] | null]`:
+   * `$findTextIntersectionFromCharacters($getRoot(), characters)`
+   * (@lexical/text).
+   */
+  | {do: 'logTextIntersection'; characters: number}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /**
@@ -746,6 +776,42 @@ function $runAction(action: Action, ctx: Context): void {
     case 'logSelectionText':
       ctx.log.push(['selectionText', $anySel().getTextContent()]);
       return;
+    case 'logRootTextContent':
+      ctx.log.push(['rootTextContent', $rootTextContent()]);
+      return;
+    case 'logRootTextContentEmpty': {
+      const {isComposing, trim} = action;
+      ctx.log.push([
+        'rootTextContentEmpty',
+        isComposing,
+        trim ?? null,
+        $isRootTextContentEmpty(isComposing, trim),
+        $isRootTextContentEmptyCurry(isComposing, trim)(),
+      ]);
+      return;
+    }
+    case 'logCanShowPlaceholder': {
+      const {isComposing} = action;
+      ctx.log.push([
+        'canShowPlaceholder',
+        isComposing,
+        $canShowPlaceholder(isComposing),
+        $canShowPlaceholderCurry(isComposing)(),
+      ]);
+      return;
+    }
+    case 'logTextIntersection': {
+      const found = $findTextIntersectionFromCharacters(
+        $getRoot(),
+        action.characters,
+      );
+      ctx.log.push([
+        'textIntersection',
+        action.characters,
+        found === null ? null : [found.node.getKey(), found.offset],
+      ]);
+      return;
+    }
     case 'dispatch':
       ctx.log.push([
         'dispatched',

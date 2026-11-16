@@ -46,6 +46,9 @@ updated with each milestone.
 | `@lexical/extension`'s decorators (the `extension` feature) | `packages/lexical-extension/src/HorizontalRuleExtension.ts` (`HorizontalRuleNode`: a block decorator whose text is `\n`; `$createHorizontalRuleNode`, `$isHorizontalRuleNode`), `DecoratorTextExtension.ts` (`DecoratorTextNode`: inline, `__isInlineFormattable`, `getFormat`, `hasFormat`, `setFormat`, `toggleFormat`, its `format` as a flat NodeState; `$isDecoratorTextNode`), with `LexicalNode`'s generated JSON | `extension` | `scripts/decorator` |
 | `NormalizeInlineElementsExtension`'s register (the `extension` feature) | `packages/lexical-extension/src/NormalizeInlineElementsExtension.ts` (`deleteEmptyInline`, and the `register` that adds it to the transforms of every registered `ElementNode` class with an `isInline` of its own, without marking their nodes dirty), as `register_normalize_inline_elements`; `RichTextExtension` depends on it | `extension` | `property/sequences` |
 | `registerLexicalTextEntity` (the `text` feature) | `packages/lexical-text/src/registerLexicalTextEntity.ts`: `EntityMatch`, `registerLexicalTextEntity` (the `TextNode` transform and `$reverseNodeTransform`, `$replaceWithSimpleText`, `$wasTurnedIntoText`, `getFirstMatchAfter`, `isNextTextEntity`, `isTextAfterOutsideSource`, `isEntityAfter`, `$checkNextSibling`, `$moveSelectionIntoEntity`, `$wouldMerge`, `MAX_MATCHES_PASSED`, `MAX_TURNED_INTO_TEXT`, the per-update `markedInUpdate` and `turnedIntoTextInUpdate`); from the core `INTERNAL_getActiveEditorState` | `text`, `updates` | `entities/hashtag-documents`, `entities/hashtag-typing`, `property/sequences` |
+| `@lexical/text`'s root helpers (the `text` feature) | `packages/lexical-text/src/rootTextContent.ts` (`$rootTextContent`), `isRootTextContentEmpty.ts` (`$isRootTextContentEmpty`, with `String#trim`'s whitespace, and `$isRootTextContentEmptyCurry`), `canShowPlaceholder.ts` (`$canShowPlaceholder`, `$canShowPlaceholderCurry`), `findTextIntersectionFromCharacters.ts` (`$findTextIntersectionFromCharacters`, deprecated upstream, with UTF-16 counts), `index.ts`'s `TextNodeWithOffset` | `text` | `scripts/text` |
+| `@lexical/file` (the `file` feature) | `packages/lexical-file/src/fileImportExport.ts`: `SerializedDocument`, `serializedDocumentFromEditorState` (an empty `source` is `"Lexical"`, a `lastSaved` of 0 or NaN is `Date.now()`, the version is the upstream release), `editorStateFromSerializedDocument` (from a string or a document, either JSON form), `importFile` and `exportFile` (with `toISOString` for the default file name), with the app reading and saving the file where JS's `readTextFileFromSystem` and `exportBlob` use the DOM | `file::file_import_export` | `file/export`, `file/import`; unit tests for `toISOString` against Node and an export-then-import round trip |
+| `@lexical/devtools-core`'s tree view (the `devtools` feature) | `packages/lexical-devtools-core/src/generateContent.ts`: `generateContent` (the text form), `$printRangeSelection`, `printNodeSelection`, `$visitTree`, `normalize` (with `obfuscateText`), `printNode` (text, link with `link`, paragraph), `printTextFormatProperties`, `printAllTextNodeProperties`, `printAllLinkNodeProperties`, `printDetailProperties`, `printModeProperties`, `printFormatProperties`, `printTargetProperties`, `printRelProperties`, `printTitleProperties`, `printStateProperties`, `$printSelectedCharsLine`, `$getSelectionStartEnd`, `CustomPrintNodeFn`, `LexicalCommandLog`'s entries; from the core `LexicalNode.isSelected` (`$isKeyInSelectionNodes` and the inline decorator rule), `isBefore`, `LexicalEditor.version` (the port's own, `lexical-rust@0.53.0`, as Swift prints `lexical-swift@...`), `_config.namespace` (`createUID` when none is given), `isEditable` and `setEditable` | `devtools`, `node`, `editor`, `lexical_utils` | `devtools/tree` (keys mapped to the port's and the version line to the port's, as Swift's runner does) |
 | `$setBlocksType` (the `selection` feature) | `packages/lexical-selection/src/range-selection.ts` (`$setBlocksType`, with its default `$afterCreateElement`, `$copyBlockFormatIndent`, and `$isPointAtBlockEdge`), through `LexicalNode.replace` and `ListItemNode.replace` | `selection` | `scripts/set-blocks-type`, the block-decorator case of `scripts/decorator`, `property/sequences` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
@@ -65,10 +68,10 @@ touches:
   DOM; an app's renderer can call `decorate` itself. The parts of
   `$extendSelectionForDeletion` and `applyDOMRange` that read a decorator's
   DOM (a line boundary landing in its private text, a DOM range inside
-  one) have no model counterpart. `isSelected()`'s rule for an inline
-  decorator at the end of its parent and `getTopLevelElement` are not
-  ported (no range-selection `isSelected` or `getTopLevelElement` is), nor
-  are slots on decorators (`__slotHost`, `__slots`). `@lexical/extension`'s
+  one) have no model counterpart. `isSelected()`, with its rule for an
+  inline decorator at the end of its parent, is ported (for the tree view,
+  the `devtools` feature), though no vector reaches that rule;
+  `getTopLevelElement` is not, nor are slots on decorators (`__slotHost`, `__slots`). `@lexical/extension`'s
   `HorizontalRuleExtension` (`INSERT_HORIZONTAL_RULE_COMMAND`, clicks, the
   selected class) and `DecoratorTextExtension` need the extension API, and
   `applyFormatFromStyle` reads CSS.
@@ -186,11 +189,7 @@ touches:
 - `@lexical/hashtag`'s `createDOM`, which comes with `html`, and
   `HashtagExtension`, which needs the extension API (`hashtag_nodes()` is
   its `nodes` and `register_lexical_hashtag(editor,
-  HashtagConfig::default())` its `register`). Of `@lexical/text`, only
-  `registerLexicalTextEntity`: `$canShowPlaceholder`,
-  `$isRootTextContentEmpty`, `$rootTextContent` and
-  `$findTextIntersectionFromCharacters` aren't used by anything ported and
-  no vector exercises them. Within `registerLexicalTextEntity`,
+  HashtagConfig::default())` its `register`). Within `registerLexicalTextEntity`,
   `$carryNodeState`, `splitOffInUpdate`, `demotedInUpdate` and
   `$isInsertedText` are ported (`scripts/node-state`'s hashtag cases), but
   the NodeState half of `$wouldMerge` (`haveEquivalentNodeState` with
@@ -205,6 +204,26 @@ touches:
   the last state asked about, as one state is pending at a time. JS's
   `targetNode` class is a node type here, as `registerNodeTransform`
   takes one.
+- Of `@lexical/file`: the DOM halves of `importFile` and `exportFile`
+  (`readTextFileFromSystem`'s `<input type="file">` and `FileReader`,
+  `exportBlob`'s `Blob`, object URL and download link), which an app
+  supplies as callbacks. `exportFile`'s `toISOString` is written for the
+  years 1970 to 9999, which `Date.now()` stays within.
+- Of `@lexical/devtools-core`: `generateContent`'s `exportDOM` form
+  (`$generateHtmlFromNodes`, `printPrettyHTML`, `prettifyHTML`), which
+  needs `@lexical/html` and fails with an error until it is ported; its
+  mark and table branches (`$isMarkNode`, `$isTableSelection`,
+  `printTableSelection`), as `@lexical/mark` and `@lexical/table` aren't
+  ported (a tree view holding their nodes would be `NotPorted` in the
+  runner; no `devtools/tree` case holds one); slots (`$getSlotNames`,
+  `$getSlot`, `$resolveSlotContext`, `$slotValueMetaSuffix`), which the
+  core doesn't have; the `compositionKey` line, as a headless editor never
+  composes; and the React parts, `TreeView.tsx` and
+  `useLexicalCommandsLog.ts` (a log of commands is the caller's, as
+  `LexicalCommandLogEntry`s with the payload already printed). The editable
+  listeners `setEditable` triggers in JS (`registerEditableListener`)
+  aren't ported. `obfuscateText`'s `*` and the `^` widths count UTF-16
+  code units, as JS does; no vector obfuscates.
 - In `$setBlocksType`, the skipping of a block that is a named slot's value
   (`$getSlotHost(prevNode) !== null`), as slots aren't ported. Its branch for a
   declared block container (`$isBlockContainer`) is ported but unreachable

@@ -411,7 +411,11 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "logState"
             | "logStateChange"
             | "setBlocksType"
-            | "logSelectionText",
+            | "logSelectionText"
+            | "logRootTextContent"
+            | "logRootTextContentEmpty"
+            | "logCanShowPlaceholder"
+            | "logTextIntersection",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -770,6 +774,58 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             ]);
             Ok(())
         }
+        Some("logRootTextContent") => {
+            ctx.log(vec![
+                "rootTextContent".into(),
+                lexical::text::root_text_content().into(),
+            ]);
+            Ok(())
+        }
+        Some("logRootTextContentEmpty") => {
+            let is_composing = action.get("isComposing").and_then(Value::as_bool) == Some(true);
+            // `trim` absent is JS's `undefined`, so the default (`true`).
+            let trim = action.get("trim").and_then(Value::as_bool);
+            let curried =
+                lexical::text::is_root_text_content_empty_curry(is_composing, trim.unwrap_or(true));
+            ctx.log(vec![
+                "rootTextContentEmpty".into(),
+                is_composing.into(),
+                trim.map_or(Value::Null, Value::from),
+                lexical::text::is_root_text_content_empty(is_composing, trim.unwrap_or(true))
+                    .into(),
+                curried().into(),
+            ]);
+            Ok(())
+        }
+        Some("logCanShowPlaceholder") => {
+            let is_composing = action.get("isComposing").and_then(Value::as_bool) == Some(true);
+            let curried = lexical::text::can_show_placeholder_curry(is_composing);
+            ctx.log(vec![
+                "canShowPlaceholder".into(),
+                is_composing.into(),
+                lexical::text::can_show_placeholder(is_composing).into(),
+                curried().into(),
+            ]);
+            Ok(())
+        }
+        Some("logTextIntersection") => {
+            let characters = number(action.get("characters").unwrap_or(&Value::Null))?;
+            let found = lexical::text::find_text_intersection_from_characters(
+                &get_root(),
+                characters as usize,
+            );
+            ctx.log(vec![
+                "textIntersection".into(),
+                characters.into(),
+                found.map_or(Value::Null, |found| {
+                    Value::Array(vec![
+                        found.node.get_key().into(),
+                        (found.offset as f64).into(),
+                    ])
+                }),
+            ]);
+            Ok(())
+        }
         Some("insertNodes") => insert_nodes(parse(action.get("nodes").unwrap_or(&Value::Null))?),
         Some("selection") => run_selection_method(
             action.get("method").and_then(Value::as_str).unwrap_or(""),
@@ -1086,7 +1142,10 @@ impl Session {
         if with_extension {
             nodes.extend(lexical::extension::extension_nodes());
         }
-        let editor = create_editor(CreateEditorArgs { nodes });
+        let editor = create_editor(CreateEditorArgs {
+            nodes,
+            ..CreateEditorArgs::default()
+        });
         let ctx = Rc::new(Ctx::default());
         if rich_text {
             let _unregister = lexical::rich_text::register_rich_text(&editor);

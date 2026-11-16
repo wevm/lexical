@@ -51,11 +51,15 @@ mod caret_utils;
 pub mod code;
 mod commands;
 pub mod constants;
+#[cfg(feature = "devtools")]
+pub mod devtools;
 mod editor;
 mod editor_state;
 mod error;
 #[cfg(feature = "extension")]
 pub mod extension;
+#[cfg(feature = "file")]
+pub mod file;
 mod gc;
 mod generated_json;
 #[cfg(feature = "hashtag")]

@@ -17,6 +17,7 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
             lexical::hashtag::hashtag_nodes(),
         ]
         .concat(),
+        ..CreateEditorArgs::default()
     });
     for (form, input) in [("legacy", legacy), ("compact", compact)] {
         let state = editor

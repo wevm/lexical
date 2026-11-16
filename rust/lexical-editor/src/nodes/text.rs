@@ -741,6 +741,7 @@ mod text_dom {
         export_dom_base, get_cached_class_name_array, get_document, importer, is_inline_dom_node,
         remove_empty_dom_attribute,
     };
+    use crate::lexical_utils::get_composition_key;
     use crate::node::{LexicalNode, NodeRef};
     use crate::selection_insert_nodes::generate_nodes_from_raw_text;
     use crate::set_dom_style::set_dom_style_from_css;
@@ -836,11 +837,26 @@ mod text_dom {
         remove_empty_dom_attribute(dom, "class");
     }
 
+    /// `COMPOSITION_SUFFIX` (`LexicalConstants.ts`): a zero width space, as
+    /// outside Safari and iOS (a browser's flags have no counterpart here,
+    /// as for `IS_SAFARI`).
+    const COMPOSITION_SUFFIX: &str = "\u{200b}";
+
     /// `$createTextInnerDOM(innerDOM, node, innerTag, format, text,
-    /// config)`. `$setTextContent`'s composition suffix isn't ported
-    /// (rust/PARITY.md), so the text is appended as it is.
-    fn create_text_inner_dom(inner_dom: &DomNode, format: i32, text: &str, config: &EditorConfig) {
-        inner_dom.append_child(&get_document().create_text_node(text));
+    /// config)`, with `$setTextContent`'s text: the node's, and
+    /// [`COMPOSITION_SUFFIX`] after it while an input method composes in
+    /// the node. (A new element has no text child, so `$setTextContent`
+    /// inserts one; its update of an existing one is the reconciler's.)
+    fn create_text_inner_dom(
+        inner_dom: &DomNode,
+        is_composing: bool,
+        format: i32,
+        text: &str,
+        config: &EditorConfig,
+    ) {
+        // Always add a suffix if we're composing a node
+        let suffix = if is_composing { COMPOSITION_SUFFIX } else { "" };
+        inner_dom.append_child(&get_document().create_text_node(&format!("{text}{suffix}")));
         if let Some(text_class_names) = config.theme.get("text").and_then(|t| t.as_object()) {
             set_text_theme_class_names(0, format, inner_dom, text_class_names);
         }
@@ -867,7 +883,8 @@ mod text_dom {
             inner_dom = document.create_element(inner_tag);
             dom.append_child(&inner_dom);
         }
-        create_text_inner_dom(&inner_dom, format, &data.text, config);
+        let is_composing = get_composition_key().as_deref() == Some(node.base().key.as_str());
+        create_text_inner_dom(&inner_dom, is_composing, format, &data.text, config);
         if !data.style.is_empty() {
             set_dom_style_from_css(&dom.style(), &data.style, "");
         }

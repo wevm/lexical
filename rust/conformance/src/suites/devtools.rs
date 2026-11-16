@@ -4,7 +4,7 @@ use lexical::devtools::generate_content;
 use lexical::json::{self, Value};
 use lexical::{
     CreateEditorArgs, Editor, LexicalError, NodeRef, PointType, UpdateOptions, Which,
-    create_editor, create_node_selection, get_root, set_selection,
+    create_editor, create_node_selection, get_root, get_slot, get_slot_names, set_selection,
 };
 use std::collections::HashMap;
 
@@ -13,6 +13,7 @@ use std::collections::HashMap;
 fn unported_package(node: &Value) -> Option<&'static str> {
     node.get("type")
         .and_then(Value::as_str)
+        .filter(|t| *t != "horizontalrule")
         .and_then(package_of)
         .or_else(|| {
             node.get("children")
@@ -20,22 +21,33 @@ fn unported_package(node: &Value) -> Option<&'static str> {
                 .iter()
                 .find_map(unported_package)
         })
+        .or_else(|| {
+            node.get("$slots")
+                .and_then(Value::as_object)?
+                .iter()
+                .find_map(|(_, value)| unported_package(value))
+        })
 }
 
 fn err(message: impl Into<String>) -> LexicalError {
     LexicalError::new(message.into())
 }
 
-/// The node at a path of child indexes from the root.
+/// The node at a path from the root: child indexes, and slot names for
+/// slot values.
 fn node_at(path: &Value) -> Result<NodeRef, LexicalError> {
     let mut node = get_root();
-    for index in path.as_array().ok_or_else(|| err("a path is an array"))? {
-        let index = index.as_f64().ok_or_else(|| err("a path index"))? as usize;
-        node = node
-            .get_children()
-            .get(index)
-            .cloned()
-            .ok_or_else(|| err(format!("no child {index}")))?;
+    for step in path.as_array().ok_or_else(|| err("a path is an array"))? {
+        node = match step.as_str() {
+            Some(name) => get_slot(&node, name).ok_or_else(|| err(format!("no slot {name}")))?,
+            None => {
+                let index = step.as_f64().ok_or_else(|| err("a path index"))? as usize;
+                node.get_children()
+                    .get(index)
+                    .cloned()
+                    .ok_or_else(|| err(format!("no child {index}")))?
+            }
+        };
     }
     Ok(node)
 }
@@ -174,7 +186,8 @@ fn expected(tree: &str, version: &str, key: &HashMap<&str, String>) -> String {
 /// `devtools/tree`: `generateContent(editor, [], false)` of the parsed
 /// state, with the selection set after parsing and the editable flag,
 /// matches JS's tree with JS's node keys mapped to the port's (both listed
-/// in tree order) and the port's version.
+/// in tree order) and the port's version; and its `exportDOM` form
+/// (`generateContent(editor, [], true)`) matches JS's `html`.
 pub fn check_tree(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let editor_state = case.str("editorState")?;
     let parsed = json::parse(editor_state).map_err(|e| format!("editorState: {e}"))?;
@@ -186,7 +199,14 @@ pub fn check_tree(case: &Value, _file: &Value) -> Result<Outcome, String> {
         .as_bool()
         .ok_or("vector field `editable` is not a boolean")?;
     let editor = create_editor(CreateEditorArgs {
-        nodes: lexical::rich_text::rich_text_nodes(),
+        nodes: [
+            lexical::rich_text::rich_text_nodes(),
+            lexical::mark::mark_nodes(),
+            vec![lexical::NodeClass::of::<
+                lexical::extension::HorizontalRuleNode,
+            >()],
+        ]
+        .concat(),
         namespace: "playground".to_owned(),
         ..CreateEditorArgs::default()
     });
@@ -209,10 +229,16 @@ pub fn check_tree(case: &Value, _file: &Value) -> Result<Outcome, String> {
     editor.set_editable(editable);
     let keys = editor
         .read(|| {
+            // Slot values first, as `$visitTree` walks.
             fn visit(node: &NodeRef, keys: &mut Vec<String>) {
-                for child in node.get_children() {
+                let slots = get_slot_names(node)
+                    .into_iter()
+                    .filter_map(|name| get_slot(node, &name));
+                for child in slots.chain(node.get_children()) {
                     keys.push(child.get_key().to_owned());
-                    visit(&child, keys);
+                    if child.is_element() || child.is_decorator() {
+                        visit(&child, keys);
+                    }
                 }
             }
             let mut keys = Vec::new();
@@ -234,5 +260,10 @@ pub fn check_tree(case: &Value, _file: &Value) -> Result<Outcome, String> {
         tree.as_str(),
         expected(case.str("tree")?, case.str("version")?, &key).as_str(),
     )?;
+    if let Some(html) = case.get("html").and_then(Value::as_str) {
+        let printed = generate_content(&editor, &[], true, None, false)
+            .map_err(|e| format!("generateContent with exportDOM: {e}"))?;
+        same("html", printed.as_str(), html)?;
+    }
     Ok(Outcome::Pass)
 }

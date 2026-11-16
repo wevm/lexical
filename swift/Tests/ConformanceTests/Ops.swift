@@ -325,10 +325,14 @@ private func registeredClass(_ type: String) throws -> LexicalNode.Type {
 
 /// The session's root element (`sessionDOM(ctx).root` in ops.ts): a root
 /// that is not in its document, as ops.ts's `div` is not, whose document's
-/// body hosts `AriaLiveRegionExtension`'s regions.
-private final class SessionRoot: LexicalRootElement, LiveRegionHost {
+/// body hosts `AriaLiveRegionExtension`'s regions, and whose window has the
+/// computed styles the `computedStyles` step stubs.
+private final class SessionRoot: LexicalRootElement, LiveRegionHost, ComputedStyleProvider {
   var isConnected: Bool { false }
   private(set) var regions: [LiveRegion] = []
+  var computedStyles: [NodeKey: ComputedStyle] = [:]
+
+  func computedStyle(forKey key: NodeKey) -> ComputedStyle? { computedStyles[key] }
 
   func mountLiveRegion(_ region: LiveRegion) { regions.append(region) }
   func unmountLiveRegion(_ region: LiveRegion) { regions.removeAll { $0 === region } }
@@ -2099,6 +2103,15 @@ private func runSteps(
         logDispatched(ctx, name, try ctx.dispatch(name, step["payload"] ?? .null))
       } else if let on = step["setRootElement"]?.boolValue {
         try editor.setRootElement(on ? ctx.sessionRoot() : nil)
+      } else if let styles = step["computedStyles"]?.objectValue {
+        // `stubComputedStyles`: CSS's initial values where left out.
+        var stubs: [NodeKey: ComputedStyle] = [:]
+        for (key, style) in styles {
+          stubs[key] = ComputedStyle(
+            direction: style["direction"]?.stringValue ?? "ltr",
+            writingMode: style["writingMode"]?.stringValue ?? "horizontal-tb")
+        }
+        ctx.sessionRoot().computedStyles = stubs
       } else if let editable = step["setEditable"]?.boolValue {
         try editor.setEditable(editable)
       } else if let text = step["announce"]?.stringValue {

@@ -65,7 +65,9 @@ use crate::nodes::element::ElementData;
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::nodes::tab::create_tab_node;
 use crate::schema::{NodeSchema, SchemaValue, enum_value, node_schema, with_field};
-use crate::selection::{move_character, should_override_default_character_selection};
+use crate::selection::{
+    is_parent_rtl, move_character, should_override_default_character_selection,
+};
 use crate::selection_deletion::{SelectionGranularity, needs_block_cursor_beside};
 use crate::selection_insert_nodes::normalize_selection;
 use crate::selection_insert_nodes::{insert_nodes, select_all};
@@ -876,13 +878,6 @@ fn is_selection_collapsed_at_front_of_indented_block(
     Ok(element.get_indent()? > 0.0
         && (element == anchor_node
             || element.get_first_descendant().as_ref() == Some(&anchor_node)))
-}
-
-/// `$isParentRTL(node)` (`@lexical/selection`): whether the computed style
-/// of the node's parent has `direction: rtl`. Without a DOM there is no
-/// computed style, as for a JS editor that renders nothing, so it is false.
-fn is_parent_rtl(_node: &NodeRef) -> bool {
-    false
 }
 
 /// `$tryEnterFromBlockCursor(selection, direction)`: from a block cursor

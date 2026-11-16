@@ -15,6 +15,7 @@ import {ListItemNode, ListNode} from '@lexical/list';
 import {
   $convertFromMarkdownString,
   $convertToMarkdownString,
+  $generateNodesFromMarkdownString,
   CHECK_LIST,
   CODE,
   LINK,
@@ -24,7 +25,13 @@ import {
   TRANSFORMERS,
 } from '@lexical/markdown';
 import {HeadingNode, QuoteNode} from '@lexical/rich-text';
-import {$createTextNode, $getRoot, $insertNodes} from 'lexical';
+import {
+  $createTextNode,
+  $getRoot,
+  $insertNodes,
+  $isElementNode,
+  type LexicalNode,
+} from 'lexical';
 import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {expect, test} from 'vitest';
@@ -299,6 +306,11 @@ type Case = {
   importState?: string;
   /** `$generateHtmlFromNodes(editor)` after the import. */
   importHtml?: string;
+  /**
+   * The nodes `$generateNodesFromMarkdownString` makes of `md` with the
+   * import's transformers and flags, each as `exportJSON` with its children.
+   */
+  importNodes?: string;
   /** `JSON.stringify(editorState.toJSON())` after inserting the parsed `html`. */
   exportState?: string;
   /** `$convertToMarkdownString` of that state. */
@@ -307,6 +319,15 @@ type Case = {
   exportId?: string;
   noSelectionId?: string;
 };
+
+/** A node and its subtree as JSON, as `exportJSON` writes each node. */
+function $nodeToJSON(node: LexicalNode): Record<string, unknown> {
+  const json: Record<string, unknown> = {...node.exportJSON()};
+  if ($isElementNode(node)) {
+    json.children = node.getChildren().map($nodeToJSON);
+  }
+  return json;
+}
 
 /** Runs `f` with a jsdom window as the global `window` and `document`. */
 function withJSDOM<T>(f: (dom: JSDOM['window']) => T): T {
@@ -418,6 +439,20 @@ test('markdown/import-export', () => {
           $generateHtmlFromNodes(editor),
         );
         expect.soft(c.importHtml, `import "${c.name}"`).toBe(entry.html);
+        const nodesEditor = createTestEditor();
+        nodesEditor.update(
+          () => {
+            c.importNodes = JSON.stringify(
+              $generateNodesFromMarkdownString(
+                entry.md,
+                [...custom, ...TRANSFORMERS, HIGHLIGHT_TEXT_MATCH_IMPORT],
+                entry.shouldPreserveNewLines,
+                entry.shouldMergeAdjacentLines,
+              ).map($nodeToJSON),
+            );
+          },
+          {discrete: true},
+        );
       }
       if (!entry.skipExport) {
         const editor = createTestEditor();
@@ -448,7 +483,7 @@ test('markdown/import-export', () => {
   emitVectors(
     'markdown/import-export',
     'markdown',
-    "Upstream LexicalMarkdown.test.ts's IMPORT_AND_EXPORT table, with the editor state and HTML JS imports from each md and the state and md JS exports from each html.",
+    "Upstream LexicalMarkdown.test.ts's IMPORT_AND_EXPORT table, with the editor state and HTML JS imports from each md, the nodes $generateNodesFromMarkdownString makes of it (importNodes), and the state and md JS exports from each html.",
     cases,
   );
 });

@@ -8,7 +8,7 @@ mod file;
 mod html;
 mod markdown;
 mod meta;
-mod property;
+pub(crate) mod property;
 mod schema;
 mod serialization;
 

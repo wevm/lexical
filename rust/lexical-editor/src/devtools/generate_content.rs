@@ -1,10 +1,8 @@
-//! `packages/lexical-devtools-core/src/generateContent.ts`.
+//! `packages/lexical-devtools-core/src/generateContent.ts`. The `exportDOM`
+//! form is built with the `html` feature, the link branch with `link` and
+//! the mark branch with `mark`, as without them no such node can exist.
 //!
-//! Not ported: the `exportDOM` form, which needs `@lexical/html`; mark and
-//! table nodes and table selections (`@lexical/mark`, `@lexical/table`); and
-//! the printing of slots (`$resolveSlotContext`, `$slotValueMetaSuffix`),
-//! which no `devtools/tree` vector checks yet, so a tree prints no slot
-//! entries.
+//! Not ported: table selections (`@lexical/table`).
 
 use crate::constants::{IS_DIRECTIONLESS, TEXT_TYPE_TO_FORMAT, lookup};
 use crate::node_state::{is_default, unparse};
@@ -13,7 +11,8 @@ use crate::nodes::text::to_int32;
 use crate::selection_deletion::is_js_whitespace;
 use crate::updates::read_editor_state;
 use crate::{
-    Editor, LexicalError, NodeRef, PointType, SelectionRef, get_root, get_selection, utf16,
+    Editor, LexicalError, NodeRef, PointType, SelectionRef, get_root, get_selection, get_slot,
+    get_slot_host, get_slot_name_within_host, get_slot_names, utf16,
 };
 
 /// `CustomPrintNodeFn`: what to print for a node (given whether to
@@ -60,9 +59,10 @@ const FORMATS: [(&str, &str); 8] = [
 /// obfuscateText)`: the tree view's text: each node of the editor's state
 /// on a line (`>` when selected, with a line of `^` under a text node's
 /// selected characters), the selection, the commands logged and the
-/// editor's version, namespace and editable flag. With `export_dom`, JS
-/// prints the state's HTML instead, which needs `@lexical/html`, not ported:
-/// that fails.
+/// editor's version, namespace and editable flag; slot values first under
+/// their host, with their slot's name. With `export_dom`, the state's HTML
+/// (`$generateHtmlFromNodes`), indented (`printPrettyHTML`); without the
+/// `html` feature that fails.
 pub fn generate_content(
     editor: &Editor,
     commands_log: &[LexicalCommandLogEntry],
@@ -73,8 +73,15 @@ pub fn generate_content(
     let editor_state = editor.get_editor_state();
 
     if export_dom {
+        #[cfg(feature = "html")]
+        return read_editor_state(Some(editor), &editor_state, || {
+            Ok(print_pretty_html(&crate::html::generate_html_from_nodes(
+                editor, None,
+            )?))
+        });
+        #[cfg(not(feature = "html"))]
         return Err(LexicalError::new(
-            "generateContent: exportDOM needs @lexical/html, which isn't ported",
+            "generateContent: exportDOM needs @lexical/html (the `html` feature)",
         ));
     }
 
@@ -82,12 +89,14 @@ pub fn generate_content(
 
     let selection_string = read_editor_state(Some(editor), &editor_state, || {
         let selection = get_selection();
-        visit_tree(&get_root(), &[], &mut |node, indent| {
+        visit_tree(&get_root(), &[], &mut |node, indent, slot_name| {
             let node_key_display = format!("({})", node.get_key());
             let type_display = node.get_type();
             let is_selected = node.is_selected(None)?;
+            let slot_prefix = slot_name.map_or(String::new(), |name| format!("[slot: {name}] "));
+            let slot_meta = slot_value_meta_suffix(node, slot_name);
             res.push_str(&format!(
-                "{} {} {node_key_display} {type_display} {}\n",
+                "{} {} {node_key_display} {slot_prefix}{type_display}{slot_meta} {}\n",
                 if is_selected { SELECTED_LINE } else { " " },
                 indent.join(" "),
                 print_node(node, custom_print_node, obfuscate_text),
@@ -104,7 +113,7 @@ pub fn generate_content(
         })?;
         Ok::<_, LexicalError>(match &selection {
             None => ": null".to_owned(),
-            Some(selection) if selection.is_range() => print_range_selection(selection),
+            Some(selection) if selection.is_range() => print_range_selection(selection)?,
             Some(selection) => print_node_selection(selection),
         })
     })?;
@@ -135,11 +144,19 @@ pub fn generate_content(
 }
 
 /// `$printRangeSelection(selection)`.
-fn print_range_selection(selection: &SelectionRef) -> String {
+fn print_range_selection(selection: &SelectionRef) -> Result<String, LexicalError> {
     let range = selection.range().expect("a range selection");
     let format_text = print_format_properties(|format| selection.has_format(format));
+    let slot_suffix = match resolve_slot_context(&range.anchor.get_node()?) {
+        Some((name, host)) => format!(
+            " (in slot \"{name}\" of {} {{ key: {} }})",
+            host.get_type(),
+            host.get_key()
+        ),
+        None => String::new(),
+    };
     let mut res = format!(
-        ": range {} {}",
+        ": range{slot_suffix} {} {}",
         if format_text.is_empty() {
             String::new()
         } else {
@@ -159,7 +176,38 @@ fn print_range_selection(selection: &SelectionRef) -> String {
             point.point_type.as_str()
         ));
     }
-    res
+    Ok(res)
+}
+
+/// `$resolveSlotContext(node)`: the name of the slot the node is in and
+/// its host, walking up through parents and slot hosts, or `None`.
+fn resolve_slot_context(node: &NodeRef) -> Option<(String, NodeRef)> {
+    let mut cursor = Some(node.clone());
+    while let Some(current) = cursor {
+        if let Some(slot_name) = get_slot_name_within_host(&current)
+            && let Some(host) = get_slot_host(&current)
+        {
+            return Some((slot_name, host));
+        }
+        cursor = current.get_parent().or_else(|| get_slot_host(&current));
+    }
+    None
+}
+
+/// `$slotValueMetaSuffix(node, slotName)`: ` [shadow-root]` for a shadow
+/// root element in a slot, ` [atomic decorator]` for a block decorator in
+/// one, and nothing for a node that isn't a slot value.
+fn slot_value_meta_suffix(node: &NodeRef, slot_name: Option<&str>) -> &'static str {
+    if slot_name.is_none() {
+        return "";
+    }
+    if crate::lexical_utils::is_shadow_root_node(node) {
+        return " [shadow-root]";
+    }
+    if node.is_decorator() && !node.is_inline() {
+        return " [atomic decorator]";
+    }
+    ""
 }
 
 /// `printNodeSelection(selection)`.
@@ -167,23 +215,32 @@ fn print_node_selection(selection: &SelectionRef) -> String {
     format!(": node\n  └ [{}]", selection.node_keys().join(", "))
 }
 
-/// What `$visitTree` calls for each node, with its indent.
-type Visitor<'a> = dyn FnMut(&NodeRef, &[&'static str]) -> Result<(), LexicalError> + 'a;
+/// What `$visitTree` calls for each node, with its indent and, for a slot
+/// value, its slot's name.
+type Visitor<'a> =
+    dyn FnMut(&NodeRef, &[&'static str], Option<&str>) -> Result<(), LexicalError> + 'a;
 
-/// `$visitTree(currentNode, visitor, indent)`: each child of an element,
-/// with its indent, then its own children.
+/// `$visitTree(currentNode, visitor, indent)`: each slot value of an
+/// element or decorator (in `$getSlotNames`' order), then each child, with
+/// its indent, then its own slot values and children.
 fn visit_tree(
     current_node: &NodeRef,
     indent: &[&'static str],
     visitor: &mut Visitor<'_>,
 ) -> Result<(), LexicalError> {
+    let slot_entries = get_slot_names(current_node)
+        .into_iter()
+        .filter_map(|name| get_slot(current_node, &name).map(|node| (Some(name), node)));
     let child_nodes = if current_node.is_element() {
         current_node.get_children()
     } else {
         Vec::new()
     };
-    let total_count = child_nodes.len();
-    for (i, child_node) in child_nodes.iter().enumerate() {
+    let entries: Vec<(Option<String>, NodeRef)> = slot_entries
+        .chain(child_nodes.into_iter().map(|node| (None, node)))
+        .collect();
+    let total_count = entries.len();
+    for (i, (slot_name, child_node)) in entries.iter().enumerate() {
         let is_last = i + 1 == total_count;
         let mut child_indent = indent.to_vec();
         child_indent.push(if is_last {
@@ -191,7 +248,7 @@ fn visit_tree(
         } else {
             HAS_NEXT_SIBLING
         });
-        visitor(child_node, &child_indent)?;
+        visitor(child_node, &child_indent, slot_name.as_deref())?;
         if child_node.is_element() || child_node.is_decorator() {
             let mut descendant_indent = indent.to_vec();
             descendant_indent.push(if is_last {
@@ -271,6 +328,10 @@ fn print_node(
             format!("\"{}\"", normalize(&link, obfuscate_text))
         };
         return title_and_properties(title, &print_all_link_node_properties(node));
+    }
+    #[cfg(feature = "mark")]
+    if let Some(ids) = node.get_ids() {
+        return format!("ids: [ {} ]", ids.join(", "));
     }
     let latest = node.get_latest();
     if latest.is::<ParagraphNode>() {
@@ -455,6 +516,44 @@ fn print_selected_chars_line(
         " ".repeat(node_print_spaces + unselected),
         SELECTED_CHAR.repeat(selected),
     ))
+}
+
+/// `printPrettyHTML(str)`: the HTML parsed into a `div` (trimmed), with
+/// each element on a line of its own, indented two spaces a level
+/// (`prettifyHTML`), as the `div`'s `innerHTML`.
+#[cfg(feature = "html")]
+fn print_pretty_html(str: &str) -> String {
+    let document = crate::dom::parse_from_string(&format!(
+        "<div>{}</div>",
+        str.trim_matches(is_js_whitespace)
+    ));
+    let Some(div) = document
+        .body()
+        .and_then(|body| body.children().into_iter().next())
+    else {
+        return String::new();
+    };
+    prettify_html(&div, 0, &document);
+    div.inner_html()
+}
+
+/// `prettifyHTML(node, level)`: a newline and the level's indent before
+/// each child element, and after the last one the parent's.
+#[cfg(feature = "html")]
+fn prettify_html(node: &crate::dom::DomNode, level: usize, document: &crate::dom::DomNode) {
+    let indent_before = "  ".repeat(level);
+    let indent_after = "  ".repeat(level.saturating_sub(1));
+    let children = node.children();
+    for (i, child) in children.iter().enumerate() {
+        node.insert_before(
+            &document.create_text_node(&format!("\n{indent_before}")),
+            Some(child),
+        );
+        prettify_html(child, level + 1, document);
+        if i + 1 == children.len() {
+            node.append_child(&document.create_text_node(&format!("\n{indent_after}")));
+        }
+    }
 }
 
 /// `String#slice(start, end)` on UTF-16 code units: clamped, and a negative

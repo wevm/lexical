@@ -197,6 +197,9 @@ struct MenuInner<O> {
     draws_empty_menu: bool,
     /// What unregisters the keyboard commands while the menu is open.
     unregister_commands: Option<Unregister>,
+    /// Counts the opens (`openGenerationRef`), so a close that waits for
+    /// `on_close_async` clears only the query it closed.
+    open_generation: u64,
 }
 
 /// An open or closed menu and its options: the state `LexicalMenu`,
@@ -276,8 +279,34 @@ impl<O> DetachedMenu<O> {
 /// `onOpen(resolution)`.
 pub type OnOpen = Rc<dyn Fn(&MenuResolution)>;
 
+/// An `onClose` that returns a promise, given what settles it.
+pub type OnCloseAsync = Rc<dyn Fn(MenuCloseDone)>;
+
 /// `onQueryChange(matchingString)`.
 pub type OnQueryChange = Rc<dyn Fn(Option<&str>)>;
+
+/// What settles a close that [`MenuCallbacks::on_close_async`] waits for,
+/// as the promise JS's `onClose` returns does (`result.then(finish,
+/// finish)`): [`finish`](Self::finish) it, or drop it, and the menu clears
+/// unless it was opened again since.
+pub struct MenuCloseDone(Option<Box<dyn FnOnce()>>);
+
+impl MenuCloseDone {
+    /// The promise resolved.
+    pub fn finish(mut self) {
+        if let Some(finish) = self.0.take() {
+            finish();
+        }
+    }
+}
+
+impl Drop for MenuCloseDone {
+    fn drop(&mut self) {
+        if let Some(finish) = self.0.take() {
+            finish();
+        }
+    }
+}
 
 /// A menu's `onOpen`, `onClose`, and what the view hears of its changes.
 #[derive(Default)]
@@ -286,6 +315,13 @@ pub struct MenuCallbacks {
     pub on_open: RefCell<Option<OnOpen>>,
     /// `onClose()`.
     pub on_close: RefCell<Option<Rc<dyn Fn()>>>,
+    /// An `onClose` that returns a promise (`LexicalTypeaheadMenuPlugin`'s
+    /// `onClose?: () => void | PromiseLike<void>`), called after
+    /// [`on_close`](Self::on_close) with what settles it: the menu stays
+    /// drawn, with its keys, until the app finishes the [`MenuCloseDone`]
+    /// (or drops it, as a promise that rejects), then clears unless a newer
+    /// query opened the menu meanwhile.
+    pub on_close_async: RefCell<Option<OnCloseAsync>>,
     /// Called when the resolution, the options or the highlighted index
     /// change, for the view to draw the menu again.
     pub on_change: RefCell<Option<Rc<dyn Fn()>>>,
@@ -308,6 +344,7 @@ impl<O: MenuOption + 'static> MenuState<O> {
                 is_open: false,
                 draws_empty_menu: false,
                 unregister_commands: None,
+                open_generation: 0,
             })),
             command_priority,
             preselect_first_item,
@@ -424,10 +461,15 @@ impl<O: MenuOption + 'static> MenuState<O> {
                 inner.selected_index = Some(0);
             }
             inner.resolution = Some(resolution.clone());
+            // Track pending opens.
+            inner.open_generation += 1;
             std::mem::replace(&mut inner.is_open, true)
         };
         if !was_open {
-            self.register_commands();
+            // A close still waiting for `on_close_async` kept the keys.
+            if self.inner.borrow().unregister_commands.is_none() {
+                self.register_commands();
+            }
             let on_open = self.callbacks.on_open.borrow().clone();
             if let Some(on_open) = on_open {
                 on_open(&resolution);
@@ -437,17 +479,37 @@ impl<O: MenuOption + 'static> MenuState<O> {
     }
 
     /// `closeTypeahead()` / `closeNodeMenu()`: `onClose`, then the menu is
-    /// cleared.
+    /// cleared, or with [`on_close_async`](MenuCallbacks::on_close_async)
+    /// once what it is given is finished, unless the menu opened again.
     pub fn close(&self) {
         if !std::mem::replace(&mut self.inner.borrow_mut().is_open, false) {
             return;
         }
+        let open_generation = self.inner.borrow().open_generation;
         let on_close = self.callbacks.on_close.borrow().clone();
         if let Some(on_close) = on_close {
             on_close();
         }
+        let on_close_async = self.callbacks.on_close_async.borrow().clone();
+        match on_close_async {
+            Some(on_close_async) => {
+                let menu = self.clone();
+                on_close_async(MenuCloseDone(Some(Box::new(move || {
+                    menu.finish_close(open_generation)
+                }))));
+            }
+            None => self.finish_close(open_generation),
+        }
+    }
+
+    /// `finish()` in `closeTypeahead`: the menu is cleared unless it was
+    /// opened since the close.
+    fn finish_close(&self, open_generation: u64) {
         let unregister_commands = {
             let mut inner = self.inner.borrow_mut();
+            if inner.open_generation != open_generation {
+                return;
+            }
             inner.resolution = None;
             inner.selected_index = None;
             inner.unregister_commands.take()
@@ -665,20 +727,22 @@ pub fn register_typeahead_menu<O: MenuOption + 'static>(
         // `editor.read('latest', ...)`.
         enum Next {
             Close,
+            CloseUnlessComposing,
             Open(MenuResolution),
         }
         let next = editor.get_editor_state().read(|| {
+            // Check if editor is in read-only mode
             if !editor.is_editable() {
                 return Next::Close;
             }
             let Some(selection) = get_selection().and_then(|s| s.range()) else {
-                return Next::Close;
+                return Next::CloseUnlessComposing;
             };
             let Some(text) = get_text_up_to_anchor(&selection) else {
-                return Next::Close;
+                return Next::CloseUnlessComposing;
             };
             if !selection.is_collapsed() {
-                return Next::Close;
+                return Next::CloseUnlessComposing;
             }
             let text_match = trigger_fn(&text, &editor);
             on_query_change(text_match.as_ref().map(|m| m.matching_string.as_str()));
@@ -696,12 +760,17 @@ pub fn register_typeahead_menu<O: MenuOption + 'static>(
                         text_match: Some(text_match),
                     })
                 }
-                _ => Next::Close,
+                _ => Next::CloseUnlessComposing,
             }
         });
-        // There is no composition to wait for (`closeUnlessComposing`).
         match next {
             Next::Close => menu.close(),
+            // `closeUnlessComposing()`.
+            Next::CloseUnlessComposing => {
+                if !editor.is_composing() {
+                    menu.close();
+                }
+            }
             Next::Open(resolution) => menu.open(resolution),
         }
     });
@@ -790,7 +859,9 @@ mod tests {
     //! them (JS's are React hooks, which no vector records): the arrows move
     //! the highlight, wrapping around, at the menu's priority; Enter and Tab
     //! choose, Shift+Enter is left to rich text; Escape closes; an empty
-    //! menu that draws nothing lets the keys go on.
+    //! menu that draws nothing lets the keys go on. And the typeahead's
+    //! closes: `closeUnlessComposing`, and an `onClose` that returns a
+    //! promise (`on_close_async`).
     use super::*;
     use crate::commands::KEY_TAB_COMMAND;
     use crate::editor::COMMAND_PRIORITY_EDITOR;
@@ -895,6 +966,95 @@ mod tests {
                 ..KeyboardEvent::default()
             })
         }
+    }
+
+    /// `closeUnlessComposing()`: while an input method composes, a caret
+    /// the trigger doesn't match (here, no selection) leaves the menu open;
+    /// a read-only editor closes it anyway.
+    #[test]
+    fn the_menu_stays_open_while_composing() {
+        let f = Fixture::new();
+        f.type_("/q");
+        assert!(f.menu.resolution().is_some());
+        let update = |compose: bool| {
+            f.editor
+                .update(
+                    move || {
+                        let text = get_root().get_first_descendant().unwrap();
+                        crate::set_composition_key(compose.then_some(text.get_key()));
+                        crate::set_selection(None);
+                        Ok(())
+                    },
+                    UpdateOptions {
+                        discrete: true,
+                        ..UpdateOptions::default()
+                    },
+                )
+                .unwrap()
+        };
+        update(true);
+        assert!(f.editor.is_composing());
+        assert!(f.menu.resolution().is_some());
+        update(false);
+        assert_eq!(f.menu.resolution(), None);
+        f.type_("/q");
+        update(true);
+        f.editor.set_editable(false);
+        assert_eq!(f.menu.resolution(), None);
+    }
+
+    /// An `onClose` that returns a promise: the menu stays drawn, with its
+    /// keys, until it settles, then clears unless it opened again.
+    #[test]
+    fn a_close_waits_for_on_close_async() {
+        let f = Fixture::new();
+        let log = Rc::new(RefCell::new(Vec::new()));
+        let pending: Rc<RefCell<Vec<MenuCloseDone>>> = Rc::default();
+        let (closed, waiting) = (log.clone(), pending.clone());
+        *f.menu.callbacks().on_close.borrow_mut() =
+            Some(Rc::new(move || closed.borrow_mut().push("onClose")));
+        let closed = log.clone();
+        *f.menu.callbacks().on_close_async.borrow_mut() = Some(Rc::new(move |done| {
+            closed.borrow_mut().push("onCloseAsync");
+            waiting.borrow_mut().push(done);
+        }));
+        f.type_("/q");
+        f.editor
+            .dispatch_command(&KEY_ESCAPE_COMMAND, Fixture::key("Escape", false))
+            .unwrap();
+        assert_eq!(*log.borrow(), ["onClose", "onCloseAsync"]);
+        // Still drawn, and its keys still the menu's.
+        assert!(f.menu.resolution().is_some());
+        assert!(
+            f.editor
+                .dispatch_command(&KEY_ARROW_DOWN_COMMAND, Fixture::key("ArrowDown", false))
+                .unwrap()
+        );
+        // Closing again does nothing until it opens again.
+        f.menu.close();
+        assert_eq!(log.borrow().len(), 2);
+        pending.borrow_mut().pop().unwrap().finish();
+        assert_eq!(f.menu.resolution(), None);
+        assert!(
+            !f.editor
+                .dispatch_command(&KEY_ARROW_DOWN_COMMAND, Fixture::key("ArrowDown", false))
+                .unwrap()
+        );
+        // A query opened before the close settles is kept, and a dropped
+        // completion settles as a rejected promise does.
+        f.type_("/q");
+        f.menu.close();
+        f.type_("/r");
+        drop(pending.borrow_mut().pop().unwrap());
+        assert!(f.menu.resolution().is_some());
+        assert!(
+            f.editor
+                .dispatch_command(&KEY_ARROW_DOWN_COMMAND, Fixture::key("ArrowDown", false))
+                .unwrap()
+        );
+        f.menu.close();
+        drop(pending.borrow_mut().pop().unwrap());
+        assert_eq!(f.menu.resolution(), None);
     }
 
     #[test]

@@ -1176,3 +1176,62 @@ pub(crate) fn unparse(config: &AnyStateConfig, value: &Rc<dyn Any>) -> Value {
 pub(crate) fn is_default(config: &AnyStateConfig, value: &Rc<dyn Any>) -> bool {
     config.0.is_equal_any(&**value, &*config.0.default_any())
 }
+
+/// `readStateValue(state, stateConfig)` (`registerLexicalTextEntity.ts`):
+/// the value `getValue` would give, without keeping a value it parses.
+#[cfg(feature = "text")]
+fn read_state_value(state: Option<&NodeStateRef>, config: &AnyStateConfig) -> Rc<dyn Any> {
+    let Some(state) = state else {
+        return config.0.default_any();
+    };
+    let state = state.borrow();
+    if let Some(known) = state.known(config) {
+        return known.clone();
+    }
+    if let Some(json_value) = state
+        .unknown_state
+        .as_ref()
+        .and_then(|u| u.get(config.key()))
+    {
+        return config.0.parse_any(json_value);
+    }
+    config.0.default_any()
+}
+
+/// `haveEquivalentNodeState(a, b)` (`registerLexicalTextEntity.ts`):
+/// whether two states hold equivalent NodeState by the rule that decides
+/// whether text nodes merge, as [`node_states_are_equivalent`] does, but
+/// reading the other state's values without keeping what it parses.
+#[cfg(feature = "text")]
+pub(crate) fn have_equivalent_node_state(
+    state_a: Option<&NodeStateRef>,
+    state_b: Option<&NodeStateRef>,
+) -> bool {
+    match (state_a, state_b) {
+        (None, None) => return true,
+        (Some(a), Some(b)) if Rc::ptr_eq(a, b) => return true,
+        _ => {}
+    }
+    let mut keys = HashSet::new();
+    let mut has_unequal_known = |source: Option<&NodeStateRef>, other: Option<&NodeStateRef>| {
+        let Some(source) = source else {
+            return false;
+        };
+        let known = source.borrow().known_entries();
+        for (config, value) in known {
+            if !keys.insert(config.key().to_owned()) {
+                continue;
+            }
+            let other_value = read_state_value(other, &config);
+            if !Rc::ptr_eq(&other_value, &value) && !config.0.is_equal_any(&*other_value, &*value) {
+                return true;
+            }
+        }
+        false
+    };
+    if has_unequal_known(state_a, state_b) || has_unequal_known(state_b, state_a) {
+        return false;
+    }
+    !(state_a.is_some_and(|a| has_unequal_record_entry(&mut keys, a, state_b))
+        || state_b.is_some_and(|b| has_unequal_record_entry(&mut keys, b, state_a)))
+}

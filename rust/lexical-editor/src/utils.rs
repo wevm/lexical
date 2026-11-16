@@ -3,7 +3,7 @@
 //! `lexical`.
 //!
 //! Not ported: the DOM helpers (`markSelection`, `positionNodeOnRange`,
-//! `selectionAlwaysOnDisplay`, `dedupeSelectionRects`, `calculateZoomLevel`,
+//! `selectionAlwaysOnDisplay`, `calculateZoomLevel`,
 //! `getScrollParent`, `mediaFileReader`, the class name helpers and the DOM
 //! predicates), and `objectKlassEquals`, of JS constructors the port has no
 //! counterpart for; see `rust/PARITY.md`.
@@ -24,7 +24,7 @@ use crate::events::{DataTransferFile, DragEvent, KeyboardEvent, PasteCommandType
 use crate::lexical_selection::{get_selection, set_selection};
 use crate::lexical_utils::get_root;
 use crate::nodes::paragraph::create_paragraph_node;
-use crate::selection::is_at_edge_of_element;
+use crate::selection::{SelectionRect, is_at_edge_of_element};
 use crate::selection_insert_nodes::{get_previous_selection, is_block_container};
 use crate::updates::get_active_editor;
 use crate::{
@@ -825,4 +825,71 @@ pub fn is_at_start_of_node(point: &Point, node: &NodeRef) -> Result<bool, Lexica
 /// very end of `node`'s content.
 pub fn is_at_end_of_node(point: &Point, node: &NodeRef) -> Result<bool, LexicalError> {
     is_at_edge_of_element(point, node, CaretDirection::Next)
+}
+
+/// `dedupeSelectionRects(rects)`: drops the rects of no area (a side under
+/// 0.5) and each rect that contains another (within 1, for sub-pixel
+/// jitter), keeping the smaller, text-hugging one, before a selection's
+/// rects are drawn as fills.
+pub fn dedupe_selection_rects(rects: &[SelectionRect]) -> Vec<SelectionRect> {
+    let contains = |a: &SelectionRect, b: &SelectionRect| {
+        b.left >= a.left - 1.0
+            && b.top >= a.top - 1.0
+            && b.right <= a.right + 1.0
+            && b.bottom <= a.bottom + 1.0
+    };
+    let mut kept: Vec<SelectionRect> = Vec::new();
+    for rect in rects {
+        if rect.width < 0.5 || rect.height < 0.5 {
+            continue;
+        }
+        // `rect` contains a smaller rect already kept: keep the smaller one.
+        if kept.iter().any(|kept_rect| contains(rect, kept_rect)) {
+            continue;
+        }
+        // A kept rect contains `rect`: drop the larger, keep the smaller `rect`.
+        kept.retain(|kept_rect| !contains(kept_rect, rect));
+        kept.push(*rect);
+    }
+    kept
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The rects JS's `dedupeSelectionRects` keeps of these, recorded by
+    /// running it.
+    #[test]
+    fn dedupe_selection_rects_matches_js() {
+        let r = SelectionRect::new;
+        let sides = |rects: Vec<SelectionRect>| -> Vec<[f64; 4]> {
+            rects
+                .iter()
+                .map(|r| [r.left, r.top, r.width, r.height])
+                .collect()
+        };
+        let rects = [
+            r(0.0, 0.0, 100.0, 20.0),
+            r(10.0, 2.0, 50.0, 16.0),
+            r(0.0, 0.0, 0.4, 20.0),
+            r(200.0, 0.0, 10.0, 0.2),
+            r(9.5, 1.5, 51.0, 17.0),
+            r(300.0, 0.0, 20.0, 20.0),
+        ];
+        assert_eq!(
+            sides(dedupe_selection_rects(&rects)),
+            [[10.0, 2.0, 50.0, 16.0], [300.0, 0.0, 20.0, 20.0]]
+        );
+        let rects = [
+            r(10.0, 2.0, 50.0, 16.0),
+            r(0.0, 0.0, 100.0, 20.0),
+            r(10.0, 2.0, 50.0, 16.0),
+            r(400.0, 50.0, 5.0, 5.0),
+        ];
+        assert_eq!(
+            sides(dedupe_selection_rects(&rects)),
+            [[10.0, 2.0, 50.0, 16.0], [400.0, 50.0, 5.0, 5.0]]
+        );
+    }
 }

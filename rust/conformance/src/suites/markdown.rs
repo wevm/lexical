@@ -4,7 +4,7 @@ use lexical::link::{LinkAttributes, create_link_node};
 use lexical::markdown::{
     MultilineElementTransformer, MultilineImportArgs, MultilineImportResult, RegExp, RegExpMatch,
     TextMatchTransformer, Transformer, check_list, code, convert_from_markdown_string,
-    convert_to_markdown_string, link, transformers,
+    convert_to_markdown_string, generate_nodes_from_markdown_string, link, transformers,
 };
 use lexical::{
     CreateEditorArgs, Editor, LexicalError, NodeRef, UpdateOptions, create_editor,
@@ -15,7 +15,8 @@ use std::rc::Rc;
 /// `markdown/import-export.json`, upstream LexicalMarkdown.test.ts's
 /// `IMPORT_AND_EXPORT` table. Each `md` imports, in a discrete update, to
 /// the editor state JS made from it, without selecting ("should not select
-/// when importing"). Each `exportState`, the state JS built from the
+/// when importing"), and `$generateNodesFromMarkdownString` makes the
+/// nodes JS made of it (`importNodes`). Each `exportState`, the state JS built from the
 /// table's `html`, exports to the markdown JS wrote from it.
 ///
 /// JS built that state with `$generateNodesFromDOM`, and checks the
@@ -64,6 +65,37 @@ pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
             .read(|| get_selection().is_some())
             .map_err(|e| format!("reading the selection: {e}"))?;
         same("a selection after importing", selected, false)?;
+    }
+
+    if let Some(import_nodes) = case.get("importNodes").and_then(Value::as_str) {
+        let md = case.str("md")?.to_owned();
+        let editor = create_test_editor();
+        let mut all = custom.clone();
+        all.extend(transformers());
+        all.push(Transformer::TextMatch(highlight_text_match_import()));
+        let nodes = Rc::new(std::cell::RefCell::new(String::new()));
+        let out = nodes.clone();
+        editor
+            .update(
+                move || {
+                    let nodes = generate_nodes_from_markdown_string(
+                        &md,
+                        &all,
+                        should_preserve_new_lines,
+                        should_merge_adjacent_lines,
+                    )?;
+                    *out.borrow_mut() =
+                        Value::Array(nodes.iter().map(super::html::node_to_json).collect())
+                            .to_string();
+                    Ok(())
+                },
+                UpdateOptions {
+                    discrete: true,
+                    ..UpdateOptions::default()
+                },
+            )
+            .map_err(|e| format!("generating nodes: {e}"))?;
+        same("generated nodes", nodes.borrow().as_str(), import_nodes)?;
     }
 
     if let Some(export_state) = case.get("exportState").and_then(Value::as_str) {

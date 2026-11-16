@@ -930,6 +930,19 @@ export type Step = (
    * root starts with no selection: the scripts select in each update.
    */
   | {setRootElement: boolean}
+  /**
+   * Stubs the computed styles of the session's window (`getComputedStyle`,
+   * which `@lexical/selection`'s `$getComputedStyleForElement` reads) for
+   * the elements the reconciler made for these node keys: `direction`
+   * (`ltr` when left out) and `writingMode` (`horizontal-tb`). Any other
+   * element gets jsdom's. Each such step replaces the last one's stubs; it
+   * takes a root element (`setRootElement`) for the nodes to have elements.
+   */
+  | {
+      computedStyles: {
+        [key: string]: {direction?: string; writingMode?: string};
+      };
+    }
   /** `editor.setEditable(editable)`. */
   | {setEditable: boolean}
   /**
@@ -1621,6 +1634,37 @@ function sessionDOM(ctx: Context): NonNullable<Context['dom']> {
     ctx.dom = {root: win.document.createElement('div'), window: win};
   }
   return ctx.dom;
+}
+
+/** jsdom's own `getComputedStyle` of each window `computedStyles` stubbed. */
+const jsdomGetComputedStyle = new WeakMap<
+  object,
+  (el: Element, pseudo?: string | null) => CSSStyleDeclaration
+>();
+
+/** The `computedStyles` step: stubs `win.getComputedStyle`. */
+function stubComputedStyles(
+  win: ReturnType<typeof browserWindow>,
+  editor: LexicalEditor,
+  styles: {[key: string]: {direction?: string; writingMode?: string}},
+): void {
+  let jsdom = jsdomGetComputedStyle.get(win);
+  if (jsdom === undefined) {
+    jsdom = win.getComputedStyle.bind(win);
+    jsdomGetComputedStyle.set(win, jsdom);
+  }
+  const fallback = jsdom;
+  win.getComputedStyle = (el: Element, pseudo?: string | null) => {
+    for (const [key, style] of Object.entries(styles)) {
+      if (editor.getElementByKey(key) === el) {
+        return {
+          direction: style.direction ?? 'ltr',
+          writingMode: style.writingMode ?? 'horizontal-tb',
+        } as CSSStyleDeclaration;
+      }
+    }
+    return fallback(el, pseudo);
+  };
 }
 
 /**
@@ -4413,6 +4457,8 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     } else if ('setRootElement' in step) {
       const root = step.setRootElement ? sessionDOM(ctx).root : null;
       target.setRootElement(root);
+    } else if ('computedStyles' in step) {
+      stubComputedStyles(sessionDOM(ctx).window, target, step.computedStyles);
     } else if ('setEditable' in step) {
       target.setEditable(step.setEditable);
     } else if ('announce' in step) {
@@ -4539,6 +4585,7 @@ function runExtensionStep(
     | {update: Action[]}
     | {dispatch: string}
     | {setRootElement: boolean}
+    | {computedStyles: unknown}
     | {setEditable: boolean}
     | {announce: string}
     | {typeahead: TypeaheadSpec}

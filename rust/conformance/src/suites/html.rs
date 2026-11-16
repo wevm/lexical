@@ -91,7 +91,7 @@ fn export(case: &Value, nodes: Vec<lexical::NodeClass>) -> Result<Outcome, Strin
 
 /// A node and its subtree as JSON, as `exportJSON` writes each node
 /// (`$nodeToJSON`).
-fn node_to_json(node: &NodeRef) -> Value {
+pub(super) fn node_to_json(node: &NodeRef) -> Value {
     let mut json = node.export_json(false);
     if node.is_element() {
         json.insert(
@@ -415,7 +415,8 @@ pub fn check_export_render(case: &Value, _file: &Value) -> Result<Outcome, Strin
 /// packages' rules, in an editor built from `RichTextExtension`,
 /// `CheckListExtension`, `LinkExtension`, `CodeExtension`,
 /// `WordListImportExtension` and `HorizontalRuleExtension` (and, for
-/// `shadowRootQuote`, `ShadowRootQuoteRule`).
+/// `shadowRootQuote`, `ShadowRootQuoteRule`; for `nodeStructure`,
+/// `NodeStructureExtension`).
 pub fn check_import_packages(case: &Value, _file: &Value) -> Result<Outcome, String> {
     use lexical::html::import::{
         DomImportConfigOverrides, dom_import_extension, generate_nodes_from_dom_via_extension,
@@ -437,6 +438,9 @@ pub fn check_import_packages(case: &Value, _file: &Value) -> Result<Outcome, Str
                 ..Default::default()
             }],
         ));
+    }
+    if case.get("nodeStructure").and_then(Value::as_bool) == Some(true) {
+        dependencies.push(lexical::extension::node_structure_extension().into());
     }
     let host = define_extension(LexicalExtension::<(), (), ()> {
         dependencies,

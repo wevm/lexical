@@ -1,6 +1,7 @@
 //! `packages/lexical-selection/src/range-selection.ts`: block types,
 //! wrapping, caret movement and the style of the selected text.
 
+use super::utils::{ComputedStyle, get_computed_style_for_element, get_computed_style_for_parent};
 use crate::caret::{CaretDirection, RootMode, extend_caret_to_range, flip_direction};
 use crate::caret_utils::{caret_from_point, is_extendable_text_point_caret};
 use crate::error::invariant;
@@ -681,18 +682,26 @@ fn wrap_nodes_impl(
 
 /// `$isEditorVerticalOrientation(selection)`: whether the computed style of
 /// the anchor's element (or its parent's) has `writing-mode: vertical-rl`.
-/// Without a DOM there is no computed style, as for a JS editor that
-/// renders nothing, so it is false.
-fn is_editor_vertical_orientation(_selection: &RangeSelection) -> bool {
-    false
+fn is_editor_vertical_orientation(selection: &RangeSelection) -> bool {
+    get_computed_style(selection).is_some_and(|style| style.writing_mode == "vertical-rl")
+}
+
+/// `$getComputedStyle(selection)`: the computed style of the anchor's
+/// element, or of its parent for a text anchor. An anchor whose node is
+/// missing has none.
+fn get_computed_style(selection: &RangeSelection) -> Option<ComputedStyle> {
+    let anchor_node = selection.anchor.get_node().ok()?;
+    if anchor_node.is_element() {
+        return get_computed_style_for_element(&anchor_node);
+    }
+    get_computed_style_for_parent(&anchor_node)
 }
 
 /// `$shouldOverrideDefaultCharacterSelection(selection, isBackward)`:
 /// whether moving the focus one character in that direction must be done by
 /// Lexical (`modify`) rather than the platform: next to a decorator or a
-/// block boundary, or at an unmergeable text node beside other text. (The
-/// writing mode and direction it adjusts for come from computed styles;
-/// see [`is_parent_element_rtl`].)
+/// block boundary, or at an unmergeable text node beside other text, in
+/// the direction vertical writing and right-to-left text make it.
 pub fn should_override_default_character_selection(
     selection: &RangeSelection,
     is_backward: bool,
@@ -765,11 +774,11 @@ pub fn move_caret_selection(
 }
 
 /// `$isParentElementRTL(selection)`: whether the computed style of the
-/// anchor's element (or its parent's) has `direction: rtl`. Without a DOM
-/// there is no computed style, as for a JS editor that renders nothing, so
-/// it is false.
-pub fn is_parent_element_rtl(_selection: &RangeSelection) -> bool {
-    false
+/// anchor's element (or its parent's) has `direction: rtl`. Without a
+/// style from the root element ([`crate::RootElement::computed_style`]) it
+/// is false, as for a JS editor that renders nothing.
+pub fn is_parent_element_rtl(selection: &RangeSelection) -> bool {
+    get_computed_style(selection).is_some_and(|style| style.direction == "rtl")
 }
 
 /// `$moveCharacter(selection, isHoldingShift, isBackward)`: moves (or with

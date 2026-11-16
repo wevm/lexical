@@ -152,8 +152,9 @@ pub fn check_document(case: &Value, _file: &Value) -> Result<Outcome, String> {
 /// is installed after Lexical has loaded, so `CAN_USE_DOM` is false and
 /// `getDOMSelection` gives no selection: the deletion commands resolve in
 /// the model (Swift's runner gives its editor a movement that never lands,
-/// to the same end).
-struct WindowWithoutSelection;
+/// to the same end). The scripts give it to an editor while it has the
+/// session's root element, whose jsdom window is the same kind.
+pub(crate) struct WindowWithoutSelection;
 
 impl SelectionMovement for WindowWithoutSelection {
     fn landed_point(

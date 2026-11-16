@@ -174,6 +174,12 @@ function key(command: string, modifiers: Modifiers = {}): Step {
   return {dispatch: command, payload: {code: c, key: k, ...modifiers}};
 }
 
+/** `key`, dispatched inside an update, after the update's selection. */
+function keyIn(command: string, modifiers: Modifiers = {}): Action {
+  const [k, c] = KEYS[command];
+  return {command, do: 'dispatch', payload: {code: c, key: k, ...modifiers}};
+}
+
 function dispatch(command: string, payload: Json = null): Step {
   return {dispatch: command, payload};
 }
@@ -418,6 +424,54 @@ function richTextScripts(): Script[] {
         key('KEY_ARROW_LEFT_COMMAND'),
         update(select(['2', 2, 'text'])),
         key('KEY_ARROW_RIGHT_COMMAND', {shiftKey: true}),
+      ],
+    },
+    {
+      // `$isParentRTL`, `$isParentElementRTL` and the vertical writing mode
+      // read the computed styles of the nodes' elements, so the editor has
+      // a root element, and each update selects before its key.
+      extension: true,
+      name: 'rich text: the horizontal arrows in right-to-left and vertical text',
+      richText,
+      steps: [
+        {setRootElement: true},
+        doc(null, hr(), p(t('ab'), dt(), t('cd')), hr()),
+        {computedStyles: {'2': {direction: 'rtl'}, root: {direction: 'rtl'}}},
+        // A node selection leaves toward the previous node on the right.
+        update(selectNodes('1'), keyIn('KEY_ARROW_RIGHT_COMMAND')),
+        update(selectNodes('6'), keyIn('KEY_ARROW_LEFT_COMMAND')),
+        update(selectNodes('6'), keyIn('KEY_ARROW_RIGHT_COMMAND')),
+        // A block cursor at the root's edge, the right arrow at its start.
+        update(
+          select(['root', 0, 'element']),
+          keyIn('KEY_ARROW_RIGHT_COMMAND'),
+        ),
+        update(select(['root', 3, 'element']), keyIn('KEY_ARROW_LEFT_COMMAND')),
+        update(select(['root', 0, 'element']), keyIn('KEY_ARROW_LEFT_COMMAND')),
+        // Beside the inline decorator, the right arrow moves back over
+        // text, which the platform does, and the left arrow toward the
+        // decorator, which needs `Selection.modify`.
+        update(select(['3', 2, 'text']), keyIn('KEY_ARROW_RIGHT_COMMAND')),
+        update(select(['3', 2, 'text']), keyIn('KEY_ARROW_LEFT_COMMAND')),
+        update(select(['5', 0, 'text']), keyIn('KEY_ARROW_RIGHT_COMMAND')),
+        // An element point reads its own element's style.
+        update(select(['2', 0, 'element']), keyIn('KEY_ARROW_LEFT_COMMAND')),
+        // Vertical writing reverses the arrows; with right-to-left too,
+        // `$shouldOverrideDefaultCharacterSelection` reverses them back.
+        {computedStyles: {'2': {writingMode: 'vertical-rl'}}},
+        update(select(['3', 2, 'text']), keyIn('KEY_ARROW_RIGHT_COMMAND')),
+        update(select(['3', 2, 'text']), keyIn('KEY_ARROW_LEFT_COMMAND')),
+        {
+          computedStyles: {
+            '2': {direction: 'rtl', writingMode: 'vertical-rl'},
+          },
+        },
+        update(select(['3', 2, 'text']), keyIn('KEY_ARROW_RIGHT_COMMAND')),
+        update(select(['3', 2, 'text']), keyIn('KEY_ARROW_LEFT_COMMAND')),
+        // Left to right again.
+        {computedStyles: {}},
+        update(select(['3', 2, 'text']), keyIn('KEY_ARROW_RIGHT_COMMAND')),
+        update(selectNodes('6'), keyIn('KEY_ARROW_LEFT_COMMAND')),
       ],
     },
     {

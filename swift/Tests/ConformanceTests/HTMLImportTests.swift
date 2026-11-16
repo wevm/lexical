@@ -24,6 +24,7 @@ struct HTMLImportTests {
     let html: String
     let nodes: String
     let shadowRootQuote: Bool?
+    let nodeStructure: Bool?
     var testDescription: String { String(html.prefix(60)) }
   }
 
@@ -98,6 +99,9 @@ struct HTMLImportTests {
     if vector.shadowRootQuote == true {
       dependencies.append(
         configExtension(DOMImportExtension) { $0.rules = [ShadowRootQuoteRule.entry] })
+    }
+    if vector.nodeStructure == true {
+      dependencies.append(NodeStructureExtension)
     }
     let editor = try buildEditorFromExtensions(
       defineExtension(name: "[conformance]", dependencies: dependencies))

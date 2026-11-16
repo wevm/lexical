@@ -80,7 +80,7 @@ depends on as the upstream package depends on them:
 | `decorator-block` | `@lexical/react`'s `DecoratorBlockNode` | (upstream `@lexical/react` lists most packages, for its other modules; the node needs none) |
 | `menu`      | `@lexical/react`'s typeahead and node menus without their views (`LexicalTypeaheadMenuPluginUtils.ts`, `shared/LexicalMenu.tsx`) | |
 | `auto-embed`| `@lexical/react`'s auto-embed (`LexicalAutoEmbedPluginUtils.ts`, the logic of `LexicalAutoEmbedPlugin.tsx`) | `link`, `menu`, `utils` |
-| `devtools`  | `@lexical/devtools-core`'s `generateContent` | (upstream lists `html`, `link`, `mark` and `table`; its link branch is built with `link`, and its HTML form, mark and table branches aren't ported) |
+| `devtools`  | `@lexical/devtools-core`'s `generateContent` | (upstream lists `html`, `link`, `mark` and `table`; its HTML form is built with `html`, its link branch with `link` and its mark branch with `mark`, and its table branch isn't ported) |
 
 Each module is `lexical_editor::<package>` (`lexical_editor::rich_text`).
 Names may change as packages land; this table is updated with them.

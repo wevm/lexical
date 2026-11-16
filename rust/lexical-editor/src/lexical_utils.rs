@@ -13,6 +13,7 @@ use crate::updates::{
 };
 use crate::{Editor, EditorState, LexicalError};
 use std::cell::Cell;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 thread_local! {
@@ -180,9 +181,31 @@ pub fn create<T: LexicalNode + Default>() -> NodeRef {
 pub fn apply_node_replacement(node: &NodeRef) -> Result<NodeRef, LexicalError> {
     let editor = crate::editor::get_editor();
     let node_type = node.get_type();
+    let node_class_name = node.get_latest().class_name();
+    // `errorOnTypeKlassMismatch`, which JS's constructor runs on every node
+    // (in development, as the vectors were recorded): its type must be
+    // registered, and by its own class. Every node JS hands here was
+    // constructed, so it fails this before the invariant below.
+    let error_on_type_klass_mismatch = |node_type: &str, class_name: &str| {
+        match editor.get_registered_node(node_type) {
+            None => invariant!(
+                false,
+                "Create node: Attempted to create node {class_name} that was not configured to be used on the editor."
+            ),
+            Some(registered) => invariant!(
+                registered.class_name == class_name,
+                "Create node: Type {node_type} in node {class_name} does not match registered node {} with the same type",
+                registered.class_name
+            ),
+        }
+        Ok(())
+    };
+    if node_type != "root" {
+        error_on_type_klass_mismatch(node_type, node_class_name)?;
+    }
     let Some(registered_node) = editor.get_registered_node(node_type) else {
         return Err(LexicalError::new(format!(
-            "$applyNodeReplacement node {node_type} with type {node_type} must be registered to the editor. You can do this by passing the node class via the \"nodes\" array in the editor config."
+            "$applyNodeReplacement node {node_class_name} with type {node_type} must be registered to the editor. You can do this by passing the node class via the \"nodes\" array in the editor config."
         )));
     };
     let Some(replacement) = registered_node.replacement else {
@@ -191,34 +214,36 @@ pub fn apply_node_replacement(node: &NodeRef) -> Result<NodeRef, LexicalError> {
     let replacement_node = (replacement.with)(node)?;
     let replacement_type = replacement_node.get_type();
     let latest = replacement_node.get_latest();
+    let class_name = latest.class_name();
+    error_on_type_klass_mismatch(replacement_type, class_name)?;
     let is_instance_of =
         |base: &str| replacement_type == base || latest.super_types().contains(&base);
     match &replacement.with_klass {
         Some(with_klass) => invariant!(
             is_instance_of(with_klass.node_type()),
             "$applyNodeReplacement failed. Expected replacement node to be an instance of {} with type {} but returned {} with type {} from original node {} with type {}",
+            with_klass.class_name,
             with_klass.node_type(),
-            with_klass.node_type(),
+            class_name,
             replacement_type,
-            replacement_type,
-            node_type,
+            node_class_name,
             node_type
         ),
         None => invariant!(
             replacement_type != node_type && is_instance_of(node_type),
             "$applyNodeReplacement failed. Ensure replacement node {} with type {} is a subclass of the original node {} with type {}.",
+            class_name,
             replacement_type,
-            replacement_type,
-            node_type,
+            node_class_name,
             node_type
         ),
     }
     invariant!(
         replacement_node.get_key() != node.get_key(),
         "$applyNodeReplacement failed. Ensure that the key argument is *not* used in your replace function (from node {} with type {} to node {} with type {}), Node keys must never be re-used except by the static clone method.",
+        node_class_name,
         node_type,
-        node_type,
-        replacement_type,
+        class_name,
         replacement_type
     );
     Ok(replacement_node)
@@ -260,6 +285,67 @@ pub fn nodes_of_type(node_type: &str) -> Vec<NodeRef> {
         .map(NodeRef::new)
         .filter(|node| read_only || node.is_attached())
         .collect()
+}
+
+/// `$isTokenOrSegmented(node)`: whether a text node is in token or
+/// segmented mode.
+pub fn is_token_or_segmented(node: &NodeRef) -> bool {
+    node.is_token() || node.is_segmented()
+}
+
+/// `TypeToNodeMap`: an editor state's nodes by type, then by key.
+pub type TypeToNodeMap = HashMap<&'static str, HashMap<NodeKey, Rc<dyn LexicalNode>>>;
+
+/// `getCachedTypeToNodeMap(editorState)`: the nodes of a read-only editor
+/// state by type, computed once per state; an empty map for a writable
+/// state that is still empty. Panics for any other writable state, as JS's
+/// invariant throws.
+pub fn get_cached_type_to_node_map(editor_state: &EditorState) -> Rc<TypeToNodeMap> {
+    thread_local! {
+        static EMPTY_TYPE_TO_NODE_MAP: Rc<TypeToNodeMap> = Rc::default();
+    }
+    let read_only = editor_state.0.read_only.get();
+    if !read_only && editor_state.is_empty() {
+        return EMPTY_TYPE_TO_NODE_MAP.with(Rc::clone);
+    }
+    assert!(
+        read_only,
+        "getCachedTypeToNodeMap called with a writable EditorState"
+    );
+    editor_state
+        .0
+        .type_to_node_map
+        .borrow_mut()
+        .get_or_insert_with(|| {
+            let mut type_to_node_map = TypeToNodeMap::new();
+            for (key, node) in editor_state.0.node_map.borrow().iter() {
+                type_to_node_map
+                    .entry(node.get_type())
+                    .or_default()
+                    .insert(key.clone(), node.clone());
+            }
+            Rc::new(type_to_node_map)
+        })
+        .clone()
+}
+
+/// `getRegisteredSubtypeMap(nodes)`: each type of `nodes` to itself and the
+/// types of the classes of `nodes` that extend it.
+pub fn get_registered_subtype_map(
+    nodes: &[crate::NodeClass],
+) -> HashMap<&'static str, HashSet<&'static str>> {
+    let mut subtypes: HashMap<&'static str, HashSet<&'static str>> = nodes
+        .iter()
+        .map(|class| (class.node_type, HashSet::new()))
+        .collect();
+    for class in nodes {
+        for own_node_type in std::iter::once(class.node_type).chain((class.super_types)()) {
+            if let Some(bucket) = subtypes.get_mut(own_node_type) {
+                bucket.insert(class.node_type);
+            }
+        }
+    }
+    subtypes
 }
 
 /// `$getAdjacentNode(focus, isBackward)`: the node next to the point in the
@@ -324,6 +410,13 @@ pub fn get_adjacent_node(
 /// properties, but no parent, siblings or children, after
 /// `resetOnCopyNodeFrom`.
 pub fn copy_node(node: &NodeRef) -> NodeRef {
+    copy_node_with(node, false)
+}
+
+/// `$copyNode(node, skipReset)`: [`copy_node`], without
+/// `resetOnCopyNodeFrom` when `skip_reset` is true, so the copy keeps every
+/// property and state of the node.
+pub fn copy_node_with(node: &NodeRef, skip_reset: bool) -> NodeRef {
     let mut copy = node.get_latest().clone_node();
     let state = copy.base_mut().state.take();
     *copy.base_mut() = crate::node::NodeBase::default();
@@ -336,10 +429,12 @@ pub fn copy_node(node: &NodeRef) -> NodeRef {
     // `afterCloneFrom` with another key, then `LexicalNode`'s
     // `resetOnCopyNodeFrom`.
     if let Some(state) = state {
-        let state = crate::node_state::copy_node_state(&state, copy.get_key());
+        let state = crate::node_state::copy_node_state(&state, copy.get_key(), skip_reset);
         mutate(copy.get_key(), |n| n.base_mut().state = Some(state));
     }
-    copy.get_latest().reset_on_copy_node_from(&copy, node);
+    if !skip_reset {
+        copy.get_latest().reset_on_copy_node_from(&copy, node);
+    }
     copy
 }
 
@@ -422,6 +517,7 @@ pub(crate) fn set_node_key(mut node: Box<dyn LexicalNode>) -> NodeRef {
     error_on_infinite_transforms();
     let key = generate_random_key();
     let editor_state = get_active_editor_state();
+    error_on_frozen_node_map(&editor_state, "set");
     node.base_mut().key = key.clone();
     node.base_mut().written_in = editor_state.0.id;
     let is_element = node.element().is_some();
@@ -507,6 +603,15 @@ pub(crate) fn get_writable(key: &str) {
     internal_mark_node_as_dirty(key);
 }
 
+/// `handleDEVOnlyPendingUpdateGuarantees(editorState)`: a committed state's
+/// node map is frozen, so an update that goes on after a nested `read`
+/// committed it can't change it.
+fn error_on_frozen_node_map(editor_state: &EditorState, method: &str) {
+    if editor_state.0.read_only.get() {
+        panic!("Cannot call {method}() on a frozen Lexical node map");
+    }
+}
+
 fn unshare(key: &str) {
     let editor_state = get_active_editor_state();
     let mut node_map = editor_state.0.node_map.borrow_mut();
@@ -516,6 +621,7 @@ fn unshare(key: &str) {
         )
     });
     if Rc::get_mut(node).is_none() {
+        error_on_frozen_node_map(&editor_state, "set");
         *node = Rc::from(node.clone_node());
     }
     // This version is the one of this update (JS's writable clone).

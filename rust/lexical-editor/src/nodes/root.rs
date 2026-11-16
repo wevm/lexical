@@ -36,7 +36,8 @@ impl RootNode {
     /// than creating one.
     pub(crate) fn import_json(json: &Object) -> Result<NodeRef, LexicalError> {
         let root = get_root();
-        root.update_from_json(json);
+        // Its NodeState is applied by `$parseSerializedNode`.
+        crate::lexical_utils::with_writable(root.get_key(), |node| node.update_from_json(json));
         Ok(root)
     }
 }

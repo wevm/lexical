@@ -628,7 +628,7 @@ impl Default for SplitAtPointCaretNextOptions {
 
 /// `$getAdjacentNodes(initialCaret)`: the nodes after the caret, in its
 /// direction.
-fn get_adjacent_nodes(initial_caret: &NodeCaret) -> Vec<NodeRef> {
+pub(crate) fn get_adjacent_nodes(initial_caret: &NodeCaret) -> Vec<NodeRef> {
     let next = initial_caret.direction() == CaretDirection::Next;
     let mut siblings = Vec::new();
     let mut node = initial_caret.get_node_at_caret();

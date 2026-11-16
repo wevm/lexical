@@ -40,10 +40,6 @@ impl LexicalNode for LineBreakNode {
             export_line_break_node(self.get_type())
         })
     }
-    fn generated_update_from_json(&mut self, _json: &Object) -> bool {
-        true
-    }
-
     /// `LineBreakNode.createDOM()`: a `<br>`.
     #[cfg(feature = "html")]
     fn create_dom(

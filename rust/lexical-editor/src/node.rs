@@ -513,6 +513,20 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         crate::slot::get_slots_text_content(self.as_node())
     }
 
+    /// `getTextContentSize()`: the text content's length in UTF-16 code
+    /// units, which an element sums from its children
+    /// (`ElementNode.getTextContentSize`). JS gives a class that overrides
+    /// `getTextContent` but not this method `LexicalNode`'s, the length of
+    /// its text content; Rust can't tell an override, so a class that
+    /// overrides [`get_text_content`](Self::get_text_content) overrides this
+    /// too, as Swift's do.
+    fn get_text_content_size(&self) -> usize {
+        if self.element().is_some() {
+            return element::get_text_content_size(self.as_node());
+        }
+        utf16::len(&self.get_text_content())
+    }
+
     /// `ElementNode.shouldSerializeTextStyles()`.
     fn should_serialize_text_styles(&self) -> bool {
         element::should_serialize_text_styles(self.as_node())
@@ -668,6 +682,9 @@ pub trait NodeClone {
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn as_node(&self) -> &dyn LexicalNode;
     fn as_node_mut(&mut self) -> &mut dyn LexicalNode;
+    /// `node.constructor.name`, which messages name a node's class by: the
+    /// Rust type's name, without its path.
+    fn class_name(&self) -> &'static str;
 }
 
 impl<T: LexicalNode + Clone> NodeClone for T {
@@ -685,6 +702,11 @@ impl<T: LexicalNode + Clone> NodeClone for T {
     }
     fn as_node_mut(&mut self) -> &mut dyn LexicalNode {
         self
+    }
+    fn class_name(&self) -> &'static str {
+        let name = std::any::type_name::<T>();
+        let name = name.split('<').next().unwrap_or(name);
+        name.rsplit("::").next().unwrap_or(name)
     }
 }
 
@@ -830,9 +852,14 @@ impl NodeRef {
         crate::node_state::export_json_with_state(&*self.get_latest(), compact)
     }
 
-    /// `updateFromJSON(json)`.
-    pub(crate) fn update_from_json(&self, json: &Object) {
+    /// `updateFromJSON(json)`: the NodeState in the JSON
+    /// (`$updateStateFromJSON`), then `$applyJSONSetters` (the flat states,
+    /// then the class's properties).
+    pub fn update_from_json(&self, json: &Object) -> Result<(), LexicalError> {
+        crate::node_state::update_state_from_json(self, json)?;
+        crate::node_state::apply_flat_states(self, json)?;
         with_writable(&self.key, |node| node.update_from_json(json));
+        Ok(())
     }
 
     /// `getParentOrThrow()`.
@@ -883,10 +910,7 @@ impl NodeRef {
     /// `getTextContentSize()`: the text content's length in UTF-16 code
     /// units.
     pub fn get_text_content_size(&self) -> usize {
-        if self.is_element() {
-            return self.get_element_text_content_size();
-        }
-        utf16::len(&self.get_text_content())
+        self.get_latest().get_text_content_size()
     }
 
     /// `ElementNode.canBeEmpty()`.

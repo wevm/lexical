@@ -133,6 +133,9 @@ pub mod utf16;
 pub mod utils;
 mod warnings;
 
+#[cfg(test)]
+mod upstream_tests;
+
 pub use caret::{
     CaretDirection, CaretKind, CaretRange, ChildCaret, CommonAncestorAcrossSlotsResult,
     CommonAncestorResult, NodeCaret, PointCaret, RootMode, SiblingCaret, TextOffset,
@@ -174,7 +177,7 @@ pub use editor::{
     COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, COMPOSITION_END_TAG, COMPOSITION_START_TAG,
     CUT_TAG, CreateEditorArgs, DEFER_COMPOSITION_MERGE_TAG, Editor, EditorConfig,
     EditorFocusOptions, EditorReadMode, FOCUS_TAG, HISTORIC_TAG, HISTORY_MERGE_TAG,
-    HISTORY_PUSH_TAG, LexicalCommand, LexicalNodeReplacement, MutatedNodes,
+    HISTORY_PUSH_TAG, LexicalCommand, LexicalNodeReplacement, ListenerCleanup, MutatedNodes,
     MutationListenerOptions, MutationListenerPayload, NodeClass, NodeMutation, NodeMutations,
     NodeReplace, PASTE_TAG, RootElement, RootElementRef, SKIP_COLLAB_TAG, SKIP_DOM_SELECTION_TAG,
     SKIP_SCROLL_INTO_VIEW_TAG, SKIP_SELECTION_FOCUS_TAG, Transform, Unregister,
@@ -183,7 +186,7 @@ pub use editor::{
 };
 pub use editor_state::EditorState;
 pub use environment::{is_apple, with_is_apple};
-pub use error::LexicalError;
+pub use error::{LexicalError, LexicalWarning};
 pub use events::{
     ClipboardEvent, ClipboardOrKeyboardEvent, CompositionEvent, DataTransfer, DataTransferFile,
     DragEvent, Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, PasteCommandType,
@@ -210,11 +213,12 @@ pub use lexical_selection::{
 };
 pub use lexical_utils::{
     ControlOrOther, KeyboardEventModifierMask, KeyboardEventModifiers, ModifierExpectation,
-    apply_node_replacement, clone_with_properties, clone_with_properties_ephemeral, copy_node,
-    create, get_adjacent_node, get_composition_key, get_node_by_key, get_root, get_text_direction,
+    TypeToNodeMap, apply_node_replacement, clone_with_properties, clone_with_properties_ephemeral,
+    copy_node, copy_node_with, create, get_adjacent_node, get_cached_type_to_node_map,
+    get_composition_key, get_node_by_key, get_registered_subtype_map, get_root, get_text_direction,
     is_backspace, is_delete, is_escape, is_exact_shortcut_match, is_modifier, is_modifier_match,
-    is_root_or_shadow_root, is_select_all, keyboard_event_mask_for_platform, nodes_of_type,
-    reset_random_key, set_composition_key, split_node,
+    is_root_or_shadow_root, is_select_all, is_token_or_segmented, keyboard_event_mask_for_platform,
+    nodes_of_type, reset_random_key, set_composition_key, split_node,
 };
 pub use merge_register::merge_register;
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};
@@ -230,6 +234,7 @@ pub use reconciler::Decorators;
 pub use ref_counted_registry::{RefCountedRegistry, create_ref_counted_registry};
 pub use selection_deletion::{
     SelectionAlter, SelectionGranularity, SelectionMovement, is_block_fully_selected,
+    is_block_fully_selected_by_caret_range,
 };
 pub use selection_insert_nodes::{insert_nodes, select_all, select_all_in};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};

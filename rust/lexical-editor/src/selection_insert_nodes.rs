@@ -434,7 +434,7 @@ fn range_selection_insert_nodes(
 fn expected_block_ancestor(node: &NodeRef, what: &str) -> LexicalError {
     LexicalError::new(format!(
         "Expected node {} of type {} to have a {what} ancestor",
-        node.get_key(),
+        node.get_latest().class_name(),
         node.get_type()
     ))
 }

@@ -807,7 +807,7 @@ fn check_collision(
         collision.is_none_or(|c| c.is(config)),
         "$setState: State key collision {} detected in {} node with type {} and key {}. Only one StateConfig with a given key should be used on a node.",
         Value::from(config.key()),
-        node.get_type(),
+        node.class_name(),
         node.get_type(),
         node.base().key
     );
@@ -1041,11 +1041,17 @@ pub(crate) fn clone_node_state(from: &dyn LexicalNode, to_key: &str) -> Option<N
 
 /// What `$copyNode` and `afterCloneFrom` give a copy of a node with another
 /// key: a copy of the NodeState, with the values of the configs that ask
-/// for it reset (`resetOnCopyNodeFrom`).
-pub(crate) fn copy_node_state(state: &NodeStateRef, to_key: &str) -> NodeStateRef {
+/// for it reset (`resetOnCopyNodeFrom`) unless `skip_reset`.
+pub(crate) fn copy_node_state(
+    state: &NodeStateRef,
+    to_key: &str,
+    skip_reset: bool,
+) -> NodeStateRef {
     let to = (to_key.to_owned(), get_active_editor_state().0.id);
     let copy = NodeState::get_writable(state, to);
-    copy.borrow_mut().reset_on_copy_node();
+    if !skip_reset {
+        copy.borrow_mut().reset_on_copy_node();
+    }
     copy
 }
 

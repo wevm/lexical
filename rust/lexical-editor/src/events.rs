@@ -41,7 +41,7 @@ use crate::keyboard_shortcuts::{
 use crate::lexical_selection::{SelectionRef, Which, get_selection, set_selection};
 use crate::lexical_utils::{
     KeyboardEventModifierMask, KeyboardEventModifiers, ModifierExpectation, get_node_by_key,
-    is_modifier, set_composition_key,
+    is_modifier, is_token_or_segmented, set_composition_key,
 };
 use crate::node::{NodeKey, NodeRef};
 use crate::nodes::text::create_text_node;
@@ -902,11 +902,6 @@ pub(crate) fn handle_key_down(
 /// `$isTokenOrTab(node)`.
 fn is_token_or_tab(node: &NodeRef) -> bool {
     node.get_type() == "tab" || node.is_token()
-}
-
-/// `$isTokenOrSegmented(node)`.
-fn is_token_or_segmented(node: &NodeRef) -> bool {
-    node.is_token() || node.is_segmented()
 }
 
 /// `$maybeMoveSelectionPastTrailingAcceptanceBoundary(insertedText)`: after

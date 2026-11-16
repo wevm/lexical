@@ -27,7 +27,7 @@
 
 use crate::LexicalError;
 use crate::caret::{
-    CaretDirection, NodeCaret, PointCaret, RootMode, compare_point_caret_next,
+    CaretDirection, CaretRange, NodeCaret, PointCaret, RootMode, compare_point_caret_next,
     extend_caret_to_range, get_caret_in_direction, get_caret_range, get_child_caret,
     get_sibling_caret,
 };
@@ -1168,15 +1168,22 @@ pub(crate) fn internal_expand_selection_to_whole_document(
 
 /// `$isBlockFullySelected(blockNode, selection)`: whether the selection
 /// covers everything in the block. A range in another slot frame never
-/// does. JS also takes a `CaretRange`.
+/// does. [`is_block_fully_selected_by_caret_range`] takes a `CaretRange`,
+/// as JS's also does.
 pub fn is_block_fully_selected(
     block: &NodeRef,
     selection: &RangeSelection,
 ) -> Result<bool, LexicalError> {
-    let range = get_caret_range_in_direction(
-        &caret_range_from_selection(selection)?,
-        CaretDirection::Next,
-    )?;
+    is_block_fully_selected_by_caret_range(block, &caret_range_from_selection(selection)?)
+}
+
+/// `$isBlockFullySelected(blockNode, range)` with a `CaretRange`: whether
+/// the range, in either direction, covers everything in the block.
+pub fn is_block_fully_selected_by_caret_range(
+    block: &NodeRef,
+    range: &CaretRange,
+) -> Result<bool, LexicalError> {
+    let range = get_caret_range_in_direction(range, CaretDirection::Next)?;
     let anchor_frame = crate::slot::get_slot_frame(range.anchor.origin());
     let block_frame = crate::slot::get_slot_frame(block);
     if anchor_frame != block_frame {

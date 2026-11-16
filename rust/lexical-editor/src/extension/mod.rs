@@ -18,7 +18,9 @@
 //! `PlainTextExtension` depend on), `TabIndentationExtension`,
 //! `SelectBlockExtension`, `BlockIdExtension` (block ids, positional ids and
 //! handles), `NodeStructureExtension` (with `registerNodeStructure`),
-//! `NestedEditorExtension` and the config of `PreventSelectAllExtension`.
+//! `NestedEditorExtension`, `NodeSelectionExtension`, `HorizontalRuleExtension`
+//! (inserting a rule by command and selecting one on a click) and the config
+//! of `PreventSelectAllExtension`.
 //! The other packages' extensions are in their modules, behind their
 //! features (`rich_text_extension`, `list_extension`...). The types it builds
 //! on are `lexical`'s `extension-core`, at the crate root
@@ -27,9 +29,8 @@
 //!
 //! Not ported: the decorators' `createDOM`, `updateDOM`, `exportDOM` and
 //! `importDOM`, which come with `html`; `applyFormatFromStyle`, which reads
-//! a CSS style declaration; `HorizontalRuleExtension`, which needs
-//! `NodeSelectionExtension`, clicks and the DOM (its `nodes` are in
-//! [`extension_nodes`]); `PreventSelectAllExtension`'s root element
+//! a CSS style declaration; `HorizontalRuleExtension`'s selected class,
+//! which it sets on a rule's DOM; `PreventSelectAllExtension`'s root element
 //! listener; `TabIndentationExtension`'s `KEY_TAB_COMMAND` handler, which
 //! reads a `KeyboardEvent`; and the package's other extensions
 //! (rust/PARITY.md).
@@ -49,6 +50,7 @@ mod initial_state_extension;
 mod lexical_builder;
 mod named_signals;
 mod nested_editor_extension;
+mod node_selection_extension;
 mod node_structure_extension;
 mod normalize_inline_elements_extension;
 mod positional_block_id;
@@ -88,7 +90,8 @@ pub use get_peer_dependency_from_editor::{
     get_peer_dependency_from_editor, get_peer_dependency_from_editor_or_throw,
 };
 pub use horizontal_rule_extension::{
-    HorizontalRuleNode, create_horizontal_rule_node, is_horizontal_rule_node,
+    HorizontalRuleExtensionType, HorizontalRuleNode, INSERT_HORIZONTAL_RULE_COMMAND,
+    create_horizontal_rule_node, horizontal_rule_extension, is_horizontal_rule_node,
 };
 pub use initial_state_extension::{
     EditorSetOptions, InitialStateConfig, InitialStateConfigOverrides, InitialStateExtensionType,
@@ -102,6 +105,9 @@ pub use named_signals::{NamedSignalsOutput, named_signals};
 pub use nested_editor_extension::{
     GetParentEditor, NestedEditorConfig, NestedEditorConfigOverrides, NestedEditorExtensionType,
     NestedEditorOutput, default_get_parent_editor, nested_editor_extension,
+};
+pub use node_selection_extension::{
+    NodeSelectionExtensionType, NodeSelectionOutput, node_selection_extension,
 };
 pub use node_structure_extension::{
     NodeStructureConfig, NodeStructureConfigOverrides, NodeStructureExtensionType,

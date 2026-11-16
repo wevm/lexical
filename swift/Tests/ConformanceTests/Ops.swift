@@ -78,6 +78,10 @@ private enum CoreCommand {
   case input(LexicalCommand<InputEvent>)
   /// A composition command and its event's type: `{data}`.
   case composition(LexicalCommand<CompositionEvent>, String)
+  /// `CLICK_COMMAND`: `{targetKey, altKey, ctrlKey, metaKey, shiftKey}`,
+  /// where JS's target is the DOM of the node `targetKey` and Swift's
+  /// `targetKey` is the key.
+  case mouse(LexicalCommand<MouseEvent>)
   /// `PASTE_COMMAND`, which scripts only listen to: the keydown and
   /// beforeinput handlers dispatch it with their event.
   case paste(LexicalCommand<PasteCommandType>)
@@ -94,6 +98,7 @@ private let coreCommands: [String: CoreCommand] = [
   "CAN_UNDO_COMMAND": .bool(CAN_UNDO_COMMAND),
   "CLEAR_EDITOR_COMMAND": .void(CLEAR_EDITOR_COMMAND),
   "CLEAR_HISTORY_COMMAND": .void(CLEAR_HISTORY_COMMAND),
+  "CLICK_COMMAND": .mouse(CLICK_COMMAND),
   "BEFORE_INPUT_COMMAND": .input(BEFORE_INPUT_COMMAND),
   "COMPOSITION_END_COMMAND": .composition(COMPOSITION_END_COMMAND, "compositionend"),
   "COMPOSITION_START_COMMAND": .composition(COMPOSITION_START_COMMAND, "compositionstart"),
@@ -138,6 +143,7 @@ private let coreCommands: [String: CoreCommand] = [
   "UPDATE_LIST_START_COMMAND": .listStart(UPDATE_LIST_START_COMMAND),
   "TOGGLE_LINK_COMMAND": .toggleLink(TOGGLE_LINK_COMMAND),
   "INSERT_EMBED_COMMAND": .string(INSERT_EMBED_COMMAND),
+  "INSERT_HORIZONTAL_RULE_COMMAND": .void(INSERT_HORIZONTAL_RULE_COMMAND),
 ]
 
 /// `TestDecoratorBlockNode` in ops.ts: a `DecoratorBlockNode` that adds
@@ -374,6 +380,20 @@ private func keyboardEvent(_ payload: JSONValue) throws -> KeyboardEvent {
     key: object["key"]?.stringValue ?? "", code: object["code"]?.stringValue ?? "",
     altKey: flag("altKey"), ctrlKey: flag("ctrlKey"), metaKey: flag("metaKey"),
     shiftKey: flag("shiftKey"))
+}
+
+/// `eventPayload`'s `MouseEvent`: a cancelable `click` of the modifier
+/// flags of a JSON object, whose target is the node `targetKey` (none when
+/// it is absent or `null`). JS's target is `editor.getElementByKey`, which
+/// the click scripts reach through a root element.
+private func mouseEvent(_ payload: JSONValue) throws -> MouseEvent {
+  guard let object = payload.objectValue else {
+    throw ScriptError("\(payload) is not a mouse event")
+  }
+  let flag = { (key: String) in object[key]?.boolValue == true }
+  return MouseEvent(
+    altKey: flag("altKey"), ctrlKey: flag("ctrlKey"), metaKey: flag("metaKey"),
+    shiftKey: flag("shiftKey"), targetKey: object["targetKey"]?.stringValue)
 }
 
 /// `eventPayload`'s `InputEvent`: a cancelable `beforeinput` of
@@ -648,6 +668,9 @@ private final class ScriptContext {
     case .input(let command):
       let event = try inputEvent(payload)
       return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+    case .mouse(let command):
+      let event = try mouseEvent(payload)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
     case .composition(let command, let type):
       guard let object = payload.objectValue else {
         throw ScriptError("\(name) takes a composition event")
@@ -675,7 +698,7 @@ private final class ScriptContext {
     case .key(let command):
       guard payload == .null else { throw ScriptError("\(name) takes no payload") }
       return try editor.dispatchCommand(command, nil)
-    case .keyboard, .input, .composition, .paste, .clipboardOrKeyboard:
+    case .keyboard, .input, .composition, .mouse, .paste, .clipboardOrKeyboard:
       throw ScriptError("\(payload) is not a payload \(name) takes")
     case .listStart(let command):
       return try editor.dispatchCommand(command, try listStart(payload))
@@ -717,6 +740,9 @@ private final class ScriptContext {
     case .composition(let command, _):
       return editor.registerCommand(
         command, { payload, _ in try listener(compositionJSON(payload)) }, priority)
+    case .mouse(let command):
+      // `payloadJson` throws for a `MouseEvent`.
+      return editor.registerCommand(command, { payload, _ in throw noJSON(payload) }, priority)
     case .paste(let command):
       return editor.registerCommand(
         command,

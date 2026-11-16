@@ -19,7 +19,9 @@ use lexical::extension::{
     SelectBlockConfigOverrides, TabIndentationConfigOverrides, nested_editor_extension,
     normalize_inline_elements_extension, select_block_extension, tab_indentation_extension,
 };
-use lexical::extension::{DecoratorTextNode, HorizontalRuleNode};
+use lexical::extension::{
+    DecoratorTextNode, HorizontalRuleNode, horizontal_rule_extension, node_selection_extension,
+};
 use lexical::extension::{
     LexicalEditorWithDispose, NamedSignalsOutput, batch, build_editor_from_extensions,
     clear_editor_extension, computed, decorator_text_extension, editor_state_extension, effect,
@@ -51,6 +53,8 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "ClearEditorExtension" => clear_editor_extension().into(),
         "DecoratorTextExtension" => decorator_text_extension().into(),
         "EditorStateExtension" => editor_state_extension().into(),
+        "HorizontalRuleExtension" => horizontal_rule_extension().into(),
+        "NodeSelectionExtension" => node_selection_extension().into(),
         "AutoLinkExtension" => link::auto_link_extension().into(),
         "BlockIdExtension" => block_id_extension().into(),
         "CheckListExtension" => list::check_list_extension().into(),
@@ -1100,6 +1104,33 @@ pub(super) fn run_step(
             (state.undo_stack.len() as f64).into(),
             (state.redo_stack.len() as f64).into(),
         ]);
+    } else if let Some(key) = step.get("watchNodeKey").and_then(Value::as_str) {
+        if ctx.watchers.borrow().contains_key(key) {
+            return Err(err(format!("already watching {key}")));
+        }
+        let selected = get_extension_dependency_from_editor(editor, &node_selection_extension())?
+            .output
+            .ok_or_else(|| err("no output"))?
+            .watch_node_key(key);
+        let (log_ctx, log_key) = (Rc::downgrade(ctx), key.to_owned());
+        let dispose = effect(move || {
+            let value = selected.value();
+            if let Some(ctx) = log_ctx.upgrade() {
+                ctx.log(vec![
+                    "nodeSelected".into(),
+                    log_key.as_str().into(),
+                    value.into(),
+                ]);
+            }
+            None
+        });
+        ctx.watchers.borrow_mut().insert(key.to_owned(), dispose);
+    } else if let Some(key) = step.get("unwatchNodeKey").and_then(Value::as_str) {
+        let dispose = ctx.watchers.borrow_mut().remove(key);
+        match dispose {
+            None => return Err(err(format!("not watching {key}"))),
+            Some(dispose) => dispose(),
+        }
     } else if let Some(key) = step.get("logDependency").and_then(Value::as_str) {
         let extension = test_extension_of(ctx, key)?;
         let dep = get_extension_dependency_from_editor(editor, &extension)?;

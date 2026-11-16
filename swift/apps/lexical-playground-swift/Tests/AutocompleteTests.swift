@@ -82,13 +82,21 @@ struct AutocompleteCompositionTests {
 
   private func text(_ view: TextView) -> String { view.controller.document.string }
 
-  /// The marked text "사용", left alone past the idle wait and the lookup.
+  /// The marked text "사용", left alone until the idle wait and the lookup
+  /// show a ghost and the view draws it. Waiting for the drawn ghost, not a
+  /// fixed time: the lookup's timer is only set once the idle wait's fires,
+  /// and the view draws the ghost a main-queue turn after that, so on a
+  /// busy simulator a fixed sleep can end before either.
   private func compose(_ view: TextView) async throws {
     try view.controller.setMarkedText("ㅅ", selectedRange: TextKitRange(location: 1, length: 0))
     try view.controller.setMarkedText("사", selectedRange: TextKitRange(location: 1, length: 0))
     try view.controller.setMarkedText("사용", selectedRange: TextKitRange(location: 2, length: 0))
     #expect(try ghost(view) == nil)
-    try await Task.sleep(for: .milliseconds(700))
+    let deadline = ContinuousClock.now + .seconds(10)
+    while ContinuousClock.now < deadline {
+      if let ghost = try ghost(view), text(view).contains(ghost) { break }
+      try await Task.sleep(for: .milliseconds(50))
+    }
   }
 
   @Test func suggestsWhileComposingAndAcceptsMidComposition() async throws {

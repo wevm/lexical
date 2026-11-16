@@ -90,6 +90,11 @@ impl LexicalNode for CodeHighlightNode {
     /// underline...), and doesn't make the node writable.
     fn set_format(&self, _: &NodeRef, _: f64) {}
 
+    /// `CodeHighlightNode.canHaveFormat()`.
+    fn can_have_format(&self) -> bool {
+        false
+    }
+
     /// `CodeHighlightNode.isParentRequired()`.
     fn is_parent_required(&self) -> bool {
         true

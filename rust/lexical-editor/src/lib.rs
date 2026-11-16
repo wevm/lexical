@@ -80,7 +80,6 @@ pub mod link;
 pub mod list;
 #[cfg(feature = "mark")]
 pub mod mark;
-#[cfg(feature = "extension")]
 mod merge_register;
 mod node;
 mod node_state;
@@ -101,6 +100,7 @@ mod selection_format;
 mod selection_insert_nodes;
 mod selection_insert_text;
 mod serialized_export;
+mod set_dom_style;
 #[cfg(feature = "text")]
 pub mod text;
 mod updates;
@@ -159,9 +159,9 @@ pub use lexical_selection::{
     create_node_selection, create_range_selection, get_selection, set_selection,
 };
 pub use lexical_utils::{
-    copy_node, get_node_by_key, get_root, get_text_direction, reset_random_key,
+    clone_with_properties, copy_node, get_node_by_key, get_root, get_text_direction,
+    is_root_or_shadow_root, reset_random_key, split_node,
 };
-#[cfg(feature = "extension")]
 pub use merge_register::merge_register;
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};
 pub use node_state::{
@@ -172,9 +172,12 @@ pub use node_state::{
 pub use nodes::element::{Direction, ElementData};
 pub use nodes::paragraph::create_paragraph_node;
 pub use nodes::text::{TextData, create_text_node, toggle_text_format_type};
-pub use selection_deletion::{SelectionAlter, SelectionGranularity, SelectionMovement};
-pub use selection_insert_nodes::{insert_nodes, select_all};
+pub use selection_deletion::{
+    SelectionAlter, SelectionGranularity, SelectionMovement, is_block_fully_selected,
+};
+pub use selection_insert_nodes::{insert_nodes, select_all, select_all_in};
 pub use serialized_export::{export_node_json, is_compact_export, with_compact_export};
+pub use set_dom_style::{StyleObject, get_style_object_from_css};
 pub use updates::parse_serialized_node;
 
 /// The upstream Lexical release this port conforms to. The conformance

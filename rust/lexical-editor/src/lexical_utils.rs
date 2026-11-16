@@ -4,8 +4,9 @@
 use crate::caret_tree::detach_node;
 use crate::constants::{LTR, RTL};
 use crate::editor::DirtyType;
+use crate::error::invariant;
 use crate::node::{LexicalNode, NodeRef};
-use crate::nodes::element::{Direction, is_root_or_shadow_root};
+use crate::nodes::element::{Direction, is_root_or_shadow_root as is_root_or_shadow_root_node};
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::updates::{
     error_on_infinite_transforms, error_on_read_only, get_active_editor, get_active_editor_state,
@@ -88,7 +89,7 @@ pub(crate) fn is_block(node: &NodeRef) -> bool {
     if node.is_decorator() && !node.is_inline() {
         return true;
     }
-    if !node.is_element() || is_root_or_shadow_root(&*node.get_latest()) {
+    if !node.is_element() || is_root_or_shadow_root_node(&*node.get_latest()) {
         return false;
     }
     let is_leaf_element = node.get_first_child().is_none_or(|first| first.is_inline());
@@ -111,7 +112,8 @@ pub(crate) fn restore_empty_container_paragraph(
     container: Option<&NodeRef>,
     removed_child: Option<&NodeRef>,
 ) -> Result<Option<NodeRef>, LexicalError> {
-    let Some(container) = container.filter(|c| is_root_or_shadow_root(&*c.get_latest())) else {
+    let Some(container) = container.filter(|c| is_root_or_shadow_root_node(&*c.get_latest()))
+    else {
         return Ok(None);
     };
     // Root slots (such as footnotes) do not replace the editable body, once
@@ -148,6 +150,70 @@ pub fn copy_node(node: &NodeRef) -> NodeRef {
     }
     copy.get_latest().reset_on_copy_node_from(&copy, node);
     copy
+}
+
+/// `$isRootOrShadowRoot(node)`: whether the node is the root or a shadow
+/// root.
+pub fn is_root_or_shadow_root(node: &NodeRef) -> bool {
+    is_root_or_shadow_root_node(&*node.get_latest())
+}
+
+/// `$cloneWithProperties(latestNode)`: a clone of the node's latest version
+/// with the same key, links and properties, in no editor state. An editor
+/// state never sees it unless it is put there, so changing it changes no
+/// state.
+pub fn clone_with_properties(latest_node: &NodeRef) -> Rc<dyn LexicalNode> {
+    Rc::from(latest_node.get_latest().clone_node())
+}
+
+/// `$splitNode(node, offset)`: splits the element at its child `offset`
+/// and each ancestor up to the nearest root or shadow root, and returns the
+/// top of the left tree (`node`'s ancestor below the root, which keeps the
+/// children before the offset) and of the right tree (a copy, which gets
+/// the rest). The child at `offset` moves into the right tree; its ancestors
+/// are copied. An `offset` past the end splits after the last child. JS's
+/// return type lets the left be `null`; it never is.
+pub fn split_node(
+    node: &NodeRef,
+    offset: usize,
+) -> Result<(Option<NodeRef>, NodeRef), LexicalError> {
+    let start_node = node
+        .get_child_at_index(offset)
+        .unwrap_or_else(|| node.clone());
+    invariant!(
+        !is_root_or_shadow_root(node),
+        "Can not call $splitNode() on root element"
+    );
+    fn recurse(
+        current_node: &NodeRef,
+        start_node: &NodeRef,
+    ) -> Result<(NodeRef, NodeRef, NodeRef), LexicalError> {
+        let parent = current_node.get_parent_or_throw()?;
+        let is_parent_root = is_root_or_shadow_root(&parent);
+        // The node we start split from (leaf) is moved, but its recursive
+        // parents are copied to create separate tree
+        let node_to_move = if current_node == start_node && !is_parent_root {
+            current_node.clone()
+        } else {
+            copy_node(current_node)
+        };
+        if is_parent_root {
+            invariant!(
+                current_node.is_element() && node_to_move.is_element(),
+                "Children of a root must be ElementNode"
+            );
+            current_node.insert_after(&node_to_move, true)?;
+            Ok((current_node.clone(), node_to_move.clone(), node_to_move))
+        } else {
+            let (left_tree, right_tree, new_parent) = recurse(&parent, start_node)?;
+            let mut nodes = vec![node_to_move.clone()];
+            nodes.extend(current_node.get_next_siblings());
+            new_parent.append(&nodes)?;
+            Ok((left_tree, right_tree, node_to_move))
+        }
+    }
+    let (left_tree, right_tree, _) = recurse(&start_node, &start_node)?;
+    Ok((Some(left_tree), right_tree))
 }
 
 /// `$setNodeKey(node, null)`: gives a new node a key, puts it in the active

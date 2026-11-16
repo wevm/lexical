@@ -202,6 +202,26 @@ impl NodeRef {
         Some(node)
     }
 
+    /// `getDescendantByIndex(index)`: the first descendant of the child at
+    /// `index`, or the last descendant of the last child for an index past
+    /// the end; the child itself when it is not an element or is empty.
+    pub fn get_descendant_by_index(&self, index: usize) -> Option<NodeRef> {
+        let at_end = index >= self.get_children_size();
+        let child = if at_end {
+            self.get_last_child()
+        } else {
+            self.get_child_at_index(index)
+        }?;
+        let descendant = if !child.is_element() {
+            None
+        } else if at_end {
+            child.get_last_descendant()
+        } else {
+            child.get_first_descendant()
+        };
+        Some(descendant.unwrap_or(child))
+    }
+
     /// `ElementNode.getTextContentSize()`.
     pub(crate) fn get_element_text_content_size(&self) -> usize {
         let children = self.get_children();

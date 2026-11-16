@@ -308,6 +308,12 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         false
     }
 
+    /// `TextNode.canHaveFormat()`: whether the text node can carry formats
+    /// and styles that `@lexical/selection` applies to it. True by default.
+    fn can_have_format(&self) -> bool {
+        true
+    }
+
     /// `ElementNode.excludeFromCopy(destination)`: whether copying (to
     /// `"clone"` or `"html"`) leaves this element out and keeps its
     /// children. `ElementNode` returns false. Nothing in the core calls it;
@@ -634,6 +640,11 @@ impl NodeRef {
     /// `TextNode.isTextEntity()`.
     pub fn is_text_entity(&self) -> bool {
         self.get_latest().is_text_entity()
+    }
+
+    /// `TextNode.canHaveFormat()`.
+    pub fn can_have_format(&self) -> bool {
+        self.get_latest().can_have_format()
     }
 
     /// `ElementNode.excludeFromCopy(destination)`.

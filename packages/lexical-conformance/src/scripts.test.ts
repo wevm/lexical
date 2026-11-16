@@ -5082,3 +5082,552 @@ test('scripts/package-extensions', () => {
     ],
   );
 });
+
+test('scripts/selection-utils', () => {
+  // The model part of @lexical/selection (lexical-node.ts,
+  // range-selection.ts, utils.ts) and @lexical/utils, called directly: style
+  // patches and reads, text slices, trimming, wrapping, caret movement
+  // checks, traversals, splits, insertions and structure helpers. Each
+  // logs what it returns; the state after each step shows what it changed.
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const dt = (): Node => ({type: 'decorator-text', version: 1}) as Node;
+  const act = (action: Record<string, unknown>): Action => action as Action;
+  const patch = (value: Record<string, unknown>): Action =>
+    act({do: 'patchStyleText', patch: value});
+  const describe = {fn: 'describe'};
+  const styleValue = (property: string, defaultValue?: string): Action =>
+    act(
+      defaultValue === undefined
+        ? {do: 'logSelectionStyleValue', property}
+        : {defaultValue, do: 'logSelectionStyleValue', property},
+    );
+  const slice = (key: string): Action => act({do: 'logSlice', key});
+  const dfs = (
+    options: {start?: string; end?: string; reverse?: boolean} = {},
+  ): Action => act({do: 'logDfs', ...options});
+  const keyed = (kind: string, key: string): Action => act({do: kind, key});
+  const extension = true;
+  const link = true;
+  const richText = true;
+  const url = 'https://lexical.dev';
+  // Keys: the paragraph 1, "abcd" 2, the list 3, its items 4 ("x" 5) and 6
+  // ("yz" 7), the paragraph 8, "end" 9.
+  const nestedBlocks = doc(
+    p(t('abcd')),
+    list('bullet', li(t('x')), li(t('yz'))),
+    p(t('end')),
+  );
+  emit(
+    'selection-utils',
+    "@lexical/selection's and @lexical/utils's model functions, called directly: what each returns (logged) and the state after each step.",
+    [
+      {
+        name: 'patchStyleText across nodes, backward, then removing a property',
+        steps: [
+          // Keys: the paragraph 1, "abc" 2, "def" 3, the paragraph 4, "ghi" 5.
+          doc(p(t('abc'), t('def', {style: 'color: red;'})), p(t('ghi'))),
+          update(
+            select(['5', 1, 'text'], ['2', 1, 'text']),
+            patch({color: 'blue', 'font-size': '12px'}),
+            styleValue('color'),
+            styleValue('font-size'),
+            styleValue('font-weight', 'normal'),
+          ),
+          update(
+            select(['root', 0, 'element'], ['root', 2, 'element']),
+            patch({color: null, 'font-size': describe}),
+            styleValue('color', 'black'),
+            styleValue('font-size'),
+          ),
+        ],
+      },
+      {
+        name: 'patchStyleText on a collapsed selection and an empty paragraph',
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, the paragraph 3.
+          doc(p(t('ab')), p()),
+          update(
+            select(['2', 1, 'text']),
+            patch({color: describe, 'font-weight': 'bold'}),
+            styleValue('font-weight'),
+            styleValue('color'),
+          ),
+          update(select(['3', 0, 'element']), patch({color: 'green'})),
+          update(
+            select(['1', 0, 'element'], ['3', 0, 'element']),
+            patch({color: describe}),
+            styleValue('color'),
+          ),
+        ],
+      },
+      {
+        link,
+        name: 'patchStyleText into a link and a token',
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, the link 3, "cd" 4, "tok" 5, "ef" 6.
+          doc(p(t('ab'), a(url, t('cd')), t('tok', {mode: 'token'}), t('ef'))),
+          update(
+            select(['2', 1, 'text'], ['5', 1, 'text']),
+            patch({'background-color': 'yellow', color: 'red'}),
+            styleValue('background-color'),
+          ),
+          update(
+            select(['4', 1, 'text'], ['6', 1, 'text']),
+            styleValue('color'),
+          ),
+        ],
+      },
+      {
+        name: 'getSelectionStyleValueForProperty at the edges',
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, "cd" 3, "ef" 4.
+          doc(
+            p(
+              t('ab', {style: 'color: red;'}),
+              t('cd', {style: 'color: blue; font-size: 10px;'}),
+              t('ef', {style: 'font-size: 10px; color: blue;'}),
+            ),
+          ),
+          update(
+            select(['2', 2, 'text'], ['4', 0, 'text']),
+            styleValue('color'),
+            styleValue('font-size'),
+          ),
+          update(
+            select(['4', 0, 'text'], ['2', 2, 'text']),
+            styleValue('color'),
+          ),
+          update(
+            select(['2', 1, 'text'], ['3', 1, 'text']),
+            styleValue('color'),
+          ),
+          update(
+            select(['2', 1, 'text'], ['4', 2, 'text']),
+            styleValue('font-size'),
+            styleValue('line-height', '1.5'),
+          ),
+          // Ending at offset 0 of "cd" skips it, forward and backward: red,
+          // not the mixed ''.
+          update(
+            select(['2', 0, 'text'], ['3', 0, 'text']),
+            styleValue('color'),
+          ),
+          update(
+            select(['3', 0, 'text'], ['2', 0, 'text']),
+            styleValue('color'),
+          ),
+        ],
+      },
+      {
+        name: 'getStyleObjectFromCSS and getCSSFromStyleObject',
+        steps: [
+          update(
+            act({css: 'color: red; font-size : 12px ;', do: 'logStyleObject'}),
+            act({
+              css: 'background: url("a;b:c"); /* x: y; */ font-family: \'A;B\'; :x; y:; color: blue',
+              do: 'logStyleObject',
+            }),
+            act({css: 'b: 1; 2: two; a: x; b: 3', do: 'logStyleObject'}),
+            act({css: '', do: 'logStyleObject'}),
+          ),
+        ],
+      },
+      {
+        name: 'isAtNodeEnd, sliceSelectedTextNodeContent and forEachSelectedTextNode',
+        steps: [
+          // Keys: the paragraph 1, "abc" 2, "def" 3, the paragraph 4, "gh" 5.
+          doc(p(t('abc'), t('def', {format: 1})), p(t('gh'))),
+          update(
+            select(['3', 3, 'text'], ['2', 1, 'text']),
+            act({do: 'logAtNodeEnd'}),
+            slice('2'),
+            slice('3'),
+            slice('5'),
+          ),
+          update(
+            select(['1', 2, 'element'], ['4', 0, 'element']),
+            act({do: 'logAtNodeEnd'}),
+            slice('2'),
+            slice('3'),
+          ),
+          update(
+            select(['3', 2, 'text'], ['2', 1, 'text']),
+            act({do: 'forEachSelectedTextNode'}),
+          ),
+          update(
+            select(['5', 2, 'text'], ['5', 0, 'text']),
+            act({do: 'forEachSelectedTextNode'}),
+          ),
+          update(
+            select(['5', 1, 'text']),
+            act({do: 'forEachSelectedTextNode'}),
+          ),
+          update(
+            select(['5', 1, 'text'], ['2', 0, 'text']),
+            act({do: 'ensureForwardRangeSelection'}),
+          ),
+        ],
+      },
+      {
+        name: 'trimTextContentFromAnchor',
+        steps: [
+          // Keys: the paragraph 1, "abc" 2, the paragraph 3, "de" 4, "fg" 5,
+          // the paragraph 6, "hij" 7.
+          doc(p(t('abc')), p(t('de'), t('fg', {format: 1})), p(t('hij'))),
+          update(
+            select(['5', 1, 'text']),
+            act({count: 2, do: 'trimTextContentFromAnchor'}),
+          ),
+          update(
+            select(['7', 3, 'text']),
+            act({count: 6, do: 'trimTextContentFromAnchor'}),
+          ),
+          update(
+            node('2', 'setTextContent', 'abcdef'),
+            select(['2', 6, 'text']),
+            act({count: 2, do: 'trimTextContentFromAnchor'}),
+          ),
+          update(
+            select(['root', 1, 'element']),
+            act({count: 1, do: 'trimTextContentFromAnchor'}),
+          ),
+        ],
+      },
+      {
+        name: 'wrapNodes across blocks, into a wrapping element, and an empty block',
+        richText,
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, the paragraph 3, "cd" 4, the
+          // paragraph 5.
+          doc(p(t('ab')), p(t('cd')), p()),
+          update(
+            node('1', 'setFormat', 'center'),
+            node('1', 'setIndent', 2),
+            select(['2', 1, 'text'], ['4', 1, 'text']),
+            act({block: 'quote', do: 'wrapNodes'}),
+          ),
+          update(
+            select(['5', 0, 'element']),
+            act({block: 'h1', do: 'wrapNodes'}),
+          ),
+        ],
+      },
+      {
+        name: 'wrapNodes backward, ending at offset 0, with a wrapping element',
+        richText,
+        steps: [
+          doc(p(t('ab')), p(t('cd')), p(t('ef'))),
+          update(
+            select(['6', 0, 'text'], ['2', 1, 'text']),
+            act({block: 'paragraph', do: 'wrapNodes', wrapping: 'quote'}),
+          ),
+        ],
+      },
+      {
+        link,
+        list: true,
+        name: 'wrapNodes over list items and a link',
+        richText,
+        steps: [
+          // Keys: the list 1, its items 2 ("a" 3) and 4 ("b" 5), the
+          // paragraph 6, "c" 7, the link 8, "d" 9.
+          doc(
+            list('bullet', li(t('a')), li(t('b'))),
+            p(t('c'), a(url, t('d'))),
+          ),
+          update(
+            select(['3', 0, 'text'], ['9', 1, 'text']),
+            act({block: 'quote', do: 'wrapNodes'}),
+          ),
+        ],
+      },
+      {
+        extension,
+        name: 'shouldOverrideDefaultCharacterSelection and moveCharacter',
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, the decorator 3, "cd" 4, the rule
+          // 5, the paragraph 6, "xy" 7, "z" 8.
+          doc(p(t('ab'), dt(), t('cd')), hr(), p(t('xy', {detail: 2}), t('z'))),
+          update(
+            select(['2', 2, 'text']),
+            act({do: 'logShouldOverride', isBackward: false}),
+            act({do: 'logShouldOverride', isBackward: true}),
+            select(['4', 2, 'text']),
+            act({do: 'logShouldOverride', isBackward: false}),
+            select(['4', 0, 'text']),
+            act({do: 'logShouldOverride', isBackward: true}),
+            select(['7', 2, 'text']),
+            act({do: 'logShouldOverride', isBackward: false}),
+            select(['8', 0, 'text']),
+            act({do: 'logShouldOverride', isBackward: true}),
+          ),
+          update(
+            select(['2', 2, 'text']),
+            act({do: 'moveCharacter', isBackward: false, shift: false}),
+          ),
+          update(
+            select(['4', 0, 'text']),
+            act({do: 'moveCharacter', isBackward: true, shift: true}),
+          ),
+          // Within text, the move needs the DOM's Selection.modify, which a
+          // headless editor lacks.
+          update(
+            select(['2', 1, 'text']),
+            act({do: 'moveCharacter', isBackward: false, shift: false}),
+          ),
+        ],
+      },
+      {
+        name: 'copyBlockFormatIndent, selectAll, cloneWithProperties and isBlockFullySelected',
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, the paragraph 3, "cd" 4.
+          doc(p(t('ab', {format: 2, style: 'color: red;'})), p(t('cd'))),
+          update(
+            node('1', 'setFormat', 'right'),
+            node('1', 'setIndent', 3),
+            act({do: 'copyBlockFormatIndent', from: '1', to: '3'}),
+            keyed('logCloneWithProperties', '2'),
+            keyed('logCloneWithProperties', '1'),
+          ),
+          update(
+            select(['2', 1, 'text'], ['4', 1, 'text']),
+            keyed('logBlockFullySelected', '1'),
+            keyed('logBlockFullySelected', '3'),
+            act({do: 'selectAll', scoped: true}),
+            keyed('logBlockFullySelected', '1'),
+            keyed('logBlockFullySelected', 'root'),
+          ),
+          update(
+            select(['root', 0, 'element']),
+            act({do: 'selectAll', scoped: true}),
+          ),
+        ],
+      },
+      {
+        link,
+        list: true,
+        name: 'dfs, depth and siblings over nested lists and inline elements',
+        steps: [
+          // Keys: the paragraph 1, "a" 2, the link 3, "b" 4, "c" 5; the list
+          // 6, its item 7 ("d" 8) and its item 9 holding the list 10 with
+          // the items 11 ("e" 12) and 13 ("f" 14); the paragraph 15.
+          doc(
+            p(t('a'), a(url, t('b')), t('c')),
+            list(
+              'bullet',
+              li(t('d')),
+              li(list('number', li(t('e')), li(t('f')))),
+            ),
+            p(),
+          ),
+          update(
+            dfs(),
+            dfs({start: '6'}),
+            dfs({end: '9', start: '6'}),
+            dfs({end: '12'}),
+            dfs({start: '4'}),
+            dfs({reverse: true}),
+            dfs({reverse: true, start: '6'}),
+            dfs({end: '11', reverse: true, start: '6'}),
+          ),
+          update(
+            keyed('logDepth', 'root'),
+            keyed('logDepth', '1'),
+            keyed('logDepth', '12'),
+            keyed('logNextSiblingOrParentSibling', '3'),
+            keyed('logNextSiblingOrParentSibling', '14'),
+            keyed('logNextSiblingOrParentSibling', '15'),
+            keyed('logNextRightPreorderNode', '2'),
+            keyed('logNextRightPreorderNode', '6'),
+            keyed('logNextRightPreorderNode', '9'),
+            keyed('logNextRightPreorderNode', '8'),
+            keyed('logNearestBlockElementAncestor', '4'),
+            keyed('logNearestBlockElementAncestor', '12'),
+            keyed('logChildren', '1'),
+            act({do: 'logChildren', key: '6', reverse: true}),
+            act({do: 'logDescendantsMatching', key: 'root', types: ['text']}),
+            act({
+              do: 'logDescendantsMatching',
+              key: 'root',
+              types: ['listitem'],
+            }),
+            act({do: 'logDescendantsMatching', key: '6', types: ['list']}),
+          ),
+          update(keyed('logNearestBlockElementAncestor', 'root')),
+        ],
+      },
+      {
+        list: true,
+        name: 'splitNode in the middle, at both edges and in nested blocks',
+        richText,
+        steps: [
+          // Keys: the quote 1, "ab" 2, "cd" 3, "ef" 4, the list 5, its items
+          // 6 ("x" 7) and 8 ("y" 9).
+          doc(
+            q(t('ab'), t('cd', {format: 1}), t('ef')),
+            list('bullet', li(t('x')), li(t('y'))),
+          ),
+          update(act({do: 'splitNode', key: '1', offset: 1})),
+          update(act({do: 'splitNode', key: '1', offset: 0})),
+          update(act({do: 'splitNode', key: '1', offset: 5})),
+          update(act({do: 'splitNode', key: '8', offset: 0})),
+          update(act({do: 'splitNode', key: '6', offset: 1})),
+          update(act({do: 'splitNode', key: 'root', offset: 0})),
+        ],
+      },
+      {
+        extension,
+        list: true,
+        name: 'insertNodeToNearestRoot in a text middle',
+        richText,
+        steps: [
+          nestedBlocks,
+          update(
+            select(['2', 2, 'text']),
+            act({do: 'insertNodeToNearestRoot', node: hr()}),
+          ),
+        ],
+      },
+      {
+        extension,
+        list: true,
+        name: 'insertNodeToNearestRoot in a nested block',
+        richText,
+        steps: [
+          nestedBlocks,
+          update(
+            select(['7', 1, 'text']),
+            act({do: 'insertNodeToNearestRoot', node: hr()}),
+          ),
+          update(
+            select(['5', 1, 'text']),
+            act({do: 'insertNodeToNearestRoot', node: p(t('new'))}),
+          ),
+        ],
+      },
+      {
+        extension,
+        list: true,
+        name: 'insertNodeToNearestRoot at the end, from a node selection and without a selection',
+        richText,
+        steps: [
+          nestedBlocks,
+          update(
+            select(['9', 3, 'text']),
+            act({do: 'insertNodeToNearestRoot', node: hr()}),
+          ),
+          update(
+            act({do: 'selectNodes', keys: ['1']}),
+            act({do: 'insertNodeToNearestRoot', node: hr()}),
+          ),
+          update(act({do: 'clearSelection'})),
+          update(act({do: 'insertNodeToNearestRoot', node: t('inline')})),
+        ],
+      },
+      {
+        extension,
+        name: 'insertNodeIntoLeaf',
+        steps: [
+          // Keys: the paragraph 1, "abcd" 2, the paragraph 3, "ef" 4.
+          doc(p(t('abcd')), p(t('ef'))),
+          update(
+            select(['2', 1, 'text'], ['2', 3, 'text']),
+            act({do: 'insertNodeIntoLeaf', node: dt()}),
+          ),
+          update(
+            select(['4', 0, 'text']),
+            act({do: 'insertNodeIntoLeaf', node: br()}),
+          ),
+          update(
+            act({do: 'selectNodes', keys: ['3']}),
+            act({do: 'insertNodeIntoLeaf', node: p(t('gh'))}),
+          ),
+        ],
+      },
+      {
+        link,
+        name: 'insertFirst, wrapNodeInElement, unwrapNode and unwrapAndFilterDescendants',
+        richText,
+        steps: [
+          // Keys: the paragraph 1, "ab" 2, the quote 3, "cd" 4, the paragraph
+          // 5, the link 6, "ef" 7, "gh" 8; then "X" 9, the quote 10, the link
+          // 11 and "ij" 12.
+          doc(p(t('ab')), q(t('cd')), p(a(url, t('ef')), t('gh'))),
+          update(
+            select(['1', 0, 'element']),
+            act({do: 'insertFirst', key: '1', node: t('X', {format: 1})}),
+          ),
+          update(act({block: 'quote', do: 'wrapNodeInElement', key: '3'})),
+          update(
+            act({
+              do: 'unwrapAndFilterDescendants',
+              keep: ['paragraph', 'quote'],
+              key: 'root',
+            }),
+            act({do: 'unwrapAndFilterDescendants', keep: ['text'], key: '5'}),
+          ),
+          update(
+            act({do: 'insertFirst', key: '5', node: a(url, t('ij'))}),
+            select(['7', 1, 'text']),
+          ),
+          update(keyed('unwrapNode', '11')),
+        ],
+      },
+      {
+        name: 'restoreEditorState',
+        steps: [
+          // Keys: the paragraph 1, "ab" 2.
+          doc(p(t('ab'))),
+          update(select(['2', 1, 'text'])),
+          update(act({do: 'saveEditorState', name: 'one'})),
+          update(
+            node('2', 'setTextContent', 'xyz'),
+            select(['2', 3, 'text']),
+            node('root', 'append', [p(t('new'))]),
+          ),
+          update(
+            node('2', 'setTextContent', 'pending'),
+            act({do: 'restoreEditorState', name: 'one'}),
+          ),
+          update(select(['2', 2, 'text']), call('insertText', '!')),
+        ],
+      },
+      {
+        mark: true,
+        name: 'registerNestedElementResolver',
+        steps: [
+          // Keys: the paragraph 1, the mark 2, "x" 3, the mark 4, "y" 5, "z"
+          // 6.
+          doc(p(mark(['a'], t('x'), mark(['b'], t('y')), t('z')))),
+          update(node('5', 'setTextContent', 'Y')),
+        ],
+        transforms: ['mark:nested'],
+      },
+      {
+        name: 'onEscapeUp and onEscapeDown',
+        richText,
+        steps: [
+          // Keys: the quote 1, "ab" 2, the paragraph 3, "cd" 4, the quote 5,
+          // "ef" 6.
+          doc(q(t('ab')), p(t('cd')), q(t('ef'))),
+          update(
+            select(['2', 1, 'text']),
+            act({direction: 'up', do: 'escape', types: ['quote']}),
+            select(['4', 0, 'text']),
+            act({direction: 'up', do: 'escape', types: ['quote']}),
+            select(['2', 2, 'text']),
+            act({direction: 'down', do: 'escape', types: ['quote']}),
+          ),
+          update(
+            select(['2', 0, 'text']),
+            act({direction: 'up', do: 'escape', types: ['quote']}),
+          ),
+          update(
+            select(['6', 2, 'text']),
+            act({direction: 'down', do: 'escape', types: ['quote']}),
+          ),
+        ],
+      },
+    ],
+  );
+});

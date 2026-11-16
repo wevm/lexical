@@ -23,6 +23,9 @@ use crate::lexical_selection::SelectionRef;
 use crate::lexical_selection::get_selection;
 use crate::lexical_utils::{set_node_key, with_writable};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
+use crate::node_state::{
+    RequiredNodeStateConfig, StateConfig, create_state, get_state_direct, set_state,
+};
 use crate::nodes::element::ElementData;
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::nodes::tab::create_tab_node;
@@ -113,14 +116,13 @@ impl NodeRef {
         }
     }
 
-    /// `QuoteNode.setIsShadowRoot(isShadowRoot)`. Does nothing to any other
-    /// node.
-    pub fn set_quote_is_shadow_root(&self, is_shadow_root: bool) {
+    /// `QuoteNode.setIsShadowRoot(isShadowRoot)`: sets
+    /// [`quote_shadow_root_state`]. Does nothing to any other node.
+    pub fn set_quote_is_shadow_root(&self, is_shadow_root: bool) -> Result<(), LexicalError> {
         if is_quote_node(self) {
-            with_writable(self.get_key(), |n| {
-                n.downcast_mut::<QuoteNode>().expect("a quote").shadow_root = is_shadow_root;
-            });
+            set_state(self, &quote_shadow_root_state(), is_shadow_root)?;
         }
+        Ok(())
     }
 }
 
@@ -242,28 +244,36 @@ impl LexicalNode for HeadingNode {
     }
 }
 
-/// `QuoteNode`: a block quote. With `quoteShadowRootState` set
+/// `QuoteNode`: a block quote. With [`quote_shadow_root_state`] set
 /// ([`NodeRef::set_quote_is_shadow_root`]) it is a shadow root holding
 /// blocks instead of inline content.
-///
-/// `quoteShadowRootState` is a flat NodeState in JS. NodeState isn't ported
-/// (rust/PARITY.md), so the state is a field here, read and written the way
-/// a flat state is: `shadowRoot` is applied only when the JSON has it
-/// (`booleanValue()`: anything but a boolean is `false`), and written at the
-/// end of the JSON, after the generated properties, only when `true`.
 #[derive(Clone, Debug, Default)]
 pub struct QuoteNode {
     base: NodeBase,
     element: ElementData,
-    shadow_root: bool,
+}
+
+thread_local! {
+    static QUOTE_SHADOW_ROOT_STATE: StateConfig<bool> =
+        // `booleanValue()`: anything but a boolean is `false`.
+        create_state("shadowRoot", |v| v.as_bool().unwrap_or(false));
+}
+
+/// `quoteShadowRootState`: whether a quote is a shadow root holding blocks,
+/// a flat NodeState of `QuoteNode` (serialized as `shadowRoot` beside its
+/// other properties), `false` by default.
+pub fn quote_shadow_root_state() -> StateConfig<bool> {
+    QUOTE_SHADOW_ROOT_STATE.with(Clone::clone)
 }
 
 /// `$createQuoteNode({shadowRoot})`.
 pub fn create_quote_node(shadow_root: bool) -> NodeRef {
-    set_node_key(Box::new(QuoteNode {
-        shadow_root,
-        ..QuoteNode::default()
-    }))
+    let node = set_node_key(Box::new(QuoteNode::default()));
+    if shadow_root {
+        set_state(&node, &quote_shadow_root_state(), true)
+            .expect("a new quote has no other shadowRoot state");
+    }
+    node
 }
 
 /// `$isQuoteNode(node)`.
@@ -288,9 +298,20 @@ impl LexicalNode for QuoteNode {
         Some(&mut self.element)
     }
 
-    /// `QuoteNode.isShadowRoot()`.
+    /// `QuoteNode.isShadowRoot()`: [`quote_shadow_root_state`] of this
+    /// version, which is the latest wherever it is asked.
     fn is_shadow_root(&self) -> bool {
-        self.shadow_root
+        get_state_direct(self, &quote_shadow_root_state())
+            .expect("QuoteNode declares its shadowRoot state")
+    }
+
+    /// The `stateConfigs` of `QuoteNode.$config()`: the flat
+    /// [`quote_shadow_root_state`].
+    fn state_configs(&self) -> Vec<RequiredNodeStateConfig> {
+        vec![RequiredNodeStateConfig::new(
+            &quote_shadow_root_state(),
+            true,
+        )]
     }
 
     /// `QuoteNode.canMergeWhenEmpty()`.
@@ -298,24 +319,19 @@ impl LexicalNode for QuoteNode {
         true
     }
 
-    /// `exportQuoteNode` and `exportCompactQuoteNode`, then the flat state.
+    /// `exportQuoteNode` and `exportCompactQuoteNode` (the NodeState,
+    /// `shadowRoot` among it, comes after).
     fn export_json(&self, compact: bool) -> Object {
-        let mut json = if compact {
+        if compact {
             export_compact_element_node(self)
         } else {
             export_element_node(self)
-        };
-        if self.shadow_root {
-            json.insert("shadowRoot", true.into());
         }
-        json
     }
 
-    /// The flat state (`$applyFlatStates`), then `updateQuoteNode`.
+    /// `updateQuoteNode` (the flat `shadowRoot` is applied with the rest of
+    /// the NodeState).
     fn update_from_json(&mut self, json: &Object) {
-        if let Some(raw) = json.get("shadowRoot").filter(|v| !v.is_undefined()) {
-            self.shadow_root = matches!(raw, Value::Bool(true));
-        }
         update_element_node(&mut self.element, json);
     }
 
@@ -344,7 +360,7 @@ impl LexicalNode for QuoteNode {
     /// `QuoteNode.collapseAtStart()`: the quote becomes a paragraph holding
     /// its children, or, as a shadow root, is dissolved into its blocks.
     fn collapse_at_start(&self, this: &NodeRef, _: &SelectionRef) -> Result<bool, LexicalError> {
-        if self.shadow_root {
+        if self.is_shadow_root() {
             for child in this.get_children() {
                 this.insert_before(&child, true)?;
             }

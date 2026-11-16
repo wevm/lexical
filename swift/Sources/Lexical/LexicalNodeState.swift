@@ -187,12 +187,20 @@ extension NodeState {
   }
 }
 
+/// The identity of an object or array in `NodeState.unknownState`. JS keeps
+/// the values it has not parsed as they came from JSON and compares them
+/// with `===`, so an object or array equals only itself: the same value in a
+/// copy of the state, never an equal one parsed from other JSON.
+package final class UnknownValueIdentity {}
+
 /// `NodeState`: the state values of one version of a node.
 public final class NodeState {
   /// The node version that owns this state; others copy it before writing.
   weak var node: LexicalNode?
   package let knownState: KnownStateMap
   package var unknownState: JSONObject?
+  /// The identity of each object or array in `unknownState`, by key.
+  package var unknownIdentities: [String: UnknownValueIdentity] = [:]
   package let sharedNodeState: SharedNodeState
   package var size: Int
 
@@ -266,7 +274,9 @@ public final class NodeState {
     let nextKnownState = knownState.copy()
     let nextUnknownState = parseAndPruneNextUnknownState(
       sharedNodeState.sharedConfigMap, nextKnownState, unknownState)
-    return try! NodeState(node, sharedNodeState, nextUnknownState, nextKnownState, size)
+    let next = try! NodeState(node, sharedNodeState, nextUnknownState, nextKnownState, size)
+    next.unknownIdentities = unknownIdentities.filter { nextUnknownState?.has($0.key) == true }
+    return next
   }
 
   @discardableResult
@@ -282,6 +292,7 @@ public final class NodeState {
     sharedNodeState.sharedConfigMap.set(key, stateConfig)
     if var unknown = unknownState, unknown.has(key) {
       unknown.remove(key)
+      unknownIdentities[key] = nil
       unknownState = unknown.keys.isEmpty ? nil : unknown
     } else if !knownState.has(ObjectIdentifier(stateConfig)) {
       size += 1
@@ -290,6 +301,14 @@ public final class NodeState {
   }
 
   package func updateFromUnknown(_ k: String, _ v: JSONValue?) {
+    updateFromUnknown(k, v, identity: nil)
+  }
+
+  /// `identity` is that of `v` in the state it is copied from; an object or
+  /// array without one is new.
+  package func updateFromUnknown(
+    _ k: String, _ v: JSONValue?, identity: UnknownValueIdentity?
+  ) {
     if UNSAFE_STATE_KEYS.contains(k) {
       return
     }
@@ -301,6 +320,10 @@ public final class NodeState {
         size += 1
       }
       unknown.set(k, v)
+      switch v {
+      case .array, .object: unknownIdentities[k] = identity ?? UnknownValueIdentity()
+      default: unknownIdentities[k] = nil
+      }
       unknownState = unknown
     }
   }
@@ -311,6 +334,7 @@ public final class NodeState {
     }
     size = knownState.size
     self.unknownState = nil
+    unknownIdentities = [:]
     if let unknownState {
       for key in unknownState.keys {
         updateFromUnknown(key, unknownState[key])
@@ -463,11 +487,58 @@ package func getSharedNodeState(_ node: LexicalNode) throws -> SharedNodeState {
 /// object of `serialized`.
 package func updateStateFromJSON<T: LexicalNode>(_ node: T, _ serialized: JSONObject) throws -> T {
   let writable = try node.getWritable()
-  let unknownState = serialized[NODE_STATE_KEY]?.objectValue
-  if writable.__state != nil || unknownState != nil {
-    try getWritableNodeState(node).updateFromJSON(unknownState)
+  let unknownState = serialized[NODE_STATE_KEY]
+  if writable.__state != nil || unknownState.map(isTruthy) == true {
+    try getWritableNodeState(node).updateFromJSON(unknownState.flatMap(objectEntries))
   }
   return writable
+}
+
+/// Whether `value` is truthy in JS.
+private func isTruthy(_ value: JSONValue) -> Bool {
+  switch value {
+  case .null: false
+  case .bool(let b): b
+  case .number(let n): n != 0 && !n.isNaN
+  case .string(let s): !s.isEmpty
+  case .array, .object: true
+  }
+}
+
+/// `Object.entries(value)` of the `$` of a node's JSON, as an object: an
+/// object's properties, an array's or a string's (UTF-16 code units) by
+/// index, nothing for a number or boolean, and `nil` when it is falsy.
+private func objectEntries(_ value: JSONValue) -> JSONObject? {
+  guard isTruthy(value) else {
+    return nil
+  }
+  switch value {
+  case .object(let object):
+    return object
+  case .array(let items):
+    return JSONObject(items.enumerated().map { (String($0.offset), $0.element) })
+  case .string(let s):
+    return JSONObject(
+      s.utf16.enumerated().map {
+        (String($0.offset), .string(String(decoding: [$0.element], as: UTF16.self)))
+      })
+  default:
+    return JSONObject()
+  }
+}
+
+/// Whether `a` and `b` hold the same value for `key` in their unknown
+/// state, by JS's `===`: missing in both, an equal primitive, or the same
+/// object or array (`UnknownValueIdentity`).
+package func unknownValuesAreIdentical(_ a: NodeState?, _ b: NodeState?, _ key: String) -> Bool {
+  let value = a?.unknownState?[key]
+  let otherValue = b?.unknownState?[key]
+  switch (value, otherValue) {
+  case (.array, .array), (.object, .object):
+    return a?.unknownIdentities[key] === b?.unknownIdentities[key]
+  default:
+    return value == otherValue
+  }
 }
 
 /// `nodeStatesAreEquivalent`.
@@ -509,7 +580,7 @@ private func hasUnequalRecordEntry(
     if !keys.insert(key).inserted {
       continue
     }
-    if unknownState[key] != otherState?.unknownState?[key] {
+    if !unknownValuesAreIdentical(sourceState, otherState, key) {
       return true
     }
   }
@@ -549,7 +620,8 @@ public func carryNodeState(_ from: LexicalNode, _ to: LexicalNode) throws {
   }
   if let unknownState = fromState.unknownState {
     for key in unknownState.keys where !done.contains(key) {
-      state.updateFromUnknown(key, unknownState[key])
+      state.updateFromUnknown(
+        key, unknownState[key], identity: fromState.unknownIdentities[key])
     }
   }
 }

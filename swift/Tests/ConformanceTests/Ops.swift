@@ -2,6 +2,7 @@ import Foundation
 import Lexical
 import LexicalCodeCore
 import LexicalExtension
+import LexicalHashtag
 import LexicalHistory
 import LexicalLink
 import LexicalList
@@ -138,6 +139,33 @@ private func formats(_ payload: JSONValue) throws -> [(TextFormatType, Bool)] {
   return try object.keys.map { ($0, try object[$0]?.boolValue.orThrow() ?? false) }
 }
 
+/// A NodeState config of the script context, with its value type erased:
+/// `setState`, `logState` and `logStateChange` on JSON values.
+private struct ScriptState {
+  let set: (LexicalNode, JSONValue) throws -> Void
+  let get: (LexicalNode) throws -> JSONValue
+  let change: (LexicalNode, LexicalNode) throws -> JSONValue
+
+  init<V>(
+    _ config: StateConfig<V>, _ toJSON: @escaping (V) -> JSONValue,
+    _ fromJSON: @escaping (JSONValue) -> V?
+  ) {
+    set = { node, json in
+      guard let value = fromJSON(json) else {
+        throw ScriptError("\(json.stringify()) is no value of \(config.key)")
+      }
+      try setState(node, config, value)
+    }
+    get = { try toJSON(getState($0, config)) }
+    change = { node, prevNode in
+      guard let (value, prevValue) = try getStateChange(node, prevNode, config) else {
+        return .null
+      }
+      return .array([toJSON(value), toJSON(prevValue)])
+    }
+  }
+}
+
 private final class ScriptContext {
   let editor: Editor
   var log: [JSONValue] = []
@@ -146,6 +174,58 @@ private final class ScriptContext {
   var clock: Double = 0
 
   init(_ editor: Editor) { self.editor = editor }
+
+  // ops.ts's `STATES`, one set per session (JS's are shared by every
+  // session, which no session can tell: a node type learns a config in one
+  // editor only).
+  /// A number, 1 by default.
+  let count = createState("count", parse: { (v: JSONValue?) -> Double in v?.numberValue ?? 1 })
+  /// A flag that a copy of its node (`copyNode`) does not keep.
+  let fresh = createState(
+    "fresh", parse: { (v: JSONValue?) -> Bool in v?.boolValue == true }, resetOnCopyNode: true)
+  /// A string, "" by default.
+  let label = createState("label", parse: { (v: JSONValue?) -> String in v?.stringValue ?? "" })
+  /// Another config with the key of `label`, which collides with it on a
+  /// node type that uses `label`.
+  let otherLabel = createState(
+    "label", parse: { (v: JSONValue?) -> String in v?.stringValue ?? "" })
+  /// An array of words, written as one string and compared by its words.
+  let words = createState(
+    "words",
+    parse: { (v: JSONValue?) -> [String] in
+      guard let s = v?.stringValue, !s.isEmpty else { return [] }
+      return s.split(separator: " ", omittingEmptySubsequences: false).map(String.init)
+    }, unparse: { .string($0.joined(separator: " ")) }, isEqual: { $0 == $1 })
+
+  /// The state `name` names, with its values written as and read from JSON.
+  func state(_ name: String) throws -> ScriptState {
+    switch name {
+    case "count": ScriptState(count, { .number($0) }, \.numberValue)
+    case "fresh": ScriptState(fresh, { .bool($0) }, \.boolValue)
+    case "label": ScriptState(label, { .string($0) }, \.stringValue)
+    case "otherLabel": ScriptState(otherLabel, { .string($0) }, \.stringValue)
+    case "words":
+      ScriptState(words, { .array($0.map { .string($0) }) }) { v in
+        v.arrayValue.flatMap { items in
+          let words = items.compactMap(\.stringValue)
+          return words.count == items.count ? words : nil
+        }
+      }
+    default: throw ScriptError("unknown state \(name)")
+    }
+  }
+
+  /// `$setState(node, STATES[state], UPDATERS[updater])`.
+  func updateState(_ node: LexicalNode, _ name: String, _ updater: String) throws {
+    switch (name, updater) {
+    case ("count", "count:increment"): try setState(node, count) { $0 + 1 }
+    case ("count", "count:same"): try setState(node, count) { $0 }
+    case ("label", "label:exclaim"): try setState(node, label) { $0 + "!" }
+    case ("words", "words:copy"): try setState(node, words) { Array($0) }
+    case ("words", "words:push-x"): try setState(node, words) { $0 + ["x"] }
+    default: throw ScriptError("unknown updater \(updater) of \(name)")
+    }
+  }
 
   func command(_ name: String) -> LexicalCommand<JSONValue> {
     if let command = commands[name] { return command }
@@ -469,6 +549,31 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
         .string("normalizeCaret"),
         caretSnapshot(try normalizeCaret(caret(action["caret"] ?? .null))),
       ]))
+  case "setState":
+    try ctx.state(action["state"]?.stringValue.orThrow() ?? "").set(
+      node(action["key"]?.stringValue.orThrow() ?? ""), action["value"] ?? .null)
+  case "updateState":
+    try ctx.updateState(
+      node(action["key"]?.stringValue.orThrow() ?? ""),
+      action["state"]?.stringValue.orThrow() ?? "", action["updater"]?.stringValue.orThrow() ?? "")
+  case "logState":
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    let name = try action["state"]?.stringValue.orThrow() ?? ""
+    let value = try ctx.state(name).get(node(key))
+    ctx.log.append(.array([.string("state"), .string(key), .string(name), value]))
+  case "logStateChange":
+    // `$getStateChange` of the node's latest version against its version in
+    // the committed editor state, or "new" when that state has no node with
+    // the key.
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    let name = try action["state"]?.stringValue.orThrow() ?? ""
+    let change: JSONValue
+    if let prevNode = ctx.editor.getEditorState()._nodeMap.get(key) {
+      change = try ctx.state(name).change(node(key), prevNode)
+    } else {
+      change = .string("new")
+    }
+    ctx.log.append(.array([.string("stateChange"), .string(key), .string(name), change]))
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     let handled = try ctx.dispatch(name, action["payload"] ?? .null)
@@ -535,8 +640,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   // `registerList` and `registerCheckList`, and `link: true` @lexical/link's
   // nodes and `registerLink` with its default config, and `code: true`
   // @lexical/code-core's nodes, `CodeExtension`'s TabNode transform and
-  // `registerCodeIndentation`, and `overflow: true` @lexical/overflow's
-  // `OverflowNode`, as ops.ts does.
+  // `registerCodeIndentation`, `overflow: true` @lexical/overflow's
+  // `OverflowNode`, and `hashtag: true` @lexical/hashtag's `HashtagNode`
+  // and `registerLexicalHashtag`, as ops.ts does.
   var nodes: [LexicalNodeConfig] =
     script["richText"]?.boolValue == true
     ? [.klass(HeadingNode.self), .klass(QuoteNode.self)] : []
@@ -551,6 +657,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
   }
   if script["overflow"]?.boolValue == true {
     nodes += [.klass(OverflowNode.self)]
+  }
+  if script["hashtag"]?.boolValue == true {
+    nodes += [.klass(HashtagNode.self)]
   }
   let editor = try createEditor(
     CreateEditorArgs(namespace: "", nodes: nodes, onError: { throw $0 }))
@@ -593,6 +702,9 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
       }
     }
     _ = registerCodeIndentation(editor)
+  }
+  if script["hashtag"]?.boolValue == true {
+    _ = try registerLexicalHashtag(editor)
   }
   for name in script["transforms"]?.arrayValue ?? [] {
     try registerTransform(name.stringValue.orThrow(), ctx)

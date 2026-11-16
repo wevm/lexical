@@ -194,7 +194,7 @@ impl<K: Into<String>> FromIterator<(K, Value)> for Object {
 
 /// The index a key names when it is an array index: the canonical decimal
 /// form of an integer below 2³² − 1, which JS orders before other keys.
-fn array_index(key: &str) -> Option<u32> {
+pub(crate) fn array_index(key: &str) -> Option<u32> {
     if key.is_empty() || (key.len() > 1 && key.starts_with('0')) {
         return None;
     }

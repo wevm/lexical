@@ -15,6 +15,7 @@ use crate::lexical_utils::{
     get_writable, internal_mark_siblings_as_dirty, mutate, set_node_key, with_writable,
 };
 use crate::node::{LexicalNode, NodeBase, NodeRef};
+use crate::node_state::clone_node_state;
 use crate::nodes::tab::TabNode;
 use crate::updates::error_on_read_only;
 use crate::{LexicalError, utf16};
@@ -386,6 +387,9 @@ impl NodeRef {
         }
         let first_part = &parts[0];
         let parent = self.get_parent();
+        // `self` in JS: the version the split starts from, whose NodeState
+        // the new nodes take (`$cloneNodeState`).
+        let self_version = self.get_latest();
         let TextData {
             format,
             style,
@@ -416,11 +420,13 @@ impl NodeRef {
         }
 
         let copy_fields = |node: &NodeRef| {
+            let state = clone_node_state(&*self_version, node.get_key());
             mutate(node.get_key(), |n| {
                 let t = n.text_mut().expect("a text node");
                 t.format = format;
                 t.style = style.clone();
                 t.detail = detail;
+                n.base_mut().state = state;
             });
         };
         let has_replaced_self = self.is_segmented();

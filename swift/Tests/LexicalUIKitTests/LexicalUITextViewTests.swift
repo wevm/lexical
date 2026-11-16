@@ -61,6 +61,42 @@
     }.description
   }
 
+  /// A main run loop source whose events come one after another, as
+  /// UIKit's do during an animation: each runs `onEvent` (with whether it
+  /// is the first) and signals the next while it returns true, so the run
+  /// loop never sleeps in between.
+  @MainActor
+  private final class BusyEvents {
+    private var source: CFRunLoopSource!
+    private let onEvent: (_ first: Bool) -> Bool
+    private var fired = false
+
+    init(_ onEvent: @escaping (_ first: Bool) -> Bool) {
+      self.onEvent = onEvent
+      var context = CFRunLoopSourceContext()
+      context.info = Unmanaged.passUnretained(self).toOpaque()
+      context.perform = { info in
+        MainActor.assumeIsolated {
+          Unmanaged<BusyEvents>.fromOpaque(info!).takeUnretainedValue().fire()
+        }
+      }
+      source = CFRunLoopSourceCreate(nil, 0, &context)
+      CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+      CFRunLoopSourceSignal(source)
+    }
+
+    private func fire() {
+      let first = !fired
+      fired = true
+      if onEvent(first) {
+        CFRunLoopSourceSignal(source)
+        CFRunLoopWakeUp(CFRunLoopGetMain())
+      }
+    }
+
+    func invalidate() { CFRunLoopSourceInvalidate(source) }
+  }
+
   @MainActor
   @Suite struct LexicalUITextViewTests {
     @Test func usesTextKit2AndIsTheRootElement() throws {
@@ -119,6 +155,38 @@
       let blurredWindow = attach(blurred)
       #expect(!blurred.hasFocus)
       _ = (autoFocusedWindow, focusedWindow, blurredWindow)
+    }
+
+    /// An update made outside the view, as from a toolbar or a sheet's
+    /// button, commits once the run loop's pass ends, as a browser runs
+    /// microtasks at the end of each task, even while events keep the main
+    /// thread from going idle. Committed only before the run loop slept, an
+    /// image inserted from a closing sheet showed seconds late on a busy
+    /// simulator.
+    @Test func commitsAnUpdateFromOutsideTheViewWhileTheMainThreadIsBusy() throws {
+      let (view, window) = try makeView()
+      let start = Date()
+      let busy: TimeInterval = 1
+      var committed: Date?
+      let removeListener = view.editor.registerUpdateListener { _ in committed = committed ?? Date()
+      }
+      // An event source that fires again at once for a second, so the run
+      // loop never sleeps, and whose first event updates the editor.
+      let events = BusyEvents { first in
+        if first {
+          try? view.editor.update {
+            try (getRoot().getFirstChild() as? ElementNode)?.append(createTextNode("Hello"))
+          }
+        }
+        return Date().timeIntervalSince(start) < busy
+      }
+      _ = CFRunLoopRunInMode(.defaultMode, busy + 0.2, false)
+      events.invalidate()
+      removeListener()
+      let delay = try #require(committed).timeIntervalSince(start)
+      #expect(delay < busy / 2, "committed \(delay) s after the update")
+      #expect(view.text == "Hello")
+      _ = window
     }
 
     /// The view is editable while the editor is, as `ContentEditable`

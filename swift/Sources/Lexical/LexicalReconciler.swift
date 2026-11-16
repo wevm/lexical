@@ -5,7 +5,8 @@
 // learns what it cannot compute alone: which nodes were created, updated or
 // destroyed (for mutation listeners), the root's cached text, each element's
 // `__textFormat` / `__textStyle` (taken from its first text descendant),
-// and the decorators to render. This file does that walk over the same
+// the decorators to render, and the nodes created again because their
+// `updateDOM` returned true. This file does that walk over the same
 // trees, in the same order, with each keyed DOM element replaced by a
 // `ReconciledNode` that holds the caches JS keeps on it
 // (`__lexicalTextContent`, `__lexicalFirstTextKey`). The native views render
@@ -23,10 +24,14 @@ package final class ReconciledNode {
   /// `__lexicalFirstTextKey`: the first text descendant (elements only);
   /// `.some(nil)` when there is none, `nil` while unset.
   var firstTextKey: NodeKey??
-  /// The slot container this node is mounted in, as `host/name`, for slot
-  /// values.
-  var slotContainer: String?
+  /// The slot container this node is mounted in (its `parentElement`), for
+  /// slot values.
+  var slotContainer: SlotContainer?
 }
+
+/// The stand-in for a slot container (`$createSlotDOM(name)`), compared by
+/// identity: a host created again mounts its slots in new ones.
+package final class SlotContainer {}
 
 /// `setMutatedNode`.
 package func setMutatedNode(
@@ -206,7 +211,7 @@ private final class Reconciler {
 
   /// `$createNode`. `slot` is the container the node is created into: `nil`
   /// where JS passes no DOM slot (a replacement), which never reuses a moved
-  /// node's DOM; a slot value passes its `host/name` container.
+  /// node's DOM; a slot value passes its slot container.
   @discardableResult
   func createNode(_ key: NodeKey, slot: Slot?) throws -> ReconciledNode {
     guard let node = nextNodeMap.get(key) else {
@@ -219,7 +224,7 @@ private final class Reconciler {
       let nextSlotHost = slotHostKeyField(node)
       let modelMoved = prevNode.__parent != node.__parent || prevSlotHost != nextSlotHost
       let slotChildDomDetached =
-        nextSlotHost != nil && existingDOM.slotContainer != slot.container
+        nextSlotHost != nil && existingDOM.slotContainer !== slot.container
       if modelMoved || slotChildDomDetached {
         existingDOM.slotContainer = slot.container
         editor._keyToDOMMap.set(key, existingDOM)
@@ -270,10 +275,10 @@ private final class Reconciler {
     return dom
   }
 
-  /// A DOM slot: where a created node goes. `container` names a slot
-  /// container (`host/name`); `nil` is the host's children.
+  /// A DOM slot: where a created node goes. `container` is a slot
+  /// container; `nil` is the host's children.
   struct Slot {
-    let container: String?
+    let container: SlotContainer?
   }
 
   /// `$createChildren`.
@@ -316,10 +321,10 @@ private final class Reconciler {
     let previousSubTreeTextContent = subTreeTextContent
     let outerSaved = beginCaptureGuard()
     var totalText = ""
-    for (name, slotKey) in slots {
+    for (_, slotKey) in slots {
       subTreeTextContent = ""
       let saved = beginCaptureGuard()
-      try createNode(slotKey, slot: Slot(container: "\(node.__key)/\(name)"))
+      try createNode(slotKey, slot: Slot(container: SlotContainer()))
       endCaptureGuard(saved)
       totalText += subTreeTextContent
     }
@@ -340,16 +345,19 @@ private final class Reconciler {
     var totalText = ""
     for (name, nextSlotKey) in nextSlots {
       let prevSlotKey = prevSlots.get(name)
-      let container = "\(nextNode.__key)/\(name)"
+      // `$slotContainerForKey(prevSlotKey)`.
+      let container = prevSlotKey.flatMap { prevKeyToDOMMap.get($0)?.slotContainer }
       subTreeTextContent = ""
       let saved = beginCaptureGuard()
-      if prevSlotKey == nil || prevKeyToDOMMap.get(prevSlotKey!) == nil {
-        try createNode(nextSlotKey, slot: Slot(container: container))
-      } else if prevSlotKey == nextSlotKey {
-        try reconcileNode(nextSlotKey)
+      if let container {
+        if prevSlotKey == nextSlotKey {
+          try reconcileNode(nextSlotKey)
+        } else {
+          try destroyNode(prevSlotKey!)
+          try createNode(nextSlotKey, slot: Slot(container: container))
+        }
       } else {
-        try destroyNode(prevSlotKey!)
-        try createNode(nextSlotKey, slot: Slot(container: container))
+        try createNode(nextSlotKey, slot: Slot(container: SlotContainer()))
       }
       endCaptureGuard(saved)
       totalText += subTreeTextContent
@@ -360,6 +368,25 @@ private final class Reconciler {
   }
 
   // MARK: Reconcile
+
+  /// `activeEditorDOMRenderConfig.$updateDOM(nextNode, prevNode, dom,
+  /// editor)`: whether the node is created again. The views render, so no
+  /// DOM is kept: `dom` is what `$createDOM` makes of `prevNode`, the DOM JS
+  /// would pass, and only the answer is used. A Swift node need not render
+  /// to the DOM, so a class whose `createDOM` or `updateDOM` is the base
+  /// method's keeps its DOM, as one whose `updateDOM` returns false does
+  /// (JS throws).
+  func updateDOM(_ nextNode: LexicalNode, _ prevNode: LexicalNode) throws -> Bool {
+    let config = getEditorDOMRenderConfig(editor)
+    do {
+      let dom = try config.createDOM(prevNode, editor)
+      return try config.updateDOM(nextNode, prevNode, dom, editor)
+    } catch let error as LexicalError
+      where error == CREATE_DOM_NOT_EXTENDED || error == UPDATE_DOM_NOT_EXTENDED
+    {
+      return false
+    }
+  }
 
   /// `$hasCustomTextContent`: JS compares the node's `getTextContent` with
   /// `ElementNode.prototype.getTextContent`. Swift cannot ask whether a
@@ -564,6 +591,16 @@ private final class Reconciler {
     // was cloned. If it's also dirty, we mark it as mutated.
     if prevNode !== nextNode && isDirty {
       try setMutatedNode(mutatedNodes, editor, nextNode, "updated")
+    }
+
+    // Update node. If it returns true, we need to unmount and re-create the
+    // node.
+    if try updateDOM(nextNode, prevNode) {
+      let replacementDOM = try createNode(key, slot: nil)
+      // `parentDOM.replaceChild(replacementDOM, dom)`.
+      replacementDOM.slotContainer = dom.slotContainer
+      try destroyNode(key)
+      return replacementDOM
     }
 
     if let prevElement = prevNode as? ElementNode {

@@ -1312,6 +1312,11 @@ private func runNodeMethod(
     try codeNode(n).setIsSyntaxHighlightSupported(a0.boolValue.orThrow())
   // `null` is `undefined`.
   case "setLanguage": try codeNode(n).setLanguage(a0.stringValue)
+  case "setListType":
+    guard let list = n as? ListNode else {
+      throw ScriptError("\(n.getKey()) is not a list")
+    }
+    _ = try list.setListType(a0.stringValue.orThrow())
   case "setTag":
     guard let heading = n as? HeadingNode else {
       throw ScriptError("\(n.getKey()) is not a heading")

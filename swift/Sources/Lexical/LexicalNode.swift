@@ -395,7 +395,7 @@ open class LexicalNode {
   /// `createDOM(config, editor)`: the element this node renders as. Must
   /// be overridden by nodes that render.
   open func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement {
-    throw LexicalError("createDOM: base method not extended")
+    throw CREATE_DOM_NOT_EXTENDED
   }
 
   /// `updateDOM(prevNode, dom, config)`: updates `dom` in place for the
@@ -405,7 +405,7 @@ open class LexicalNode {
   ) throws
     -> Bool
   {
-    throw LexicalError("updateDOM: base method not extended")
+    throw UPDATE_DOM_NOT_EXTENDED
   }
 
   /// `getDOMSlot(element)` (`@experimental`): where this node's content is

@@ -113,6 +113,7 @@ import {
 } from '@lexical/link';
 import {
   $isListItemNode,
+  $isListNode,
   CheckListExtension,
   INSERT_CHECK_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
@@ -120,6 +121,7 @@ import {
   ListExtension,
   ListItemNode,
   ListNode,
+  type ListType,
   registerCheckList,
   registerList,
   REMOVE_LIST_COMMAND,
@@ -2707,6 +2709,13 @@ const NODE_METHODS: Record<
   // `CodeNode.setLanguage(language)`; `null` is `undefined`.
   setLanguage: (n, args) =>
     codeNode(n).setLanguage(optional<string>(arg(args, 0))),
+  // `ListNode.setListType(type)`.
+  setListType: (n, args) => {
+    if (!$isListNode(n)) {
+      throw new Error(`${n.getKey()} is not a list`);
+    }
+    n.setListType(arg(args, 0) as ListType);
+  },
   setMode: (n, args) => text(n).setMode(arg(args, 0) as never),
   setStyle: (n, args) => {
     if ($isTextNode(n)) {

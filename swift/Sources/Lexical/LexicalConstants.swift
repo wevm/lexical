@@ -117,3 +117,8 @@ package func testRTL(_ text: String) -> Bool {
 package func testLTR(_ text: String) -> Bool {
   matchesDirection(text, exclude: RTL_RANGES, include: LTR_RANGES)
 }
+
+/// What the base `createDOM` and `updateDOM` throw: the class does not
+/// render to the DOM.
+package let CREATE_DOM_NOT_EXTENDED = LexicalError("createDOM: base method not extended")
+package let UPDATE_DOM_NOT_EXTENDED = LexicalError("updateDOM: base method not extended")

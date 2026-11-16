@@ -197,10 +197,9 @@ public func registerPlainText(_ editor: Editor) -> () -> Void {
   ])
 }
 
-/// `PlainTextExtension`. Of upstream's dependencies, Dragon and
-/// NormalizeTripleClickSelection (browser events) are not ported
-/// (DESIGN.md).
+/// `PlainTextExtension`. Of upstream's dependencies, Dragon (browser
+/// events) is not ported (DESIGN.md).
 public let PlainTextExtension = defineExtension(
   name: "@lexical/plain-text", config: (), conflictsWith: ["@lexical/rich-text"],
-  dependencies: [NormalizeInlineElementsExtension],
+  dependencies: [NormalizeInlineElementsExtension, NormalizeTripleClickSelectionExtension],
   register: { editor, _, _ in registerPlainText(editor) })

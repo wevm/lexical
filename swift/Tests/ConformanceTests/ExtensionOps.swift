@@ -75,6 +75,12 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "MarkExtension": MarkExtension
   case "MarkBaseExtension": MarkBaseExtension
   case "HeadlessExtension": HeadlessExtension
+  case "KeyboardShortcutsExtension": KeyboardShortcutsExtension
+  case "ClickAfterLastBlockExtension": ClickAfterLastBlockExtension
+  case "NormalizeTripleClickSelectionExtension": NormalizeTripleClickSelectionExtension
+  case "IMEExtension": IMEExtension
+  case "AutoFocusExtension": AutoFocusExtension
+  case "ClickableLinkExtension": ClickableLinkExtension
   default: markFlavor(key)
   }
 }
@@ -190,6 +196,56 @@ private func linkAttributes(_ value: JSONValue) throws -> LinkAttributes {
   }
   return LinkAttributes(
     rel: try attribute("rel"), target: try attribute("target"), title: try attribute("title"))
+}
+
+/// A `ModifiersJson` as its mask.
+private func modifiers(_ value: JSONValue) throws -> KeyboardEventModifierMask {
+  let json = value.objectValue ?? JSONObject()
+  func expectation(_ name: String) throws -> ModifierExpectation {
+    switch json[name] {
+    case nil, .bool(false)?: return .released
+    case .bool(true)?: return .pressed
+    case .string("any")?: return .any
+    case let other?: throw ScriptError("bad modifier \(name): \(other.stringify())")
+    }
+  }
+  var mask = KeyboardEventModifierMask(
+    altKey: try expectation("altKey"), ctrlKey: try expectation("ctrlKey"),
+    metaKey: try expectation("metaKey"), shiftKey: try expectation("shiftKey"))
+  switch json["controlOrOther"]?.stringValue {
+  case nil: break
+  case "metaKey": mask.controlOrOther = .metaKey
+  case "altKey": mask.controlOrOther = .altKey
+  case let other?: throw ScriptError("bad controlOrOther \(other)")
+  }
+  return mask
+}
+
+/// `scriptShortcutMatch`: a `ShortcutJson` as a `KeyboardShortcut` without
+/// functions, its command the keyboard command it names (`KEY_DOWN_COMMAND`
+/// for a match that names none).
+func shortcutMatch(_ value: JSONValue) throws -> KeyboardShortcut {
+  let json = value.objectValue ?? JSONObject()
+  guard let key = json["key"]?.stringValue else {
+    throw ScriptError("a shortcut needs a key: \(value.stringify())")
+  }
+  return KeyboardShortcut(
+    key: key, modifiers: try json["modifiers"].map(modifiers) ?? KeyboardEventModifierMask(),
+    unshiftedKey: json["unshiftedKey"]?.stringValue,
+    command: try json["command"]?.stringValue.map(keyboardCommand) ?? KEY_DOWN_COMMAND,
+    description: json["description"]?.stringValue,
+    bubbleFromNestedEditors: json["bubbleFromNestedEditors"]?.boolValue == true)
+}
+
+/// `getWindow: 'log'`'s window.
+private final class LogWindow: LinkWindow {
+  let log: (JSONValue) -> Void
+
+  init(_ log: @escaping (JSONValue) -> Void) { self.log = log }
+
+  func open(_ url: String, _ target: String, _ features: String?) {
+    log(.array(["open", .string(url), .string(target), features.map { .string($0) } ?? .null]))
+  }
 }
 
 private let extensionPhases = ["init", "build", "register", "afterRegistration"]
@@ -541,6 +597,59 @@ final class TestExtensions {
           }
           return true
         })
+    case "KeyboardShortcutsExtension":
+      return try configured(
+        KeyboardShortcutsExtension,
+        partials(key, configs) { (p: inout Partial<KeyboardShortcutsConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          case "priority": p.set(\.priority, Int(try number(value)))
+          case "shortcuts": p.set(\.shortcuts, try shortcuts(value))
+          default: return false
+          }
+          return true
+        })
+    case "ClickAfterLastBlockExtension":
+      return try configured(
+        ClickAfterLastBlockExtension,
+        partials(key, configs) { (p: inout Partial<ClickAfterLastBlockConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          case "$shouldInsertAfter" where value.stringValue == "always":
+            p.set(\.shouldInsertAfter) { _ in true }
+          default: return false
+          }
+          return true
+        })
+    case "AutoFocusExtension":
+      return try configured(
+        AutoFocusExtension,
+        partials(key, configs) { (p: inout Partial<AutoFocusConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          case "defaultSelection": p.set(\.defaultSelection, try string(value))
+          default: return false
+          }
+          return true
+        })
+    case "ClickableLinkExtension":
+      let log = self.log
+      return try configured(
+        ClickableLinkExtension,
+        partials(key, configs) { (p: inout Partial<ClickableLinkConfig>, field, value) in
+          switch (field, value.stringValue) {
+          case ("disabled", _): p.set(\.disabled, try bool(value))
+          case ("newTab", _): p.set(\.newTab, try bool(value))
+          // `getWindow: 'log'`: a window whose `open` logs `['open', url,
+          // target, features]`.
+          case ("getWindow", "log"):
+            let window = LogWindow(log)
+            p.set(\.getWindow) { _ in window }
+          case ("getWindow", "none"): p.set(\.getWindow) { _ in nil }
+          default: return false
+          }
+          return true
+        })
     default:
       if let flavor = markFlavor(key) {
         return try configured(
@@ -561,6 +670,48 @@ final class TestExtensions {
       }
       throw ScriptError("\(key) takes no config overrides")
     }
+  }
+
+  /// `scriptShortcuts(ctx, json)`: a `ShortcutsJson` as a table, each
+  /// shortcut's `$disabled` and `$dispatch` by name.
+  private func shortcuts(_ json: JSONValue) throws -> NamedKeyboardShortcuts {
+    guard let object = json.objectValue else {
+      throw ScriptError("bad shortcuts \(json.stringify())")
+    }
+    var table = NamedKeyboardShortcuts()
+    for (name, value) in object {
+      switch value {
+      case .null: table.set(name, nil)
+      case .array(let list): table.set(name, try list.map(shortcut))
+      default: table.set(name, [try shortcut(value)])
+      }
+    }
+    return table
+  }
+
+  private func shortcut(_ value: JSONValue) throws -> KeyboardShortcut {
+    var shortcut = try shortcutMatch(value)
+    let json = value.objectValue ?? JSONObject()
+    switch json["$disabled"]?.stringValue {
+    case nil: break
+    case "always": shortcut.disabled = { _, _ in true }
+    case "notRange": shortcut.disabled = { selection, _ in !(selection is RangeSelection) }
+    case let other?: throw ScriptError("bad $disabled \(other)")
+    }
+    if let name = json["$dispatch"]?.stringValue {
+      guard name == "log" || name == "unhandled" else {
+        throw ScriptError("bad $dispatch \(name)")
+      }
+      let handled = name == "log"
+      let log = self.log
+      shortcut.dispatch = { [unowned self] _, event, next, fromEditor in
+        // `fromEditor === ctx.editor`: every editor is the session's but
+        // the script's `parent`.
+        log(.array(["shortcutDispatch", .string(event.key), .bool(self.parent !== fromEditor)]))
+        return handled ? try next() : false
+      }
+    }
+    return shortcut
   }
 
   /// `output[name].value = value` for a signal of a real extension's
@@ -682,7 +833,8 @@ final class TestExtensions {
     let rootText = { (editor: Editor) -> JSONValue in
       .string(try editor.getEditorState().read { try getRoot().getTextContent() })
     }
-    var editorConfig = InitialEditorConfig()
+    var editorConfig = InitialEditorConfig(
+      namespace: spec["namespace"]?.stringValue, editable: spec["editable"]?.boolValue)
     switch spec["initialEditorState"] {
     case nil: break
     case .null?: editorConfig.initialEditorState = InitialEditorStateType.none
@@ -952,6 +1104,13 @@ final class TestExtensions {
         throw ScriptError("not watching \(key)")
       }
       dispose()
+    } else if object["logIME"] != nil {
+      let output = try getExtensionDependencyFromEditor(editor, IMEExtension).output
+      log(
+        .array([
+          "ime", output.compositionKey.peek().map { .string($0) } ?? .null,
+          output.composingTextNode.peek().map { .string($0.getKey()) } ?? .null,
+        ]))
     } else if let key = object["logDependency"]?.stringValue {
       let dep = try getExtensionDependencyFromEditor(editor, try of(key))
       log(.array(["dependency", .string(key), .object(dep.config)]))

@@ -38,7 +38,8 @@ pub struct LexicalEditorWithDispose {
 impl LexicalEditorWithDispose {
     /// `dispose()`: runs every clean-up the extensions' `register` and
     /// `afterRegistration` returned, in the reverse of the order they
-    /// registered, then aborts their signal. Only the first call does
+    /// registered, then aborts their signal; before all of that it detaches
+    /// the root element (`setRootElement(null)`). Only the first call does
     /// anything.
     pub fn dispose(&self) {
         let dispose = self.dispose.borrow_mut().take();
@@ -168,8 +169,6 @@ impl LexicalBuilder {
     /// every extension built.
     pub fn construct_editor(&self) -> Result<Editor, LexicalError> {
         let config = self.build_create_editor_args()?;
-        // `namespace` isn't in `InitialEditorConfig` yet, so the editor gets
-        // `createEditor`'s: its parent editor's, or a random one.
         // `onWarn: err => onWarn(err, editor)`, for the editor made here.
         let warned_editor: Rc<RefCell<Option<std::rc::Weak<crate::editor::EditorInner>>>> =
             Rc::default();
@@ -188,6 +187,9 @@ impl LexicalBuilder {
             }) as crate::WarningHandler
         });
         let editor = create_editor(CreateEditorArgs {
+            // Empty for `undefined`: `createEditor` then takes the parent
+            // editor's, or a random one.
+            namespace: config.namespace.unwrap_or_default(),
             nodes: config.nodes,
             editable: config.editable,
             on_warn,
@@ -210,9 +212,21 @@ impl LexicalBuilder {
     /// `buildEditor()`.
     pub fn build_editor(&self) -> Result<LexicalEditorWithDispose, LexicalError> {
         let editor = self.construct_editor()?;
-        // JS also detaches the root element (`setRootElement(null)`), which
-        // a headless editor doesn't have.
-        let dispose = self.register_editor(&editor)?;
+        let unregister = self.register_editor(&editor)?;
+        // `mergeRegister(this.registerEditor(editor), () =>
+        // editor.setRootElement(null))`, which runs in reverse: the root
+        // element is detached first, while the extensions still listen.
+        let weak = editor.weak();
+        let dispose = merge_register(vec![
+            unregister,
+            Box::new(move || {
+                if let Some(editor) = weak.upgrade().map(Editor) {
+                    // Only a headless editor's guard can refuse, and it
+                    // allows `None`.
+                    let _ = editor.set_root_element(None);
+                }
+            }),
+        ]);
         Ok(LexicalEditorWithDispose {
             editor,
             dispose: Rc::new(RefCell::new(Some(dispose))),
@@ -437,6 +451,9 @@ impl LexicalBuilder {
             }
             if let Some(editable) = extension.editable() {
                 config.editable = Some(editable);
+            }
+            if let Some(namespace) = extension.namespace() {
+                config.namespace = Some(namespace.to_owned());
             }
             if let Some(on_warn) = extension.on_warn() {
                 config.on_warn = Some(on_warn.clone());

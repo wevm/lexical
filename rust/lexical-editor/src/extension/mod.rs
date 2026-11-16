@@ -19,8 +19,12 @@
 //! `SelectBlockExtension`, `BlockIdExtension` (block ids, positional ids and
 //! handles), `NodeStructureExtension` (with `registerNodeStructure`),
 //! `NestedEditorExtension`, `NodeSelectionExtension`, `HorizontalRuleExtension`
-//! (inserting a rule by command and selecting one on a click) and the config
-//! of `PreventSelectAllExtension`.
+//! (inserting a rule by command and selecting one on a click), the config
+//! of `PreventSelectAllExtension`, and the extensions that follow input,
+//! with the app reporting the DOM events JS listens to as commands:
+//! `KeyboardShortcutsExtension` (with `formatKeyboardShortcut`),
+//! `ClickAfterLastBlockExtension`, `NormalizeTripleClickSelectionExtension`,
+//! `IMEExtension` and `AutoFocusExtension`.
 //! The other packages' extensions are in their modules, behind their
 //! features (`rich_text_extension`, `list_extension`...). The types it builds
 //! on are `lexical`'s `extension-core`, at the crate root
@@ -32,11 +36,14 @@
 //! a CSS style declaration; `HorizontalRuleExtension`'s selected class,
 //! which it sets on a rule's DOM; `PreventSelectAllExtension`'s root element
 //! listener; and the package's other extensions
-//! (rust/PARITY.md).
+//! (`NodeSelectionDataSelected`, `SelectionAlwaysOnDisplay`,
+//! `WatchEditable`, `HMR`; rust/PARITY.md).
 
+mod auto_focus_extension;
 mod block_handles;
 mod block_id_extension;
 mod clear_editor_extension;
+mod click_after_last_block_extension;
 mod config;
 mod decorator_text_extension;
 mod editor_state_extension;
@@ -45,13 +52,16 @@ mod get_extension_dependency;
 mod get_extension_dependency_from_editor;
 mod get_peer_dependency_from_editor;
 mod horizontal_rule_extension;
+mod ime_extension;
 mod initial_state_extension;
+mod keyboard_shortcuts_extension;
 mod lexical_builder;
 mod named_signals;
 mod nested_editor_extension;
 mod node_selection_extension;
 mod node_structure_extension;
 mod normalize_inline_elements_extension;
+mod normalize_triple_click_selection_extension;
 mod positional_block_id;
 mod root_element_extension;
 mod select_block_extension;
@@ -59,6 +69,10 @@ pub mod signals;
 mod tab_indentation_extension;
 mod watched_signal;
 
+pub use auto_focus_extension::{
+    AutoFocusConfig, AutoFocusConfigOverrides, AutoFocusExtensionType, AutoFocusOutput,
+    auto_focus_extension,
+};
 pub use block_id_extension::{
     BlockHandleInvalidReason, BlockHandleOptions, BlockHandleResult, BlockIdConfig,
     BlockIdConfigOverrides, BlockIdExtensionType, BlockIdOutput, BlockIdRuntime, GenerateId,
@@ -70,6 +84,11 @@ pub use block_id_extension::{
 pub use clear_editor_extension::{
     ClearEditorConfig, ClearEditorConfigOverrides, ClearEditorExtensionType, ClearEditorOutput,
     OnClear, clear_editor_extension, register_clear_editor,
+};
+pub use click_after_last_block_extension::{
+    ClickAfterLastBlockConfig, ClickAfterLastBlockConfigOverrides,
+    ClickAfterLastBlockExtensionType, ClickAfterLastBlockOutput, ShouldInsertAfter,
+    click_after_last_block_extension, default_should_insert_after,
 };
 pub use config::{KnownTypesAndNodes, get_known_types_and_nodes, get_node_config};
 #[cfg(feature = "html")]
@@ -92,13 +111,19 @@ pub use horizontal_rule_extension::{
     HorizontalRuleExtensionType, HorizontalRuleNode, INSERT_HORIZONTAL_RULE_COMMAND,
     create_horizontal_rule_node, horizontal_rule_extension, is_horizontal_rule_node,
 };
+pub use ime_extension::{ImeExtensionType, ImeOutput, ime_extension};
 pub use initial_state_extension::{
     EditorSetOptions, InitialStateConfig, InitialStateConfigOverrides, InitialStateExtensionType,
     InitialStateInit, initial_state_extension,
 };
+pub use keyboard_shortcuts_extension::{
+    FormatKeyboardShortcutOptions, KeyboardShortcutsConfig, KeyboardShortcutsConfigOverrides,
+    KeyboardShortcutsExtensionType, KeyboardShortcutsOutput, NamedKeyboardShortcuts,
+    format_keyboard_shortcut, keyboard_shortcuts_extension,
+};
 pub use lexical_builder::{LexicalBuilder, LexicalEditorWithDispose, build_editor_from_extensions};
 // For the package modules whose extensions use it (ListExtension, CodeIndentExtension).
-#[cfg(any(feature = "list", feature = "code", feature = "a11y"))]
+#[cfg(any(feature = "list", feature = "code", feature = "a11y", feature = "link"))]
 pub(crate) use named_signals::named_signals_config;
 pub use named_signals::{NamedSignalsOutput, named_signals};
 pub use nested_editor_extension::{
@@ -116,6 +141,12 @@ pub use normalize_inline_elements_extension::{
     NormalizeInlineElementsConfig, NormalizeInlineElementsConfigOverrides,
     NormalizeInlineElementsExtensionType, NormalizeInlineElementsOutput,
     normalize_inline_elements_extension, register_normalize_inline_elements,
+};
+pub use normalize_triple_click_selection_extension::{
+    FixFocusOverselection, NormalizeTripleClickSelectionConfig,
+    NormalizeTripleClickSelectionConfigOverrides, NormalizeTripleClickSelectionExtensionType,
+    NormalizeTripleClickSelectionOutput, fix_focus_overselection,
+    normalize_triple_click_selection_extension,
 };
 pub use root_element_extension::{RootElementExtensionType, root_element_extension};
 pub use select_block_extension::{

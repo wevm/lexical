@@ -510,9 +510,10 @@ Reversible choices made porting `@lexical/extension` under Q18.
   `LexicalClipboard`. Their embedded-input checks are left out, because a
   native control inside a decorator handles its own clipboard, and so is
   the iOS text-file drop fall-through, a WebKit quirk. `RichTextExtension` depends on
-  `NormalizeInlineElementsExtension`, `CoreImportExtension` and its own
-  import rules; `@lexical/a11y` (HeadingAnnounce) and the M3 event
-  extensions (Dragon, NormalizeTripleClickSelection) are not ported yet. `HeadingNode.insertNewAfter()` (no selection) is a separate
+  `NormalizeInlineElementsExtension`, `NormalizeTripleClickSelectionExtension`
+  (as `PlainTextExtension` does), `HeadingAnnounceExtension`,
+  `CoreImportExtension` and its own import rules; the M3 event extension
+  Dragon is not ported yet. `HeadingNode.insertNewAfter()` (no selection) is a separate
   method, because Swift's override takes a non-optional selection.
   `QuoteNode.isShadowRoot()` can't throw, so outside a read or update it
   reads the node it is called on. `SET_TEXT_FORMAT_COMMAND` carries

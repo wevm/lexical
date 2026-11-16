@@ -107,6 +107,7 @@ use std::rc::Rc;
 mod code_highlight;
 mod core_api;
 mod extensions;
+mod input;
 mod schema_node;
 mod structure;
 
@@ -153,6 +154,8 @@ pub(crate) struct SessionRoot {
     body: Rc<SessionBody>,
     /// The computed styles the `computedStyles` step stubs, by node key.
     computed_styles: RefCell<HashMap<String, selection::ComputedStyle>>,
+    /// With `script.rootFocus`, the log `focus()` adds `['rootFocus']` to.
+    focus_log: RefCell<Option<Rc<RefCell<Vec<Value>>>>>,
 }
 
 impl RootElement for SessionRoot {
@@ -162,6 +165,13 @@ impl RootElement for SessionRoot {
 
     fn computed_style(&self, key: &str) -> Option<selection::ComputedStyle> {
         self.computed_styles.borrow().get(key).cloned()
+    }
+
+    fn focus(&self) {
+        if let Some(log) = &*self.focus_log.borrow() {
+            log.borrow_mut()
+                .push(Value::Array(vec!["rootFocus".into()]));
+        }
     }
 }
 
@@ -190,6 +200,7 @@ impl Ctx {
                 Rc::new(SessionRoot {
                     body: Rc::new(SessionBody::default()),
                     computed_styles: RefCell::default(),
+                    focus_log: RefCell::default(),
                 })
             })
             .clone()
@@ -1320,7 +1331,9 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "logAdjacentNode"
             | "logGetters"
             | "appendText"
-            | "logEditable",
+            | "logEditable"
+            | "formatKeyboardShortcut"
+            | "fixFocusOverselection",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -2579,7 +2592,8 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             log_dispatched(|entry| ctx.log(entry), name, dispatched);
             Ok(())
         }
-        other => Err(err(format!("unsupported action {other:?}"))),
+        other => input::run_action(action, ctx, editor)
+            .unwrap_or_else(|| Err(err(format!("unsupported action {other:?}")))),
     }
 }
 
@@ -3292,6 +3306,9 @@ impl Session {
     /// history on `editor`.
     fn start_on(script: &Value, editor: Editor, ctx: Rc<Ctx>) -> Result<Session, String> {
         let flag = |key: &str| script.get(key).and_then(Value::as_bool) == Some(true);
+        if flag("rootFocus") {
+            *ctx.session_dom().focus_log.borrow_mut() = Some(ctx.log.clone());
+        }
         let (rich_text, with_list, with_link, with_code, with_hashtag) = (
             flag("richText"),
             flag("list"),
@@ -3792,6 +3809,8 @@ impl Session {
                     Ok(())
                 }
             }
+        } else if let Some(done) = input::run_step(step, ctx, editor) {
+            done
         } else {
             extensions::run_step(step, ctx, built)
         }

@@ -51,22 +51,27 @@ import {
   $getExtensionOutput,
   $isRootChildBlock,
   $resolveBlockHandle,
+  AutoFocusExtension,
   batch,
   BlockIdExtension,
   blockIdState,
   buildEditorFromExtensions,
   ClearEditorExtension,
+  ClickAfterLastBlockExtension,
   computed,
   DecoratorTextExtension,
   DecoratorTextNode,
   EditorStateExtension,
   effect,
+  formatKeyboardShortcut,
   getExtensionDependencyFromEditor,
   getKnownTypesAndNodes,
   getPeerDependencyFromEditor,
   HorizontalRuleExtension,
   HorizontalRuleNode,
+  IMEExtension,
   INSERT_HORIZONTAL_RULE_COMMAND,
+  KeyboardShortcutsExtension,
   LexicalBuilder,
   namedSignals,
   type NamedSignalsOutput,
@@ -74,6 +79,7 @@ import {
   NodeSelectionExtension,
   NodeStructureExtension,
   NormalizeInlineElementsExtension,
+  NormalizeTripleClickSelectionExtension,
   registerNodeStructure,
   SelectBlockExtension,
   TabIndentationExtension,
@@ -98,6 +104,7 @@ import {
   AutoLinkExtension,
   AutoLinkNode,
   autoLinkUrlMatcher,
+  ClickableLinkExtension,
   LinkExtension,
   LinkNode,
   registerAutoLink,
@@ -292,6 +299,7 @@ import {
   COMPOSITION_END_COMMAND,
   COMPOSITION_START_COMMAND,
   configExtension,
+  CONTROL_OR_OTHER_KEY,
   CONTROLLED_TEXT_INSERTION_COMMAND,
   COPY_COMMAND,
   createCommand,
@@ -332,6 +340,8 @@ import {
   KEY_MODIFIER_COMMAND,
   KEY_SPACE_COMMAND,
   KEY_TAB_COMMAND,
+  type KeyboardEventModifierMask,
+  type KeyboardShortcut,
   type Klass,
   type LexicalCommand,
   type LexicalEditor,
@@ -408,6 +418,19 @@ export type Action =
   | {do: 'select'; anchor: PointSpec; focus?: PointSpec}
   | {do: 'selectNodes'; keys: string[]}
   | {do: 'clearSelection'}
+  /**
+   * Logs `['formatKeyboardShortcut', segments]`:
+   * `formatKeyboardShortcut(shortcut, {isApple})` (@lexical/extension) of
+   * the shortcut's `key`, `modifiers` and `unshiftedKey`; without
+   * `isApple`, the platform's (`IS_APPLE`, the script's `isApple`).
+   */
+  | {do: 'formatKeyboardShortcut'; shortcut: ShortcutJson; isApple?: boolean}
+  /**
+   * `$fixFocusOverselection` of NormalizeTripleClickSelectionExtension's
+   * output (`getExtensionDependencyFromEditor($getEditor(), ...)
+   * .output.$fixFocusOverselection.peek()()`), which a triple click runs.
+   */
+  | {do: 'fixFocusOverselection'}
   /** `$selectAll()`, or with `scoped`, `$selectAll($getSelection())`. */
   | {do: 'selectAll'; scoped?: boolean}
   /** `$insertNodes` with the parsed nodes. */
@@ -1043,6 +1066,30 @@ export type Step = (
   /** Disposes the effect `watchNodeKey` kept under this key. */
   | {unwatchNodeKey: string}
   /**
+   * A DOM event dispatched at the element the reconciler made for the node
+   * `targetKey` (`editor.getElementByKey`, `root` the root element; the
+   * root element when left out), as a browser would dispatch it, for the
+   * extensions that listen to the root element rather than to a command:
+   * a bubbling `click` or `auxclick` `MouseEvent` of the mouse fields
+   * `eventPayload` reads, or a `compositionend` `CompositionEvent` of
+   * `data`. Logs `['domEvent', type, event.defaultPrevented]`. The Rust and
+   * Swift runners dispatch CLICK_COMMAND (of the event's type, with
+   * `targetKey`) or COMPOSITION_END_COMMAND instead, which their views
+   * send for these events.
+   */
+  | {domEvent: DomEventJson}
+  /**
+   * Logs `['ime', compositionKey, composingTextNode]` of IMEExtension's
+   * output, the text node as its key (or `null`).
+   */
+  | {logIME: true}
+  /**
+   * Logs `['editor', namespace, editable, hasRootElement]`:
+   * `editor._config.namespace`, `editor.isEditable()` and whether
+   * `editor.getRootElement()` is not `null`.
+   */
+  | {logEditor: true}
+  /**
    * `registerMarkIDsListener(editor, flavor, listener)` (@lexical/mark) of
    * the mark flavor `flavor` (MARK_FLAVORS), its disposer kept under
    * `name`. Each call logs `['markIDsChange', name, added, removed, ids,
@@ -1129,6 +1176,10 @@ export type ExtensionPhase =
  */
 export type ExtensionSpec = {
   name: string;
+  /** `namespace`, of the editor it builds. */
+  namespace?: string;
+  /** `editable`, of the editor it builds. */
+  editable?: boolean;
   /** The default config; without it, the builder's default is `{}`. */
   config?: ExtensionConfig;
   dependencies?: ExtensionArg[];
@@ -1365,6 +1416,12 @@ export type Script = {
   isApple?: boolean;
   /** Register `TestTextNode` (`test-text`). */
   testText?: boolean;
+  /**
+   * The session's root element logs `['rootFocus']` when it is focused
+   * (`rootElement.focus()`, which AutoFocusExtension calls), in place of
+   * jsdom's focus of an element that isn't in its document.
+   */
+  rootFocus?: boolean;
   /**
    * Register `TestTextNode` and TEXT_REPLACEMENT with its `withKlass`, so
    * `$create(TextNode)` and `$createTextNode` make `TestTextNode`s.
@@ -2748,6 +2805,21 @@ function stateConfig(name: string): AnyStateConfig {
 
 function $runAction(action: Action, ctx: Context): void {
   switch (action.do) {
+    case 'formatKeyboardShortcut':
+      ctx.log.push([
+        'formatKeyboardShortcut',
+        formatKeyboardShortcut(
+          scriptShortcutMatch(action.shortcut),
+          action.isApple === undefined ? {} : {isApple: action.isApple},
+        ),
+      ]);
+      return;
+    case 'fixFocusOverselection':
+      getExtensionDependencyFromEditor(
+        $getEditor(),
+        NormalizeTripleClickSelectionExtension,
+      ).output.$fixFocusOverselection.peek()();
+      return;
     case 'append':
       element($node(action.key)).append(...$parse(action.nodes));
       return;
@@ -3834,6 +3906,169 @@ function scriptDataTransfer(json: Json | undefined): ScriptDataTransfer | null {
 let eventWindow: ReturnType<typeof browserWindow> | null = null;
 
 /**
+ * A `KeyboardEventModifierMask` as JSON: each modifier `true`, `false` or
+ * `'any'` (left out is `false`), and `controlOrOther`, the
+ * `[CONTROL_OR_OTHER_KEY]` that `CONTROL_OR_META` (`'metaKey'`) and
+ * `CONTROL_OR_ALT` (`'altKey'`) carry.
+ */
+export type ModifiersJson = {
+  altKey?: boolean | 'any';
+  ctrlKey?: boolean | 'any';
+  metaKey?: boolean | 'any';
+  shiftKey?: boolean | 'any';
+  controlOrOther?: 'metaKey' | 'altKey';
+};
+
+/**
+ * A `KeyboardShortcut` as JSON: its `key`, `modifiers` and `unshiftedKey`,
+ * and, in KeyboardShortcutsExtension's `shortcuts`, the `command` it
+ * dispatches (by name, `command(ctx, name)`), its `description`,
+ * `bubbleFromNestedEditors`, and its functions by name: `$disabled:
+ * 'always'` skips it, `'notRange'` skips it unless the selection is a
+ * range selection; `$dispatch: 'log'` logs `['shortcutDispatch', key,
+ * fromEditorIsEditor]` and calls `$next`, `'unhandled'` logs the same and
+ * returns `false` without dispatching.
+ */
+export type ShortcutJson = {
+  key: string;
+  modifiers?: ModifiersJson;
+  unshiftedKey?: string;
+  command?: string;
+  description?: string;
+  bubbleFromNestedEditors?: boolean;
+  $disabled?: 'always' | 'notRange';
+  $dispatch?: 'log' | 'unhandled';
+};
+
+/** `NamedKeyboardShortcuts` as JSON. */
+export type ShortcutsJson = {
+  [name: string]: ShortcutJson | ShortcutJson[] | null;
+};
+
+/** The mask of `ModifiersJson`. */
+function scriptModifiers(json: ModifiersJson): KeyboardEventModifierMask {
+  const {controlOrOther, ...mask} = json;
+  return controlOrOther === undefined
+    ? mask
+    : ({...mask, [CONTROL_OR_OTHER_KEY]: controlOrOther} as never);
+}
+
+/** The `KeyboardShortcutMatch` of a `ShortcutJson`. */
+function scriptShortcutMatch(json: ShortcutJson): {
+  key: string;
+  modifiers?: KeyboardEventModifierMask;
+  unshiftedKey?: string;
+} {
+  return {
+    key: json.key,
+    ...(json.modifiers === undefined
+      ? {}
+      : {modifiers: scriptModifiers(json.modifiers)}),
+    ...(json.unshiftedKey === undefined
+      ? {}
+      : {unshiftedKey: json.unshiftedKey}),
+  };
+}
+
+/** The `NamedKeyboardShortcuts` of a `ShortcutsJson`. */
+function scriptShortcuts(
+  ctx: Context,
+  json: ShortcutsJson,
+): Record<string, KeyboardShortcut | KeyboardShortcut[] | null> {
+  const shortcut = (s: ShortcutJson): KeyboardShortcut => {
+    const out: KeyboardShortcut = {
+      ...scriptShortcutMatch(s),
+      command: command(ctx, s.command ?? '') as never,
+    };
+    if (s.description !== undefined) {
+      out.description = s.description;
+    }
+    if (s.bubbleFromNestedEditors !== undefined) {
+      out.bubbleFromNestedEditors = s.bubbleFromNestedEditors;
+    }
+    if (s.$disabled === 'always') {
+      out.$disabled = () => true;
+    } else if (s.$disabled === 'notRange') {
+      out.$disabled = selection => !$isRangeSelection(selection);
+    }
+    if (s.$dispatch !== undefined) {
+      const handled = s.$dispatch === 'log';
+      out.$dispatch = (_command, event, $next, fromEditor) => {
+        ctx.log.push([
+          'shortcutDispatch',
+          event.key,
+          fromEditor === ctx.editor,
+        ]);
+        return handled ? $next() : false;
+      };
+    }
+    return out;
+  };
+  const out: Record<string, KeyboardShortcut | KeyboardShortcut[] | null> = {};
+  for (const [name, value] of Object.entries(json)) {
+    out[name] =
+      value === null
+        ? null
+        : Array.isArray(value)
+          ? value.map(shortcut)
+          : shortcut(value);
+  }
+  return out;
+}
+
+/** A DOM event of the `domEvent` step. */
+export type DomEventJson = {
+  type: 'click' | 'auxclick' | 'compositionend';
+  targetKey?: string;
+  clientX?: number;
+  clientY?: number;
+  button?: number;
+  detail?: number;
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  metaKey?: boolean;
+  shiftKey?: boolean;
+  data?: string;
+};
+
+/** The `domEvent` step: dispatches the event and logs it. */
+function dispatchDomEvent(
+  ctx: Context,
+  editor: LexicalEditor,
+  json: DomEventJson,
+): void {
+  const win = sessionDOM(ctx).window;
+  const target =
+    json.targetKey === undefined
+      ? editor.getRootElement()
+      : editor.getElementByKey(json.targetKey);
+  if (target === null) {
+    throw new Error(`no element for ${json.targetKey ?? 'the root'}`);
+  }
+  const event =
+    json.type === 'compositionend'
+      ? new win.CompositionEvent(json.type, {
+          bubbles: true,
+          cancelable: true,
+          data: json.data ?? '',
+        })
+      : new win.MouseEvent(json.type, {
+          altKey: json.altKey === true,
+          bubbles: true,
+          button: json.button ?? 0,
+          cancelable: true,
+          clientX: json.clientX ?? 0,
+          clientY: json.clientY ?? 0,
+          ctrlKey: json.ctrlKey === true,
+          detail: json.detail ?? 1,
+          metaKey: json.metaKey === true,
+          shiftKey: json.shiftKey === true,
+        });
+  target.dispatchEvent(event);
+  ctx.log.push(['domEvent', json.type, event.defaultPrevented]);
+}
+
+/**
  * `payload` as the command `name` takes it: for a command of
  * EVENT_COMMANDS, a JSON object becomes the event it describes.
  */
@@ -4147,6 +4382,15 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['MarkExtension', MarkExtension],
   ['MarkBaseExtension', MarkBaseExtension],
   ['HeadlessExtension', HeadlessExtension],
+  ['KeyboardShortcutsExtension', KeyboardShortcutsExtension],
+  ['ClickAfterLastBlockExtension', ClickAfterLastBlockExtension],
+  [
+    'NormalizeTripleClickSelectionExtension',
+    NormalizeTripleClickSelectionExtension,
+  ],
+  ['IMEExtension', IMEExtension],
+  ['AutoFocusExtension', AutoFocusExtension],
+  ['ClickableLinkExtension', ClickableLinkExtension],
   ...MARK_FLAVORS,
 ]);
 
@@ -4210,6 +4454,17 @@ function configPreset(ctx: Context, field: string, name: string): unknown {
         }
         return ctx.parent;
       };
+    case '$shouldInsertAfter:always':
+      return () => true;
+    case 'getWindow:log':
+      return () => ({
+        open: (url: string, target: string, features?: string) => {
+          ctx.log.push(['open', url, target, features ?? null]);
+          return null;
+        },
+      });
+    case 'getWindow:none':
+      return () => null;
     case 'markableNodes:text':
       return [TextNode];
     case 'markableNodes:decorators':
@@ -4240,6 +4495,8 @@ const PRESET_FIELDS = new Set([
   '$isIdentifiedBlock',
   '$getParentEditor',
   'markableNodes',
+  '$shouldInsertAfter',
+  'getWindow',
 ]);
 
 /** A real extension's config overrides, with their presets resolved. */
@@ -4248,6 +4505,8 @@ function realConfig(ctx: Context, config: ExtensionConfig): ExtensionConfig {
   for (const [field, value] of Object.entries(config)) {
     if (typeof value === 'string' && PRESET_FIELDS.has(field)) {
       out[field] = configPreset(ctx, field, value);
+    } else if (field === 'shortcuts' && value !== null) {
+      out[field] = scriptShortcuts(ctx, value as ShortcutsJson);
     } else if (
       Array.isArray(value) &&
       (field === 'matchers' || field === 'changeHandlers')
@@ -4329,6 +4588,12 @@ function testExtension(ctx: Context, spec: ExtensionSpec): AnyLexicalExtension {
     {name};
   if (spec.config !== undefined) {
     extension.config = spec.config;
+  }
+  if (spec.namespace !== undefined) {
+    extension.namespace = spec.namespace;
+  }
+  if (spec.editable !== undefined) {
+    extension.editable = spec.editable;
   }
   if (spec.conflictsWith !== undefined) {
     extension.conflictsWith = spec.conflictsWith;
@@ -4794,7 +5059,12 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       clock = step.now;
     }
     if ('setRootElement' in step) {
-      sessionDOM(ctx);
+      const {root} = sessionDOM(ctx);
+      if (script.rootFocus) {
+        root.focus = () => {
+          ctx.log.push(['rootFocus']);
+        };
+      }
     }
     selectionTransformCtx = ctx;
     return atClock(() =>
@@ -4883,6 +5153,15 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       stubComputedStyles(sessionDOM(ctx).window, target, step.computedStyles);
     } else if ('setEditable' in step) {
       target.setEditable(step.setEditable);
+    } else if ('domEvent' in step) {
+      dispatchDomEvent(ctx, target, step.domEvent);
+    } else if ('logEditor' in step) {
+      ctx.log.push([
+        'editor',
+        target._config.namespace,
+        target.isEditable(),
+        target.getRootElement() !== null,
+      ]);
     } else if ('announce' in step) {
       getExtensionDependencyFromEditor(
         target,
@@ -5030,6 +5309,8 @@ function runExtensionStep(
     | {setRootElement: boolean}
     | {computedStyles: unknown}
     | {setEditable: boolean}
+    | {domEvent: DomEventJson}
+    | {logEditor: true}
     | {announce: string}
     | {typeahead: TypeaheadSpec}
     | {characterLimit: unknown}
@@ -5134,6 +5415,15 @@ function runExtensionStep(
     }
     ctx.watchers.delete(step.unwatchNodeKey);
     dispose();
+  } else if ('logIME' in step) {
+    const {compositionKey, composingTextNode} =
+      getExtensionDependencyFromEditor(editor, IMEExtension).output;
+    const node = composingTextNode.peek();
+    ctx.log.push([
+      'ime',
+      compositionKey.peek(),
+      node === null ? null : node.getKey(),
+    ]);
   } else if ('logDependency' in step) {
     const {config} = getExtensionDependencyFromEditor(
       editor,

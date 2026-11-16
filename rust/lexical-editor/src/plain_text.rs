@@ -323,10 +323,13 @@ fn make_plain_text_extension() -> Rc<PlainTextExtensionType> {
     use crate::extension_core::{ExtensionRegisterState, LexicalExtension, define_extension};
     define_extension(LexicalExtension {
         conflicts_with: vec!["@lexical/rich-text".to_owned()],
-        // Of JS's dependencies, `NormalizeInlineElementsExtension`;
-        // `DragonExtension` and `NormalizeTripleClickSelectionExtension`
-        // listen to the root element.
-        dependencies: vec![crate::extension::normalize_inline_elements_extension().into()],
+        // Of JS's dependencies, `NormalizeInlineElementsExtension` and
+        // `NormalizeTripleClickSelectionExtension` (on the app's
+        // `CLICK_COMMAND`); `DragonExtension` listens to the root element.
+        dependencies: vec![
+            crate::extension::normalize_inline_elements_extension().into(),
+            crate::extension::normalize_triple_click_selection_extension().into(),
+        ],
         register: Some(Rc::new(
             |editor: &Editor, _: &(), _: &ExtensionRegisterState<(), ()>| {
                 Ok(register_plain_text(editor))

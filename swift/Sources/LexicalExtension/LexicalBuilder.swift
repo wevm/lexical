@@ -104,9 +104,12 @@ public final class LexicalBuilder {
   public func buildEditor() throws -> Editor {
     let editor = try constructEditor()
     let unregister = try registerEditor(editor)
+    // JS's `mergeRegister(unregister, () => editor.setRootElement(null))`,
+    // which runs its cleanups in reverse: the root element goes first,
+    // while the extensions' listeners still hear it.
     editor._dispose = { [unowned editor] in
-      unregister()
       try? editor.setRootElement(nil)
+      unregister()
     }
     return editor
   }

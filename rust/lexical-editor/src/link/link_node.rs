@@ -1226,14 +1226,10 @@ mod tests {
 
 // The DOM side of `LinkNode` and `AutoLinkNode` (the `html` feature).
 
-#[cfg(feature = "html")]
-pub(super) mod link_dom {
-    use super::{LinkNode, create_link_node, format_url, is_js_whitespace};
-    use crate::dom::DomNode;
-    use crate::lexical_dom::{
-        DomConversionMap, DomConversionOutput, add_theme_class_names, get_document, importer,
-    };
-    use crate::{EditorConfig, LexicalError};
+/// `LinkNode.sanitizeUrl`, which `createDOM` and `ClickableLinkExtension`
+/// call.
+pub(crate) mod sanitize {
+    use super::{format_url, is_js_whitespace};
 
     /// `SUPPORTED_URL_PROTOCOLS`.
     const SUPPORTED_URL_PROTOCOLS: [&str; 5] = ["http:", "https:", "mailto:", "sms:", "tel:"];
@@ -1365,6 +1361,17 @@ pub(super) mod link_dom {
         }
         url
     }
+}
+
+#[cfg(feature = "html")]
+pub(super) mod link_dom {
+    use super::sanitize::sanitize_url;
+    use super::{LinkNode, create_link_node};
+    use crate::dom::DomNode;
+    use crate::lexical_dom::{
+        DomConversionMap, DomConversionOutput, add_theme_class_names, get_document, importer,
+    };
+    use crate::{EditorConfig, LexicalError};
 
     /// `LinkNode.createDOM(config)`: an `<a>` with the sanitized URL, the
     /// target, rel and title it has (`updateLinkDOM(null, ...)`), and the

@@ -58,6 +58,9 @@ updated with each milestone.
 | Hashtag node and matcher (the `hashtag` feature) | `packages/lexical-hashtag/src/LexicalHashtagNode.ts` (`HashtagNode`: `canInsertTextBefore`, `isTextEntity`; `$createHashtagNode`, `$isHashtagNode`), with `TextNode`'s generated JSON; `LexicalHashtagExtension.ts` (`getHashtagRegexStringChars`, `getHashtagRegexString` and `getHashtagMatch` as the default matcher, `HashtagConfig`, `registerLexicalHashtag`), the character classes as range tables generated from the JS source by `rust/scripts/generate-hashtag-tables.mjs`; `TextNode.isTextEntity` as a node hook | `hashtag`, `node` | `entities/hashtag-match`, `entities/hashtag-documents`, `entities/hashtag-typing`, the hashtag cases of `property/documents` |
 | `@lexical/extension`'s decorators (the `extension` feature) | `packages/lexical-extension/src/HorizontalRuleExtension.ts` (`HorizontalRuleNode`: a block decorator whose text is `\n`; `$createHorizontalRuleNode`, `$isHorizontalRuleNode`), `DecoratorTextExtension.ts` (`DecoratorTextNode`: inline, `__isInlineFormattable`, `getFormat`, `hasFormat`, `setFormat`, `toggleFormat`, its `format` as a flat NodeState; `$isDecoratorTextNode`), with `LexicalNode`'s generated JSON | `extension` | `scripts/decorator` |
 | `NodeSelectionExtension` and `HorizontalRuleExtension` (the `extension` feature) | `packages/lexical-extension/src/NodeSelectionExtension.ts` (`watchNodeKey`: a `computed` per call over a `watchedSignal` of the selected keys, which follows `EditorStateExtension`'s store while watched, `node.isSelected()` of each watched key, keys without watchers dropped, the selected set replaced only when it changed); `HorizontalRuleExtension.ts` (`INSERT_HORIZONTAL_RULE_COMMAND` at `COMMAND_PRIORITY_EDITOR`, which handles a range selection with `$insertNodeToNearestRoot`; the `CLICK_COMMAND` handler at `COMMAND_PRIORITY_LOW` with `$toggleNodeSelection` and Shift; the extension's `nodes` and dependencies) | `extension::node_selection_extension`, `extension::horizontal_rule_extension` | `scripts/horizontal-rule` |
+| `@lexical/extension`'s input extensions (the `extension` feature) | `KeyboardShortcutsExtension.ts` (`formatKeyboardShortcut` with `FormatKeyboardShortcutOptions`, the Apple and universal key names and the unshifted key; `NamedKeyboardShortcuts`, merged by name with the overrides first, `null` disabling a name; `KeyboardShortcutsExtension`'s one compiled `KEY_DOWN_COMMAND` listener at the config's `priority`, with `$disabled`, `$dispatch` and `bubbleFromNestedEditors`, its config as signals); `ClickAfterLastBlockExtension.ts` (`$defaultShouldInsertAfter`, `$shouldInsertAfter`, the paragraph inserted after the last block and selected); `NormalizeTripleClickSelectionExtension.ts` (`$fixFocusOverselection`); `IMEExtension.ts` (`compositionKey` and `composingTextNode`, set at `COMPOSITION_START_COMMAND` and the update tagged `COMPOSITION_START_TAG`, cleared at the end of the composition and when the root element goes); `AutoFocusExtension.ts` (`Editor::focus` with `defaultSelection` when a root element is set, then the root's `focus()` unless it `has_focus()`) | `extension::keyboard_shortcuts_extension`, `extension::click_after_last_block_extension`, `extension::normalize_triple_click_selection_extension`, `extension::ime_extension`, `extension::auto_focus_extension` | `scripts/input-extensions` |
+| `ClickableLinkExtension` (the `link` and `extension` features) | `packages/lexical-link/src/ClickableLinkExtension.ts`: `registerClickableLink` (a click or middle `auxclick` on a `LinkNode` opens its sanitized URL, in a new tab with `noopener` for `newTab`, the middle button, Command or Control, or a `_blank` target; an unlinked autolink, an empty URL and a click that ends a non-collapsed selection are left alone, the last with its default prevented), `ClickableLinkConfig` (`newTab`, `disabled`, `getWindow`) as signals, `ClickableLinkExtension` and its `LinkExtension` dependency | `link::clickable_link_extension` | `scripts/input-extensions` |
+| `BlockWithAlignableContents` (the `decorator-block` and `extension` features) | `packages/lexical-react/src/LexicalBlockWithAlignableContents.tsx`'s two handlers as `block_with_alignable_contents_extension` (Swift's `BlockWithAlignableContentsExtension`): `FORMAT_ELEMENT_COMMAND` aligning a selected block (and, under a range, the nearest block element of every other node), and `CLICK_COMMAND` on a block selecting it, deselecting it, or with Shift toggling it in the node selection, both at `COMMAND_PRIORITY_LOW` | `decorator_block` | unit tests (`decorator_block::tests`) against the output of JS's component in a React test, which no vector records (the component is React) |
 | Extension core (the `extension` feature) | `packages/lexical/src/extension-core/`: `defineExtension.ts` (`defineExtension`, `configExtension`, `declarePeerDependency`), `safeCast.ts`, `shallowMergeConfig.ts`, `types.ts` (`LexicalExtension` with `name`, `conflictsWith`, `dependencies`, `peerDependencies`, `config`, `mergeConfig`, `nodes`, `$initialEditorState`, `init`, `build`, `register`, `afterRegistration`; `AnyLexicalExtension`, `AnyLexicalExtensionArgument`, `NormalizedPeerDependency`, `ExtensionConfigBase`, `ExtensionInitState`, `ExtensionBuildState`, `ExtensionRegisterState`, `LexicalExtensionDependency`, `InitialEditorConfig`, `InitialEditorStateType`, `LexicalEditorWithDispose`); `AbortController`/`AbortSignal` as `getSignal` uses them; `utils/mergeRegister.ts` | `extension_core` (re-exported at the crate root), `merge_register` | `scripts/extensions` |
 | Extension builder (the `extension` feature) | `packages/lexical-extension/src/LexicalBuilder.ts` (`buildEditorFromExtensions`, `LexicalBuilder`: `fromExtensions`, `maybeFromEditor`, `fromEditor`, `constructEditor`, `buildEditor` with `dispose`, `hasExtensionByName`, `getExtensionRep`, `addEdge`, `addExtension` with the duplicate-name and conflict invariants, `sortedExtensionReps`' depth-first sort, cycle invariant and config order, `registerEditor`, `buildCreateEditorArgs` for nodes and `$initialEditorState`), `internal/ExtensionRep.ts` (the state ids, `mergeConfigs`, `init`, `build`, `register` with its rollback, `afterRegistration`, `getSignal`, `getInitResult`, `getInitPeer`, `getExtensionInitDependency`, `getPeer`, `getInitDependency`, `getDependency`, `getDirectDependentNames`, `getPeerNameSet`, `getExtensionDependency`), `config.ts` (`getKnownTypesAndNodes`, `getNodeConfig`), `getExtensionDependencyFromEditor.ts`, `getPeerDependencyFromEditor.ts` (with `OrThrow`), `getExtensionDependency.ts` (`$getExtensionDependency`, `$getExtensionOutput`, `$getPeerDependency`) | `extension::lexical_builder`, `extension::extension_rep`, `extension::config`, `extension::get_*` | `scripts/extensions` |
 | Signals (the `extension` feature) | `signals.ts`, a port of `@preact/signals-core` 1.14.4 (`signal` with `watched`/`unwatched`, `computed`, `effect` with clean-ups, `batch` with its snapshots, `untracked`, `peek`, `subscribe`); `namedSignals.ts`; `watchedSignal.ts` | `extension::signals`, `extension::named_signals`, `extension::watched_signal` | `scripts/extensions` (`namedSignals toggle a registration`, `a signal disabled by config`, `EditorStateExtension as a signal`) |
@@ -65,7 +68,7 @@ updated with each milestone.
 | `NormalizeInlineElementsExtension` (the `extension` feature) | `packages/lexical-extension/src/NormalizeInlineElementsExtension.ts` (`deleteEmptyInline`, and the `register` that adds it to the transforms of every registered `ElementNode` class with an `isInline` of its own, without marking their nodes dirty, as `register_normalize_inline_elements`; the extension with its `disabled` signal); `RichTextExtension` and `PlainTextExtension` depend on it | `extension` | `property/sequences`, `scripts/package-extensions` |
 | `@lexical/extension`'s model-level extensions (the `extension` feature) | `TabIndentationExtension.ts` (`registerTabIndentation`'s `KEY_TAB_COMMAND` handler with `$indentOverTab` and its `INDENT_CONTENT_COMMAND` handler with `canIndentPredicate` and `maxIndent`, as `register_tab_indentation`; the extension with its `disabled`, `maxIndent` and `$canIndent` signals); `SelectBlockExtension.ts` (the `SELECT_ALL_COMMAND` handler that selects the block, then the document, with `disabled` and `cascadeSelection`, which selects all of the editor when the command comes from a nested editor whose content is fully selected, read with `read('pending')`); `PreventSelectAllExtension.ts`'s config and `disabled` signal, which `SelectBlockExtension`'s drives | `extension::tab_indentation_extension`, `extension::select_block_extension`, `extension::prevent_select_all_extension` | `scripts/package-extensions`, `scripts/nested-editor`, `scripts/key-handlers` |
 | Nested editors (the `extension` feature, `$isEditorIsNestedEditor` with `utils`) | From the core: `createEditor`'s `parentEditor` (`_parentEditor`, `Editor::parent_editor`) and the parent's namespace when none is given, `getEditorsToPropagate`, and `triggerCommandListeners` running each priority's listeners in the editor, then its parent editors, every listener getting the editor the command was dispatched in, with a parent that is updating skipped and the command dispatched again from it in an update of its own (the legacy delegation); `read(mode, fn)` with `EditorReadMode` (`'force-commit'`, `'latest'`, `'pending'`) as `Editor::read_with_mode`. `InitialEditorConfig`'s `parentEditor` and `theme`, and `buildCreateEditorArgs` taking an extension's `parentEditor` and merging the themes with `deepThemeMergeInPlace` (without the unsafe keys). `packages/lexical-extension/src/NestedEditorExtension.ts`: `NestedEditorConfig` (`$getParentEditor`, by default `$defaultGetParentEditor`, the active editor built with `LexicalBuilder`; `inheritEditableFromParent`), its `init` (the parent editor, and its theme unless the extensions give one), its output signal, and the effect that follows the parent's editable listener. `@lexical/utils`' `$isEditorIsNestedEditor`. `SharedHistoryExtension`'s `parentEditor` falling back to `editor._parentEditor` | `editor`, `updates`, `lexical_utils`, `extension_core`, `extension::lexical_builder`, `extension::nested_editor_extension`, `utils`, `history::shared_history_extension` | `scripts/nested-editor`; unit tests of the command delegation while the parent updates, which no vector records (JS delegates in an update whose commit a step can't separate) |
-| The packages' extensions (each behind its package's feature and `extension`) | `LexicalRichTextExtension.ts` (`RichTextExtension`: its nodes, `conflictsWith`, the `NormalizeInlineElementsExtension` dependency, `RichTextConfig` with `mergeRichTextConfig`'s format-by-format merge of `escapeFormatTriggers`, `registerRichText` reading the config's signals); `PlainTextExtension` (`@lexical/plain-text`); `@lexical/history`'s `HistoryExtension` (`HistoryConfig` with `delay`, `createInitialHistoryState`, `disabled`, `maxDepth` and `now`, the init's `canUndo`/`canRedo` signals, the output's config signals, `registerHistory` reading `delay` and `maxDepth` as signals) and `SharedHistoryExtension` (its own `HistoryExtension`, disabled, takes the `delay`, `historyState`, `now`, `maxDepth` and `disabled` of the parent editor's peer `HistoryExtension`, the parent being its `parentEditor` or the editor's own parent editor); `LexicalListExtension.ts` (`ListExtension` with `hasStrictIndent`, which registers `registerListStrictIndentTransform`, and `shouldPreserveNumbering`; `CheckListExtension`'s `registerCheckList`); `LexicalLinkExtension.ts` (`LinkExtension` with its `mergeConfig` of `attributes`, and `registerLink` reading `validateUrl` and `attributes` as signals, its paste handler among them); `LexicalAutoLinkExtension.ts` (`AutoLinkExtension` with its concatenating `mergeConfig`); `LexicalHashtagExtension.ts` (`HashtagExtension`); `OverflowExtension`; `CodeExtension.ts` (`CodeExtension`, and `CodeNode.insertNewAfter`'s path for an editor built with it) and `CodeIndentExtension` (`tabSize`, `disabled`, `escapeWithArrows`); `Editor` equality by identity, as JS's `===` | `rich_text::rich_text_extension` (`RichTextConfigOverrides`), `plain_text::plain_text_extension`, `history::history_extension`, `history::shared_history_extension`, `list::list_extension`, `list::check_list_extension`, `link::link_extension`, `link::auto_link_extension`, `hashtag::hashtag_extension`, `overflow::overflow_extension`, `code::code_extension`, `code::code_indent_extension` | `scripts/package-extensions`; `property/sequences` and the hashtag `entities` suites build their editors with them |
+| The packages' extensions (each behind its package's feature and `extension`) | `LexicalRichTextExtension.ts` (`RichTextExtension`: its nodes, `conflictsWith`, the `NormalizeInlineElementsExtension` and `NormalizeTripleClickSelectionExtension` dependencies (`PlainTextExtension`'s too), `RichTextConfig` with `mergeRichTextConfig`'s format-by-format merge of `escapeFormatTriggers`, `registerRichText` reading the config's signals); `PlainTextExtension` (`@lexical/plain-text`); `@lexical/history`'s `HistoryExtension` (`HistoryConfig` with `delay`, `createInitialHistoryState`, `disabled`, `maxDepth` and `now`, the init's `canUndo`/`canRedo` signals, the output's config signals, `registerHistory` reading `delay` and `maxDepth` as signals) and `SharedHistoryExtension` (its own `HistoryExtension`, disabled, takes the `delay`, `historyState`, `now`, `maxDepth` and `disabled` of the parent editor's peer `HistoryExtension`, the parent being its `parentEditor` or the editor's own parent editor); `LexicalListExtension.ts` (`ListExtension` with `hasStrictIndent`, which registers `registerListStrictIndentTransform`, and `shouldPreserveNumbering`; `CheckListExtension`'s `registerCheckList`); `LexicalLinkExtension.ts` (`LinkExtension` with its `mergeConfig` of `attributes`, and `registerLink` reading `validateUrl` and `attributes` as signals, its paste handler among them); `LexicalAutoLinkExtension.ts` (`AutoLinkExtension` with its concatenating `mergeConfig`); `LexicalHashtagExtension.ts` (`HashtagExtension`); `OverflowExtension`; `CodeExtension.ts` (`CodeExtension`, and `CodeNode.insertNewAfter`'s path for an editor built with it) and `CodeIndentExtension` (`tabSize`, `disabled`, `escapeWithArrows`); `Editor` equality by identity, as JS's `===` | `rich_text::rich_text_extension` (`RichTextConfigOverrides`), `plain_text::plain_text_extension`, `history::history_extension`, `history::shared_history_extension`, `list::list_extension`, `list::check_list_extension`, `link::link_extension`, `link::auto_link_extension`, `hashtag::hashtag_extension`, `overflow::overflow_extension`, `code::code_extension`, `code::code_indent_extension` | `scripts/package-extensions`; `property/sequences` and the hashtag `entities` suites build their editors with them |
 | `registerLexicalTextEntity` (the `text` feature) | `packages/lexical-text/src/registerLexicalTextEntity.ts`: `EntityMatch`, `registerLexicalTextEntity` (the `TextNode` transform and `$reverseNodeTransform`, `$replaceWithSimpleText`, `$wasTurnedIntoText`, `getFirstMatchAfter`, `isNextTextEntity`, `isTextAfterOutsideSource`, `isEntityAfter`, `$checkNextSibling`, `$moveSelectionIntoEntity`, `$wouldMerge` (with `haveEquivalentNodeState` and `readStateValue`), `MAX_MATCHES_PASSED`, `MAX_TURNED_INTO_TEXT`, the per-update `markedInUpdate` and `turnedIntoTextInUpdate`); from the core `INTERNAL_getActiveEditorState` | `text`, `updates`, `node_state` | `entities/hashtag-documents`, `entities/hashtag-typing`, `property/sequences`; a unit test of `$wouldMerge`'s NodeState rule against JS's output |
 | `@lexical/text`'s root helpers (the `text` feature) | `packages/lexical-text/src/rootTextContent.ts` (`$rootTextContent`), `isRootTextContentEmpty.ts` (`$isRootTextContentEmpty`, with `String#trim`'s whitespace, and `$isRootTextContentEmptyCurry`), `canShowPlaceholder.ts` (`$canShowPlaceholder`, `$canShowPlaceholderCurry`), `findTextIntersectionFromCharacters.ts` (`$findTextIntersectionFromCharacters`, deprecated upstream, with UTF-16 counts), `index.ts`'s `TextNodeWithOffset` | `text` | `scripts/text` |
 | `@lexical/file` (the `file` feature) | `packages/lexical-file/src/fileImportExport.ts`: `SerializedDocument`, `serializedDocumentFromEditorState` (an empty `source` is `"Lexical"`, a `lastSaved` of 0 or NaN is `Date.now()`, the version is the upstream release), `editorStateFromSerializedDocument` (from a string or a document, either JSON form), `importFile` and `exportFile` (with `toISOString` for the default file name), with the app reading and saving the file where JS's `readTextFileFromSystem` and `exportBlob` use the DOM | `file::file_import_export` | `file/export`, `file/import`; unit tests for `toISOString` against Node and an export-then-import round trip |
@@ -136,15 +139,18 @@ touches:
   `HorizontalRuleExtension`, the selected class isn't ported (see the
   extension API below), and `applyFormatFromStyle` reads CSS.
 - Of the extension API (the `extension` feature): `InitialEditorConfig`'s
-  `namespace`, `html`, `disableEvents` and `dom`, which a headless Rust
-  editor doesn't have (`theme` and `parentEditor` are ported, see the
-  nested editors row; JS's `deepThemeMergeInPlace` also merges an object
+  `disableEvents`, as the app dispatches the events it has (`namespace`,
+  the last extension's that sets one winning, `theme` and `parentEditor`
+  are ported, see the nested editors row, and `html` and `dom` come with
+  the `html` feature; JS's `deepThemeMergeInPlace` also merges an object
   into an array, which a theme's JSON never holds, and Rust replaces it;
   `editable` and `onWarn` are ported, `onWarn` getting the editor as JS's
   does); `onError`, as an update's error is the `Result` that
   `Editor::update` returns (`CreateEditorArgs` has no `onError` either);
-  `buildEditor`'s `setRootElement(null)` and `Symbol.dispose` (dropping a
-  `LexicalEditorWithDispose` doesn't dispose it); `builderSymbol`'s version
+  `Symbol.dispose` (dropping a `LexicalEditorWithDispose` doesn't dispose
+  it; `dispose` removes the root element first, then unregisters, as JS's
+  `mergeRegister` does, and `scripts/input-extensions` records it);
+  `builderSymbol`'s version
   and copy checks in `maybeFromEditor`, which one crate can't break; the
   `nodes` thunk form (`nodes` is a list); `HMRExtension`. Configs are Rust
   types that name their overrides' type (`ExtensionConfigBase::Partial`);
@@ -153,11 +159,30 @@ touches:
   objects by identity, and effect and computed bodies can't throw, so
   preact's error paths have no counterpart and a cycle panics. `named_signals`
   takes a JSON object; a typed config makes its signals field by field.
-  The other extensions of `@lexical/extension` (`AutoFocus`,
-  `ClickAfterLastBlock`, `IME`, `KeyboardShortcuts`,
-  `NodeSelectionDataSelected`, `NormalizeTripleClickSelection`,
-  `SelectionAlwaysOnDisplay`, `WatchEditable`) read the
-  DOM, a selection's DOM, focus or keyboard events. Of the model-level
+  The input extensions (the row above) listen to the commands an app's
+  view sends where JS listens to the root element, as Swift's do:
+  `ClickAfterLastBlockExtension` takes a `CLICK_COMMAND` whose
+  `target_key` is `root` (the view decides that the click is below the
+  last block, which JS measures with `getBoundingClientRect`) at
+  `COMMAND_PRIORITY_CRITICAL`, running `$shouldInsertAfter` once, in that
+  command's update, where JS runs it in a read and again in its update;
+  `NormalizeTripleClickSelectionExtension` runs `$fixFocusOverselection`
+  on a `CLICK_COMMAND` whose `detail` is 3 or more at
+  `COMMAND_PRIORITY_BEFORE_CRITICAL`, where JS arms on `mousedown` and
+  trims the next selection change that matches the DOM, and its
+  deprecated `thresholdMsec` and `dateNow` aren't ported;
+  `IMEExtension` clears the composition at `COMPOSITION_END_COMMAND`
+  (`COMMAND_PRIORITY_BEFORE_EDITOR`) where JS listens to `compositionend`,
+  and `composingTextNode` compares nodes by key; `AutoFocusExtension`
+  asks the app's `RootElement` (`has_focus`, `focus`) where JS asks the
+  DOM. `FormatKeyboardShortcutOptions.separator` is kept but unread, as
+  in JS. `NamedKeyboardShortcuts` compares by identity, as JS's objects
+  do. The scripts' composition starts on a text point: one on an
+  element point inserts JS's placeholder for the browser (the empty
+  space heuristic, see the events rows), which the port leaves out. The
+  rest of `@lexical/extension`'s extensions (`NodeSelectionDataSelected`,
+  `SelectionAlwaysOnDisplay`, `WatchEditable`) read the DOM, a
+  selection's DOM or focus. Of the model-level
   ones: `NestedEditorExtension` is ported (see the nested
   editors row); `createEditor()` called without a config, which JS nests
   in the active editor, has no counterpart, as `create_editor` always
@@ -187,10 +212,10 @@ touches:
   takes them so. `PreventSelectAllExtension`'s
   `register` is a capturing `keydown` listener on the root element, so
   only its config and signal are ported. Of the
-  packages' extensions, the DOM, click and focus ones
-  (`ClickableLinkExtension`, `DragonExtension`,
-  `NormalizeTripleClickSelectionExtension`, `CheckListExtension`'s
-  pointer, focus and key handlers, `registerCodeGutter`) aren't ported
+  packages' extensions, the DOM, click and focus ones (`DragonExtension`,
+  `CheckListExtension`'s pointer, focus and key handlers,
+  `registerCodeGutter`) aren't ported (`ClickableLinkExtension` is, on
+  `CLICK_COMMAND`, see its row and the `@lexical/link` item below)
   (the HTML import ones come with `html`). `HistoryExtension`'s `disabled` defaults to `false`,
   as Swift's does, where JS's is `typeof window === 'undefined'` (true in a
   headless JS editor); `SharedHistoryExtension`'s HMR re-link
@@ -264,8 +289,14 @@ touches:
   parses and for its protocol; as in Swift, that is a model of the WHATWG
   parser's scheme and host rules without IDNA or IPv4 parsing, so a host
   only those reject (`https://1.2.3.4.5`) is taken as parsing.
-  `ClickableLinkExtension`, which needs a DOM (`AutoLinkAnnounceExtension`
-  is ported, with `a11y`). Where `NodeStructureExtension` enforces node structure,
+  `ClickableLinkExtension` handles the app's `CLICK_COMMAND` at
+  `COMMAND_PRIORITY_LOW`, the link found from the event's `target_key`
+  (an `auxclick`'s type and `button` with it), and opens it in the app's
+  `LinkWindow` (`getWindow` returns none by default, as Swift's, where JS
+  returns the global `window`); it opens a plain `<a>` that isn't a
+  `LinkNode` (`findMatchingDOM`) in JS, which a model has no counterpart
+  of. `sanitizeUrl` is exported without `html`
+  (`AutoLinkAnnounceExtension` is ported, with `a11y`). Where `NodeStructureExtension` enforces node structure,
   `$linkNodeTransform` leaves lifting blocks and merging equal adjacent
   links to its normalization, as JS does (see the node structure row). `extractWithChild` is a node hook that `@lexical/html`'s
   export (the `html` feature) and `@lexical/clipboard`'s copy (the
@@ -411,9 +442,9 @@ touches:
   cleared. `escapeFormatTriggers` keeps its formats in order
   (`Vec<(String, Option<TriggerConfig>)>`), as a JS object does.
   `CONTROLLED_TEXT_INSERTION_COMMAND`'s `beforeinput` form and `updateDOM`
-  aren't ported, nor are two of `PlainTextExtension`'s dependencies
-  (`DragonExtension`, `NormalizeTripleClickSelectionExtension`), which
-  need an input layer.
+  aren't ported, nor is `PlainTextExtension`'s and `RichTextExtension`'s
+  dependency `DragonExtension`, which needs an input layer (they depend
+  on `NormalizeTripleClickSelectionExtension`, as in JS and Swift).
   `quoteShadowRootState` is a flat NodeState, as in JS
   (`quote_shadow_root_state`; `scripts/node-state` sets and reads it). A
   shadow root quote's `collapseAtStart` (dissolving into
@@ -483,8 +514,10 @@ touches:
   `on_close_async`, given a `MenuCloseDone` that the app finishes (or
   drops, as a rejected promise) where JS awaits it. Auto-embed's `parseUrl` is synchronous, so the menu
   opens in the paste's mutation listener where JS awaits it.
-  `BlockWithAlignableContents` (`@lexical/react`) is a React component,
-  and isn't ported; Swift has its commands as an extension.
+  `BlockWithAlignableContents` (`@lexical/react`) is a React component:
+  its commands are an extension, as in Swift (see its row), which aligns
+  every selected block where React's one handler per block aligns the
+  first whose handler runs, and its rendering isn't ported.
 - Of `LexicalEvents.ts` (the event commands and core handlers rows): the
   root element listeners themselves, which an app replaces by calling
   `on_key_down`, `on_before_input`, `on_composition_start` and

@@ -46,8 +46,9 @@ pub type ShortcutDispatchFn = Rc<
 
 /// `KeyboardShortcut` (`@experimental`): a shortcut as data, the key and
 /// modifiers to match and the command to dispatch with the matched event.
-/// (`@lexical/extension`'s `KeyboardShortcutsExtension`, which reads them,
-/// isn't ported.)
+/// `@lexical/extension`'s `KeyboardShortcutsExtension`
+/// ([`keyboard_shortcuts_extension`](crate::extension::keyboard_shortcuts_extension),
+/// the `extension` feature) dispatches a table of them.
 #[derive(Clone)]
 pub struct KeyboardShortcut {
     pub key: String,

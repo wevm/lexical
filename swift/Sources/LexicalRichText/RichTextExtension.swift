@@ -37,14 +37,14 @@ func mergeEscapeFormatTriggers(
 
 /// `RichTextExtension`: headings, quotes and the rich text commands.
 ///
-/// Of upstream's dependencies, HeadingAnnounce (which needs @lexical/a11y),
-/// Dragon and NormalizeTripleClickSelection (browser events) are not
-/// ported (DESIGN.md).
+/// Of upstream's dependencies, Dragon (browser events) is not ported
+/// (DESIGN.md).
 public let RichTextExtension = defineExtension(
   name: "@lexical/rich-text", config: RichTextConfig(), conflictsWith: ["@lexical/plain-text"],
   dependencies: [
     HeadingAnnounceExtension,
     NormalizeInlineElementsExtension,
+    NormalizeTripleClickSelectionExtension,
     // DOMImportExtension support for the nodes registered here.
     CoreImportExtension,
     configExtension(DOMImportExtension) { $0.rules = RichTextImportRules.map(\.entry) },

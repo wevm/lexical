@@ -861,6 +861,22 @@ pub(crate) fn get_state_erased(
     get_state_any(node, config)
 }
 
+/// Whether a value of `config` was ever set on this version of `node`, or
+/// on the node it was split or copied from: `__state.knownState` has the
+/// config, or `__state.unknownState` its key (`@lexical/mark`'s
+/// `$hasMarkIDsState` reads them).
+#[cfg(all(feature = "mark", feature = "extension"))]
+pub(crate) fn has_state_value(node: &dyn LexicalNode, config: &AnyStateConfig) -> bool {
+    node.base().state.as_ref().is_some_and(|state| {
+        let state = state.borrow();
+        state.has_known(config)
+            || state
+                .unknown_state
+                .as_ref()
+                .is_some_and(|unknown| unknown.contains_key(config.key()))
+    })
+}
+
 /// `$getState(node, stateConfig, NODE_STATE_DIRECT)` without its value type.
 fn get_state_any(
     node: &dyn LexicalNode,

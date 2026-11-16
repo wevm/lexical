@@ -122,13 +122,21 @@ import {
   $createMarkNode,
   $getMarkIDs,
   $getMarkIDsAtSelection,
+  $getMarkIDsByFlavor,
   $getNodeMarkIDs,
   $isMarkNode,
   $migrateMarkNodesToMarkState,
   $removeMarkID,
   $unwrapMarkNode,
   $wrapSelectionInMarkNode,
+  type AnyMarkFlavorExtension,
+  DEFAULT_MARKABLE_NODES,
+  defineMarkExtension,
+  MarkBaseExtension,
+  MarkExtension,
   MarkNode,
+  MarkStateExtension,
+  registerMarkIDsListener,
 } from '@lexical/mark';
 import {registerMarkdownShortcuts, TRANSFORMERS} from '@lexical/markdown';
 import {
@@ -243,6 +251,7 @@ import {
   $getTextPointCaret,
   $insertNodes,
   $isBlockContainer,
+  $isDecoratorNode,
   $isElementNode,
   $isNodeSelection,
   $isRangeSelection,
@@ -456,27 +465,37 @@ export type Action =
   /** Logs `['markIDs', key, offset, $getMarkIDs(node, offset)]`. */
   | {do: 'logMarkIDs'; key: string; offset: number}
   /**
-   * `$addMarkID(id, $getSelection())` (MarkStateExtension.ts, without the
-   * extension), logging `['addMarkID', id, keys]` of the nodes it marked.
+   * `$addMarkID(id, $getSelection())` (MarkStateExtension.ts; without the
+   * extension when the editor isn't built with it), logging
+   * `['addMarkID', id, keys]` of the nodes it marked. With `flavor` (a mark
+   * flavor of REAL_EXTENSIONS, by its key), the flavor-first form
+   * `$addMarkID(flavor, id, selection)`; the other MarkState actions take
+   * `flavor` the same way.
    */
-  | {do: 'addMarkID'; id: string}
+  | {do: 'addMarkID'; id: string; flavor?: string}
   /**
    * `$removeMarkID(id, $getSelection())` with `inSelection`, otherwise
-   * `$removeMarkID(id)`, which walks the document.
+   * `$removeMarkID(id)`, which walks the document (or, with the extension,
+   * reads its `markIDNodeKeys` output).
    */
-  | {do: 'removeMarkID'; id: string; inSelection?: boolean}
+  | {do: 'removeMarkID'; id: string; inSelection?: boolean; flavor?: string}
   /** Logs `['nodeMarkIDs', key, $getNodeMarkIDs(node)]`. */
-  | {do: 'logNodeMarkIDs'; key: string}
+  | {do: 'logNodeMarkIDs'; key: string; flavor?: string}
   /**
    * Logs `['markIDsAtSelection', mode, ids]`: `$getMarkIDsAtSelection()` of
    * the current selection, with `mode` when it is given (`null` otherwise).
    */
-  | {do: 'logMarkIDsAtSelection'; mode?: 'any' | 'all'}
+  | {do: 'logMarkIDsAtSelection'; mode?: 'any' | 'all'; flavor?: string}
   /**
    * `$migrateMarkNodesToMarkState(node)` of the node `key`, or of the root
    * when there is none, logging `['migrateMarkNodesToMarkState', count]`.
    */
-  | {do: 'migrateMarkNodesToMarkState'; key?: string}
+  | {do: 'migrateMarkNodesToMarkState'; key?: string; flavor?: string}
+  /**
+   * Logs `['markIDsByFlavor', key, [[stateKey, ids]...]]`:
+   * `$getMarkIDsByFlavor(node)`, its entries sorted by `stateKey`.
+   */
+  | {do: 'logMarkIDsByFlavor'; key: string}
   /**
    * Copies the selection (@lexical/clipboard): the data
    * `$getClipboardDataFromSelection` gives with its default MIME types but
@@ -947,6 +966,20 @@ export type Step = (
   | {watchNodeKey: string}
   /** Disposes the effect `watchNodeKey` kept under this key. */
   | {unwatchNodeKey: string}
+  /**
+   * `registerMarkIDsListener(editor, flavor, listener)` (@lexical/mark) of
+   * the mark flavor `flavor` (MARK_FLAVORS), its disposer kept under
+   * `name`. Each call logs `['markIDsChange', name, added, removed, ids,
+   * tags]`, each sorted.
+   */
+  | {registerMarkIDsListener: {name: string; flavor: string}}
+  /** Calls the disposer `registerMarkIDsListener` kept under this name. */
+  | {unregisterMarkIDsListener: string}
+  /**
+   * Logs `['markIDNodeKeys', flavor, [[id, keys]...]]`: the `markIDNodeKeys`
+   * output of the mark flavor `flavor`, by id, each id's keys sorted.
+   */
+  | {logMarkIDNodeKeys: string}
 ) & {
   now?: number;
   /**
@@ -1293,6 +1326,8 @@ type Context = {
   parent: LexicalEditorWithDispose | null;
   /** The effects `watchNodeKey` made, by key. */
   watchers: Map<string, () => void>;
+  /** The disposers `registerMarkIDsListener` returned, by name. */
+  markIDsListeners: Map<string, () => void>;
 };
 
 /**
@@ -1885,6 +1920,20 @@ function $createBlock(block: BlockType): ElementNode {
       return $createHeadingNode(block);
   }
   throw new Error(`unknown block ${block}`);
+}
+
+/** The mark flavor of REAL_EXTENSIONS named `key`, if any (MARK_FLAVORS). */
+function markFlavor(
+  key: string | undefined,
+): AnyMarkFlavorExtension | undefined {
+  if (key === undefined) {
+    return undefined;
+  }
+  const flavor = MARK_FLAVORS.get(key);
+  if (flavor === undefined) {
+    throw new Error(`unknown mark flavor ${key}`);
+  }
+  return flavor;
 }
 
 function $anySel() {
@@ -2533,41 +2582,65 @@ function $runAction(action: Action, ctx: Context): void {
         $getMarkIDs(text($node(action.key)), action.offset),
       ]);
       return;
-    case 'addMarkID':
-      ctx.log.push([
-        'addMarkID',
-        action.id,
-        $addMarkID(action.id, $anySel()).map(n => n.getKey()),
-      ]);
+    case 'addMarkID': {
+      const flavor = markFlavor(action.flavor);
+      const nodes =
+        flavor === undefined
+          ? $addMarkID(action.id, $anySel())
+          : $addMarkID(flavor, action.id, $anySel());
+      ctx.log.push(['addMarkID', action.id, nodes.map(n => n.getKey())]);
       return;
-    case 'removeMarkID':
-      if (action.inSelection) {
-        $removeMarkID(action.id, $anySel());
+    }
+    case 'removeMarkID': {
+      const flavor = markFlavor(action.flavor);
+      const selection = action.inSelection ? $anySel() : undefined;
+      if (flavor === undefined) {
+        $removeMarkID(action.id, selection);
       } else {
-        $removeMarkID(action.id);
+        $removeMarkID(flavor, action.id, selection);
       }
       return;
-    case 'logNodeMarkIDs':
+    }
+    case 'logNodeMarkIDs': {
+      const flavor = markFlavor(action.flavor);
+      const n = $node(action.key);
       ctx.log.push([
         'nodeMarkIDs',
         action.key,
-        $getNodeMarkIDs($node(action.key)),
+        flavor === undefined ? $getNodeMarkIDs(n) : $getNodeMarkIDs(flavor, n),
       ]);
       return;
-    case 'logMarkIDsAtSelection':
+    }
+    case 'logMarkIDsAtSelection': {
+      const flavor = markFlavor(action.flavor);
       ctx.log.push([
         'markIDsAtSelection',
         action.mode ?? null,
-        action.mode === undefined
-          ? $getMarkIDsAtSelection()
-          : $getMarkIDsAtSelection(undefined, action.mode),
+        flavor !== undefined
+          ? $getMarkIDsAtSelection(flavor, undefined, action.mode)
+          : action.mode === undefined
+            ? $getMarkIDsAtSelection()
+            : $getMarkIDsAtSelection(undefined, action.mode),
       ]);
       return;
-    case 'migrateMarkNodesToMarkState':
+    }
+    case 'migrateMarkNodesToMarkState': {
+      const flavor = markFlavor(action.flavor);
+      const n = action.key === undefined ? undefined : $node(action.key);
       ctx.log.push([
         'migrateMarkNodesToMarkState',
-        $migrateMarkNodesToMarkState(
-          action.key === undefined ? undefined : $node(action.key),
+        flavor === undefined
+          ? $migrateMarkNodesToMarkState(n)
+          : $migrateMarkNodesToMarkState(flavor, n),
+      ]);
+      return;
+    }
+    case 'logMarkIDsByFlavor':
+      ctx.log.push([
+        'markIDsByFlavor',
+        action.key,
+        Object.entries($getMarkIDsByFlavor($node(action.key))).sort(
+          ([a], [b]) => (a < b ? -1 : a > b ? 1 : 0),
         ),
       ]);
       return;
@@ -3590,6 +3663,48 @@ const TRANSFORMS: Record<string, (ctx: Context) => () => void> = {
 };
 
 /**
+ * The mark flavors (`@lexical/mark`'s `defineMarkExtension`) an
+ * `ExtensionArg` or a MarkState action's `flavor` may name. `ClashingMarks`
+ * shares CommentMarks' `stateKey`, and `AttributeClashMarks` its attribute,
+ * which the build of an editor with both rejects.
+ */
+export const MARK_FLAVORS = new Map<string, AnyMarkFlavorExtension>([
+  ['MarkStateExtension', MarkStateExtension],
+  [
+    'CommentMarks',
+    defineMarkExtension({
+      className: 'comment',
+      name: '@conformance/CommentMarks',
+      overlapClassName: 'comment-overlap',
+      stateKey: 'commentIds',
+    }),
+  ],
+  [
+    'SuggestionMarks',
+    defineMarkExtension({
+      attribute: 'data-Suggestion',
+      name: '@conformance/SuggestionMarks',
+      stateKey: 'suggestionIds',
+    }),
+  ],
+  [
+    'ClashingMarks',
+    defineMarkExtension({
+      name: '@conformance/ClashingMarks',
+      stateKey: 'commentIds',
+    }),
+  ],
+  [
+    'AttributeClashMarks',
+    defineMarkExtension({
+      attribute: 'data-lexical-comment-ids',
+      name: '@conformance/AttributeClashMarks',
+      stateKey: 'otherIds',
+    }),
+  ],
+]);
+
+/**
  * The extensions of `@lexical/extension` and the other packages an
  * `ExtensionArg` may name, as the packages export them. The first five
  * take no config overrides (their configs aren't JSON); the others take
@@ -3624,6 +3739,9 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['EditorModeAnnounceExtension', EditorModeAnnounceExtension],
   ['HeadingAnnounceExtension', HeadingAnnounceExtension],
   ['HistoryAnnounceExtension', HistoryAnnounceExtension],
+  ['MarkExtension', MarkExtension],
+  ['MarkBaseExtension', MarkBaseExtension],
+  ...MARK_FLAVORS,
 ]);
 
 /**
@@ -3646,7 +3764,10 @@ export const PREFILLED_HISTORY_STATE =
  * `id2`..., `'stutter'` returns each of those twice in a row, and
  * `'invalid'` always `not valid`; its `$isIdentifiedBlock: 'rootChild'` is
  * `$isRootChildBlock`. NestedEditorExtension's `$getParentEditor: 'parent'`
- * returns the script's `parent` editor.
+ * returns the script's `parent` editor. A mark flavor's `markableNodes:
+ * 'text'` is `[TextNode]` (a class), and `'decorators'` is
+ * `[...DEFAULT_MARKABLE_NODES, $isDecoratorNode]` (a guard, which block
+ * decorators pass too).
  */
 function configPreset(ctx: Context, field: string, name: string): unknown {
   switch (`${field}:${name}`) {
@@ -3683,6 +3804,10 @@ function configPreset(ctx: Context, field: string, name: string): unknown {
         }
         return ctx.parent;
       };
+    case 'markableNodes:text':
+      return [TextNode];
+    case 'markableNodes:decorators':
+      return [...DEFAULT_MARKABLE_NODES, $isDecoratorNode];
     case 'createInitialHistoryState:prefilled':
       return (editor: LexicalEditor): HistoryState => ({
         current: null,
@@ -3708,6 +3833,7 @@ const PRESET_FIELDS = new Set([
   'generateId',
   '$isIdentifiedBlock',
   '$getParentEditor',
+  'markableNodes',
 ]);
 
 /** A real extension's config overrides, with their presets resolved. */
@@ -4024,6 +4150,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     extensions: new Map(),
     handles: new Map(),
     log: [],
+    markIDsListeners: new Map(),
     mounted: new Map(),
     parent: null,
     saved: new Map(),
@@ -4467,6 +4594,48 @@ function runExtensionStep(
         ctx.log.push(['nodeSelected', key, selected.value]);
       }),
     );
+  } else if ('registerMarkIDsListener' in step) {
+    const {name, flavor} = step.registerMarkIDsListener;
+    if (ctx.markIDsListeners.has(name)) {
+      throw new Error(`already listening as ${name}`);
+    }
+    const sorted = (set: ReadonlySet<string>) => Array.from(set).sort();
+    ctx.markIDsListeners.set(
+      name,
+      registerMarkIDsListener(
+        editor,
+        markFlavor(flavor)!,
+        ({added, ids, removed, tags}) => {
+          ctx.log.push([
+            'markIDsChange',
+            name,
+            sorted(added),
+            sorted(removed),
+            sorted(ids),
+            sorted(tags),
+          ]);
+        },
+      ),
+    );
+  } else if ('unregisterMarkIDsListener' in step) {
+    const dispose = ctx.markIDsListeners.get(step.unregisterMarkIDsListener);
+    if (dispose === undefined) {
+      throw new Error(`no listener ${step.unregisterMarkIDsListener}`);
+    }
+    ctx.markIDsListeners.delete(step.unregisterMarkIDsListener);
+    dispose();
+  } else if ('logMarkIDNodeKeys' in step) {
+    const keys = getExtensionDependencyFromEditor(
+      editor,
+      markFlavor(step.logMarkIDNodeKeys)!,
+    ).output.markIDNodeKeys.peek();
+    ctx.log.push([
+      'markIDNodeKeys',
+      step.logMarkIDNodeKeys,
+      Array.from(keys.keys())
+        .sort()
+        .map(id => [id, [...keys.get(id)!].sort()]),
+    ]);
   } else if ('unwatchNodeKey' in step) {
     const dispose = ctx.watchers.get(step.unwatchNodeKey);
     if (dispose === undefined) {

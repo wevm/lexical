@@ -71,8 +71,46 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "EditorModeAnnounceExtension": EditorModeAnnounceExtension
   case "HeadingAnnounceExtension": HeadingAnnounceExtension
   case "HistoryAnnounceExtension": HistoryAnnounceExtension
-  default: nil
+  case "MarkExtension": MarkExtension
+  case "MarkBaseExtension": MarkBaseExtension
+  default: markFlavor(key)
   }
+}
+
+/// `MARK_FLAVORS` in ops.ts: the mark flavors an `ExtensionArg` or a
+/// MarkState action's `flavor` may name. `ClashingMarks` shares
+/// CommentMarks' `stateKey`, and `AttributeClashMarks` its attribute.
+private let markFlavors: [String: MarkFlavorExtension] = [
+  "MarkStateExtension": MarkStateExtension,
+  "CommentMarks": try! defineMarkExtension(
+    name: "@conformance/CommentMarks", stateKey: "commentIds", className: "comment",
+    overlapClassName: "comment-overlap"),
+  "SuggestionMarks": try! defineMarkExtension(
+    name: "@conformance/SuggestionMarks", stateKey: "suggestionIds",
+    attribute: "data-Suggestion"),
+  "ClashingMarks": try! defineMarkExtension(
+    name: "@conformance/ClashingMarks", stateKey: "commentIds"),
+  "AttributeClashMarks": try! defineMarkExtension(
+    name: "@conformance/AttributeClashMarks", stateKey: "otherIds",
+    attribute: "data-lexical-comment-ids"),
+]
+
+/// The mark flavor of `MARK_FLAVORS` named `key`, if any.
+func markFlavor(_ key: String) -> MarkFlavorExtension? {
+  markFlavors[key]
+}
+
+/// `markFlavor(action.flavor)` in ops.ts: the flavor a MarkState action
+/// names, if it names one.
+func markFlavor(of action: JSONValue) throws -> MarkFlavorExtension? {
+  guard let key = action.objectValue?["flavor"]?.stringValue else { return nil }
+  guard let flavor = markFlavor(key) else { throw ScriptError("unknown mark flavor \(key)") }
+  return flavor
+}
+
+/// JS's default sort of strings: by UTF-16 code unit.
+private func jsSorted<S: Sequence<String>>(_ strings: S) -> JSONValue {
+  .array(strings.sorted { $0.utf16.lexicographicallyPrecedes($1.utf16) }.map { .string($0) })
 }
 
 /// `PREFILLED_HISTORY_STATE` in ops.ts.
@@ -161,6 +199,8 @@ final class TestExtensions {
   var made: [String: TestExtension] = [:]
   /// The effects `watchNodeKey` made, by key.
   var watchers: [String: () -> Void] = [:]
+  /// The disposers `registerMarkIDsListener` returned, by name.
+  var markIDsListeners: [String: () -> Void] = [:]
   var log: (JSONValue) -> Void = { _ in }
   var command: (String) -> LexicalCommand<JSONValue> = { LexicalCommand($0) }
   /// The session's clock, which `HistoryExtension` reads as JS's reads
@@ -500,6 +540,23 @@ final class TestExtensions {
           return true
         })
     default:
+      if let flavor = markFlavor(key) {
+        return try configured(
+          flavor,
+          partials(key, configs) { (p: inout Partial<MarkStateConfig>, field, value) in
+            switch (field, value.stringValue) {
+            case ("disabled", _): p.set(\.disabled, try bool(value))
+            case ("exportIDsToHTML", _): p.set(\.exportIDsToHTML, try bool(value))
+            // CONFIG_PRESETS' `markableNodes: 'text'` is `[TextNode]`, and
+            // `'decorators'` `[...DEFAULT_MARKABLE_NODES, $isDecoratorNode]`.
+            case ("markableNodes", "text"): p.set(\.markableNodes, [.klass(TextNode.self)])
+            case ("markableNodes", "decorators"):
+              p.set(\.markableNodes, DEFAULT_MARKABLE_NODES + [.predicate { $0 is DecoratorNode }])
+            default: return false
+            }
+            return true
+          })
+      }
       throw ScriptError("\(key) takes no config overrides")
     }
   }
@@ -590,6 +647,13 @@ final class TestExtensions {
       case "destroyed": try o.destroyed.set(try string(value))
       case "destroyedMany": try o.destroyedMany.set(try string(value))
       case "disabled": try o.disabled.set(try bool(value))
+      default: throw ScriptError("no signal \(name) of \(key)")
+      }
+    case (let flavorKey, let field) where markFlavor(flavorKey) != nil:
+      let o = try getExtensionDependencyFromEditor(editor, markFlavor(flavorKey)!).output
+      switch field {
+      case "disabled": try o.disabled.set(try bool(value))
+      case "exportIDsToHTML": try o.exportIDsToHTML.set(try bool(value))
       default: throw ScriptError("no signal \(name) of \(key)")
       }
     default:
@@ -850,6 +914,33 @@ final class TestExtensions {
         .watchNodeKey(key)
       let log = self.log
       watchers[key] = try effect { log(["nodeSelected", .string(key), .bool(selected.value)]) }
+    } else if let spec = object["registerMarkIDsListener"]?.objectValue {
+      let name = spec["name"]?.stringValue ?? ""
+      let key = spec["flavor"]?.stringValue ?? ""
+      guard markIDsListeners[name] == nil else { throw ScriptError("already listening as \(name)") }
+      guard let flavor = markFlavor(key) else { throw ScriptError("unknown mark flavor \(key)") }
+      let log = self.log
+      markIDsListeners[name] = try registerMarkIDsListener(editor, flavor) { change in
+        log(
+          .array([
+            "markIDsChange", .string(name), jsSorted(change.added), jsSorted(change.removed),
+            jsSorted(change.ids), jsSorted(change.tags),
+          ]))
+      }
+    } else if let name = object["unregisterMarkIDsListener"]?.stringValue {
+      guard let dispose = markIDsListeners.removeValue(forKey: name) else {
+        throw ScriptError("no listener \(name)")
+      }
+      dispose()
+    } else if let key = object["logMarkIDNodeKeys"]?.stringValue {
+      guard let flavor = markFlavor(key) else { throw ScriptError("unknown mark flavor \(key)") }
+      let keys = try getExtensionDependencyFromEditor(editor, flavor).output.markIDNodeKeys.peek()
+      let ids = keys.keysArray.sorted { $0.utf16.lexicographicallyPrecedes($1.utf16) }
+      log(
+        .array([
+          "markIDNodeKeys", .string(key),
+          .array(ids.map { .array([.string($0), jsSorted(keys.get($0) ?? [])]) }),
+        ]))
     } else if let key = object["unwatchNodeKey"]?.stringValue {
       guard let dispose = watchers.removeValue(forKey: key) else {
         throw ScriptError("not watching \(key)")

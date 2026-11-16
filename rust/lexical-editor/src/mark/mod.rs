@@ -1,25 +1,37 @@
 //! `@lexical/mark` (the `mark` feature), from `packages/lexical-mark/src`:
 //! `MarkNode` with its generated JSON (`MarkNode.ts`,
 //! `LexicalMarkGeneratedJSON.ts`), `$wrapSelectionInMarkNode`,
-//! `$unwrapMarkNode` and `$getMarkIDs` (`index.ts`), and the functions of
-//! `MarkStateExtension.ts` that need no extension, which keep mark ids as
-//! the `markIds` NodeState of the leaves they cover instead of wrapping
-//! them (`$addMarkID`, `$removeMarkID`, `$getNodeMarkIDs`,
-//! `$getMarkIDsAtSelection`, `$migrateMarkNodesToMarkState`), with the
-//! default `markableNodes`.
+//! `$unwrapMarkNode`, `$getMarkIDs` and `MarkExtension` (`index.ts`), and
+//! `MarkStateExtension.ts`, which keeps mark ids as a NodeState of the
+//! leaves they cover instead of wrapping them (`$addMarkID`,
+//! `$removeMarkID`, `$getNodeMarkIDs`, `$getMarkIDsAtSelection`,
+//! `$migrateMarkNodesToMarkState`; with the `extension` feature the mark
+//! flavors, their extensions and the inserted-text rule).
 //!
-//! Not ported: `createDOM` and `updateDOM`, which come with `html`;
-//! `MarkExtension` (its `nodes` are [`mark_nodes`]); and the parts of
-//! `MarkStateExtension.ts` that need the extension API or a DOM (rust/PARITY.md).
+//! Not ported: `updateDOM` and the renderer's half of
+//! `MarkStateExtension.ts` (`$decorateMarkIDs`, `isMarkIDShown`), which need
+//! a reconciled DOM (rust/PARITY.md).
 
 mod generated_json;
 mod mark_node;
 mod mark_state_extension;
+#[cfg(feature = "extension")]
+mod mark_state_inserted_text;
 
 pub use mark_node::{MarkNode, create_mark_node, is_mark_node};
 pub use mark_state_extension::{
-    MARK_STATE_KEY, MarkIDsMode, add_mark_id, get_mark_ids_at_selection, get_node_mark_ids,
-    is_inline_decorator_node, migrate_mark_nodes_to_mark_state, remove_mark_id,
+    MARK_STATE_IDS_ATTRIBUTE, MARK_STATE_KEY, MarkFlavor, MarkIDsMode, add_mark_id,
+    get_mark_ids_at_selection, get_node_mark_ids, is_inline_decorator_node,
+    migrate_mark_nodes_to_mark_state, remove_mark_id,
+};
+#[cfg(feature = "extension")]
+pub use mark_state_extension::{
+    MarkBaseExtensionType, MarkBaseInit, MarkBaseOutput, MarkFlavorDefinition, MarkFlavorExtension,
+    MarkIDNodeKeys, MarkIDsChange, MarkIDsListener, MarkStateConfig, MarkStateConfigOverrides,
+    MarkStateInit, MarkStateOutput, MarkableNodeMatch, add_mark_id_for, default_markable_nodes,
+    define_mark_extension, get_mark_ids_at_selection_for, get_mark_ids_by_flavor,
+    get_node_mark_ids_for, mark_base_extension, mark_flavor, mark_state_extension,
+    migrate_mark_nodes_to_mark_state_for, register_mark_ids_listener, remove_mark_id_for,
 };
 
 use crate::lexical_selection::{SelectionRef, Which, create_range_selection};
@@ -30,6 +42,30 @@ use crate::{LexicalError, NodeClass};
 /// `MarkNode`.
 pub fn mark_nodes() -> Vec<NodeClass> {
     vec![NodeClass::of::<MarkNode>()]
+}
+
+#[cfg(feature = "extension")]
+pub use mark_extension::{MarkExtensionType, mark_extension};
+
+#[cfg(feature = "extension")]
+mod mark_extension {
+    use crate::extension_core::{LexicalExtension, define_extension};
+    use std::rc::Rc;
+
+    /// `MarkExtension`.
+    pub type MarkExtensionType = LexicalExtension;
+
+    thread_local! {
+        static MARK_EXTENSION: Rc<MarkExtensionType> = define_extension(LexicalExtension {
+            nodes: super::mark_nodes(),
+            ..LexicalExtension::new("@lexical/mark", ())
+        });
+    }
+
+    /// `MarkExtension`: registers `MarkNode` ([`mark_nodes`](super::mark_nodes)).
+    pub fn mark_extension() -> Rc<MarkExtensionType> {
+        MARK_EXTENSION.with(Rc::clone)
+    }
 }
 
 /// `$unwrapMarkNode(node)`: puts the mark's children in its place.

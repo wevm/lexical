@@ -47,7 +47,8 @@ updated with each milestone.
 | `CodeExtension`'s register and `registerCodeIndentation` (the `code` feature) | `CodeExtension.ts` `register` (the `TabNode` transform and the `KEY_ENTER_COMMAND` handler, `$exitCodeNodeOnEnter`), as `register_code`; `CodeIndentation.ts` `registerCodeIndentation`'s handlers of `INSERT_TAB_COMMAND`, `INDENT_CONTENT_COMMAND` and `OUTDENT_CONTENT_COMMAND` (`$isSelectionInCode`, `$getCodeLines`, `$outdentLineAtCaret`, `$handleMultilineIndent`), `KEY_TAB_COMMAND` (`$handleTab`), the arrow keys (`$handleShiftLines` with Alt, the guards at a code block's first and last line, `escapeWithArrows`) and `MOVE_TO_START` and `MOVE_TO_END` (`$handleMoveTo`), with `tabSize` and `escapeWithArrows` | `code::register_code`, `code::register_code_indentation` | `scripts/code`, `scripts/key-handlers` |
 | Code highlighting (the `code-highlight` feature) | `packages/lexical-code-prism/src/CodeHighlighterPrism.ts`: `registerCodeHighlighting` (with `registerCodeIndentation`) and `registerHighlightingOnly`, without `registerCodeGutter`; `$codeNodeTransform` (`defaultLanguage`, `isSyntaxHighlightSupported` from the tokenizer's languages, the `nodesCurrentlyHighlighting` guard cleared by `$onUpdate`), `$textNodeTransform` with `$copyNodeState`, `$updateAndRetainSelection`, `getDiffRange`, `isEqual`, the `Tokenizer` interface (`defaultLanguage`, `tokenize`, `$tokenize`) with Prism's `Token` shape; `FacadePrism.ts`'s `$mapTokensToLexicalStructure` and `$getHighlightNodes` without the `diff-<language>` grammars; `CodeHighlighterShiki.ts`'s lazy languages (`loadCodeLanguage`'s update tagged `history-merge`), as Swift's `CodeLanguageState`; with `extension`, `CodePrismExtension` (`disabled`, `tokenizer`) as Swift's `CodeHighlighterExtension` | `code::register_code_highlighting`, `code::register_highlighting_only`, `code::Tokenizer`, `code::map_tokens_to_lexical_structure`, `code::code_highlighter_extension` | `scripts/code-highlight`, over `ops.ts`'s conformance tokenizer and over tokens recorded from Prism |
 | Mark node (the `mark` feature) | `packages/lexical-mark/src/MarkNode.ts` (`MarkNode`: `hasID`, `getIDs`, `setIDs`, `addID`, `deleteID`, `insertNewAfter`, `canInsertTextBefore`, `canInsertTextAfter`, `canBeEmpty`, `isInline`, `extractWithChild`, `excludeFromCopy`; `$createMarkNode`, `$isMarkNode`), its generated JSON (`LexicalMarkGeneratedJSON.ts`, with `afterCloneMarkNode` as `Clone`); `index.ts` (`$unwrapMarkNode`, `$wrapSelectionInMarkNode` with `createNode`, `$getMarkIDs`) | `mark` | `serialization/mark`, `scripts/mark` |
-| Mark ids as NodeState (the `mark` feature) | `packages/lexical-mark/src/MarkStateExtension.ts`, the parts that need no extension, for `MarkStateExtension`'s ids with the default `markableNodes`: `MARK_STATE_KEY`, `isValidMarkID`, the `markIds` state (`createMarkIDsState`, `arraySetValue(markIDValue())`'s parse, and `$setState`'s `canonicalValue` for it), `$isInlineDecoratorNode`, `$isMarkableNode`, `$getNodeMarkIDs`, `$addMarkID`, `$removeMarkID` (by selection, or walking the document), `$getMarkIDsAtSelection` (with `$getPointMarkIDs` and `$getAdjacentLeaf`), `$migrateMarkNodesToMarkState`, and their helpers (`$readNodeMarkIDs`, `$getMarkableIDs`, `$addNodeMarkIDs`, `$removeNodeMarkIDs`, `assertValidMarkID`, `$markableNodesInSelection`, `$collectMarkableNodes`, `$markableNodesIn`) | `mark::mark_state_extension` | `scripts/mark`, `serialization/mark` |
+| Mark ids as NodeState (the `mark` feature) | `packages/lexical-mark/src/MarkStateExtension.ts`, the functions, which work without an extension on `MarkStateExtension`'s ids with the default `markableNodes`: `MARK_STATE_KEY`, `isValidMarkID`, the `markIds` state (`createMarkIDsState`, `arraySetValue(markIDValue())`'s parse, and `$setState`'s `canonicalValue` for it), `$isInlineDecoratorNode`, `$isMarkableNode`, `$getNodeMarkIDs`, `$addMarkID`, `$removeMarkID` (by selection, or walking the document without the extension), `$getMarkIDsAtSelection` (with `$getPointMarkIDs` and `$getAdjacentLeaf`), `$migrateMarkNodesToMarkState`, and their helpers (`$readNodeMarkIDs`, `$getMarkableIDs`, `$addNodeMarkIDs`, `$removeNodeMarkIDs`, `assertValidMarkID`, `$markableNodesInSelection`, `$collectMarkableNodes`, `$markableNodesIn`) | `mark::mark_state_extension` | `scripts/mark`, `serialization/mark` |
+| `MarkExtension` and the mark flavors (the `mark` and `extension` features) | `packages/lexical-mark/src/index.ts`'s `MarkExtension` (`mark_nodes()`); `MarkStateExtension.ts`'s `MarkFlavor` (`createMarkIDsState` per `stateKey`), `MarkStateExtension`, `MarkBaseExtension` (the `flavors` registry, the stateKey and attribute clash invariants, the shared `SplitOrigins`), `defineMarkExtension` (`MarkStateKeyCheck`'s rules as its invariant, `defaultMarkAttribute`, the lowercased attribute), `createMarkFlavorExtension`, the flavor-first forms of `$getNodeMarkIDs`, `$addMarkID`, `$removeMarkID`, `$getMarkIDsAtSelection` and `$migrateMarkNodesToMarkState` (`*_for`), `$getMarkIDsByFlavor`, `DEFAULT_MARKABLE_NODES` with `compileMarkableNodes` and the `markableNodes` config, `disabled`, `registerMarkIDsState`, the `markIDNodeKeys` output and `$getMarkIDCandidates`, `registerMarkIDsListener` and `reportMarkIDs`, `registerMarkState` (`setKey`, `$visit`, `$rescan`, `rescanChanged`, `publish`, the root transform, the `COMPOSITION_START_COMMAND`, `CONTROLLED_TEXT_INSERTION_COMMAND` and `PASTE_COMMAND` handlers, the collaboration taint), and the inserted-text rule: `PendingEdits` with `forgetEdits` and `forgetSoon`, `$getBlock`, `$getReplacedRange`, `$getCompositionReplacedRange` (`COMPOSITION_PLACEHOLDERS`, `$childrenText`, `$offsetInBlock`), `$collectSegments`, `sameEnd`, `segmentEnds`, `flattenSide`, `intersect`, `without`, `union`, `matchUnits` with `MATCH_BUDGET`, `$hasMarkIDsState`, `$splitsIntoOwnClass`, `$setUnitIDs`, `getInsertedRange`, `getSplitOrigin` and `$applyInsertedTextMarkIDs`; with `html` too, `exportIDsToHTML` (the `$exportDOM` override) and `createMarkIDsImportRule` | `mark` (`mark::mark_state_extension`, `mark::mark_state_inserted_text`), `node_state` (`has_state_value`) | `scripts/mark-extension`, `html/mark-state` |
 | Overflow node (the `overflow` feature) | `packages/lexical-overflow/src/index.ts` (`OverflowNode`: `insertNewAfter` (its parent's), `excludeFromCopy`, the `$transform` of its `$config` that removes it once empty; `$createOverflowNode`, `$isOverflowNode`), with `ElementNode`'s generated JSON; `ElementNode.excludeFromCopy` as a node hook | `overflow`, `node` | `serialization/overflow`, the overflow cases of `property/documents`, `scripts/overflow` |
 | The character limit (the `overflow` feature) | `packages/lexical-react/src/shared/useCharacterLimit.ts`, its logic without React's hook plumbing: `useCharacterLimit`'s effects as `register_character_limit` (the `OverflowNode` invariant, the count at registration, the text content and update listeners, `history-merge` updates, the low-priority `DELETE_CHARACTER_COMMAND` handler; `strlen` and `remainingCharacters`), `findOffset` (its `Intl.Segmenter` path), `$wrapOverflowedNodes` (with `$dfsWithSlots`, the `\n\n` between blocks and slot value leaves), `$wrapNode`, `$mergePrevious`; `Intl.Segmenter`'s extended grapheme clusters as UAX #29's rules on tables that `rust/scripts/generate-grapheme-tables.mjs` makes from the Unicode data of Node's ICU (Unicode 17.0.0), checked against every line of GraphemeBreakTest.txt by `Intl.Segmenter` and by a unit test | `overflow::character_limit`, `overflow::grapheme`, `overflow::grapheme_tables` | `scripts/character-limit`; a unit test of GraphemeBreakTest.txt |
 | Table of contents (the `rich-text` feature) | `packages/lexical-react/src/LexicalTableOfContentsPlugin.tsx`, its logic without React: `TableOfContentsEntry` (key, text, tag), `toEntry`, `$insertHeadingIntoTableOfContents`, `$deleteHeadingFromTableOfContents`, `$updateHeadingInTableOfContents`, `$updateHeadingPosition`, `$getPreviousHeading`, and `TableOfContentsPlugin`'s effect as `register_table_of_contents` (the initial entries, the root update listener, the `HeadingNode` and `TextNode` mutation listeners with `skipInitialization`), reporting each `setTableOfContents` to a closure, on the core's root element and mutation listeners (the root element and mutation listeners row) | `rich_text::table_of_contents` | `scripts/table-of-contents` |
@@ -301,21 +302,37 @@ touches:
   which are now ported.
 - `@lexical/mark`'s `updateDOM` (the reconciler's; `createDOM` is
   ported, but the HTML export leaves marks out, so only a unit test sees
-  it), and `MarkExtension`, which needs the extension API (`mark_nodes()` is its
-  `nodes`). Of `MarkStateExtension.ts`, everything that needs the
-  extension API waits for it: `MarkStateExtension`, `MarkBaseExtension`,
-  `defineMarkExtension` and mark flavors (the flavor-first forms of the `$`
-  functions, `$getMarkIDsByFlavor`, `AnyMarkFlavorExtension`), the
-  `markableNodes` config (the functions use `DEFAULT_MARKABLE_NODES`, which
-  JS uses too when the extension is not installed), `disabled`, the
-  `markIDNodeKeys` output and `$getMarkIDCandidates` (so `$removeMarkID`
-  without a selection always walks the document, as JS does without the
-  extension), `registerMarkIDsListener` and `reportMarkIDs`, and
-  `registerMarkState`'s inserted-text rule (`$applyInsertedTextMarkIDs` and
-  the segment matching, composition, the `CONTROLLED_TEXT_INSERTION_COMMAND`
-  and `PASTE_COMMAND` recorders). Rendering (`$decorateMarkIDs`,
-  `isMarkIDShown` and its rerender, `exportIDsToHTML`) and the HTML import
-  rule (`data-lexical-mark-ids`) come with `html` and the DOM.
+  it), and the renderer's half of `MarkStateExtension.ts`:
+  `$decorateMarkIDs` with `$classTokensOfOtherFlavors` (the `$decorateDOM`
+  override, which sets the ids attribute and the theme's `mark` and
+  `markOverlap` classes, or a flavor's `className` and `overlapClassName`,
+  on the reconciled element), the `renderDisabled` render state it is gated
+  by, and `isMarkIDShown` with `registerMarkIDShownRerender` (a full
+  reconcile when it changes). The port has no reconciled DOM for them to
+  write to (DOMRenderExtension's reconciler hooks are not ported either);
+  Swift's are on its DOM views, which no vector records. So the
+  `isMarkIDShown` config and output are left out, and a flavor's
+  `className` and `overlapClassName` are kept in
+  `MarkFlavorDefinition` without effect. The HTML export of the ids
+  (`exportIDsToHTML`, through the `$exportDOM` override) and the ids
+  attribute's import rule (`createMarkIDsImportRule`) are ported, with
+  `html` and `extension` (`html/mark-state`).
+  `MarkableNodeMatch` is a guard: JS also takes a class, matched with
+  `instanceof`, which the port spells as the class's `is_…` guard
+  (`NodeRef::is_text` for `TextNode`). The flavor-first overloads of the
+  `$` functions are `*_for` functions (`add_mark_id_for(flavor, ...)`),
+  and `$getMarkIDsByFlavor`'s record is a list of `(stateKey, ids)` in the
+  order the flavors were built. JS forgets the inserted-text rule's
+  pending edits (the selection an insertion or paste replaces, the ids
+  `$removeMarkID` removed) at the next microtask (`forgetSoon`); with no
+  event loop, the port keeps the pending editor state they were recorded
+  in and forgets them once the editor has another (or none), and at each
+  commit, as JS does. `$isSplitOffEntity`'s identity of the ids array
+  `splitText` copied is the identity of the stored value (`Rc::ptr_eq`),
+  as Swift compares array storage. `scripts/mark-extension` composes over
+  a selection with the selection collapsed by the input layer first, as
+  `$handleCompositionStart`'s placeholder (the empty space heuristic) is
+  not ported (see the core's event handlers below).
   JS's `markIds` state is an `arraySetValue`, and so is the port's
   (`StateValueConfig::from_schema`), whose canonical form `$setState`
   gives the value it is set to. Ids sort by UTF-16 code units, as JS's

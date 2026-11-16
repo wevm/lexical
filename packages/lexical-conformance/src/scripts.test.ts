@@ -9,6 +9,7 @@ import type {SerializedLexicalNode} from 'lexical';
 
 import {expect, test} from 'vitest';
 
+import {coreApiScripts} from './coreApiScripts';
 import {eventScripts} from './eventScripts';
 import {keyHandlerScripts} from './keyHandlerScripts';
 import {
@@ -8989,5 +8990,14 @@ test('scripts/key-handlers', () => {
     'key-handlers',
     "The packages' handlers of the key commands (arrows, Backspace, Delete, Escape, Space, Tab, MOVE_TO_START, MOVE_TO_END), clicks, pastes and drag and drop: rich and plain text, the list's Backspace, code indentation, TabIndentationExtension and the link's paste of a URL.",
     keyHandlerScripts(),
+  );
+});
+
+test('scripts/core-api', () => {
+  // The core's public API beside the update cycle (see coreApiScripts.ts).
+  emit(
+    'core-api',
+    "The core's public API: the COMMAND_PRIORITY_BEFORE_* priorities, $addUpdateTag and the update tags, onUpdate, mutatedNodes, hasNodes, $nodesOfType, $getAdjacentNode, the node getters, TextNode.selectionTransform, node replacements, console.warn's developer warnings, @lexical/headless, editable and editor.focus.",
+    coreApiScripts(),
   );
 });

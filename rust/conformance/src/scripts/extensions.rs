@@ -79,6 +79,7 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "HistoryAnnounceExtension" => a11y::history_announce_extension().into(),
         "MarkExtension" => mark::mark_extension().into(),
         "MarkBaseExtension" => mark::mark_base_extension().into(),
+        "HeadlessExtension" => lexical::headless::headless_extension().into(),
         _ => return mark_flavor(key).map(Into::into),
     })
 }
@@ -897,6 +898,10 @@ fn test_extension(ctx: &Rc<Ctx>, spec: &Object) -> Result<Rc<TestExtension>, Lex
             "autolink" => NodeClass::of::<link::AutoLinkNode>(),
             "mark" => NodeClass::of::<lexical::mark::MarkNode>(),
             "overflow" => NodeClass::of::<overflow::OverflowNode>(),
+            "test-text" => super::core_api::test_text_node(),
+            // textReplacement's.
+            "replace-text" => super::core_api::text_replacement(false),
+            "replace-text-legacy" => super::core_api::text_replacement(true),
             other => super::structure::test_node_class(other)
                 .ok_or_else(|| err(format!("unknown node type {other}")))?,
         });

@@ -1557,6 +1557,7 @@ fn schedule_repair(
             discrete: true,
             tags: vec![HISTORY_MERGE_TAG.to_owned(), BLOCK_ID_REPAIR_TAG.to_owned()],
             skip_transforms: !with_transforms,
+            ..UpdateOptions::default()
         },
     )
 }
@@ -1594,11 +1595,15 @@ fn register_block_ids(
             }) else {
                 return;
             };
-            // JS warns (`__DEV__`) when the repair update itself leaves
-            // blocks without a unique id.
-            if !repairs.is_empty() && !payload.tags.iter().any(|t| t == BLOCK_ID_REPAIR_TAG) {
-                // Queued: it runs after the listeners.
-                let _ = schedule_repair(&editor, &runtime, repairs);
+            if !repairs.is_empty() {
+                if !payload.tags.iter().any(|t| t == BLOCK_ID_REPAIR_TAG) {
+                    // Queued: it runs after the listeners.
+                    let _ = schedule_repair(&editor, &runtime, repairs);
+                } else {
+                    crate::warnings::console_warn(
+                        "BlockIdExtension: a repair update left blocks without a unique id; is $isIdentifiedBlock stable?",
+                    );
+                }
             }
         }));
     }

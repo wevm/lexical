@@ -18,13 +18,13 @@ pub struct HashtagNode {
 
 /// `$createHashtagNode(text)`.
 pub fn create_hashtag_node(text: &str) -> NodeRef {
-    set_node_key(Box::new(HashtagNode {
+    crate::lexical_utils::replaced(set_node_key(Box::new(HashtagNode {
         base: NodeBase::default(),
         text: TextData {
             text: text.to_owned(),
             ..TextData::default()
         },
-    }))
+    })))
 }
 
 /// `$isHashtagNode(node)`.

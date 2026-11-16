@@ -448,6 +448,35 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         false
     }
 
+    /// `ElementNode.canReplaceWith(replacement)` (deprecated and internal
+    /// upstream): true by default. Nothing in the core calls it.
+    fn can_replace_with(&self, replacement: &NodeRef) -> bool {
+        let _ = replacement;
+        true
+    }
+
+    /// `ElementNode.canInsertAfter(node)` (deprecated and internal
+    /// upstream): true by default. Nothing in the core calls it.
+    fn can_insert_after(&self, node: &NodeRef) -> bool {
+        let _ = node;
+        true
+    }
+
+    /// `TextNode.selectionTransform(prevSelection, nextSelection)`: called
+    /// on the text nodes a range selection's anchor and focus are in at the
+    /// end of each update (`applySelectionTransforms`), before the
+    /// transforms run, with the committed state's selection and the
+    /// update's. Does nothing by default.
+    fn selection_transform(
+        &self,
+        this: &NodeRef,
+        prev_selection: Option<&SelectionRef>,
+        next_selection: &SelectionRef,
+    ) -> Result<(), LexicalError> {
+        let _ = (this, prev_selection, next_selection);
+        Ok(())
+    }
+
     /// `TextNode.setFormat(format)` on the text node `this`: sets its
     /// `__format`, after `getWritable()`.
     fn set_format(&self, this: &NodeRef, format: f64) {
@@ -528,7 +557,8 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
     /// classes that extend it (the `html` feature). `["text"]` for a node
     /// with `TextNode` fields that isn't a `TextNode` itself, and none for
     /// any other; a class that extends another typed class overrides it.
-    #[cfg(feature = "html")]
+    /// It also stands for `instanceof` in `$applyNodeReplacement` and
+    /// `createEditor`'s check of a replacement's `withKlass`.
     fn super_types(&self) -> Vec<&'static str> {
         if self.text().is_some() && self.get_type() != "text" {
             vec!["text"]
@@ -919,6 +949,128 @@ impl NodeRef {
     /// `ElementNode.excludeFromCopy(destination)`.
     pub fn exclude_from_copy(&self, destination: &str) -> bool {
         self.get_latest().exclude_from_copy(destination)
+    }
+
+    /// `ElementNode.canReplaceWith(replacement)` (deprecated upstream).
+    pub fn can_replace_with(&self, replacement: &NodeRef) -> bool {
+        self.get_latest().can_replace_with(replacement)
+    }
+
+    /// `ElementNode.canInsertAfter(node)` (deprecated upstream).
+    pub fn can_insert_after(&self, node: &NodeRef) -> bool {
+        self.get_latest().can_insert_after(node)
+    }
+
+    /// `getTopLevelElement()`: the highest ancestor of this node (or the
+    /// node) below the root or a shadow root, or a slot value (the top of
+    /// its isolated scope), or `None` when there is none (the root, or a
+    /// node that isn't attached). Fails where JS's invariant does: on a
+    /// non-element ancestor of the node, or a text node at the top.
+    pub fn get_top_level_element(&self) -> Result<Option<NodeRef>, LexicalError> {
+        let mut node = Some(self.clone());
+        while let Some(n) = node {
+            let parent = n.get_parent();
+            if parent
+                .as_ref()
+                .is_some_and(|p| crate::nodes::element::is_root_or_shadow_root(&*p.get_latest()))
+                || crate::slot::get_slot_host_key(&n).is_some()
+            {
+                if !(n.is_element() || (n == *self && n.is_decorator())) {
+                    return Err(LexicalError::new(
+                        "Children of root nodes must be elements or decorators",
+                    ));
+                }
+                return Ok(Some(n));
+            }
+            node = parent;
+        }
+        Ok(None)
+    }
+
+    /// `getTopLevelElementOrThrow()`: [`get_top_level_element`](Self::get_top_level_element),
+    /// failing where it is `None` (with `RootNode`'s own message for the
+    /// root).
+    pub fn get_top_level_element_or_throw(&self) -> Result<NodeRef, LexicalError> {
+        if self.is_root() {
+            return Err(LexicalError::new(
+                "getTopLevelElementOrThrow: root nodes are not top level elements",
+            ));
+        }
+        self.get_top_level_element()?.ok_or_else(|| {
+            LexicalError::new(format!(
+                "Expected node {} to have a top parent element.",
+                self.key
+            ))
+        })
+    }
+
+    /// `getParentKeys()`: the keys of the ancestors, nearest first.
+    pub fn get_parent_keys(&self) -> Vec<NodeKey> {
+        self.get_parents()
+            .into_iter()
+            .map(|p| p.get_key().to_owned())
+            .collect()
+    }
+
+    /// `ElementNode.getChildrenKeys()`.
+    pub fn get_children_keys(&self) -> Vec<NodeKey> {
+        self.get_children()
+            .into_iter()
+            .map(|c| c.get_key().to_owned())
+            .collect()
+    }
+
+    /// `ElementNode.isLastChild()`: whether this is its parent's last child.
+    /// Fails without a parent.
+    pub fn is_last_child(&self) -> Result<bool, LexicalError> {
+        Ok(self.get_parent_or_throw()?.get_last_child().as_ref() == Some(self))
+    }
+
+    /// `ElementNode.getFirstChildOrThrow()`.
+    pub fn get_first_child_or_throw(&self) -> Result<NodeRef, LexicalError> {
+        self.get_first_child().ok_or_else(|| {
+            LexicalError::new(format!("Expected node {} to have a first child.", self.key))
+        })
+    }
+
+    /// `ElementNode.getLastChildOrThrow()`.
+    pub fn get_last_child_or_throw(&self) -> Result<NodeRef, LexicalError> {
+        self.get_last_child().ok_or_else(|| {
+            LexicalError::new(format!("Expected node {} to have a last child.", self.key))
+        })
+    }
+
+    /// `ElementNode.hasTextFormat(type)`: whether the element's text format
+    /// (`__textFormat`) has the format.
+    pub fn has_text_format(&self, format_type: &str) -> bool {
+        use crate::constants::{TEXT_TYPE_TO_FORMAT, lookup};
+        let flag = lookup(TEXT_TYPE_TO_FORMAT, format_type).unwrap_or(0);
+        let format = self.get_latest().element().map_or(0.0, |e| e.text_format);
+        crate::nodes::text::to_int32(format) & flag != 0
+    }
+
+    /// `getFormatFlags(type, alignWithFormat)` of a text node (its
+    /// `__format`) or an element (its `__textFormat`): the format with
+    /// `type` toggled (`toggleTextFormatType`).
+    pub fn get_format_flags(&self, format_type: &str, align_with_format: Option<i32>) -> i32 {
+        let latest = self.get_latest();
+        let format = match (latest.text(), latest.element()) {
+            (Some(text), _) => text.format,
+            (None, Some(element)) => element.text_format,
+            (None, None) => 0.0,
+        };
+        crate::nodes::text::toggle_text_format_type(
+            crate::nodes::text::to_int32(format),
+            format_type,
+            align_with_format,
+        )
+    }
+
+    /// `TextNode.isDirectionless()`: whether the text's detail has
+    /// `IS_DIRECTIONLESS`.
+    pub fn is_directionless(&self) -> bool {
+        let detail = self.get_latest().text().map_or(0.0, |t| t.detail);
+        crate::nodes::text::to_int32(detail) & crate::constants::IS_DIRECTIONLESS != 0
     }
 
     /// `isParentOf(targetNode)`: whether this node is an ancestor of

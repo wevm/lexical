@@ -45,7 +45,7 @@ pub struct OverflowNode {
 
 /// `$createOverflowNode()`.
 pub fn create_overflow_node() -> NodeRef {
-    set_node_key(Box::new(OverflowNode::default()))
+    crate::lexical_utils::replaced(set_node_key(Box::new(OverflowNode::default())))
 }
 
 /// `$isOverflowNode(node)`.

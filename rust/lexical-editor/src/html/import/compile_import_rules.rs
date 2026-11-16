@@ -53,8 +53,19 @@ pub(crate) fn compile_import_rules(rules: &[DomImportRule]) -> CompiledDispatch 
     let mut wildcard_indices = Vec::new();
     let mut text_indices = Vec::new();
     let mut comment_indices = Vec::new();
+    let mut seen_names: Vec<&str> = Vec::new();
     for (i, rule) in rules.iter().enumerate() {
         let sel = &rule.match_;
+        if let Some(name) = &rule.name {
+            if seen_names.contains(&name.as_str()) {
+                crate::warnings::console_warn(&format!(
+                    "[lexical] duplicate DOMImportRule name \"{name}\" — keep names unique to aid debugging."
+                ));
+            }
+            if !name.is_empty() {
+                seen_names.push(name);
+            }
+        }
         compiled.push(CompiledRule {
             predicate: sel.predicate(),
             import: rule.import.clone(),

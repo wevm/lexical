@@ -4,6 +4,7 @@ import LexicalA11y
 import LexicalCodeCore
 import LexicalExtension
 import LexicalHashtag
+import LexicalHeadless
 import LexicalHistory
 import LexicalLink
 import LexicalList
@@ -73,6 +74,7 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "HistoryAnnounceExtension": HistoryAnnounceExtension
   case "MarkExtension": MarkExtension
   case "MarkBaseExtension": MarkBaseExtension
+  case "HeadlessExtension": HeadlessExtension
   default: markFlavor(key)
   }
 }
@@ -711,6 +713,10 @@ final class TestExtensions {
       case "test-sub-box": nodes.append(.klass(TestSubBoxNode.self))
       case "test-tag": nodes.append(.klass(TestTagNode.self))
       case "test-sub-tag": nodes.append(.klass(TestSubTagNode.self))
+      case "test-text": nodes.append(.klass(TestTextNode.self))
+      // `textReplacement`'s.
+      case "replace-text": nodes.append(.replacement(textReplacement(false)))
+      case "replace-text-legacy": nodes.append(.replacement(textReplacement(true)))
       default: throw ScriptError("unknown node type \(type)")
       }
     }

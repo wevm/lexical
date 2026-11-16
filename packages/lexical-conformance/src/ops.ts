@@ -84,6 +84,7 @@ import {
   HashtagNode,
   registerLexicalHashtag,
 } from '@lexical/hashtag';
+import {createHeadlessEditor, HeadlessExtension} from '@lexical/headless';
 import {
   createEmptyHistoryState,
   HistoryExtension,
@@ -227,6 +228,7 @@ import {
   registerNestedElementResolver,
 } from '@lexical/utils';
 import {
+  $addUpdateTag,
   $caretRangeFromSelection,
   $cloneWithProperties,
   $create,
@@ -234,6 +236,7 @@ import {
   $createParagraphNode,
   $createRangeSelection,
   $createTextNode,
+  $getAdjacentNode,
   $getCaretRange,
   $getChildCaret,
   $getEditor,
@@ -249,6 +252,7 @@ import {
   $getState,
   $getStateChange,
   $getTextPointCaret,
+  $hasUpdateTag,
   $insertNodes,
   $isBlockContainer,
   $isDecoratorNode,
@@ -257,7 +261,9 @@ import {
   $isRangeSelection,
   $isSlotHost,
   $isTextNode,
+  $nodesOfType,
   $normalizeCaret,
+  $onUpdate,
   $parseSerializedNode,
   $removeSlot,
   $removeTextFromCaretRange,
@@ -330,6 +336,7 @@ import {
   type LexicalEditorWithDispose,
   type LexicalExtension,
   type LexicalNode,
+  type LexicalNodeReplacement,
   MOVE_TO_END,
   MOVE_TO_START,
   type NodeCaret,
@@ -814,6 +821,34 @@ export type Action =
   | {do: 'wrapOverflowedNodes'; offset: number}
   /** `$mergePrevious(node)` of the overflow node `key`. */
   | {do: 'mergePrevious'; key: string}
+  /** `$addUpdateTag(tag)`. */
+  | {do: 'addUpdateTag'; tag: string}
+  /** Logs `['hasUpdateTag', tag, $hasUpdateTag(tag)]`. */
+  | {do: 'logHasUpdateTag'; tag: string}
+  /** `$onUpdate(fn)`, `fn` logging `['$onUpdate']`. */
+  | {do: 'onUpdate'}
+  /**
+   * Logs `['hasNodes', [[type, editor.hasNode(klass)]...],
+   * editor.hasNodes(klasses)]` of the active editor (`$getEditor()`), the
+   * classes of KNOWN_CLASSES.
+   */
+  | {do: 'logHasNodes'; types: string[]}
+  /**
+   * Logs `['nodesOfType', type, keys]`: `$nodesOfType(klass)` of the class
+   * the editor registers under the type.
+   */
+  | {do: 'logNodesOfType'; type: string}
+  /**
+   * Logs `['adjacentNode', isBackward, key]`: `$getAdjacentNode` of the
+   * range selection's focus, `null` at a boundary.
+   */
+  | {do: 'logAdjacentNode'; isBackward: boolean}
+  /** Logs `['getters', key, entries]` of the node `key` ($getters). */
+  | {do: 'logGetters'; key: string}
+  /** Appends `$createTextNode(text)` to the element `key`. */
+  | {do: 'appendText'; key: string; text: string}
+  /** Logs `['editable', $getEditor().isEditable()]`. */
+  | {do: 'logEditable'}
   | {do: 'dispatch'; command: string; payload?: Json};
 
 /**
@@ -856,7 +891,8 @@ export type TypeaheadSpec = {
 export type HandlerSpec = {
   id: string;
   command: string;
-  priority: 0 | 1 | 2 | 3 | 4;
+  /** A `COMMAND_PRIORITY_*`, `-8` to `-4` the `COMMAND_PRIORITY_BEFORE_*` ones. */
+  priority: 0 | 1 | 2 | 3 | 4 | -8 | -7 | -6 | -5 | -4;
   result: boolean;
   actions?: Action[];
 };
@@ -868,7 +904,22 @@ export type HandlerSpec = {
  * which starts at 0.
  */
 export type Step = (
-  | {update: Action[]; tag?: string[]}
+  | {
+      update: Action[];
+      tag?: string[];
+      /** The update's `onUpdate` logs `['onUpdate']`. */
+      onUpdate?: true;
+    }
+  /**
+   * `editor.read(() => editor.dispatchCommand(command, payload))`, logging
+   * `['dispatched', command, handled]`: a command dispatched in a read.
+   */
+  | {readDispatch: string; payload?: Json}
+  /**
+   * `editor.focus(fn, options)`, `fn` logging `['focused']`. In Node the
+   * update finds no selection with a root element (see `setRootElement`).
+   */
+  | {focus: {defaultSelection?: 'rootStart' | 'rootEnd'}}
   /**
    * `editor.dispatchCommand(command, payload)`; a command whose payload is
    * a DOM event (EVENT_COMMANDS) gets the event its JSON describes.
@@ -1280,6 +1331,28 @@ export type Script = {
    * that the mock took; the Rust and Swift runners set it for the script.
    */
   isApple?: boolean;
+  /** Register `TestTextNode` (`test-text`). */
+  testText?: boolean;
+  /**
+   * Register `TestTextNode` and TEXT_REPLACEMENT with its `withKlass`, so
+   * `$create(TextNode)` and `$createTextNode` make `TestTextNode`s.
+   */
+  replaceText?: boolean;
+  /** `createHeadlessEditor` (@lexical/headless) in place of `createEditor`. */
+  headless?: boolean;
+  /** `createEditor`'s `editable`. */
+  editable?: boolean;
+  /**
+   * Log each `console.warn` as `['warn', message]`, in the build's log and
+   * the steps' (`withWarnings`).
+   */
+  warnings?: boolean;
+  /**
+   * An update listener, registered after `listen`'s, that logs
+   * `['mutatedNodes', null | [[type, [[key, mutation]...]]...]]`, the
+   * payload's `mutatedNodes` by class type.
+   */
+  mutatedNodes?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -1380,6 +1453,151 @@ export class TestDecoratorBlockNode extends DecoratorBlockNode {
 
   decorate(): never {
     return null as never;
+  }
+}
+
+/**
+ * The session whose `TestTextNode`s log their `selectionTransform` (JS
+ * calls the hook with no context of the session's).
+ */
+let selectionTransformCtx: Context | null = null;
+
+/** `[anchorKey, anchorOffset, focusKey, focusOffset]` of a range selection. */
+function rangeJson(selection: BaseSelection | null): Json {
+  return $isRangeSelection(selection)
+    ? [
+        selection.anchor.key,
+        selection.anchor.offset,
+        selection.focus.key,
+        selection.focus.offset,
+      ]
+    : null;
+}
+
+/**
+ * `TestTextNode` (`test-text`): a `TextNode` whose `selectionTransform`
+ * logs `['selectionTransform', key, prev, next]`, the previous and next
+ * selections as `rangeJson`.
+ */
+export class TestTextNode extends TextNode {
+  $config() {
+    return this.config('test-text', {extends: TextNode});
+  }
+
+  selectionTransform(
+    prevSelection: null | BaseSelection,
+    nextSelection: RangeSelection,
+  ): void {
+    if (selectionTransformCtx !== null) {
+      selectionTransformCtx.log.push([
+        'selectionTransform',
+        this.getKey(),
+        rangeJson(prevSelection),
+        rangeJson(nextSelection),
+      ]);
+    }
+  }
+}
+
+/**
+ * `{replace: TextNode, with, withKlass: TestTextNode}`, `with` making a
+ * `TestTextNode` with the node's text; without `withKlass` when `legacy`.
+ */
+function textReplacement(legacy: boolean): LexicalNodeReplacement {
+  const replacement: LexicalNodeReplacement = {
+    replace: TextNode,
+    with: node => new TestTextNode((node as TextNode).getTextContent()),
+  };
+  if (!legacy) {
+    replacement.withKlass = TestTextNode;
+  }
+  return replacement;
+}
+
+/** The classes `logHasNodes` asks about, by type. */
+const KNOWN_CLASSES = new Map<string, Klass<LexicalNode>>([
+  ['heading', HeadingNode],
+  ['link', LinkNode],
+  ['paragraph', ParagraphNode],
+  ['quote', QuoteNode],
+  ['test-text', TestTextNode],
+  ['text', TextNode],
+]);
+
+/** `f()`, or `'<throws>'` when it throws. */
+function attempt(f: () => Json): Json {
+  try {
+    return f();
+  } catch {
+    return '<throws>';
+  }
+}
+
+/**
+ * The getters of a node, as `[name, value]` entries: for every node
+ * `getTopLevelElement` and `getTopLevelElementOrThrow` (keys) and
+ * `getParentKeys`; for an element `getChildrenKeys`, `isLastChild`,
+ * `getFirstChildOrThrow`, `getLastChildOrThrow` (keys), `hasTextFormat`
+ * and `getFormatFlags` of `bold`, and `canReplaceWith` and
+ * `canInsertAfter` of itself; for a text node `getFormatFlags` of `bold`
+ * and of `italic` aligned with format 2, and `isDirectionless`.
+ */
+function $getters(node: LexicalNode): Json {
+  const entries: Json[] = [
+    [
+      'topLevelElement',
+      attempt(() => {
+        const top = node.getTopLevelElement();
+        return top === null ? null : top.getKey();
+      }),
+    ],
+    [
+      'topLevelElementOrThrow',
+      attempt(() => node.getTopLevelElementOrThrow().getKey()),
+    ],
+    ['parentKeys', node.getParentKeys()],
+  ];
+  if ($isElementNode(node)) {
+    entries.push(
+      ['childrenKeys', node.getChildrenKeys()],
+      ['isLastChild', attempt(() => node.isLastChild())],
+      [
+        'firstChildOrThrow',
+        attempt(() => node.getFirstChildOrThrow().getKey()),
+      ],
+      ['lastChildOrThrow', attempt(() => node.getLastChildOrThrow().getKey())],
+      ['hasTextFormat', node.hasTextFormat('bold')],
+      ['formatFlags', node.getFormatFlags('bold', null)],
+      ['canReplaceWith', node.canReplaceWith(node)],
+      ['canInsertAfter', node.canInsertAfter(node)],
+    );
+  }
+  if ($isTextNode(node)) {
+    entries.push(
+      ['formatFlags', node.getFormatFlags('bold', null)],
+      ['alignedFormatFlags', node.getFormatFlags('italic', 2)],
+      ['isDirectionless', node.isDirectionless()],
+    );
+  }
+  return entries;
+}
+
+/**
+ * Runs `f` with each `console.warn` logged as `['warn', message]` in the
+ * session's log, when the script asks for it.
+ */
+function withWarnings<T>(ctx: Context, on: boolean, f: () => T): T {
+  if (!on) {
+    return f();
+  }
+  const warn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    ctx.log.push(['warn', args.map(String).join(' ')]);
+  };
+  try {
+    return f();
+  } finally {
+    console.warn = warn;
   }
 }
 
@@ -3252,6 +3470,58 @@ function $runAction(action: Action, ctx: Context): void {
       CHARACTER_LIMIT.INTERNAL_$mergePrevious(overflowNode);
       return;
     }
+    case 'addUpdateTag':
+      $addUpdateTag(action.tag);
+      return;
+    case 'logHasUpdateTag':
+      ctx.log.push(['hasUpdateTag', action.tag, $hasUpdateTag(action.tag)]);
+      return;
+    case 'onUpdate':
+      $onUpdate(() => {
+        ctx.log.push(['$onUpdate']);
+      });
+      return;
+    case 'logHasNodes': {
+      const editor = $getEditor();
+      const klasses = action.types.map(type => {
+        const klass = KNOWN_CLASSES.get(type);
+        if (klass === undefined) {
+          throw new Error(`unknown class ${type}`);
+        }
+        return klass;
+      });
+      ctx.log.push([
+        'hasNodes',
+        action.types.map((type, i) => [type, editor.hasNode(klasses[i])]),
+        editor.hasNodes(klasses),
+      ]);
+      return;
+    }
+    case 'logNodesOfType':
+      ctx.log.push([
+        'nodesOfType',
+        action.type,
+        $nodesOfType($registeredClass(action.type)).map(n => n.getKey()),
+      ]);
+      return;
+    case 'logAdjacentNode': {
+      const adjacent = $getAdjacentNode($sel().focus, action.isBackward);
+      ctx.log.push([
+        'adjacentNode',
+        action.isBackward,
+        adjacent === null ? null : adjacent.getKey(),
+      ]);
+      return;
+    }
+    case 'logGetters':
+      ctx.log.push(['getters', action.key, $getters($node(action.key))]);
+      return;
+    case 'appendText':
+      element($node(action.key)).append($createTextNode(action.text));
+      return;
+    case 'logEditable':
+      ctx.log.push(['editable', $getEditor().isEditable()]);
+      return;
     case 'dispatch':
       dispatchLogged(ctx, action.command, action.payload ?? null);
       return;
@@ -3785,6 +4055,7 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['HistoryAnnounceExtension', HistoryAnnounceExtension],
   ['MarkExtension', MarkExtension],
   ['MarkBaseExtension', MarkBaseExtension],
+  ['HeadlessExtension', HeadlessExtension],
   ...MARK_FLAVORS,
 ]);
 
@@ -3909,6 +4180,7 @@ const NODES = new Map<string, Klass<LexicalNode>>([
   ['test-sub-box', TestSubBoxNode],
   ['test-tag', TestTagNode],
   ['test-sub-tag', TestSubTagNode],
+  ['test-text', TestTextNode],
 ]);
 
 const EXTENSION_PHASES: ExtensionPhase[] = [
@@ -3988,8 +4260,12 @@ function testExtension(ctx: Context, spec: ExtensionSpec): AnyLexicalExtension {
   }
   if (spec.nodes !== undefined) {
     const nodes = spec.nodes;
+    // `replace-text` and `replace-text-legacy` are textReplacement's.
     extension.nodes = () =>
       nodes.map(type => {
+        if (type === 'replace-text' || type === 'replace-text-legacy') {
+          return textReplacement(type === 'replace-text-legacy');
+        }
         const klass = NODES.get(type);
         if (klass === undefined) {
           throw new Error(`unknown node type ${type}`);
@@ -4229,10 +4505,11 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
             );
       ctx.parent = parent;
       const extensions = script.extensions.map(e => extensionArg(ctx, e));
-      built =
+      built = withWarnings(ctx, script.warnings === true, () =>
         parent === null || script.parentRead === false
           ? buildEditorFromExtensions(...extensions)
-          : parent.read(() => buildEditorFromExtensions(...extensions));
+          : parent.read(() => buildEditorFromExtensions(...extensions)),
+      );
     } catch (e) {
       build = {error: (e as Error).message, log: ctx.log};
       return {
@@ -4252,7 +4529,8 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     }
     build = snapshotOf(built, ctx.log, true) as BuildResult;
   } else {
-    ctx.editor = createEditor({
+    ctx.editor = (script.headless ? createHeadlessEditor : createEditor)({
+      ...(script.editable === undefined ? {} : {editable: script.editable}),
       namespace: NAMESPACE,
       nodes: [
         ...(script.richText ? [HeadingNode, QuoteNode] : []),
@@ -4264,6 +4542,8 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
         ...(script.extension ? [HorizontalRuleNode, DecoratorTextNode] : []),
         ...(script.mark ? [MarkNode] : []),
         ...(script.decoratorBlock ? [TestDecoratorBlockNode] : []),
+        ...(script.testText || script.replaceText ? [TestTextNode] : []),
+        ...(script.replaceText ? [textReplacement(false)] : []),
       ],
       onError: e => {
         throw e;
@@ -4374,6 +4654,19 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       ctx.log.push(['textContent', content]);
     });
   }
+  if (script.mutatedNodes) {
+    editor.registerUpdateListener(({mutatedNodes}) => {
+      ctx.log.push([
+        'mutatedNodes',
+        mutatedNodes === null
+          ? null
+          : [...mutatedNodes].map(([klass, mutations]) => [
+              klass.getType(),
+              [...mutations],
+            ]),
+      ]);
+    });
+  }
   // The session's clock: `Date.now()` returns it while a step runs,
   // including the read below that commits a dispatch's update, so the
   // history listener sees it.
@@ -4404,7 +4697,14 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     if ('setRootElement' in step) {
       sessionDOM(ctx);
     }
-    return atClock(() => withDOMGlobals(ctx, () => runAtClock(step, snapshot)));
+    selectionTransformCtx = ctx;
+    return atClock(() =>
+      withDOMGlobals(ctx, () =>
+        withWarnings(ctx, script.warnings === true, () =>
+          runAtClock(step, snapshot),
+        ),
+      ),
+    );
   };
   const runAtClock = (step: Step, snapshot: boolean): StepResult => {
     ctx.log = [];
@@ -4450,8 +4750,28 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
             $runAction(action, ctx);
           }
         },
-        {discrete: true, tag: step.tag},
+        {
+          discrete: true,
+          onUpdate: step.onUpdate
+            ? () => {
+                ctx.log.push(['onUpdate']);
+              }
+            : undefined,
+          tag: step.tag,
+        },
       );
+    } else if ('readDispatch' in step) {
+      const name = step.readDispatch;
+      const payload = step.payload ?? null;
+      ctx.log.push([
+        'dispatched',
+        name,
+        target.read(() => target.dispatchCommand(command(ctx, name), payload)),
+      ]);
+    } else if ('focus' in step) {
+      target.focus(() => {
+        ctx.log.push(['focused']);
+      }, step.focus);
     } else if ('dispatch' in step) {
       dispatchLogged(ctx, step.dispatch, step.payload ?? null, target);
     } else if ('setRootElement' in step) {
@@ -4583,6 +4903,8 @@ function runExtensionStep(
   step: Exclude<
     Step,
     | {update: Action[]}
+    | {readDispatch: string}
+    | {focus: {defaultSelection?: 'rootStart' | 'rootEnd'}}
     | {dispatch: string}
     | {setRootElement: boolean}
     | {computedStyles: unknown}

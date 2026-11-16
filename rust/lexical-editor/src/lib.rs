@@ -78,6 +78,7 @@ mod gc;
 mod generated_json;
 #[cfg(feature = "hashtag")]
 pub mod hashtag;
+pub mod headless;
 #[cfg(feature = "history")]
 pub mod history;
 #[cfg(feature = "html")]
@@ -109,6 +110,7 @@ pub mod overflow;
 #[cfg(feature = "plain-text")]
 pub mod plain_text;
 mod reconciler;
+mod ref_counted_registry;
 #[cfg(feature = "rich-text")]
 pub mod rich_text;
 pub mod schema;
@@ -129,6 +131,7 @@ mod updates;
 pub mod utf16;
 #[cfg(feature = "utils")]
 pub mod utils;
+mod warnings;
 
 pub use caret::{
     CaretDirection, CaretKind, CaretRange, ChildCaret, CommonAncestorAcrossSlotsResult,
@@ -165,13 +168,18 @@ pub use commands::{
     UNDO_COMMAND,
 };
 pub use editor::{
-    COLLABORATION_TAG, COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
+    COLLABORATION_TAG, COMMAND_PRIORITY_BEFORE_CRITICAL, COMMAND_PRIORITY_BEFORE_EDITOR,
+    COMMAND_PRIORITY_BEFORE_HIGH, COMMAND_PRIORITY_BEFORE_LOW, COMMAND_PRIORITY_BEFORE_NORMAL,
+    COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
     COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, COMPOSITION_END_TAG, COMPOSITION_START_TAG,
-    CUT_TAG, CreateEditorArgs, DEFER_COMPOSITION_MERGE_TAG, Editor, EditorConfig, EditorReadMode,
-    HISTORIC_TAG, HISTORY_MERGE_TAG, HISTORY_PUSH_TAG, LexicalCommand, MutationListenerOptions,
-    MutationListenerPayload, NodeClass, NodeMutation, NodeMutations, PASTE_TAG, RootElement,
-    RootElementRef, SKIP_SELECTION_FOCUS_TAG, Transform, Unregister, UpdateListenerPayload,
-    UpdateOptions, create_command, create_editor, has_update_tag,
+    CUT_TAG, CreateEditorArgs, DEFER_COMPOSITION_MERGE_TAG, Editor, EditorConfig,
+    EditorFocusOptions, EditorReadMode, FOCUS_TAG, HISTORIC_TAG, HISTORY_MERGE_TAG,
+    HISTORY_PUSH_TAG, LexicalCommand, LexicalNodeReplacement, MutatedNodes,
+    MutationListenerOptions, MutationListenerPayload, NodeClass, NodeMutation, NodeMutations,
+    NodeReplace, PASTE_TAG, RootElement, RootElementRef, SKIP_COLLAB_TAG, SKIP_DOM_SELECTION_TAG,
+    SKIP_SCROLL_INTO_VIEW_TAG, SKIP_SELECTION_FOCUS_TAG, Transform, Unregister,
+    UpdateListenerPayload, UpdateOptions, WarningHandler, add_update_tag, create_command,
+    create_editor, get_editor, has_update_tag,
 };
 pub use editor_state::EditorState;
 pub use environment::{is_apple, with_is_apple};
@@ -190,6 +198,7 @@ pub use extension_core::{
     LexicalExtensionDependency, NormalizedPeerDependency, config_extension,
     declare_peer_dependency, define_extension, safe_cast, shallow_merge_config,
 };
+pub use headless::create_headless_editor;
 pub use keyboard_shortcuts::{
     CompiledKeyboardShortcuts, KeyboardShortcut, KeyboardShortcutMatch, ShortcutDisabledFn,
     ShortcutDispatchFn, compile_keyboard_shortcuts, control_or_alt, control_or_meta,
@@ -201,9 +210,10 @@ pub use lexical_selection::{
 };
 pub use lexical_utils::{
     ControlOrOther, KeyboardEventModifierMask, KeyboardEventModifiers, ModifierExpectation,
-    clone_with_properties, copy_node, create, get_composition_key, get_node_by_key, get_root,
-    get_text_direction, is_backspace, is_delete, is_escape, is_exact_shortcut_match, is_modifier,
-    is_modifier_match, is_root_or_shadow_root, is_select_all, keyboard_event_mask_for_platform,
+    apply_node_replacement, clone_with_properties, clone_with_properties_ephemeral, copy_node,
+    create, get_adjacent_node, get_composition_key, get_node_by_key, get_root, get_text_direction,
+    is_backspace, is_delete, is_escape, is_exact_shortcut_match, is_modifier, is_modifier_match,
+    is_root_or_shadow_root, is_select_all, keyboard_event_mask_for_platform, nodes_of_type,
     reset_random_key, set_composition_key, split_node,
 };
 pub use merge_register::merge_register;
@@ -216,6 +226,7 @@ pub use node_state::{
 pub use nodes::element::{Direction, ElementData};
 pub use nodes::paragraph::create_paragraph_node;
 pub use nodes::text::{TextData, create_text_node, toggle_text_format_type};
+pub use ref_counted_registry::{RefCountedRegistry, create_ref_counted_registry};
 pub use selection_deletion::{
     SelectionAlter, SelectionGranularity, SelectionMovement, is_block_fully_selected,
 };
@@ -236,6 +247,7 @@ pub use structure::{
     internal_register_node_structure, is_block_container, iter_static_node_config_chain,
 };
 pub use updates::{on_update, parse_serialized_node};
+pub use warnings::with_warning_handler;
 
 /// The upstream Lexical release this port conforms to. The conformance
 /// vectors (`meta.json`) name the same one, so an upstream sync can't move

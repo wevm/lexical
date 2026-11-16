@@ -9,7 +9,7 @@ use crate::LexicalError;
 use crate::json::Object;
 use crate::json::Value;
 use crate::lexical_selection::{PointType, SelectionRef, Which};
-use crate::lexical_utils::{set_node_key, with_writable};
+use crate::lexical_utils::with_writable;
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::nodes::element::ElementData;
 use crate::nodes::line_break::{LineBreakNode, create_line_break_node};
@@ -72,7 +72,7 @@ fn truthy(value: Option<&str>) -> Option<String> {
 /// `$createCodeNode(language, theme)`: `None` and `""` are both no
 /// language (no theme).
 pub fn create_code_node(language: Option<&str>, theme: Option<&str>) -> NodeRef {
-    let node = set_node_key(Box::new(CodeNode::default()));
+    let node = crate::create::<CodeNode>();
     node.set_language(language);
     node.set_theme(theme);
     node
@@ -157,7 +157,8 @@ fn has_code_extension() -> bool {
 /// with [`code_extension`](super::code_extension) only adds the line.
 fn insert_new_after(selection: &SelectionRef) -> Result<Option<NodeRef>, LexicalError> {
     if !has_code_extension() {
-        // `noExtensionDeprecation()` warns once; there is no console here.
+        // `noExtensionDeprecation()`.
+        crate::warnings::warn_only_once("Using CodeNode without CodeExtension is deprecated");
         if let Some(el) = exit_code_node_on_enter(selection)? {
             return Ok(Some(el));
         }

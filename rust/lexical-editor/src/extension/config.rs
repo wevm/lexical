@@ -19,7 +19,7 @@ pub fn get_known_types_and_nodes(config: &InitialEditorConfig) -> KnownTypesAndN
     for klass in get_node_config(config) {
         if !known.types.contains(&klass.node_type()) {
             known.types.push(klass.node_type());
-            known.nodes.push(*klass);
+            known.nodes.push(klass.clone());
         }
     }
     known

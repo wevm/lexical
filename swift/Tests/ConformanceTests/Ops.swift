@@ -6,6 +6,7 @@ import LexicalCodeCore
 import LexicalDecoratorBlockNode
 import LexicalExtension
 import LexicalHashtag
+import LexicalHeadless
 import LexicalHistory
 import LexicalLink
 import LexicalList
@@ -166,6 +167,121 @@ final class TestDecoratorBlockNode: DecoratorBlockNode {
     try NodeConfig(
       TestDecoratorBlockNode.self, type: "test-decorator-block", extends: DecoratorBlockNode.self)
   }
+}
+
+/// A weak reference to a session, as `selectionTransformCtx` holds it.
+private final class WeakScriptContext {
+  weak var ctx: ScriptContext?
+  init(_ ctx: ScriptContext?) { self.ctx = ctx }
+}
+
+/// `selectionTransformCtx` in ops.ts: the session whose `TestTextNode`s log
+/// their `selectionTransform` (the hook gets no context of the session's).
+/// Per thread, as the scripts run in parallel, each on one thread.
+private var selectionTransformCtx: ScriptContext? {
+  get {
+    (Thread.current.threadDictionary["selectionTransformCtx"] as? WeakScriptContext)?.ctx
+  }
+  set { Thread.current.threadDictionary["selectionTransformCtx"] = WeakScriptContext(newValue) }
+}
+
+/// `rangeJson(selection)` in ops.ts: `[anchorKey, anchorOffset, focusKey,
+/// focusOffset]` of a range selection, else `null`.
+private func rangeJSON(_ selection: BaseSelection?) -> JSONValue {
+  guard let range = selection as? RangeSelection else { return .null }
+  return .array([
+    .string(range.anchor.key), .int(range.anchor.offset), .string(range.focus.key),
+    .int(range.focus.offset),
+  ])
+}
+
+/// `TestTextNode` in ops.ts (`test-text`): a `TextNode` whose
+/// `selectionTransform` logs `['selectionTransform', key, prev, next]`.
+final class TestTextNode: TextNode {
+  override class func config() throws -> NodeConfig? {
+    try NodeConfig(TestTextNode.self, type: "test-text", extends: TextNode.self)
+  }
+
+  override func selectionTransform(
+    _ prevSelection: BaseSelection?, _ nextSelection: RangeSelection
+  ) throws {
+    selectionTransformCtx?.log.append(
+      .array([
+        .string("selectionTransform"), .string(getKey()), rangeJSON(prevSelection),
+        rangeJSON(nextSelection),
+      ]))
+  }
+}
+
+/// `textReplacement(legacy)` in ops.ts: `{replace: TextNode, with,
+/// withKlass: TestTextNode}`, `with` making a `TestTextNode` with the node's
+/// text; without `withKlass` when `legacy`.
+func textReplacement(_ legacy: Bool) -> LexicalNodeReplacement {
+  LexicalNodeReplacement(
+    replace: TextNode.self, with: { node in try TestTextNode(try node.getTextContent()) },
+    withKlass: legacy ? nil : TestTextNode.self)
+}
+
+/// `KNOWN_CLASSES` in ops.ts: the classes `logHasNodes` asks about, by type.
+private let knownClasses: [String: LexicalNode.Type] = [
+  "heading": HeadingNode.self, "link": LinkNode.self, "paragraph": ParagraphNode.self,
+  "quote": QuoteNode.self, "test-text": TestTextNode.self, "text": TextNode.self,
+]
+
+/// `attempt(f)` in ops.ts: `f()`, or `'<throws>'` when it throws.
+private func attempt(_ f: () throws -> JSONValue) -> JSONValue {
+  (try? f()) ?? .string("<throws>")
+}
+
+/// `$getters(node)` in ops.ts: the node's getters as `[name, value]` entries.
+private func getters(_ node: LexicalNode) throws -> JSONValue {
+  var entries: [JSONValue] = [
+    .array([
+      .string("topLevelElement"),
+      attempt { try node.getTopLevelElement().map { .string($0.getKey()) } ?? .null },
+    ]),
+    .array([
+      .string("topLevelElementOrThrow"),
+      attempt { .string(try node.getTopLevelElementOrThrow().getKey()) },
+    ]),
+    .array([.string("parentKeys"), .array(try node.getParentKeys())]),
+  ]
+  if let element = node as? ElementNode {
+    entries += [
+      .array([.string("childrenKeys"), .array(try element.getChildrenKeys())]),
+      .array([.string("isLastChild"), attempt { .bool(try element.isLastChild()) }]),
+      .array([
+        .string("firstChildOrThrow"),
+        attempt { .string(try element.getFirstChildOrThrow().getKey()) },
+      ]),
+      .array([
+        .string("lastChildOrThrow"),
+        attempt { .string(try element.getLastChildOrThrow().getKey()) },
+      ]),
+      .array([.string("hasTextFormat"), .bool(try element.hasTextFormat("bold"))]),
+      .array([.string("formatFlags"), .int(try element.getFormatFlags("bold", nil))]),
+      .array([.string("canReplaceWith"), .bool(try element.canReplaceWith(element))]),
+      .array([.string("canInsertAfter"), .bool(try element.canInsertAfter(element))]),
+    ]
+  }
+  if let text = node as? TextNode {
+    entries += [
+      .array([.string("formatFlags"), .int(try text.getFormatFlags("bold", nil))]),
+      .array([.string("alignedFormatFlags"), .int(try text.getFormatFlags("italic", 2))]),
+      .array([.string("isDirectionless"), .bool(try text.isDirectionless())]),
+    ]
+  }
+  return .array(entries)
+}
+
+/// `withWarnings(ctx, on, f)` in ops.ts: `body`, with each warning logged as
+/// `['warn', message]` when `on`.
+private func withWarnings<T>(
+  _ ctx: ScriptContext, _ on: Bool, _ body: () throws -> T
+) rethrows -> T {
+  guard on else { return try body() }
+  return try withWarningHandler(
+    { [unowned ctx] message in ctx.log.append(.array([.string("warn"), .string(message)])) }, body)
 }
 
 /// `testSchemaFlagsState` in ops.ts: a set NodeState of `TestSchemaNode`,
@@ -1565,6 +1681,49 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
       throw ScriptError("\(key) is not an overflow node")
     }
     try mergePrevious(overflowNode)
+  case "addUpdateTag":
+    try addUpdateTag(try action["tag"]?.stringValue.orThrow() ?? "")
+  case "logHasUpdateTag":
+    let tag = try action["tag"]?.stringValue.orThrow() ?? ""
+    ctx.log.append(.array([.string("hasUpdateTag"), .string(tag), .bool(try hasUpdateTag(tag))]))
+  case "onUpdate":
+    try onUpdate { [unowned ctx] in ctx.log.append(.array([.string("$onUpdate")])) }
+  case "logHasNodes":
+    let editor = try getEditor()
+    let types = try (action["types"]?.arrayValue ?? []).map { try $0.stringValue.orThrow() }
+    let klasses = try types.map { type in
+      guard let klass = knownClasses[type] else { throw ScriptError("unknown class \(type)") }
+      return klass
+    }
+    ctx.log.append(
+      .array([
+        .string("hasNodes"),
+        .array(zip(types, klasses).map { .array([.string($0), .bool(editor.hasNode($1))]) }),
+        .bool(editor.hasNodes(klasses)),
+      ]))
+  case "logNodesOfType":
+    let type = try action["type"]?.stringValue.orThrow() ?? ""
+    let nodes = try nodesOfType(try registeredClass(type))
+    ctx.log.append(
+      .array([.string("nodesOfType"), .string(type), .array(nodes.map { $0.getKey() })]))
+  case "logAdjacentNode":
+    let isBackward = try action["isBackward"]?.boolValue.orThrow() ?? false
+    guard let selection = try getSelection() as? RangeSelection else {
+      throw ScriptError("not a range selection")
+    }
+    let adjacent = try getAdjacentNode(selection.focus, isBackward)
+    ctx.log.append(
+      .array([
+        .string("adjacentNode"), .bool(isBackward), adjacent.map { .string($0.getKey()) } ?? .null,
+      ]))
+  case "logGetters":
+    let key = try action["key"]?.stringValue.orThrow() ?? ""
+    ctx.log.append(.array([.string("getters"), .string(key), try getters(node(key))]))
+  case "appendText":
+    try element(node(action["key"]?.stringValue ?? "")).append(
+      try createTextNode(try action["text"]?.stringValue.orThrow() ?? ""))
+  case "logEditable":
+    ctx.log.append(.array([.string("editable"), .bool(try getEditor().isEditable())]))
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     logDispatched(ctx, name, try ctx.dispatch(name, action["payload"] ?? .null))
@@ -1868,19 +2027,21 @@ private func runScriptOnPlatform(
     defs.clock = { [unowned ctx] in ctx.clock }
     built = defs
     do {
-      if let parentExtensions = script["parent"]?.arrayValue {
-        let parent = try buildEditorFromExtensions(try parentExtensions.map { try defs.arg($0) })
-        ctx.parent = parent
-        defs.parent = parent
-        if script["parentRead"]?.boolValue != false {
-          ctx.editor = try parent.read {
-            try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
+      try withWarnings(ctx, script["warnings"]?.boolValue == true) {
+        if let parentExtensions = script["parent"]?.arrayValue {
+          let parent = try buildEditorFromExtensions(try parentExtensions.map { try defs.arg($0) })
+          ctx.parent = parent
+          defs.parent = parent
+          if script["parentRead"]?.boolValue != false {
+            ctx.editor = try parent.read {
+              try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
+            }
+          } else {
+            ctx.editor = try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
           }
         } else {
           ctx.editor = try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
         }
-      } else {
-        ctx.editor = try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
       }
     } catch {
       let message = (error as? LexicalError)?.message ?? "\(error)"
@@ -1948,9 +2109,19 @@ private func makeEditor(_ script: JSONValue) throws -> Editor {
   if script["decoratorBlock"]?.boolValue == true {
     nodes += [.klass(TestDecoratorBlockNode.self)]
   }
-  return try createEditor(
-    // ops.ts's `NAMESPACE`, which a clipboard payload names.
-    CreateEditorArgs(namespace: "conformance", nodes: nodes, onError: { throw $0 }))
+  if script["testText"]?.boolValue == true || script["replaceText"]?.boolValue == true {
+    nodes += [.klass(TestTextNode.self)]
+  }
+  if script["replaceText"]?.boolValue == true {
+    nodes += [.replacement(textReplacement(false))]
+  }
+  // ops.ts's `NAMESPACE`, which a clipboard payload names.
+  let args = CreateEditorArgs(
+    namespace: "conformance", nodes: nodes, onError: { throw $0 },
+    editable: script["editable"]?.boolValue)
+  // `headless`: `createHeadlessEditor` in place of `createEditor`.
+  return script["headless"]?.boolValue == true
+    ? try createHeadlessEditor(args) : try createEditor(args)
 }
 
 /// Registers the script's packages, transforms, handlers, listeners and
@@ -2083,6 +2254,24 @@ private func runSteps(
       ctx.log.append(.array([.string("textContent"), .string(content)]))
     }
   }
+  // `mutatedNodes`: the payload's `mutatedNodes`, by class type.
+  if script["mutatedNodes"]?.boolValue == true {
+    editor.registerUpdateListener { [unowned editor] payload in
+      ctx.log.append(
+        .array([
+          .string("mutatedNodes"),
+          payload.mutatedNodes.map { mutatedNodes in
+            .array(
+              mutatedNodes.map { id, mutations in
+                let type = editor._nodes.first { ObjectIdentifier($0.1.klass) == id }?.0 ?? ""
+                return .array([
+                  .string(type), .array(mutations.map { .array([.string($0.0), .string($0.1)]) }),
+                ])
+              })
+          } ?? .null,
+        ]))
+    }
+  }
   if let delay = script["history"]?["delay"]?.numberValue {
     // ops.ts reads `Date.now()` at every update; here that is the session clock.
     _ = try registerHistory(editor, createEmptyHistoryState(), delay) { [unowned ctx] in ctx.clock }
@@ -2093,12 +2282,23 @@ private func runSteps(
     do {
       if let actions = step["update"]?.arrayValue {
         let tags = (step["tag"]?.arrayValue ?? []).compactMap(\.stringValue)
+        // With `onUpdate`, the update's `onUpdate` logs `['onUpdate']`.
+        let onUpdate: (() throws -> Void)? =
+          step["onUpdate"]?.boolValue == true
+          ? { [unowned ctx] in ctx.log.append(.array([.string("onUpdate")])) } : nil
         try editor.update(
           {
             for action in actions {
               try runAction(action, ctx)
             }
-          }, EditorUpdateOptions(tag: tags, discrete: true))
+          }, EditorUpdateOptions(onUpdate: onUpdate, tag: tags, discrete: true))
+      } else if let name = step["readDispatch"]?.stringValue {
+        let dispatched = try editor.read { try ctx.dispatch(name, step["payload"] ?? .null) }
+        logDispatched(ctx, name, dispatched)
+      } else if let focus = step["focus"] {
+        try editor.focus(
+          { [unowned ctx] in ctx.log.append(.array([.string("focused")])) },
+          EditorFocusOptions(defaultSelection: focus["defaultSelection"]?.stringValue))
       } else if let name = step["dispatch"]?.stringValue {
         logDispatched(ctx, name, try ctx.dispatch(name, step["payload"] ?? .null))
       } else if let on = step["setRootElement"]?.boolValue {
@@ -2157,15 +2357,20 @@ private func runSteps(
       ctx.clock = now
     }
     ctx.log = []
+    selectionTransformCtx = ctx
     var failed = false
     do {
-      if step["inParent"]?.boolValue == true {
-        guard let parent = ctx.parent else { throw ScriptError("the script has no parent editor") }
-        ctx.editor = parent
-        defer { ctx.editor = editor }
-        try runStep(step, on: parent)
-      } else {
-        try runStep(step, on: editor)
+      try withWarnings(ctx, script["warnings"]?.boolValue == true) {
+        if step["inParent"]?.boolValue == true {
+          guard let parent = ctx.parent else {
+            throw ScriptError("the script has no parent editor")
+          }
+          ctx.editor = parent
+          defer { ctx.editor = editor }
+          try runStep(step, on: parent)
+        } else {
+          try runStep(step, on: editor)
+        }
       }
     } catch {
       failed = true

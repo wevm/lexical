@@ -29,10 +29,16 @@ use std::marker::PhantomData;
 use std::rc::{Rc, Weak};
 
 /// A node class an editor registers: its type and how it imports JSON (the
-/// static `importJSON`).
-#[derive(Clone, Copy)]
+/// static `importJSON`). As an editor's registration (`RegisteredNode`) it
+/// also holds the class's node replacement, if any: what
+/// [`LexicalNodeReplacement`] makes of the class.
+#[derive(Clone)]
 pub struct NodeClass {
     pub(crate) node_type: &'static str,
+    /// `klass.name`, which messages name a class by: the Rust type's name
+    /// (the node type for a class made with
+    /// [`NodeClass::with_import_json`]).
+    pub(crate) class_name: &'static str,
     pub(crate) import_json: fn(&Object) -> Result<NodeRef, LexicalError>,
     /// The `stateConfigs` of the class's `$config`.
     pub(crate) state_configs: fn() -> Vec<RequiredNodeStateConfig>,
@@ -59,6 +65,44 @@ pub struct NodeClass {
     node_structure: fn() -> DeclaredNodeStructure,
     /// `validateNodeStructure(klass)`, which panics on a bad declaration.
     validate_node_structure: fn(),
+    /// The types of the classes the class extends, nearest first
+    /// ([`LexicalNode::super_types`]), which stand for `instanceof`.
+    pub(crate) super_types: fn() -> Vec<&'static str>,
+    /// `replace` and `replaceWithKlass`: the class's node replacement.
+    pub(crate) replacement: Option<Rc<LexicalNodeReplacement>>,
+    /// `new klass()`, which `$create` calls; `None` for a class made with
+    /// [`NodeClass::with_import_json`].
+    new_node: Option<fn() -> Box<dyn LexicalNode>>,
+}
+
+fn new_node_of<T: LexicalNode + Default>() -> Box<dyn LexicalNode> {
+    Box::new(T::default())
+}
+
+/// A node replacement's `with`: given a new node of the replaced class
+/// (with a key, in the active editor state), the node to use instead, which
+/// must have a key of its own.
+pub type NodeReplace = Rc<dyn Fn(&NodeRef) -> Result<NodeRef, LexicalError>>;
+
+/// `LexicalNodeReplacement`: an entry of [`CreateEditorArgs::nodes`] (as a
+/// [`NodeClass`], through `From`) that makes `$create` and the `$create*`
+/// functions of the `replace` class give what `with` makes of their node.
+/// `with_klass`, the class `with` makes (which must extend `replace` and be
+/// registered too), lets transforms and mutation listeners registered for
+/// `replace` reach its nodes.
+#[derive(Clone)]
+pub struct LexicalNodeReplacement {
+    pub replace: NodeClass,
+    pub with: NodeReplace,
+    pub with_klass: Option<NodeClass>,
+}
+
+impl From<LexicalNodeReplacement> for NodeClass {
+    fn from(replacement: LexicalNodeReplacement) -> Self {
+        let mut class = replacement.replace.clone();
+        class.replacement = Some(Rc::new(replacement));
+        class
+    }
 }
 
 fn is_element_or_decorator_of<T: LexicalNode + Default>() -> bool {
@@ -91,14 +135,29 @@ fn is_text_of<T: LexicalNode + Default>() -> bool {
     T::default().text().is_some()
 }
 
+fn super_types_of<T: LexicalNode + Default>() -> Vec<&'static str> {
+    T::default().super_types()
+}
+
 fn is_inline_element_of<T: LexicalNode + Default>() -> bool {
     let node = T::default();
     node.element().is_some() && node.is_inline()
 }
 
-/// The `importJSON` a class gets when it declares none
-/// (`synthesizeImportJSON`): build the node, then apply the JSON.
+/// The `importJSON` of a class: `$create(klass).updateFromJSON(json)`, so
+/// with the editor's replacement of the class.
 fn import_default<T: LexicalNode + Default>(json: &Object) -> Result<NodeRef, LexicalError> {
+    let node_type = T::default().get_type();
+    let has_replacement = crate::updates::get_registry_editor().is_some_and(|editor| {
+        editor
+            .get_registered_node(node_type)
+            .is_some_and(|class| class.replacement.is_some())
+    });
+    if has_replacement {
+        let node = crate::lexical_utils::create::<T>();
+        crate::lexical_utils::mutate(node.get_key(), |n| n.update_from_json(json));
+        return Ok(node);
+    }
     let mut node = T::default();
     node.update_from_json(json);
     Ok(set_node_key(Box::new(node)))
@@ -110,6 +169,10 @@ impl NodeClass {
     pub fn of<T: LexicalNode + Default>() -> Self {
         Self {
             node_type: T::default().get_type(),
+            class_name: std::any::type_name::<T>()
+                .rsplit("::")
+                .next()
+                .unwrap_or_default(),
             import_json: import_default::<T>,
             state_configs: state_configs_of::<T>,
             #[cfg(feature = "html")]
@@ -120,6 +183,9 @@ impl NodeClass {
             is_element_or_decorator: is_element_or_decorator_of::<T>,
             node_structure: node_structure_of::<T>,
             validate_node_structure: validate_node_structure_of::<T>,
+            super_types: super_types_of::<T>,
+            replacement: None,
+            new_node: Some(new_node_of::<T>),
         }
     }
 
@@ -131,6 +197,7 @@ impl NodeClass {
     ) -> Self {
         Self {
             node_type,
+            class_name: node_type,
             import_json,
             state_configs: Vec::new,
             #[cfg(feature = "html")]
@@ -141,11 +208,33 @@ impl NodeClass {
             is_element_or_decorator: || false,
             node_structure: DeclaredNodeStructure::default,
             validate_node_structure: || {},
+            super_types: Vec::new,
+            replacement: None,
+            new_node: None,
         }
     }
 
     pub fn node_type(&self) -> &'static str {
         self.node_type
+    }
+
+    /// Whether the class is `node_type`'s class or extends it
+    /// (`klass === Base || klass.prototype instanceof Base`).
+    pub(crate) fn extends(&self, node_type: &str) -> bool {
+        self.node_type == node_type || (self.super_types)().contains(&node_type)
+    }
+
+    /// `new klass()`, with a key in the active editor state.
+    pub(crate) fn construct(&self) -> Option<NodeRef> {
+        self.new_node.map(|f| set_node_key(f()))
+    }
+
+    /// `replaceWithKlass`: the type of the class the replacement makes.
+    pub(crate) fn replace_with_klass(&self) -> Option<&'static str> {
+        self.replacement
+            .as_ref()
+            .and_then(|r| r.with_klass.as_ref())
+            .map(|k| k.node_type)
     }
 
     /// `getDeclaredNodeStructure(klass)` (`@experimental node-structure`):
@@ -194,14 +283,48 @@ pub const DEFER_COMPOSITION_MERGE_TAG: &str = "defer-composition-merge";
 /// not move the focus to the editor.
 pub const SKIP_SELECTION_FOCUS_TAG: &str = "skip-selection-focus";
 
-/// `CreateEditorArgs`: the node classes to register besides the core ones,
-/// the editor's `namespace` (when empty, its parent editor's, or a random
-/// one, `createUID()`), the theme, the parent editor, and (with the `html`
-/// feature) the HTML import and export overrides and the render config.
+/// `SKIP_COLLAB_TAG` (`LexicalUpdateTags.ts`): the update must not be sent
+/// to other replicas.
+pub const SKIP_COLLAB_TAG: &str = "skip-collab";
+
+/// `SKIP_SCROLL_INTO_VIEW_TAG` (`LexicalUpdateTags.ts`): the update must
+/// not scroll the selection into view.
+pub const SKIP_SCROLL_INTO_VIEW_TAG: &str = "skip-scroll-into-view";
+
+/// `SKIP_DOM_SELECTION_TAG` (`LexicalUpdateTags.ts`): the update must not
+/// change the platform's selection.
+pub const SKIP_DOM_SELECTION_TAG: &str = "skip-dom-selection";
+
+/// `FOCUS_TAG` (`LexicalUpdateTags.ts`): the update is
+/// [`Editor::focus`]'s.
+pub const FOCUS_TAG: &str = "focus";
+
+/// `ErrorHandler` as `onWarn` takes it: it gets a warning the editor has
+/// recovered from, and what it returns is what the call that warned
+/// returns (JS's default throws in development, as the vectors record).
+pub type WarningHandler = Rc<dyn Fn(LexicalError) -> Result<(), LexicalError>>;
+
+/// `CreateEditorArgs`: the node classes (and [`LexicalNodeReplacement`]s,
+/// as `NodeClass`es) to register besides the core ones, the editor's
+/// `namespace` (when empty, its parent editor's, or a random one,
+/// `createUID()`), the initial state, whether it is editable, the theme,
+/// the parent editor, `onWarn`, and (with the `html` feature) the HTML
+/// import and export overrides and the render config. JS's `onError` has
+/// no counterpart: an update's error is returned from
+/// [`Editor::update`].
 #[derive(Clone, Default)]
 pub struct CreateEditorArgs {
     pub nodes: Vec<NodeClass>,
     pub namespace: String,
+    /// `editorState`: the state the editor starts with, committed by its
+    /// first read or update.
+    pub editor_state: Option<EditorState>,
+    /// `editable`; `None` is JS's `undefined`, editable.
+    pub editable: Option<bool>,
+    /// `onWarn`: what hears of recoverable conditions (an update cascade
+    /// cut short); by default the warning is returned as an error, as JS's
+    /// default throws in development.
+    pub on_warn: Option<WarningHandler>,
     /// `parentEditor`: the editor this one is nested in, which commands
     /// dispatched in this one reach after its own listeners.
     pub parent_editor: Option<Editor>,
@@ -235,14 +358,38 @@ pub enum EditorReadMode {
     Pending,
 }
 
-/// `EditorUpdateOptions`. `onUpdate` and `event` come with their users.
-#[derive(Clone, Debug, Default)]
+/// `EditorUpdateOptions`. `event` comes with its users.
+#[derive(Clone, Default)]
 pub struct UpdateOptions {
     /// Commit at the end of the update instead of at the next read.
     pub discrete: bool,
     /// Update tags (`tag`).
     pub tags: Vec<String>,
     pub skip_transforms: bool,
+    /// `onUpdate`: runs once the update commits, after its listeners and
+    /// before the callbacks of `$onUpdate` ([`on_update`](crate::on_update)).
+    pub on_update: Option<Rc<dyn Fn()>>,
+}
+
+impl std::fmt::Debug for UpdateOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UpdateOptions")
+            .field("discrete", &self.discrete)
+            .field("tags", &self.tags)
+            .field("skip_transforms", &self.skip_transforms)
+            .field("on_update", &self.on_update.is_some())
+            .finish()
+    }
+}
+
+/// `EditorFocusOptions`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum EditorFocusOptions {
+    /// `defaultSelection: 'rootEnd'` (the default, as `undefined` is).
+    #[default]
+    RootEnd,
+    /// `defaultSelection: 'rootStart'`.
+    RootStart,
 }
 
 /// What an update listener receives (`UpdateListenerPayload`). The dirty
@@ -256,6 +403,10 @@ pub struct UpdateListenerPayload {
     pub tags: Vec<String>,
     pub editor_state: EditorState,
     pub prev_editor_state: EditorState,
+    /// `mutatedNodes`: what the reconciler did to the nodes, by node type,
+    /// when it ran (the editor has a root element and something was
+    /// dirty), or `None`. Empty unless a mutation listener is registered.
+    pub mutated_nodes: Option<MutatedNodes>,
 }
 
 /// A node transform (`Transform<T>`).
@@ -286,6 +437,11 @@ impl NodeMutation {
 /// The nodes of one class a commit mutated, in the order the reconciler
 /// reached them (JS's `Map<NodeKey, NodeMutation>`).
 pub type NodeMutations = Vec<(NodeKey, NodeMutation)>;
+
+/// `MutatedNodes`: the nodes a commit mutated by node type, in the order
+/// the reconciler first reached one of the type (JS keys its `Map` by
+/// class).
+pub type MutatedNodes = Vec<(&'static str, NodeMutations)>;
 
 /// A mutation listener's second argument (`MutationListener`'s
 /// `{dirtyLeaves, prevEditorState, updateTags}`).
@@ -326,6 +482,19 @@ pub trait RootElement: Any {
     /// [`Editor::blur`] (`editor.blur()`) does to a DOM root. Does nothing
     /// by default.
     fn blur(&self) {}
+
+    /// Takes the focus, as `rootElement.focus()` does. Does nothing by
+    /// default. ([`Editor::focus`] doesn't call it: JS's moves the focus by
+    /// setting the DOM selection, which the app's view does when it draws
+    /// the selection of an update tagged [`FOCUS_TAG`].)
+    fn focus(&self) {}
+
+    /// Whether the root (or a view in it) has the focus, as
+    /// `rootElement.contains(document.activeElement)` says of a DOM root.
+    /// `false` by default.
+    fn has_focus(&self) -> bool {
+        false
+    }
 
     /// The caret at a point in the root's coordinates, as
     /// `caretFromPoint(x, y, rootElement)` from `@lexical/clipboard`
@@ -441,11 +610,31 @@ pub fn create_command<P>(name: &str) -> LexicalCommand<P> {
     }
 }
 
-pub const COMMAND_PRIORITY_EDITOR: u8 = 0;
-pub const COMMAND_PRIORITY_LOW: u8 = 1;
-pub const COMMAND_PRIORITY_NORMAL: u8 = 2;
-pub const COMMAND_PRIORITY_HIGH: u8 = 3;
-pub const COMMAND_PRIORITY_CRITICAL: u8 = 4;
+/// `COMMAND_PRIORITY_EDITOR`: a listener added to the end of the editor
+/// priority queue (after critical, high, normal, low).
+pub const COMMAND_PRIORITY_EDITOR: i8 = 0;
+/// `COMMAND_PRIORITY_LOW`: the end of the low priority queue.
+pub const COMMAND_PRIORITY_LOW: i8 = 1;
+/// `COMMAND_PRIORITY_NORMAL`: the end of the normal priority queue.
+pub const COMMAND_PRIORITY_NORMAL: i8 = 2;
+/// `COMMAND_PRIORITY_HIGH`: the end of the high priority queue.
+pub const COMMAND_PRIORITY_HIGH: i8 = 3;
+/// `COMMAND_PRIORITY_CRITICAL`: the end of the critical priority queue.
+pub const COMMAND_PRIORITY_CRITICAL: i8 = 4;
+/// `COMMAND_PRIORITY_BEFORE_EDITOR`: the beginning of the editor priority
+/// queue.
+pub const COMMAND_PRIORITY_BEFORE_EDITOR: i8 = -8;
+/// `COMMAND_PRIORITY_BEFORE_LOW`: the beginning of the low priority queue.
+pub const COMMAND_PRIORITY_BEFORE_LOW: i8 = -7;
+/// `COMMAND_PRIORITY_BEFORE_NORMAL`: the beginning of the normal priority
+/// queue.
+pub const COMMAND_PRIORITY_BEFORE_NORMAL: i8 = -6;
+/// `COMMAND_PRIORITY_BEFORE_HIGH`: the beginning of the high priority
+/// queue.
+pub const COMMAND_PRIORITY_BEFORE_HIGH: i8 = -5;
+/// `COMMAND_PRIORITY_BEFORE_CRITICAL`: the beginning of the critical
+/// priority queue.
+pub const COMMAND_PRIORITY_BEFORE_CRITICAL: i8 = -4;
 
 /// A command listener: it returns whether it handled the command, which
 /// stops the ones after it.
@@ -542,6 +731,14 @@ pub(crate) struct EditorInner {
     key: String,
     /// `_editable`.
     editable: Cell<bool>,
+    /// `_headless`: the editor never reconciles (`@lexical/headless`, or a
+    /// headless parent editor).
+    headless: Cell<bool>,
+    /// What `@lexical/headless` puts before `setRootElement` (where JS
+    /// replaces the method on the instance): it refuses a root.
+    pub(crate) set_root_element_guard: RefCell<Option<SetRootElementGuard>>,
+    /// `_onWarn`.
+    on_warn: WarningHandler,
     /// `_slotsUsed`: whether a slot was ever set in this editor, or in a
     /// state it was given. Latched for the editor's lifetime.
     pub(crate) slots_used: Cell<bool>,
@@ -578,11 +775,20 @@ pub(crate) struct EditorInner {
     pub(crate) builder: RefCell<Option<Rc<dyn Any>>>,
 }
 
+/// What refuses a root element in [`Editor::set_root_element`], before it
+/// changes anything.
+pub(crate) type SetRootElementGuard =
+    Rc<dyn Fn(Option<&RootElementRef>) -> Result<(), LexicalError>>;
+
 /// `createEditor(config)`: registers the core nodes (root, text, line
 /// break, tab, paragraph, artificial) and `args.nodes`, in `args.namespace`,
 /// or the parent editor's when that is empty. (JS's `createEditor()` with
 /// no config at all takes the active editor as the parent; Rust always
 /// takes a config, as Swift does.)
+///
+/// A node replacement whose `with_klass` doesn't extend the class it
+/// replaces panics, as JS's development build throws; one without
+/// `with_klass` warns ([`with_warning_handler`](crate::with_warning_handler)).
 pub fn create_editor(args: CreateEditorArgs) -> Editor {
     let parent_editor = args.parent_editor;
     // `config.namespace || (parentEditor !== null ?
@@ -610,6 +816,20 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
     // `validateNodeStructure(klass)`, which JS runs in development, as the
     // vectors were recorded.
     for class in &classes {
+        if let Some(replacement) = &class.replacement {
+            match &replacement.with_klass {
+                Some(with_klass) => assert!(
+                    with_klass.node_type != class.node_type && with_klass.extends(class.node_type),
+                    "{} doesn't extend the {}",
+                    with_klass.class_name,
+                    class.class_name
+                ),
+                None => crate::warnings::console_warn(&format!(
+                    "Override for {} specifies 'replace' without 'withKlass'. 'withKlass' will be required in a future version.",
+                    class.class_name
+                )),
+            }
+        }
         (class.validate_node_structure)();
     }
     let mut node_order: Vec<&'static str> = Vec::new();
@@ -625,6 +845,8 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         .into_iter()
         .map(|class| (class.node_type, class))
         .collect();
+    let headless = parent_editor.as_ref().is_some_and(|p| p.0.headless.get());
+    let on_warn = args.on_warn.unwrap_or_else(|| Rc::new(Err));
     let shared_node_states = nodes
         .iter()
         .map(|(&node_type, class)| {
@@ -660,7 +882,10 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         namespace,
         parent_editor,
         key: create_uid(),
-        editable: Cell::new(true),
+        editable: Cell::new(args.editable.unwrap_or(true)),
+        headless: Cell::new(headless),
+        set_root_element_guard: RefCell::new(None),
+        on_warn,
         slots_used: Cell::new(false),
         root_element: RefCell::new(None),
         node_structure: RefCell::new(None),
@@ -676,6 +901,10 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         #[cfg(feature = "extension")]
         builder: RefCell::new(None),
     }));
+    if let Some(initial_editor_state) = args.editor_state {
+        *editor.0.pending.borrow_mut() = Some(initial_editor_state);
+        editor.0.dirty.borrow_mut().dirty_type = DirtyType::FullReconcile;
+    }
     let _unregister = crate::events::register_default_command_handlers(&editor);
     editor
 }
@@ -725,6 +954,68 @@ impl Editor {
         if let Some(root) = self.get_root_element() {
             root.0.blur();
         }
+    }
+
+    /// `focus(callbackFn, options)`: with a root element, an update (tagged
+    /// [`FOCUS_TAG`]) that marks the selection dirty, so the view applies
+    /// it again, or selects the end (or, with
+    /// [`EditorFocusOptions::RootStart`], the start) of the root when there
+    /// is none; `callback` runs once it commits. Without a root element it
+    /// does nothing. (JS also turns `autocapitalize` off on the DOM root
+    /// around the update, which only iOS's keyboard reads.)
+    pub fn focus(
+        &self,
+        callback: Option<Box<dyn FnOnce()>>,
+        options: EditorFocusOptions,
+    ) -> Result<(), LexicalError> {
+        if self.get_root_element().is_none() {
+            return Ok(());
+        }
+        update_editor_sync(
+            self,
+            move || {
+                let selection = crate::get_selection();
+                let root = crate::get_root();
+                if let Some(selection) = selection {
+                    // Marking the selection dirty will force the selection
+                    // back to it.
+                    if !selection.is_dirty() {
+                        crate::set_selection(Some(selection.clone_selection()));
+                    }
+                } else if root.get_children_size() != 0 {
+                    if options == EditorFocusOptions::RootStart {
+                        root.select_start()?;
+                    } else {
+                        root.select_end()?;
+                    }
+                }
+                add_update_tag(FOCUS_TAG);
+                crate::on_update(move || {
+                    if let Some(callback) = callback {
+                        callback();
+                    }
+                });
+                Ok(())
+            },
+            None,
+        )
+    }
+
+    /// `_headless`: whether the editor never reconciles, as
+    /// [`create_headless_editor`](crate::create_headless_editor) makes it
+    /// (and a nested editor of a headless one is).
+    pub fn is_headless(&self) -> bool {
+        self.0.headless.get()
+    }
+
+    pub(crate) fn set_headless(&self, guard: SetRootElementGuard) {
+        self.0.headless.set(true);
+        *self.0.set_root_element_guard.borrow_mut() = Some(guard);
+    }
+
+    /// `_onWarn(error)`: what the call that warned returns.
+    pub(crate) fn on_warn(&self, warning: LexicalError) -> Result<(), LexicalError> {
+        (self.0.on_warn)(warning)
     }
 
     /// `isEditable()`.
@@ -786,6 +1077,10 @@ impl Editor {
         &self,
         next_root_element: Option<RootElementRef>,
     ) -> Result<(), LexicalError> {
+        let guard = self.0.set_root_element_guard.borrow().clone();
+        if let Some(guard) = guard {
+            guard(next_root_element.as_ref())?;
+        }
         let prev_root_element = self.get_root_element();
         if next_root_element == prev_root_element {
             return Ok(());
@@ -873,6 +1168,9 @@ impl Editor {
                 "Node {node_type} has not been registered. Ensure node has been passed to createEditor."
             )));
         };
+        // `resolveRegisteredNodeAfterReplacements`: a replaced class's
+        // listener hears of the class that replaces it.
+        let node_type = self.resolve_registered_node_after_replacements(node_type)?;
         let id = self.next_id();
         let listener: MutationListener = Rc::new(listener);
         self.0
@@ -934,7 +1232,42 @@ impl Editor {
     /// `editor._nodes.get(type)`: the class the editor registers under the
     /// type.
     pub fn get_registered_node(&self, node_type: &str) -> Option<NodeClass> {
-        self.0.nodes.get(node_type).copied()
+        self.0.nodes.get(node_type).cloned()
+    }
+
+    /// `resolveRegisteredNodeAfterReplacements(registeredNode)`, by type:
+    /// the type of the class a registered class's replacements end at
+    /// (following `withKlass`). Fails for a `withKlass` that isn't
+    /// registered.
+    pub fn resolve_registered_node_after_replacements(
+        &self,
+        node_type: &str,
+    ) -> Result<&'static str, LexicalError> {
+        let Some((mut node_type, mut class)) = self.0.nodes.get_key_value(node_type) else {
+            return Err(LexicalError::new(format!(
+                "Node {node_type} has not been registered. Ensure node has been passed to createEditor."
+            )));
+        };
+        while let Some(next) = class.replace_with_klass() {
+            let Some((t, c)) = self.0.nodes.get_key_value(next) else {
+                return Err(LexicalError::new(format!(
+                    "Node {next} has not been registered. Ensure node has been passed to createEditor."
+                )));
+            };
+            (node_type, class) = (t, c);
+        }
+        Ok(node_type)
+    }
+
+    /// `hasNode(klass)`, by the node type: whether the editor registers it.
+    pub fn has_node(&self, node_type: &str) -> bool {
+        self.0.nodes.contains_key(node_type)
+    }
+
+    /// `hasNodes(klasses)`, by the node types: whether the editor registers
+    /// all of them.
+    pub fn has_nodes(&self, node_types: &[&str]) -> bool {
+        node_types.iter().all(|t| self.has_node(t))
     }
 
     /// The registered node classes in the order JS's `_nodes` holds them.
@@ -942,7 +1275,7 @@ impl Editor {
         self.0
             .node_order
             .iter()
-            .map(|node_type| self.0.nodes[node_type])
+            .map(|node_type| self.0.nodes[node_type].clone())
             .collect()
     }
 
@@ -1099,10 +1432,7 @@ impl Editor {
     /// the editor's state active, read-only. Fails when committing runs a
     /// queued update that fails.
     pub fn read<R>(&self, f: impl FnOnce() -> R) -> Result<R, LexicalError> {
-        if !self.0.dispatching_commit_listeners.get() {
-            commit_pending_updates(self)?;
-        }
-        Ok(read_editor_state(Some(self), &self.get_editor_state(), f))
+        self.read_with_mode(EditorReadMode::ForceCommit, f)
     }
 
     /// `read(mode, callbackFn)`: [`read`](Self::read) for
@@ -1115,8 +1445,14 @@ impl Editor {
         mode: EditorReadMode,
         f: impl FnOnce() -> R,
     ) -> Result<R, LexicalError> {
-        if mode == EditorReadMode::ForceCommit && !self.0.dispatching_commit_listeners.get() {
-            commit_pending_updates(self)?;
+        if mode == EditorReadMode::ForceCommit {
+            if !self.0.dispatching_commit_listeners.get() {
+                commit_pending_updates(self)?;
+            } else if self.pending().is_some() {
+                crate::warnings::console_warn(
+                    "editor.read() was called while the editor was notifying listeners of a commit, and a listener had started another update. That update was not committed early, so that listeners observe commits in order, and the read observed the state being committed. Inside listeners, read with editor.getEditorState().read(fn, {editor}) or editor.read('latest', fn) instead.",
+                );
+            }
         }
         let editor_state = match mode {
             EditorReadMode::Pending => self.pending().unwrap_or_else(|| self.get_editor_state()),
@@ -1127,15 +1463,37 @@ impl Editor {
 
     /// `registerNodeTransform(klass, listener)`, by the node type. Nodes of
     /// that type already in the editor are marked dirty, so the transform
-    /// runs on them with the next update.
+    /// runs on them with the next update. A class replaced by a
+    /// `with_klass` ([`LexicalNodeReplacement`]) gets it on that class too.
     pub fn register_node_transform(
         &self,
         node_type: &'static str,
         transform: impl Fn(&NodeRef) -> Result<(), LexicalError> + 'static,
     ) -> Unregister {
-        let unregister = self.add_node_transform(node_type, transform);
-        mark_nodes_with_types_as_dirty(self, &[node_type]);
-        unregister
+        let transform: Transform = Rc::new(transform);
+        let mut types = vec![node_type];
+        if let Some(with_klass) = self
+            .0
+            .nodes
+            .get(node_type)
+            .and_then(NodeClass::replace_with_klass)
+            && self.0.nodes.contains_key(with_klass)
+        {
+            types.push(with_klass);
+        }
+        let unregisters: Vec<Unregister> = types
+            .iter()
+            .map(|&t| {
+                let transform = transform.clone();
+                self.add_node_transform(t, move |node| transform(node))
+            })
+            .collect();
+        mark_nodes_with_types_as_dirty(self, &types);
+        Box::new(move || {
+            for unregister in unregisters {
+                unregister();
+            }
+        })
     }
 
     /// `registeredNode.transforms.add(transform)`: what
@@ -1232,46 +1590,32 @@ impl Editor {
     }
 
     /// `registerCommand(command, listener, priority)`, `priority` being one
-    /// of the `COMMAND_PRIORITY_*` constants (0 to 4).
+    /// of the `COMMAND_PRIORITY_*` constants: 0 to 4 add the listener to the
+    /// end of that priority's queue, and the `COMMAND_PRIORITY_BEFORE_*`
+    /// ones (-8 to -4) to its beginning (`normalizePriority`'s `priority &
+    /// 7`).
     pub fn register_command<P: 'static>(
         &self,
         command: &LexicalCommand<P>,
         listener: impl Fn(&P, &Editor) -> Result<bool, LexicalError> + 'static,
-        priority: u8,
+        priority: i8,
     ) -> Unregister {
-        let priority = usize::from(priority.min(COMMAND_PRIORITY_CRITICAL));
+        let normalized = priority & 7;
+        let before = normalized != priority;
+        let priority = usize::from(normalized.min(COMMAND_PRIORITY_CRITICAL) as u8);
         let id = self.next_id();
         let listener: CommandListener<P> = Rc::new(listener);
         let command_id = command.id();
-        self.0.commands.borrow_mut().entry(command_id).or_default()[priority]
-            .push((id, Rc::new(listener) as Rc<dyn Any>));
-        let weak = self.weak();
-        Box::new(move || {
-            if let Some(inner) = weak.upgrade()
-                && let Some(lists) = inner.commands.borrow_mut().get_mut(&command_id)
-            {
-                lists[priority].retain(|(i, _)| *i != id);
+        {
+            let mut commands = self.0.commands.borrow_mut();
+            let list = &mut commands.entry(command_id).or_default()[priority];
+            let entry = (id, Rc::new(listener) as Rc<dyn Any>);
+            if before {
+                list.insert(0, entry);
+            } else {
+                list.push(entry);
             }
-        })
-    }
-
-    /// `registerCommand(command, listener, COMMAND_PRIORITY_BEFORE_*)`: as
-    /// [`register_command`](Self::register_command), but at the start of
-    /// `priority`'s queue (JS's `COMMAND_PRIORITY_BEFORE_EDITOR` is the
-    /// start of the editor queue).
-    #[cfg(any(feature = "auto-embed", feature = "list"))]
-    pub(crate) fn register_command_before<P: 'static>(
-        &self,
-        command: &LexicalCommand<P>,
-        listener: impl Fn(&P, &Editor) -> Result<bool, LexicalError> + 'static,
-        priority: u8,
-    ) -> Unregister {
-        let priority = usize::from(priority.min(COMMAND_PRIORITY_CRITICAL));
-        let id = self.next_id();
-        let listener: CommandListener<P> = Rc::new(listener);
-        let command_id = command.id();
-        self.0.commands.borrow_mut().entry(command_id).or_default()[priority]
-            .insert(0, (id, Rc::new(listener) as Rc<dyn Any>));
+        }
         let weak = self.weak();
         Box::new(move || {
             if let Some(inner) = weak.upgrade()
@@ -1340,16 +1684,29 @@ impl Editor {
     }
 }
 
-/// `$hasUpdateTag(tag)`: whether the running update has the tag. Panics
-/// outside an update or a read of an editor, as JS's `getActiveEditor()`
-/// throws.
+/// `$hasUpdateTag(tag)`: whether the running update has the tag (one of
+/// its options' tags, or one [`add_update_tag`] added). Panics outside an
+/// update or a read of an editor, as JS's `getActiveEditor()` throws.
 pub fn has_update_tag(tag: &str) -> bool {
-    crate::updates::get_active_editor()
-        .expect("Unable to find an active editor. This method can only be used synchronously during the callback of editor.update() or editor.read().")
-        .0
-        .tags
-        .borrow()
-        .contains(tag)
+    get_editor().0.tags.borrow().contains(tag)
+}
+
+/// `$addUpdateTag(tag)`: adds a tag to the running update, which update and
+/// mutation listeners and [`has_update_tag`] see. Panics in a read, or
+/// outside an update, as JS's `errorOnReadOnly` and `getActiveEditor()`
+/// throw.
+pub fn add_update_tag(tag: &str) {
+    crate::updates::error_on_read_only();
+    get_editor().0.tags.borrow_mut().add(tag);
+}
+
+/// `$getEditor()`: the editor of the running update or read (or the one
+/// `parseEditorState` parses for). Panics outside them, as JS's
+/// `getActiveEditor()` throws.
+pub fn get_editor() -> Editor {
+    crate::updates::get_registry_editor().unwrap_or_else(|| {
+        panic!("Unable to find an active editor. This method can only be used synchronously during the callback of editor.update() or editor.read().")
+    })
 }
 
 /// Runs `f` with the editor's `_updating` set to `updating`, as
@@ -1417,4 +1774,108 @@ pub(crate) fn mark_nodes_with_types_as_dirty(editor: &Editor, types: &[&str]) {
         },
         options,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{create_paragraph_node, create_text_node, get_root};
+
+    fn discrete() -> UpdateOptions {
+        UpdateOptions {
+            discrete: true,
+            ..UpdateOptions::default()
+        }
+    }
+
+    #[test]
+    fn has_nodes_and_get_editor() {
+        let editor = create_editor(CreateEditorArgs::default());
+        assert!(editor.has_node("text") && editor.has_node("paragraph"));
+        assert!(!editor.has_node("heading"));
+        assert!(editor.has_nodes(&[]) && editor.has_nodes(&["text", "root"]));
+        assert!(!editor.has_nodes(&["text", "heading"]));
+        let same = Rc::new(Cell::new(false));
+        let (seen, active) = (same.clone(), editor.clone());
+        editor
+            .update(
+                move || {
+                    seen.set(get_editor().ptr_eq(&active));
+                    Ok(())
+                },
+                discrete(),
+            )
+            .unwrap();
+        assert!(same.get());
+    }
+
+    #[test]
+    fn create_editor_starts_with_the_given_state() {
+        let source = create_editor(CreateEditorArgs::default());
+        source
+            .update(
+                || {
+                    let paragraph = create_paragraph_node();
+                    paragraph.append(&[create_text_node("hello")])?;
+                    get_root().append(&[paragraph])
+                },
+                discrete(),
+            )
+            .unwrap();
+        let editor = create_editor(CreateEditorArgs {
+            editor_state: Some(source.get_editor_state()),
+            editable: Some(false),
+            ..CreateEditorArgs::default()
+        });
+        assert!(!editor.is_editable());
+        assert_eq!(
+            editor.read(|| get_root().get_text_content()).unwrap(),
+            "hello"
+        );
+    }
+
+    #[test]
+    fn focus_without_a_root_element_does_nothing() {
+        let editor = create_editor(CreateEditorArgs::default());
+        let called = Rc::new(Cell::new(false));
+        let flag = called.clone();
+        editor
+            .focus(
+                Some(Box::new(move || flag.set(true))),
+                EditorFocusOptions::default(),
+            )
+            .unwrap();
+        assert!(!called.get());
+        assert!(editor.read(crate::get_selection).unwrap().is_none());
+    }
+
+    #[test]
+    fn on_warn_hears_an_endless_update_cascade() {
+        let warnings = Rc::new(RefCell::new(Vec::<String>::new()));
+        let heard = warnings.clone();
+        let editor = create_editor(CreateEditorArgs {
+            on_warn: Some(Rc::new(move |warning| {
+                heard.borrow_mut().push(warning.message().to_owned());
+                Ok(())
+            })),
+            ..CreateEditorArgs::default()
+        });
+        let updates = Rc::new(Cell::new(0));
+        let (count, target) = (updates.clone(), editor.weak());
+        let _unregister = editor.register_update_listener(move |_| {
+            let Some(editor) = target.upgrade().map(Editor) else {
+                return;
+            };
+            if count.replace(count.get() + 1) < 1000 {
+                let _ = editor.update(|| get_root().append(&[create_paragraph_node()]), discrete());
+            }
+        });
+        editor
+            .update(|| get_root().append(&[create_paragraph_node()]), discrete())
+            .unwrap();
+        let warnings = warnings.borrow();
+        assert_eq!(warnings.len(), 1, "{warnings:?} after {}", updates.get());
+        assert!(warnings[0].starts_with("One or more update listeners are endlessly enqueueing"));
+        assert!(updates.get() < 1000);
+    }
 }

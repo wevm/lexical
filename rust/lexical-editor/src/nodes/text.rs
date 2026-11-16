@@ -225,7 +225,7 @@ impl TextNode {
 
 /// `$createTextNode(text)`.
 pub fn create_text_node(text: &str) -> NodeRef {
-    set_node_key(Box::new(TextNode::new(text)))
+    crate::lexical_utils::replaced(set_node_key(Box::new(TextNode::new(text))))
 }
 
 /// `ToInt32(x)`, how JS's bitwise operators read a number.

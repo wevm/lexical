@@ -170,8 +170,27 @@ impl LexicalBuilder {
         let config = self.build_create_editor_args()?;
         // `namespace` isn't in `InitialEditorConfig` yet, so the editor gets
         // `createEditor`'s: its parent editor's, or a random one.
+        // `onWarn: err => onWarn(err, editor)`, for the editor made here.
+        let warned_editor: Rc<RefCell<Option<std::rc::Weak<crate::editor::EditorInner>>>> =
+            Rc::default();
+        let on_warn = config.on_warn.map(|on_warn| {
+            let warned_editor = warned_editor.clone();
+            Rc::new(move |warning: LexicalError| {
+                let editor = warned_editor
+                    .borrow()
+                    .as_ref()
+                    .and_then(std::rc::Weak::upgrade)
+                    .map(Editor);
+                match editor {
+                    Some(editor) => on_warn(warning, &editor),
+                    None => Err(warning),
+                }
+            }) as crate::WarningHandler
+        });
         let editor = create_editor(CreateEditorArgs {
             nodes: config.nodes,
+            editable: config.editable,
+            on_warn,
             theme: config.theme.unwrap_or_default(),
             parent_editor: config.parent_editor,
             #[cfg(feature = "html")]
@@ -180,6 +199,7 @@ impl LexicalBuilder {
             dom: config.dom,
             ..Default::default()
         });
+        *warned_editor.borrow_mut() = Some(editor.weak());
         *editor.0.builder.borrow_mut() = Some(Rc::new(self.clone()));
         for extension_rep in self.sorted_extension_reps()? {
             extension_rep.build(&editor)?;
@@ -403,6 +423,8 @@ impl LexicalBuilder {
     pub fn build_create_editor_args(&self) -> Result<InitialEditorConfig, LexicalError> {
         let mut config = InitialEditorConfig::default();
         let mut nodes: Vec<NodeClass> = Vec::new();
+        // The extension that replaced each node type.
+        let mut replaced_nodes: Vec<(&'static str, String)> = Vec::new();
         let mut theme = Value::Object(Object::new());
         let extension_reps = self.sorted_extension_reps()?;
         for extension_rep in &extension_reps {
@@ -413,9 +435,31 @@ impl LexicalBuilder {
             if let Some(initial_editor_state) = extension.initial_editor_state() {
                 config.initial_editor_state = Some(initial_editor_state.clone());
             }
+            if let Some(editable) = extension.editable() {
+                config.editable = Some(editable);
+            }
+            if let Some(on_warn) = extension.on_warn() {
+                config.on_warn = Some(on_warn.clone());
+            }
             for node in extension.nodes() {
-                if !nodes.iter().any(|n| n.node_type() == node.node_type()) {
-                    nodes.push(*node);
+                if node.replacement.is_some() {
+                    if let Some((_, conflict)) =
+                        replaced_nodes.iter().find(|(t, _)| *t == node.node_type())
+                    {
+                        return Err(LexicalError::new(format!(
+                            "LexicalBuilder: Extension {} can not register replacement for node {} because {} already did",
+                            extension.name(),
+                            node.class_name,
+                            conflict
+                        )));
+                    }
+                    replaced_nodes.push((node.node_type(), extension.name().to_owned()));
+                    nodes.push(node.clone());
+                } else if !nodes
+                    .iter()
+                    .any(|n| n.replacement.is_none() && n.node_type() == node.node_type())
+                {
+                    nodes.push(node.clone());
                 }
             }
             // `htmlExport.set(k, v)` and `Object.assign(htmlImport, ...)`:

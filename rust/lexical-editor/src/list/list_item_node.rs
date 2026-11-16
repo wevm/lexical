@@ -50,10 +50,10 @@ impl Default for ListItemNode {
 /// `$createListItemNode(checked)`: `Some` makes it a checkbox, checked or
 /// not.
 pub fn create_list_item_node(checked: Option<bool>) -> NodeRef {
-    set_node_key(Box::new(ListItemNode {
+    crate::lexical_utils::replaced(set_node_key(Box::new(ListItemNode {
         checked,
         ..ListItemNode::default()
-    }))
+    })))
 }
 
 /// `$isListItemNode(node)`.

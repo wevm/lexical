@@ -15,6 +15,12 @@ use std::rc::Rc;
 fn delete_empty_inline(node: &NodeRef) -> Result<(), LexicalError> {
     if node.is_element() && node.is_inline() && node.is_empty() {
         node.remove(false)?;
+        if node.can_be_empty() {
+            crate::warnings::console_warn(&format!(
+                "Empty inline elements are removed from the EditorState, so returning 'true' from {}.canBeEmpty() is not allowed",
+                node.get_type()
+            ));
+        }
     }
     Ok(())
 }

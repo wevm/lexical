@@ -82,11 +82,11 @@ impl Default for ListNode {
 
 /// `$createListNode(listType = 'number', start = 1)`.
 pub fn create_list_node(list_type: ListType, start: f64) -> NodeRef {
-    set_node_key(Box::new(ListNode {
+    crate::lexical_utils::replaced(set_node_key(Box::new(ListNode {
         list_type,
         start,
         ..ListNode::default()
-    }))
+    })))
 }
 
 /// `$isListNode(node)`.

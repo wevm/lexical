@@ -743,6 +743,40 @@ pub fn create_node_selection() -> SelectionRef {
     SelectionRef::new(Selection::Node(NodeSelection::default()))
 }
 
+/// `applySelectionTransforms(nextEditorState, editor)`: each text node a
+/// range selection of the pending state has its anchor or focus in gets
+/// `selectionTransform` with the committed state's selection.
+pub(crate) fn apply_selection_transforms(
+    next_editor_state: &crate::EditorState,
+    editor: &crate::Editor,
+) -> Result<(), LexicalError> {
+    let prev_selection = editor.get_editor_state().selection();
+    let Some(next_selection) = next_editor_state.selection() else {
+        return Ok(());
+    };
+    let Some(range) = next_selection.range() else {
+        return Ok(());
+    };
+    let mut anchor_node = None;
+    if range.anchor.point_type == PointType::Text {
+        let node = range.anchor.get_node()?;
+        node.get_latest()
+            .selection_transform(&node, prev_selection.as_ref(), &next_selection)?;
+        anchor_node = Some(node);
+    }
+    if range.focus.point_type == PointType::Text {
+        let node = range.focus.get_node()?;
+        if anchor_node.as_ref() != Some(&node) {
+            node.get_latest().selection_transform(
+                &node,
+                prev_selection.as_ref(),
+                &next_selection,
+            )?;
+        }
+    }
+    Ok(())
+}
+
 /// `$internalMakeRangeSelection`: a new range selection, set on the active
 /// editor state.
 pub(crate) fn internal_make_range_selection(anchor: Point, focus: Point) -> SelectionRef {

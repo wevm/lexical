@@ -38,14 +38,14 @@ impl CodeHighlightNode {
 /// `$createCodeHighlightNode(text, highlightType)`: the highlight type as
 /// given, an empty one included (only `setHighlightType` drops it).
 pub fn create_code_highlight_node(text: &str, highlight_type: Option<&str>) -> NodeRef {
-    set_node_key(Box::new(CodeHighlightNode {
+    crate::lexical_utils::replaced(set_node_key(Box::new(CodeHighlightNode {
         base: NodeBase::default(),
         text: TextData {
             text: text.to_owned(),
             ..TextData::default()
         },
         highlight_type: highlight_type.map(str::to_owned),
-    }))
+    })))
 }
 
 /// `$isCodeHighlightNode(node)`.

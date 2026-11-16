@@ -12,7 +12,9 @@ use crate::selection_deletion::is_js_whitespace;
 
 /// `$createParagraphNode()`.
 pub fn create_paragraph_node() -> NodeRef {
-    crate::lexical_utils::set_node_key(Box::new(ParagraphNode::default()))
+    crate::lexical_utils::replaced(crate::lexical_utils::set_node_key(Box::new(
+        ParagraphNode::default(),
+    )))
 }
 
 #[derive(Clone, Debug, Default)]

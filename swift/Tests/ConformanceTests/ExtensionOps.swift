@@ -47,6 +47,8 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "ClearEditorExtension": ClearEditorExtension
   case "DecoratorTextExtension": DecoratorTextExtension
   case "EditorStateExtension": EditorStateExtension
+  case "HorizontalRuleExtension": HorizontalRuleExtension
+  case "NodeSelectionExtension": NodeSelectionExtension
   case "AutoLinkExtension": AutoLinkExtension
   case "BlockIdExtension": BlockIdExtension
   case "CheckListExtension": CheckListExtension
@@ -157,6 +159,8 @@ private let extensionPhases = ["init", "build", "register", "afterRegistration"]
 final class TestExtensions {
   let defs: JSONObject
   var made: [String: TestExtension] = [:]
+  /// The effects `watchNodeKey` made, by key.
+  var watchers: [String: () -> Void] = [:]
   var log: (JSONValue) -> Void = { _ in }
   var command: (String) -> LexicalCommand<JSONValue> = { LexicalCommand($0) }
   /// The session's clock, which `HistoryExtension` reads as JS's reads
@@ -825,6 +829,17 @@ final class TestExtensions {
           .number(Double(historyState.undoStack.count)),
           .number(Double(historyState.redoStack.count)),
         ]))
+    } else if let key = object["watchNodeKey"]?.stringValue {
+      guard watchers[key] == nil else { throw ScriptError("already watching \(key)") }
+      let selected = try getExtensionDependencyFromEditor(editor, NodeSelectionExtension).output
+        .watchNodeKey(key)
+      let log = self.log
+      watchers[key] = try effect { log(["nodeSelected", .string(key), .bool(selected.value)]) }
+    } else if let key = object["unwatchNodeKey"]?.stringValue {
+      guard let dispose = watchers.removeValue(forKey: key) else {
+        throw ScriptError("not watching \(key)")
+      }
+      dispose()
     } else if let key = object["logDependency"]?.stringValue {
       let dep = try getExtensionDependencyFromEditor(editor, try of(key))
       log(.array(["dependency", .string(key), .object(dep.config)]))

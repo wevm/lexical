@@ -8312,3 +8312,190 @@ test('scripts/events', () => {
     eventScripts(false),
   );
 });
+
+test('scripts/horizontal-rule', () => {
+  // HorizontalRuleExtension and NodeSelectionExtension (@lexical/extension):
+  // INSERT_HORIZONTAL_RULE_COMMAND in various selections, CLICK_COMMAND on a
+  // rule with and without Shift (`$toggleNodeSelection`), and the
+  // `watchNodeKey` signals, whose values the `nodeSelected` entries log as
+  // they change. A click's target is the DOM the reconciler made for the
+  // node `targetKey`, so the click sessions have a root element; in Node an
+  // update of such an editor starts with no range selection (see
+  // `setRootElement`), so they click with a node selection or none, or
+  // select a range in the step before.
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const insert = run('INSERT_HORIZONTAL_RULE_COMMAND');
+  const click = (targetKey: string | null, shiftKey = false): Step =>
+    run('CLICK_COMMAND', shiftKey ? {shiftKey, targetKey} : {targetKey});
+  const start = (...blocks: Node[]): Step =>
+    update(node('root', 'clear'), {do: 'append', key: 'root', nodes: blocks});
+  const watch = (key: string): Step => ({watchNodeKey: key}) as Step;
+  const unwatch = (key: string): Step => ({unwatchNodeKey: key}) as Step;
+  const selectNodes = (...keys: string[]): Action =>
+    ({do: 'selectNodes', keys}) as Action;
+  const rule = ['HorizontalRuleExtension'];
+  emit(
+    'horizontal-rule',
+    "HorizontalRuleExtension and NodeSelectionExtension: INSERT_HORIZONTAL_RULE_COMMAND at a range selection's focus (in text, at a block's edges, in an empty block, in a quote, a heading and a list item; not for a node selection or none), CLICK_COMMAND on a rule with and without Shift, and the watchNodeKey signals through those changes.",
+    [
+      {
+        extensions: rule,
+        name: 'insert in the middle of a paragraph, then again after it',
+        steps: [
+          // Keys: the paragraph 2, its text 3.
+          start(p(t('abcd'))),
+          update(select(['3', 2, 'text'])),
+          insert,
+          // The selection is at the start of the paragraph after the rule.
+          insert,
+        ],
+      },
+      {
+        extensions: rule,
+        name: 'insert at the start, at the end, and in an empty paragraph',
+        steps: [
+          // Keys: the paragraphs 2, 4 and 6, their texts 3 and 5.
+          start(p(t('first')), p(t('last')), p()),
+          update(select(['3', 0, 'text'])),
+          insert,
+          update(select(['5', 4, 'text'])),
+          insert,
+          update(select(['6', 0, 'element'])),
+          insert,
+        ],
+      },
+      {
+        extensions: rule,
+        name: 'insert at the end of the document',
+        steps: [
+          start(p(t('only'))),
+          update(select(['3', 4, 'text'])),
+          insert,
+          insert,
+        ],
+      },
+      {
+        extensions: rule,
+        name: 'a range selection inserts at its focus',
+        steps: [
+          // Keys: the paragraphs 2 and 4, their texts 3 and 5.
+          start(p(t('abc')), p(t('def'))),
+          // Forward: the focus is in the second paragraph.
+          update(select(['3', 1, 'text'], ['5', 2, 'text'])),
+          insert,
+          // Backward: the focus is in the first.
+          update(select(['5', 2, 'text'], ['3', 1, 'text'])),
+          insert,
+        ],
+      },
+      {
+        extensions: rule,
+        name: 'a node selection or none is not handled',
+        steps: [
+          // Keys: the paragraph 2, its text 3, the rule 4.
+          start(p(t('a')), hr()),
+          update(selectNodes('4')),
+          insert,
+          update({do: 'clearSelection'}),
+          insert,
+        ],
+      },
+      {
+        extensions: ['RichTextExtension', 'ListExtension', ...rule],
+        name: 'insert in a quote, a heading and a list item',
+        steps: [
+          // Keys: the quote 2 and its text 3, the heading 4 and its text 5,
+          // the list 6, its item 7 and the item's text 8.
+          start(
+            q(t('quote')),
+            h('h2', t('title')),
+            list('bullet', li(t('item'))),
+          ),
+          update(select(['3', 2, 'text'])),
+          insert,
+          update(select(['5', 5, 'text'])),
+          insert,
+          update(select(['8', 2, 'text'])),
+          insert,
+        ],
+      },
+      {
+        extensions: rule,
+        name: 'watchNodeKey through node and range selections',
+        steps: [
+          // Keys: the paragraphs 2 and 5, their texts 3 and 6, the rule 4.
+          start(p(t('a')), hr(), p(t('b'))),
+          watch('4'),
+          update(selectNodes('4')),
+          watch('3'),
+          // A range over both selects the text and the rule.
+          update(select(['3', 0, 'text'], ['6', 1, 'text'])),
+          // Collapsed in the last paragraph: neither.
+          update(select(['6', 0, 'text'])),
+          update({do: 'clearSelection'}),
+          // A key no node has yet: the rule inserted next is 7.
+          watch('7'),
+          update(select(['6', 1, 'text'])),
+          insert,
+          update(selectNodes('7', '4')),
+          // A key nothing watches any more no longer logs.
+          unwatch('4'),
+          update(selectNodes('7')),
+          update(selectNodes('4')),
+          // Watched again, it starts from the current selection.
+          watch('4'),
+          update(node('4', 'remove')),
+        ],
+      },
+      {
+        extensions: rule,
+        name: 'click a rule, with and without Shift',
+        steps: [
+          // Keys: the paragraphs 2, 5 and 8, their texts 3, 6 and 9, the
+          // rules 4 and 7.
+          start(p(t('a')), hr(), p(t('b')), hr(), p(t('c'))),
+          watch('4'),
+          watch('7'),
+          {setRootElement: true},
+          click('4'),
+          // Another rule replaces the selection.
+          click('7'),
+          // Shift adds to a node selection...
+          click('4', true),
+          // ...and removes a rule that is in it.
+          click('7', true),
+          // Without Shift, a selected rule is deselected: the new node
+          // selection is empty, and the step ends with no selection.
+          click('4'),
+          // With no node selection, Shift starts a new one.
+          click('7', true),
+          // A click on anything else is not handled.
+          click('3'),
+          click('2'),
+          click('root'),
+          click(null),
+          click('4', true),
+        ],
+      },
+      {
+        extensions: rule,
+        name: 'click a rule after a range selection',
+        steps: [
+          start(p(t('a')), hr(), p(t('b')), hr(), p(t('c'))),
+          watch('4'),
+          {setRootElement: true},
+          // A range that covers the rule selects it.
+          update(select(['3', 0, 'text'], ['9', 1, 'text'])),
+          // A collapsed range: Shift starts a new node selection. (The
+          // click's update starts with no selection, as above, so a click
+          // on a rule that a range covers can't be recorded here.)
+          update(select(['6', 0, 'text'])),
+          click('4', true),
+          click('7', true),
+        ],
+      },
+    ],
+  );
+});

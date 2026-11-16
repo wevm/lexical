@@ -64,11 +64,14 @@ import {
   getExtensionDependencyFromEditor,
   getKnownTypesAndNodes,
   getPeerDependencyFromEditor,
+  HorizontalRuleExtension,
   HorizontalRuleNode,
+  INSERT_HORIZONTAL_RULE_COMMAND,
   LexicalBuilder,
   namedSignals,
   type NamedSignalsOutput,
   NestedEditorExtension,
+  NodeSelectionExtension,
   NodeStructureExtension,
   NormalizeInlineElementsExtension,
   registerNodeStructure,
@@ -267,6 +270,7 @@ import {
   type CaretDirection,
   CLEAR_EDITOR_COMMAND,
   CLEAR_HISTORY_COMMAND,
+  CLICK_COMMAND,
   COMMAND_PRIORITY_EDITOR,
   COMPOSITION_END_COMMAND,
   COMPOSITION_START_COMMAND,
@@ -929,6 +933,15 @@ export type Step = (
   | {registerNodeStructure: string}
   /** Calls the disposer `registerNodeStructure` kept under this name. */
   | {disposeNodeStructure: string}
+  /**
+   * `getExtensionDependencyFromEditor(editor, NodeSelectionExtension)
+   * .output.watchNodeKey(key)`, and an `effect` that logs
+   * `['nodeSelected', key, signal.value]` now and each time the signal
+   * changes, kept under the key.
+   */
+  | {watchNodeKey: string}
+  /** Disposes the effect `watchNodeKey` kept under this key. */
+  | {unwatchNodeKey: string}
 ) & {
   now?: number;
   /**
@@ -1273,6 +1286,8 @@ type Context = {
   structures: Map<string, () => void>;
   /** The script's `parent` editor. */
   parent: LexicalEditorWithDispose | null;
+  /** The effects `watchNodeKey` made, by key. */
+  watchers: Map<string, () => void>;
 };
 
 /**
@@ -3139,6 +3154,7 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['CAN_UNDO_COMMAND', CAN_UNDO_COMMAND],
   ['CLEAR_EDITOR_COMMAND', CLEAR_EDITOR_COMMAND],
   ['CLEAR_HISTORY_COMMAND', CLEAR_HISTORY_COMMAND],
+  ['CLICK_COMMAND', CLICK_COMMAND],
   ['COMPOSITION_END_COMMAND', COMPOSITION_END_COMMAND],
   ['COMPOSITION_START_COMMAND', COMPOSITION_START_COMMAND],
   ['CONTROLLED_TEXT_INSERTION_COMMAND', CONTROLLED_TEXT_INSERTION_COMMAND],
@@ -3177,8 +3193,8 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
 ]);
 
 /**
- * The commands of the packages a script registers (`list`, `link`), named as
- * their package exports them.
+ * The commands of the packages a script registers (`list`, `link`, and
+ * `HorizontalRuleExtension`'s), named as their package exports them.
  */
 const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['INSERT_CHECK_LIST_COMMAND', INSERT_CHECK_LIST_COMMAND],
@@ -3188,20 +3204,25 @@ const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['UPDATE_LIST_START_COMMAND', UPDATE_LIST_START_COMMAND],
   ['TOGGLE_LINK_COMMAND', TOGGLE_LINK_COMMAND],
   ['INSERT_EMBED_COMMAND', INSERT_EMBED_COMMAND],
+  ['INSERT_HORIZONTAL_RULE_COMMAND', INSERT_HORIZONTAL_RULE_COMMAND],
 ]);
 
 /**
  * The commands whose payload is a DOM event, by the event a JSON payload
  * makes for them (`eventPayload`): `keydown` (a `KeyboardEvent` of `key`,
  * `code` and the modifier flags), `beforeinput` (an `InputEvent` of
- * `inputType` and `data`) or a composition event (a `CompositionEvent` of
- * `data`). A `null` payload stays `null`, as `KEY_ENTER_COMMAND` and
+ * `inputType` and `data`), a composition event (a `CompositionEvent` of
+ * `data`) or `click` (a `MouseEvent` of the modifier flags whose `target` is
+ * `editor.getElementByKey(targetKey)`, the DOM the reconciler made for the
+ * node `targetKey`, or `null` when `targetKey` is absent or `null`). A
+ * `null` payload stays `null`, as `KEY_ENTER_COMMAND` and
  * `SELECT_ALL_COMMAND` take it. `PASTE_COMMAND`, `COPY_COMMAND` and
  * `CUT_COMMAND` are only listened to, as the keydown and beforeinput
  * handlers dispatch them with their event.
  */
 const EVENT_COMMANDS = new Map<string, string>([
   ['BEFORE_INPUT_COMMAND', 'beforeinput'],
+  ['CLICK_COMMAND', 'click'],
   ['COMPOSITION_END_COMMAND', 'compositionend'],
   ['COMPOSITION_START_COMMAND', 'compositionstart'],
   ...[
@@ -3230,7 +3251,11 @@ let eventWindow: ReturnType<typeof browserWindow> | null = null;
  * `payload` as the command `name` takes it: for a command of
  * EVENT_COMMANDS, a JSON object becomes the event it describes.
  */
-function eventPayload(name: string, payload: Json): unknown {
+function eventPayload(
+  name: string,
+  payload: Json,
+  editor: LexicalEditor,
+): unknown {
   const type = EVENT_COMMANDS.get(name);
   if (type === undefined || payload === null || typeof payload !== 'object') {
     return payload;
@@ -3247,6 +3272,23 @@ function eventPayload(name: string, payload: Json): unknown {
       metaKey: p.metaKey === true,
       shiftKey: p.shiftKey === true,
     });
+  } else if (type === 'click') {
+    const event = new win.MouseEvent(type, {
+      altKey: p.altKey === true,
+      cancelable: true,
+      ctrlKey: p.ctrlKey === true,
+      metaKey: p.metaKey === true,
+      shiftKey: p.shiftKey === true,
+    });
+    // As if the browser dispatched it on that element: a handler reads only
+    // `event.target`.
+    Object.defineProperty(event, 'target', {
+      value:
+        typeof p.targetKey === 'string'
+          ? editor.getElementByKey(p.targetKey)
+          : null,
+    });
+    return event;
   } else if (type === 'beforeinput') {
     return new win.InputEvent(type, {
       cancelable: true,
@@ -3295,7 +3337,7 @@ function dispatchLogged(
   payload: Json,
   target: LexicalEditor = ctx.editor,
 ): void {
-  const event = eventPayload(name, payload);
+  const event = eventPayload(name, payload, target);
   ctx.log.push([
     'dispatched',
     name,
@@ -3400,7 +3442,7 @@ const TRANSFORMS: Record<string, (ctx: Context) => () => void> = {
 
 /**
  * The extensions of `@lexical/extension` and the other packages an
- * `ExtensionArg` may name, as the packages export them. The first three
+ * `ExtensionArg` may name, as the packages export them. The first five
  * take no config overrides (their configs aren't JSON); the others take
  * the JSON fields of theirs, and their functions by CONFIG_PRESETS.
  */
@@ -3408,6 +3450,8 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['ClearEditorExtension', ClearEditorExtension],
   ['DecoratorTextExtension', DecoratorTextExtension],
   ['EditorStateExtension', EditorStateExtension],
+  ['HorizontalRuleExtension', HorizontalRuleExtension],
+  ['NodeSelectionExtension', NodeSelectionExtension],
   ['AutoLinkExtension', AutoLinkExtension],
   ['BlockIdExtension', BlockIdExtension],
   ['CheckListExtension', CheckListExtension],
@@ -3831,6 +3875,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     parent: null,
     saved: new Map(),
     structures: new Map(),
+    watchers: new Map(),
   };
   let build: BuildResult | undefined;
   if (script.extensions !== undefined) {
@@ -4254,6 +4299,28 @@ function runExtensionStep(
       undoStack.length,
       redoStack.length,
     ]);
+  } else if ('watchNodeKey' in step) {
+    const key = step.watchNodeKey;
+    if (ctx.watchers.has(key)) {
+      throw new Error(`already watching ${key}`);
+    }
+    const selected = getExtensionDependencyFromEditor(
+      editor,
+      NodeSelectionExtension,
+    ).output.watchNodeKey(key);
+    ctx.watchers.set(
+      key,
+      effect(() => {
+        ctx.log.push(['nodeSelected', key, selected.value]);
+      }),
+    );
+  } else if ('unwatchNodeKey' in step) {
+    const dispose = ctx.watchers.get(step.unwatchNodeKey);
+    if (dispose === undefined) {
+      throw new Error(`not watching ${step.unwatchNodeKey}`);
+    }
+    ctx.watchers.delete(step.unwatchNodeKey);
+    dispose();
   } else if ('logDependency' in step) {
     const {config} = getExtensionDependencyFromEditor(
       editor,

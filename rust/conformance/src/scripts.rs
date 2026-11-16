@@ -70,12 +70,12 @@ use lexical::rich_text::{HeadingTagType, create_heading_node, create_quote_node,
 use lexical::selection::{self, set_blocks_type};
 use lexical::utils;
 use lexical::{
-    BEFORE_INPUT_COMMAND, COMPOSITION_END_COMMAND, COMPOSITION_START_COMMAND, COPY_COMMAND,
-    CUT_COMMAND, ClipboardOrKeyboardEvent, CompositionEvent, Event, InputEvent,
+    BEFORE_INPUT_COMMAND, CLICK_COMMAND, COMPOSITION_END_COMMAND, COMPOSITION_START_COMMAND,
+    COPY_COMMAND, CUT_COMMAND, ClipboardOrKeyboardEvent, CompositionEvent, Event, InputEvent,
     KEY_ARROW_DOWN_COMMAND, KEY_ARROW_LEFT_COMMAND, KEY_ARROW_RIGHT_COMMAND, KEY_ARROW_UP_COMMAND,
     KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND, KEY_DOWN_COMMAND, KEY_ESCAPE_COMMAND,
     KEY_MODIFIER_COMMAND, KEY_SPACE_COMMAND, KEY_TAB_COMMAND, MOVE_TO_END, MOVE_TO_START,
-    PASTE_COMMAND, PasteCommandType, with_is_apple,
+    MouseEvent, PASTE_COMMAND, PasteCommandType, with_is_apple,
 };
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
@@ -135,6 +135,8 @@ struct Ctx {
     structures: RefCell<HashMap<String, Unregister>>,
     /// The script's `parent` editor.
     parent: RefCell<Option<lexical::extension::LexicalEditorWithDispose>>,
+    /// The effects `watchNodeKey` made, by key.
+    watchers: RefCell<HashMap<String, Unregister>>,
 }
 
 /// The session's root element (`sessionDOM(ctx).root`): a `div` whose
@@ -468,6 +470,7 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
         "CAN_UNDO_COMMAND" => ScriptCommand::Bool(CAN_UNDO_COMMAND),
         "CLEAR_EDITOR_COMMAND" => ScriptCommand::Void(CLEAR_EDITOR_COMMAND),
         "CLEAR_HISTORY_COMMAND" => ScriptCommand::Void(CLEAR_HISTORY_COMMAND),
+        "CLICK_COMMAND" => ScriptCommand::Mouse(CLICK_COMMAND),
         "CONTROLLED_TEXT_INSERTION_COMMAND" => {
             ScriptCommand::Str(CONTROLLED_TEXT_INSERTION_COMMAND)
         }
@@ -517,6 +520,9 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
         "UPDATE_LIST_START_COMMAND" => ScriptCommand::ListStart(list::UPDATE_LIST_START_COMMAND),
         "TOGGLE_LINK_COMMAND" => ScriptCommand::Link(link::TOGGLE_LINK_COMMAND),
         "INSERT_EMBED_COMMAND" => ScriptCommand::Str(INSERT_EMBED_COMMAND),
+        "INSERT_HORIZONTAL_RULE_COMMAND" => {
+            ScriptCommand::Void(ext::INSERT_HORIZONTAL_RULE_COMMAND)
+        }
         _ => return None,
     })
 }
@@ -543,6 +549,10 @@ pub(crate) enum ScriptCommand {
     Input(LexicalCommand<Rc<InputEvent>>),
     /// A composition command and its event's type: `{data}`.
     Composition(LexicalCommand<Rc<CompositionEvent>>, &'static str),
+    /// `CLICK_COMMAND`: `{targetKey, altKey, ctrlKey, metaKey, shiftKey}`,
+    /// where JS's target is the DOM of the node `targetKey` and Rust's
+    /// `target_key` is the key.
+    Mouse(LexicalCommand<Rc<MouseEvent>>),
     /// `PASTE_COMMAND`, which scripts only listen to: the keydown and
     /// beforeinput handlers dispatch it with their event.
     Paste(LexicalCommand<PasteCommandType>),
@@ -651,6 +661,26 @@ fn keyboard_event_of(payload: &Value) -> Option<Rc<KeyboardEvent>> {
     }))
 }
 
+/// `eventPayload`'s `MouseEvent`: a cancelable `click` of the modifier
+/// flags of a JSON object, whose target is the node `targetKey` (none when
+/// it is absent or `null`). JS's target is `editor.getElementByKey`, which
+/// the click scripts reach through a root element.
+fn mouse_event_of(payload: &Value) -> Option<Rc<MouseEvent>> {
+    let object = payload.as_object()?;
+    let flag = |key: &str| object.get(key).and_then(Value::as_bool) == Some(true);
+    Some(Rc::new(MouseEvent {
+        alt_key: flag("altKey"),
+        ctrl_key: flag("ctrlKey"),
+        meta_key: flag("metaKey"),
+        shift_key: flag("shiftKey"),
+        target_key: object
+            .get("targetKey")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        ..MouseEvent::new("click")
+    }))
+}
+
 /// `eventPayload`'s `InputEvent`: a cancelable `beforeinput` of
 /// `inputType`, with `data` when it is a string.
 fn input_event_of(payload: &Value) -> Option<Rc<InputEvent>> {
@@ -755,6 +785,11 @@ impl ScriptCommand {
             }
             ScriptCommand::Input(command) => {
                 let event = input_event_of(&payload).ok_or_else(not_taken)?;
+                let handled = editor.dispatch_command(command, event.clone())?;
+                Ok((handled, Some(event.default_prevented())))
+            }
+            ScriptCommand::Mouse(command) => {
+                let event = mouse_event_of(&payload).ok_or_else(not_taken)?;
                 let handled = editor.dispatch_command(command, event.clone())?;
                 Ok((handled, Some(event.default_prevented())))
             }
@@ -867,6 +902,12 @@ impl ScriptCommand {
             ScriptCommand::Composition(command, _) => editor.register_command(
                 command,
                 move |payload, editor| listener(&composition_json(payload), editor),
+                priority,
+            ),
+            // `payloadJson` throws for a `MouseEvent`.
+            ScriptCommand::Mouse(command) => editor.register_command(
+                command,
+                move |payload, _| Err(no_json(&payload.event)),
                 priority,
             ),
             ScriptCommand::Paste(command) => editor.register_command(

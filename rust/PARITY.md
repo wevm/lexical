@@ -53,6 +53,7 @@ updated with each milestone.
 | Table of contents (the `rich-text` feature) | `packages/lexical-react/src/LexicalTableOfContentsPlugin.tsx`, its logic without React: `TableOfContentsEntry` (key, text, tag), `toEntry`, `$insertHeadingIntoTableOfContents`, `$deleteHeadingFromTableOfContents`, `$updateHeadingInTableOfContents`, `$updateHeadingPosition`, `$getPreviousHeading`, and `TableOfContentsPlugin`'s effect as `register_table_of_contents` (the initial entries, the root update listener, the `HeadingNode` and `TextNode` mutation listeners with `skipInitialization`), reporting each `setTableOfContents` to a closure, on the core's root element and mutation listeners (the root element and mutation listeners row) | `rich_text::table_of_contents` | `scripts/table-of-contents` |
 | Hashtag node and matcher (the `hashtag` feature) | `packages/lexical-hashtag/src/LexicalHashtagNode.ts` (`HashtagNode`: `canInsertTextBefore`, `isTextEntity`; `$createHashtagNode`, `$isHashtagNode`), with `TextNode`'s generated JSON; `LexicalHashtagExtension.ts` (`getHashtagRegexStringChars`, `getHashtagRegexString` and `getHashtagMatch` as the default matcher, `HashtagConfig`, `registerLexicalHashtag`), the character classes as range tables generated from the JS source by `rust/scripts/generate-hashtag-tables.mjs`; `TextNode.isTextEntity` as a node hook | `hashtag`, `node` | `entities/hashtag-match`, `entities/hashtag-documents`, `entities/hashtag-typing`, the hashtag cases of `property/documents` |
 | `@lexical/extension`'s decorators (the `extension` feature) | `packages/lexical-extension/src/HorizontalRuleExtension.ts` (`HorizontalRuleNode`: a block decorator whose text is `\n`; `$createHorizontalRuleNode`, `$isHorizontalRuleNode`), `DecoratorTextExtension.ts` (`DecoratorTextNode`: inline, `__isInlineFormattable`, `getFormat`, `hasFormat`, `setFormat`, `toggleFormat`, its `format` as a flat NodeState; `$isDecoratorTextNode`), with `LexicalNode`'s generated JSON | `extension` | `scripts/decorator` |
+| `NodeSelectionExtension` and `HorizontalRuleExtension` (the `extension` feature) | `packages/lexical-extension/src/NodeSelectionExtension.ts` (`watchNodeKey`: a `computed` per call over a `watchedSignal` of the selected keys, which follows `EditorStateExtension`'s store while watched, `node.isSelected()` of each watched key, keys without watchers dropped, the selected set replaced only when it changed); `HorizontalRuleExtension.ts` (`INSERT_HORIZONTAL_RULE_COMMAND` at `COMMAND_PRIORITY_EDITOR`, which handles a range selection with `$insertNodeToNearestRoot`; the `CLICK_COMMAND` handler at `COMMAND_PRIORITY_LOW` with `$toggleNodeSelection` and Shift; the extension's `nodes` and dependencies) | `extension::node_selection_extension`, `extension::horizontal_rule_extension` | `scripts/horizontal-rule` |
 | Extension core (the `extension` feature) | `packages/lexical/src/extension-core/`: `defineExtension.ts` (`defineExtension`, `configExtension`, `declarePeerDependency`), `safeCast.ts`, `shallowMergeConfig.ts`, `types.ts` (`LexicalExtension` with `name`, `conflictsWith`, `dependencies`, `peerDependencies`, `config`, `mergeConfig`, `nodes`, `$initialEditorState`, `init`, `build`, `register`, `afterRegistration`; `AnyLexicalExtension`, `AnyLexicalExtensionArgument`, `NormalizedPeerDependency`, `ExtensionConfigBase`, `ExtensionInitState`, `ExtensionBuildState`, `ExtensionRegisterState`, `LexicalExtensionDependency`, `InitialEditorConfig`, `InitialEditorStateType`, `LexicalEditorWithDispose`); `AbortController`/`AbortSignal` as `getSignal` uses them; `utils/mergeRegister.ts` | `extension_core` (re-exported at the crate root), `merge_register` | `scripts/extensions` |
 | Extension builder (the `extension` feature) | `packages/lexical-extension/src/LexicalBuilder.ts` (`buildEditorFromExtensions`, `LexicalBuilder`: `fromExtensions`, `maybeFromEditor`, `fromEditor`, `constructEditor`, `buildEditor` with `dispose`, `hasExtensionByName`, `getExtensionRep`, `addEdge`, `addExtension` with the duplicate-name and conflict invariants, `sortedExtensionReps`' depth-first sort, cycle invariant and config order, `registerEditor`, `buildCreateEditorArgs` for nodes and `$initialEditorState`), `internal/ExtensionRep.ts` (the state ids, `mergeConfigs`, `init`, `build`, `register` with its rollback, `afterRegistration`, `getSignal`, `getInitResult`, `getInitPeer`, `getExtensionInitDependency`, `getPeer`, `getInitDependency`, `getDependency`, `getDirectDependentNames`, `getPeerNameSet`, `getExtensionDependency`), `config.ts` (`getKnownTypesAndNodes`, `getNodeConfig`), `getExtensionDependencyFromEditor.ts`, `getPeerDependencyFromEditor.ts` (with `OrThrow`), `getExtensionDependency.ts` (`$getExtensionDependency`, `$getExtensionOutput`, `$getPeerDependency`) | `extension::lexical_builder`, `extension::extension_rep`, `extension::config`, `extension::get_*` | `scripts/extensions` |
 | Signals (the `extension` feature) | `signals.ts`, a port of `@preact/signals-core` 1.14.4 (`signal` with `watched`/`unwatched`, `computed`, `effect` with clean-ups, `batch` with its snapshots, `untracked`, `peek`, `subscribe`); `namedSignals.ts`; `watchedSignal.ts` | `extension::signals`, `extension::named_signals`, `extension::watched_signal` | `scripts/extensions` (`namedSignals toggle a registration`, `a signal disabled by config`, `EditorStateExtension as a signal`) |
@@ -132,10 +133,9 @@ touches:
   one) have no model counterpart. `isSelected()`, with its rule for an
   inline decorator at the end of its parent, is ported (for the tree view,
   the `devtools` feature, and `@lexical/clipboard`'s copy), though no vector reaches that rule;
-  `getTopLevelElement` is not. `@lexical/extension`'s
-  `HorizontalRuleExtension` (`INSERT_HORIZONTAL_RULE_COMMAND`, clicks, the
-  selected class) isn't ported (see the extension API below), and
-  `applyFormatFromStyle` reads CSS.
+  `getTopLevelElement` is not. Of `@lexical/extension`'s
+  `HorizontalRuleExtension`, the selected class isn't ported (see the
+  extension API below), and `applyFormatFromStyle` reads CSS.
 - Of the extension API (the `extension` feature): `InitialEditorConfig`'s
   `namespace`, `html`, `editable`, `onError`, `onWarn`, `disableEvents` and
   `dom`, which a headless Rust editor doesn't have (`theme` and
@@ -154,12 +154,11 @@ touches:
   preact's error paths have no counterpart and a cycle panics. `named_signals`
   takes a JSON object; a typed config makes its signals field by field.
   The other extensions of `@lexical/extension` (`AutoFocus`,
-  `ClickAfterLastBlock`, `IME`, `KeyboardShortcuts`, `NodeSelection`,
+  `ClickAfterLastBlock`, `IME`, `KeyboardShortcuts`,
   `NodeSelectionDataSelected`, `NormalizeTripleClickSelection`,
   `SelectionAlwaysOnDisplay`, `WatchEditable`) read the
   DOM, a selection's DOM, focus or keyboard events. Of the model-level
-  ones: `HorizontalRuleExtension` needs `NodeSelectionExtension` and clicks
-  (its node is ported). `NestedEditorExtension` is ported (see the nested
+  ones: `NestedEditorExtension` is ported (see the nested
   editors row); `createEditor()` called without a config, which JS nests
   in the active editor, has no counterpart, as `create_editor` always
   takes `CreateEditorArgs` (as Swift's does), and `_headless`, which JS
@@ -169,6 +168,15 @@ touches:
   `NodeStructureExtension` is ported (see the rows above), so
   `BlockIdExtension`'s peer dependency on `@lexical/NodeStructure` resolves
   where an editor has both, and the builder registers it first.
+  `HorizontalRuleExtension`'s `CLICK_COMMAND` handler finds the rule by
+  the event's `target_key`, the node the app hit, where JS calls
+  `$getNodeFromDOMNode(event.target)` (as Swift's `targetKey`). Its
+  selected class isn't ported: JS keeps the theme's `hrSelected`
+  (`selected` by default) on each rule's `<hr>` through a mutation listener
+  that reads `editor.getElementByKey`, and a Rust editor has no DOM of its
+  nodes, so an app draws the selected state from the rule's `watchNodeKey`
+  signal. `NodeSelectionExtension`'s watched keys are a list in the order
+  first watched, as JS's `Map` iterates.
   Of `BlockIdExtension`: `generateBlockId` hashes a counter and the clock
   with the standard library's randomly keyed `RandomState` where JS uses
   `crypto.getRandomValues` (no dependencies: it is unpredictable but not

@@ -150,17 +150,16 @@ fn import(case: &Value, editor: lexical::Editor) -> Result<Outcome, String> {
 }
 
 /// `html/import-extension`: `DOMImportExtension`'s import, in an editor
-/// built from `CoreImportExtension` and `HorizontalRuleNode`, makes the
+/// built from `CoreImportExtension` and `HorizontalRuleExtension`, makes the
 /// nodes it made in jsdom (with the document's `<style>` sheets inlined).
 pub fn check_import_extension(case: &Value, _file: &Value) -> Result<Outcome, String> {
     use lexical::html::import::{core_import_extension, generate_nodes_from_dom_via_extension};
     use lexical::{LexicalExtension, define_extension};
     let host = define_extension(LexicalExtension::<(), (), ()> {
-        dependencies: vec![core_import_extension().into()],
-        nodes: lexical::extension::extension_nodes()
-            .into_iter()
-            .filter(|class| class.node_type() == "horizontalrule")
-            .collect(),
+        dependencies: vec![
+            core_import_extension().into(),
+            lexical::extension::horizontal_rule_extension().into(),
+        ],
         ..LexicalExtension::new("[conformance]", ())
     });
     let editor = lexical::extension::build_editor_from_extensions([host.into()])
@@ -415,7 +414,7 @@ pub fn check_export_render(case: &Value, _file: &Value) -> Result<Outcome, Strin
 /// `html/import-packages`: `DOMImportExtension`'s import with the
 /// packages' rules, in an editor built from `RichTextExtension`,
 /// `CheckListExtension`, `LinkExtension`, `CodeExtension`,
-/// `WordListImportExtension` and `HorizontalRuleNode` (and, for
+/// `WordListImportExtension` and `HorizontalRuleExtension` (and, for
 /// `shadowRootQuote`, `ShadowRootQuoteRule`).
 pub fn check_import_packages(case: &Value, _file: &Value) -> Result<Outcome, String> {
     use lexical::html::import::{
@@ -428,6 +427,7 @@ pub fn check_import_packages(case: &Value, _file: &Value) -> Result<Outcome, Str
         lexical::link::link_extension().into(),
         lexical::code::code_extension().into(),
         lexical::list::word_list_import_extension().into(),
+        lexical::extension::horizontal_rule_extension().into(),
     ];
     if case.get("shadowRootQuote").and_then(Value::as_bool) == Some(true) {
         dependencies.push(config_extension(
@@ -438,13 +438,8 @@ pub fn check_import_packages(case: &Value, _file: &Value) -> Result<Outcome, Str
             }],
         ));
     }
-    // `HorizontalRuleExtension` isn't ported; its node is.
     let host = define_extension(LexicalExtension::<(), (), ()> {
         dependencies,
-        nodes: lexical::extension::extension_nodes()
-            .into_iter()
-            .filter(|class| class.node_type() == "horizontalrule")
-            .collect(),
         ..LexicalExtension::new("[conformance]", ())
     });
     let editor = lexical::extension::build_editor_from_extensions([host.into()])

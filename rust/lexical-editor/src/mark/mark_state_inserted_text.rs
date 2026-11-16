@@ -10,7 +10,12 @@
 //! no event loop, the port forgets them when the update that recorded them
 //! is over: the edits keep the pending editor state they were recorded in,
 //! and are dropped once the editor has another (`PendingEdits::refresh`),
-//! as well as at each commit.
+//! as well as at each commit. A command dispatched outside an update runs
+//! each priority level in an update of its own, whose pending state is
+//! dropped when it changed nothing (the level that records the replaced
+//! selection): edits recorded during a dispatch are kept for the pending
+//! state of a later level of the same dispatch, and so until it commits,
+//! as JS commits it before the microtask of `forgetSoon` runs.
 
 use super::mark_state_extension::{MarkFlavor, is_markable_node, js_cmp, read_node_mark_ids};
 use crate::editor::Editor;
@@ -36,6 +41,8 @@ pub(super) struct PendingEdits {
     pub(super) removed: RefCell<Vec<String>>,
     /// The pending editor state the edits were recorded in (`forgetSoon`).
     recorded_in: RefCell<Option<EditorState>>,
+    /// The turn of the command dispatch they were recorded in, if any.
+    recorded_turn: std::cell::Cell<Option<u64>>,
 }
 
 impl PendingEdits {
@@ -44,17 +51,24 @@ impl PendingEdits {
         *self.replaced.borrow_mut() = None;
         self.removed.borrow_mut().clear();
         *self.recorded_in.borrow_mut() = None;
+        self.recorded_turn.set(None);
     }
 
     /// The microtask of `forgetSoon`: the edits of an update that is over.
     pub(super) fn refresh(&self, editor: &Editor) {
+        let same_turn = self.recorded_turn.get().is_some()
+            && self.recorded_turn.get() == crate::updates::command_dispatch_turn();
         let stale = match (&*self.recorded_in.borrow(), editor.pending()) {
-            (Some(recorded), Some(pending)) => !recorded.ptr_eq(&pending),
-            (Some(_), None) => true,
+            (Some(recorded), Some(pending)) => !recorded.ptr_eq(&pending) && !same_turn,
+            (Some(_), None) => !same_turn,
             (None, _) => false,
         };
         if stale {
             self.forget();
+        } else if same_turn {
+            // The pending state of a later priority level of the same
+            // dispatch: JS commits it before its microtask forgets the edits
+            *self.recorded_in.borrow_mut() = editor.pending();
         }
     }
 
@@ -63,6 +77,8 @@ impl PendingEdits {
         self.refresh(editor);
         f(self);
         *self.recorded_in.borrow_mut() = editor.pending();
+        self.recorded_turn
+            .set(crate::updates::command_dispatch_turn());
     }
 }
 

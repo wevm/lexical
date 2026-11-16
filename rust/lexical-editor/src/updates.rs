@@ -54,6 +54,47 @@ thread_local! {
     /// `editorsWithPendingSelectionChange`, by the editors' addresses.
     static EDITORS_WITH_PENDING_SELECTION_CHANGE: RefCell<HashSet<usize>> =
         RefCell::new(HashSet::new());
+    /// How many `triggerCommandListeners` calls are running, and the turn:
+    /// a count of the outermost dispatches that returned. JS's microtasks
+    /// run once the application's call returns; a dispatch is the port's
+    /// nearest stand-in for that synchronous turn (`@lexical/mark`'s
+    /// `forgetSoon`).
+    static COMMAND_DISPATCH: Cell<(usize, u64)> = const { Cell::new((0, 0)) };
+}
+
+/// The turn of the running command dispatch, or `None` outside one: edits
+/// recorded during a dispatch are those of the same synchronous turn until
+/// the outermost dispatch returns (`@lexical/mark`'s `forgetSoon`).
+#[cfg(all(feature = "mark", feature = "extension"))]
+pub(crate) fn command_dispatch_turn() -> Option<u64> {
+    let (depth, turn) = COMMAND_DISPATCH.with(Cell::get);
+    (depth > 0).then_some(turn)
+}
+
+/// Counts a running dispatch until dropped.
+struct CommandDispatchGuard;
+
+impl CommandDispatchGuard {
+    fn enter() -> Self {
+        COMMAND_DISPATCH.with(|c| {
+            let (depth, turn) = c.get();
+            c.set((depth + 1, turn));
+        });
+        CommandDispatchGuard
+    }
+}
+
+impl Drop for CommandDispatchGuard {
+    fn drop(&mut self) {
+        COMMAND_DISPATCH.with(|c| {
+            let (depth, turn) = c.get();
+            c.set(if depth == 1 {
+                (0, turn + 1)
+            } else {
+                (depth - 1, turn)
+            });
+        });
+    }
 }
 
 /// Runs `f` with `active` in place, restoring the previous one afterwards,
@@ -1030,6 +1071,7 @@ pub(crate) fn trigger_command_listeners<P: 'static>(
     payload: &Rc<P>,
     from_editor: &Editor,
 ) -> Result<bool, LexicalError> {
+    let _dispatch = CommandDispatchGuard::enter();
     let editors = get_editors_to_propagate(editor);
     let mut updating_parent_editor: Option<Editor> = None;
     // A command dispatched from outside an update starts a new action, in

@@ -855,10 +855,9 @@ mod tests {
         unregister_nested();
     }
 
-    /// Upstream's `maxDepth` tests: `n` separate events leave `n - 1`
-    /// entries, and a cap keeps the newest.
-    // upstream: lexical-history/src/__tests__/unit/LexicalHistory.test.tsx::HistoryExtension maxDepth > defaults to null (unbounded) and matches the historical behavior
-    // upstream: lexical-history/src/__tests__/unit/LexicalHistory.test.tsx::HistoryExtension maxDepth > caps the undoStack to maxDepth via FIFO eviction
+    /// After upstream's `maxDepth` tests (ported through `HistoryExtension`
+    /// in `upstream_tests::lexical_history`): `n` separate events leave
+    /// `n - 1` entries, and a cap keeps the newest.
     #[test]
     fn max_depth_evicts_the_oldest_entries() {
         for (max_depth, expected) in [(None, 24), (Some(5), 5)] {

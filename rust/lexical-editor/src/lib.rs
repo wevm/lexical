@@ -65,6 +65,7 @@ pub mod devtools;
 pub mod dom;
 mod editor;
 mod editor_state;
+mod environment;
 mod error;
 mod events;
 #[cfg(feature = "extension")]
@@ -82,6 +83,7 @@ pub mod history;
 #[cfg(feature = "html")]
 pub mod html;
 pub mod json;
+mod keyboard_shortcuts;
 #[cfg(feature = "html")]
 pub mod lexical_dom;
 mod lexical_selection;
@@ -147,26 +149,37 @@ pub use caret_utils::{
     update_range_selection_from_caret_range,
 };
 pub use commands::{
-    CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
+    BEFORE_INPUT_COMMAND, BLUR_COMMAND, CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND,
+    CLEAR_HISTORY_COMMAND, CLICK_COMMAND, COMPOSITION_END_COMMAND, COMPOSITION_START_COMMAND,
     CONTROLLED_TEXT_INSERTION_COMMAND, COPY_COMMAND, CUT_COMMAND, DELETE_CHARACTER_COMMAND,
-    DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND,
-    INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND,
-    INSERT_TAB_COMMAND, InsertClipboardNodesPayload, KEY_ENTER_COMMAND, KeyboardEvent,
+    DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, DRAGEND_COMMAND, DRAGOVER_COMMAND, DRAGSTART_COMMAND,
+    DROP_COMMAND, FOCUS_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND,
+    INDENT_CONTENT_COMMAND, INPUT_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND,
+    INSERT_TAB_COMMAND, InsertClipboardNodesPayload, KEY_ARROW_DOWN_COMMAND,
+    KEY_ARROW_LEFT_COMMAND, KEY_ARROW_RIGHT_COMMAND, KEY_ARROW_UP_COMMAND, KEY_BACKSPACE_COMMAND,
+    KEY_DELETE_COMMAND, KEY_DOWN_COMMAND, KEY_ENTER_COMMAND, KEY_ESCAPE_COMMAND,
+    KEY_MODIFIER_COMMAND, KEY_SPACE_COMMAND, KEY_TAB_COMMAND, MOVE_TO_END, MOVE_TO_START,
     OUTDENT_CONTENT_COMMAND, PASTE_COMMAND, REDO_COMMAND, REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND,
-    SELECTION_INSERT_CLIPBOARD_NODES_COMMAND, SET_TEXT_FORMAT_COMMAND, UNDO_COMMAND,
+    SELECTION_CHANGE_COMMAND, SELECTION_INSERT_CLIPBOARD_NODES_COMMAND, SET_TEXT_FORMAT_COMMAND,
+    UNDO_COMMAND,
 };
 pub use editor::{
     COLLABORATION_TAG, COMMAND_PRIORITY_CRITICAL, COMMAND_PRIORITY_EDITOR, COMMAND_PRIORITY_HIGH,
     COMMAND_PRIORITY_LOW, COMMAND_PRIORITY_NORMAL, COMPOSITION_END_TAG, COMPOSITION_START_TAG,
-    CUT_TAG, CreateEditorArgs, Editor, EditorConfig, EditorReadMode, HISTORIC_TAG,
-    HISTORY_MERGE_TAG, HISTORY_PUSH_TAG, LexicalCommand, MutationListenerOptions,
+    CUT_TAG, CreateEditorArgs, DEFER_COMPOSITION_MERGE_TAG, Editor, EditorConfig, EditorReadMode,
+    HISTORIC_TAG, HISTORY_MERGE_TAG, HISTORY_PUSH_TAG, LexicalCommand, MutationListenerOptions,
     MutationListenerPayload, NodeClass, NodeMutation, NodeMutations, PASTE_TAG, RootElement,
-    RootElementRef, Transform, Unregister, UpdateListenerPayload, UpdateOptions, create_command,
-    create_editor, has_update_tag,
+    RootElementRef, SKIP_SELECTION_FOCUS_TAG, Transform, Unregister, UpdateListenerPayload,
+    UpdateOptions, create_command, create_editor, has_update_tag,
 };
 pub use editor_state::EditorState;
+pub use environment::{is_apple, with_is_apple};
 pub use error::LexicalError;
-pub use events::DataTransfer;
+pub use events::{
+    ClipboardEvent, ClipboardOrKeyboardEvent, CompositionEvent, DataTransfer, DataTransferFile,
+    DragEvent, Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, PasteCommandType,
+    on_before_input, on_composition_end, on_composition_start, on_key_down,
+};
 #[cfg(feature = "extension")]
 pub use extension_core::{
     AbortController, AbortSignal, AnyLexicalExtension, AnyLexicalExtensionArgument,
@@ -176,14 +189,21 @@ pub use extension_core::{
     LexicalExtensionDependency, NormalizedPeerDependency, config_extension,
     declare_peer_dependency, define_extension, safe_cast, shallow_merge_config,
 };
+pub use keyboard_shortcuts::{
+    CompiledKeyboardShortcuts, KeyboardShortcut, KeyboardShortcutMatch, ShortcutDisabledFn,
+    ShortcutDispatchFn, compile_keyboard_shortcuts, control_or_alt, control_or_meta,
+};
 pub use lexical_selection::{
     NodeSelection, Point, PointType, RangeSelection, Selection, SelectionRef, Which,
     clamp_range_selection_to_slot_frame, create_node_selection, create_range_selection,
     get_point_slot_frame, get_selection, is_same_frame, set_selection,
 };
 pub use lexical_utils::{
-    clone_with_properties, copy_node, create, get_node_by_key, get_root, get_text_direction,
-    is_root_or_shadow_root, reset_random_key, split_node,
+    ControlOrOther, KeyboardEventModifierMask, KeyboardEventModifiers, ModifierExpectation,
+    clone_with_properties, copy_node, create, get_composition_key, get_node_by_key, get_root,
+    get_text_direction, is_backspace, is_delete, is_escape, is_exact_shortcut_match, is_modifier,
+    is_modifier_match, is_root_or_shadow_root, is_select_all, keyboard_event_mask_for_platform,
+    reset_random_key, set_composition_key, split_node,
 };
 pub use merge_register::merge_register;
 pub use node::{LexicalNode, NodeBase, NodeClone, NodeKey, NodeRef};

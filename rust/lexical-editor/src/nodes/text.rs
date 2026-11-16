@@ -12,7 +12,8 @@ use crate::lexical_selection::{
     internal_make_range_selection, update_element_selection_on_create_delete_node,
 };
 use crate::lexical_utils::{
-    get_writable, internal_mark_siblings_as_dirty, mutate, set_node_key, with_writable,
+    get_composition_key, get_writable, internal_mark_siblings_as_dirty, mutate,
+    set_composition_key, set_node_key, with_writable,
 };
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::node_state::clone_node_state;
@@ -229,6 +230,11 @@ impl NodeRef {
         self.with_text(Clone::clone)
     }
 
+    /// `isComposing()`: whether an input method is composing in this node.
+    pub fn is_composing(&self) -> bool {
+        get_composition_key().as_deref() == Some(self.get_key())
+    }
+
     /// `isSimpleText()`: a plain `text` node in normal mode.
     pub fn is_simple_text(&self) -> bool {
         self.get_type() == "text" && self.with_text(|t| t.mode == IS_NORMAL)
@@ -355,6 +361,14 @@ impl NodeRef {
                 Point::new(key, focus_offset, PointType::Text),
             )),
             Some(selection) => {
+                let composition_key = get_composition_key();
+                let range = selection.range().expect("a range selection");
+                if composition_key.is_some()
+                    && (composition_key.as_deref() == Some(range.anchor.key.as_str())
+                        || composition_key.as_deref() == Some(range.focus.key.as_str()))
+                {
+                    set_composition_key(Some(key));
+                }
                 selection.set_text_node_range(self, anchor_offset, self, focus_offset)?;
                 Ok(selection)
             }
@@ -480,10 +494,14 @@ impl NodeRef {
             self.clone()
         };
 
+        let composition_key = get_composition_key();
         let mut split_nodes = vec![writable_node];
         for part in &parts[1..] {
             let sibling = create_text_node(part);
             copy_fields(&sibling);
+            if composition_key.as_deref() == Some(key.as_str()) {
+                set_composition_key(Some(sibling.get_key()));
+            }
             split_nodes.push(sibling);
         }
 
@@ -574,6 +592,9 @@ impl NodeRef {
         let target_key = target.get_key();
         let text = self.get_text_content();
         let text_length = utf16::len(&text);
+        if get_composition_key().as_deref() == Some(target_key) {
+            set_composition_key(Some(key));
+        }
         if let Some(selection) = get_selection().filter(SelectionRef::is_range) {
             for which in [Which::Anchor, Which::Focus] {
                 if selection.point(which).expect("a range selection").key == target_key {
@@ -716,8 +737,8 @@ mod text_dom {
     }
 
     /// `$createTextInnerDOM(innerDOM, node, innerTag, format, text,
-    /// config)`. A node is never composing here, so `$setTextContent`
-    /// appends the text as it is.
+    /// config)`. `$setTextContent`'s composition suffix isn't ported
+    /// (rust/PARITY.md), so the text is appended as it is.
     fn create_text_inner_dom(inner_dom: &DomNode, format: i32, text: &str, config: &EditorConfig) {
         inner_dom.append_child(&get_document().create_text_node(text));
         if let Some(text_class_names) = config.theme.get("text").and_then(|t| t.as_object()) {

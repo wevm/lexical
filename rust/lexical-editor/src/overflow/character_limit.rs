@@ -93,13 +93,15 @@ pub fn register_character_limit(
             })
         },
         editor.register_update_listener(move |payload| {
-            // `editor.isComposing()`: a headless editor never composes.
             let has_content_changes =
                 !payload.dirty_leaves.is_empty() || !payload.dirty_elements.is_empty();
             if !has_content_changes {
                 return;
             }
             if let Some(editor) = weak.upgrade().map(Editor) {
+                if editor.is_composing() {
+                    return;
+                }
                 // A listener has no error channel; the update it queues
                 // reports its own failure.
                 let _ = update_character_limit(&editor);

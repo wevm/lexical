@@ -258,17 +258,22 @@ import {
   type AnyLexicalExtensionArgument,
   type AnyStateConfig,
   type BaseSelection,
+  BEFORE_INPUT_COMMAND,
   CAN_REDO_COMMAND,
   CAN_UNDO_COMMAND,
   type CaretDirection,
   CLEAR_EDITOR_COMMAND,
   CLEAR_HISTORY_COMMAND,
   COMMAND_PRIORITY_EDITOR,
+  COMPOSITION_END_COMMAND,
+  COMPOSITION_START_COMMAND,
   configExtension,
   CONTROLLED_TEXT_INSERTION_COMMAND,
+  COPY_COMMAND,
   createCommand,
   createEditor,
   createState,
+  CUT_COMMAND,
   declarePeerDependency,
   DELETE_CHARACTER_COMMAND,
   DELETE_LINE_COMMAND,
@@ -285,18 +290,32 @@ import {
   INSERT_TAB_COMMAND,
   INTERNAL_$normalizeNodeStructure,
   INTERNAL_isNodeStructureEnforced,
+  KEY_ARROW_DOWN_COMMAND,
+  KEY_ARROW_LEFT_COMMAND,
+  KEY_ARROW_RIGHT_COMMAND,
+  KEY_ARROW_UP_COMMAND,
+  KEY_BACKSPACE_COMMAND,
+  KEY_DELETE_COMMAND,
+  KEY_DOWN_COMMAND,
   KEY_ENTER_COMMAND,
+  KEY_ESCAPE_COMMAND,
+  KEY_MODIFIER_COMMAND,
+  KEY_SPACE_COMMAND,
+  KEY_TAB_COMMAND,
   type Klass,
   type LexicalCommand,
   type LexicalEditor,
   type LexicalEditorWithDispose,
   type LexicalExtension,
   type LexicalNode,
+  MOVE_TO_END,
+  MOVE_TO_START,
   type NodeCaret,
   type NodeChildrenConfig,
   nodeSchema,
   OUTDENT_CONTENT_COMMAND,
   ParagraphNode,
+  PASTE_COMMAND,
   type PointCaret,
   type RangeSelection,
   REDO_COMMAND,
@@ -814,6 +833,10 @@ export type HandlerSpec = {
  */
 export type Step = (
   | {update: Action[]; tag?: string[]}
+  /**
+   * `editor.dispatchCommand(command, payload)`; a command whose payload is
+   * a DOM event (EVENT_COMMANDS) gets the event its JSON describes.
+   */
   | {dispatch: string; payload?: Json}
   /** `editor.dispose()` of an editor built from `extensions`. */
   | {dispose: true}
@@ -1177,6 +1200,14 @@ export type Script = {
    * needs the nodes of `richText`, `list`, `link` and `code`.
    */
   markdown?: boolean;
+  /**
+   * The platform `IS_APPLE` names, which decides the keyboard shortcuts
+   * (`CONTROL_OR_META`, the keydown bindings); `false` when left out, as in
+   * Node. JS can't change it while running, so the test that records a
+   * script with `isApple: true` mocks `lexical/src/environment` and checks
+   * that the mock took; the Rust and Swift runners set it for the script.
+   */
+  isApple?: boolean;
   steps: Step[];
   /** Record `state` after every step (default), or after the last only. */
   snapshot?: 'every' | 'final';
@@ -2995,14 +3026,7 @@ function $runAction(action: Action, ctx: Context): void {
       return;
     }
     case 'dispatch':
-      ctx.log.push([
-        'dispatched',
-        action.command,
-        ctx.editor.dispatchCommand(
-          command(ctx, action.command),
-          action.payload ?? null,
-        ),
-      ]);
+      dispatchLogged(ctx, action.command, action.payload ?? null);
       return;
   }
 }
@@ -3027,11 +3051,16 @@ function $insertDataTransfer(
  * them. Any other name is a command the script makes.
  */
 const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
+  ['BEFORE_INPUT_COMMAND', BEFORE_INPUT_COMMAND],
   ['CAN_REDO_COMMAND', CAN_REDO_COMMAND],
   ['CAN_UNDO_COMMAND', CAN_UNDO_COMMAND],
   ['CLEAR_EDITOR_COMMAND', CLEAR_EDITOR_COMMAND],
   ['CLEAR_HISTORY_COMMAND', CLEAR_HISTORY_COMMAND],
+  ['COMPOSITION_END_COMMAND', COMPOSITION_END_COMMAND],
+  ['COMPOSITION_START_COMMAND', COMPOSITION_START_COMMAND],
   ['CONTROLLED_TEXT_INSERTION_COMMAND', CONTROLLED_TEXT_INSERTION_COMMAND],
+  ['COPY_COMMAND', COPY_COMMAND],
+  ['CUT_COMMAND', CUT_COMMAND],
   ['DELETE_CHARACTER_COMMAND', DELETE_CHARACTER_COMMAND],
   ['DELETE_LINE_COMMAND', DELETE_LINE_COMMAND],
   ['DELETE_WORD_COMMAND', DELETE_WORD_COMMAND],
@@ -3041,8 +3070,22 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['INSERT_LINE_BREAK_COMMAND', INSERT_LINE_BREAK_COMMAND],
   ['INSERT_PARAGRAPH_COMMAND', INSERT_PARAGRAPH_COMMAND],
   ['INSERT_TAB_COMMAND', INSERT_TAB_COMMAND],
+  ['KEY_ARROW_DOWN_COMMAND', KEY_ARROW_DOWN_COMMAND],
+  ['KEY_ARROW_LEFT_COMMAND', KEY_ARROW_LEFT_COMMAND],
+  ['KEY_ARROW_RIGHT_COMMAND', KEY_ARROW_RIGHT_COMMAND],
+  ['KEY_ARROW_UP_COMMAND', KEY_ARROW_UP_COMMAND],
+  ['KEY_BACKSPACE_COMMAND', KEY_BACKSPACE_COMMAND],
+  ['KEY_DELETE_COMMAND', KEY_DELETE_COMMAND],
+  ['KEY_DOWN_COMMAND', KEY_DOWN_COMMAND],
   ['KEY_ENTER_COMMAND', KEY_ENTER_COMMAND],
+  ['KEY_ESCAPE_COMMAND', KEY_ESCAPE_COMMAND],
+  ['KEY_MODIFIER_COMMAND', KEY_MODIFIER_COMMAND],
+  ['KEY_SPACE_COMMAND', KEY_SPACE_COMMAND],
+  ['KEY_TAB_COMMAND', KEY_TAB_COMMAND],
+  ['MOVE_TO_END', MOVE_TO_END],
+  ['MOVE_TO_START', MOVE_TO_START],
   ['OUTDENT_CONTENT_COMMAND', OUTDENT_CONTENT_COMMAND],
+  ['PASTE_COMMAND', PASTE_COMMAND],
   ['REDO_COMMAND', REDO_COMMAND],
   ['REMOVE_TEXT_COMMAND', REMOVE_TEXT_COMMAND],
   ['SELECT_ALL_COMMAND', SELECT_ALL_COMMAND],
@@ -3063,6 +3106,122 @@ const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['TOGGLE_LINK_COMMAND', TOGGLE_LINK_COMMAND],
   ['INSERT_EMBED_COMMAND', INSERT_EMBED_COMMAND],
 ]);
+
+/**
+ * The commands whose payload is a DOM event, by the event a JSON payload
+ * makes for them (`eventPayload`): `keydown` (a `KeyboardEvent` of `key`,
+ * `code` and the modifier flags), `beforeinput` (an `InputEvent` of
+ * `inputType` and `data`) or a composition event (a `CompositionEvent` of
+ * `data`). A `null` payload stays `null`, as `KEY_ENTER_COMMAND` and
+ * `SELECT_ALL_COMMAND` take it. `PASTE_COMMAND`, `COPY_COMMAND` and
+ * `CUT_COMMAND` are only listened to, as the keydown and beforeinput
+ * handlers dispatch them with their event.
+ */
+const EVENT_COMMANDS = new Map<string, string>([
+  ['BEFORE_INPUT_COMMAND', 'beforeinput'],
+  ['COMPOSITION_END_COMMAND', 'compositionend'],
+  ['COMPOSITION_START_COMMAND', 'compositionstart'],
+  ...[
+    'KEY_ARROW_DOWN_COMMAND',
+    'KEY_ARROW_LEFT_COMMAND',
+    'KEY_ARROW_RIGHT_COMMAND',
+    'KEY_ARROW_UP_COMMAND',
+    'KEY_BACKSPACE_COMMAND',
+    'KEY_DELETE_COMMAND',
+    'KEY_DOWN_COMMAND',
+    'KEY_ENTER_COMMAND',
+    'KEY_ESCAPE_COMMAND',
+    'KEY_MODIFIER_COMMAND',
+    'KEY_SPACE_COMMAND',
+    'KEY_TAB_COMMAND',
+    'MOVE_TO_END',
+    'MOVE_TO_START',
+    'SELECT_ALL_COMMAND',
+  ].map(name => [name, 'keydown'] as [string, string]),
+]);
+
+/** The jsdom window the events of `eventPayload` come from. */
+let eventWindow: ReturnType<typeof browserWindow> | null = null;
+
+/**
+ * `payload` as the command `name` takes it: for a command of
+ * EVENT_COMMANDS, a JSON object becomes the event it describes.
+ */
+function eventPayload(name: string, payload: Json): unknown {
+  const type = EVENT_COMMANDS.get(name);
+  if (type === undefined || payload === null || typeof payload !== 'object') {
+    return payload;
+  }
+  const p = payload as {[key: string]: Json};
+  const win = (eventWindow ??= browserWindow());
+  if (type === 'keydown') {
+    return new win.KeyboardEvent(type, {
+      altKey: p.altKey === true,
+      cancelable: true,
+      code: typeof p.code === 'string' ? p.code : '',
+      ctrlKey: p.ctrlKey === true,
+      key: typeof p.key === 'string' ? p.key : '',
+      metaKey: p.metaKey === true,
+      shiftKey: p.shiftKey === true,
+    });
+  } else if (type === 'beforeinput') {
+    return new win.InputEvent(type, {
+      cancelable: true,
+      data: typeof p.data === 'string' ? p.data : null,
+      inputType: String(p.inputType),
+    });
+  }
+  return new win.CompositionEvent(type, {
+    data: typeof p.data === 'string' ? p.data : '',
+  });
+}
+
+/**
+ * A command's payload as a handler logs it: an event as the fields Lexical
+ * reads of it (`{type, key, code, altKey, ctrlKey, metaKey, shiftKey}` for a
+ * `KeyboardEvent`, `{type, inputType, data}` for an `InputEvent`, `{type,
+ * data}` for a `CompositionEvent`), anything else as it is.
+ */
+function payloadJson(payload: unknown): Json {
+  if (eventWindow === null || !(payload instanceof eventWindow.Event)) {
+    return payload as Json;
+  }
+  if (payload instanceof eventWindow.KeyboardEvent) {
+    const {altKey, code, ctrlKey, key, metaKey, shiftKey, type} = payload;
+    return {altKey, code, ctrlKey, key, metaKey, shiftKey, type};
+  } else if (payload instanceof eventWindow.InputEvent) {
+    return {
+      data: payload.data,
+      inputType: payload.inputType,
+      type: payload.type,
+    };
+  } else if (payload instanceof eventWindow.CompositionEvent) {
+    return {data: payload.data, type: payload.type};
+  }
+  throw new Error(`no JSON for a ${payload.type} event`);
+}
+
+/**
+ * `editor.dispatchCommand(command(ctx, name), payload)`, logged as
+ * `['dispatched', name, handled]`, then, when the payload is an event,
+ * `['defaultPrevented', event.defaultPrevented]`.
+ */
+function dispatchLogged(
+  ctx: Context,
+  name: string,
+  payload: Json,
+  target: LexicalEditor = ctx.editor,
+): void {
+  const event = eventPayload(name, payload);
+  ctx.log.push([
+    'dispatched',
+    name,
+    target.dispatchCommand(command(ctx, name), event as Json),
+  ]);
+  if (event !== payload) {
+    ctx.log.push(['defaultPrevented', (event as Event).defaultPrevented]);
+  }
+}
 
 function command(ctx: Context, name: string): LexicalCommand<Json> {
   const known = CORE_COMMANDS.get(name) ?? PACKAGE_COMMANDS.get(name);
@@ -3714,7 +3873,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     editor.registerCommand(
       command(ctx, handler.command),
       payload => {
-        ctx.log.push(['handler', handler.id, payload]);
+        ctx.log.push(['handler', handler.id, payloadJson(payload)]);
         for (const action of handler.actions ?? []) {
           $runAction(action, ctx);
         }
@@ -3842,14 +4001,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
         {discrete: true, tag: step.tag},
       );
     } else if ('dispatch' in step) {
-      ctx.log.push([
-        'dispatched',
-        step.dispatch,
-        target.dispatchCommand(
-          command(ctx, step.dispatch),
-          step.payload ?? null,
-        ),
-      ]);
+      dispatchLogged(ctx, step.dispatch, step.payload ?? null, target);
     } else if ('setRootElement' in step) {
       const root = step.setRootElement ? sessionDOM(ctx).root : null;
       target.setRootElement(root);

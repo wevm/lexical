@@ -13,7 +13,9 @@
 
 mod view;
 
-use lexical_playground_core::{Document, Outcome, Playground, Pos, RunKind, Sel, example};
+use lexical_playground_core::{
+    Document, KeyModifiers, Outcome, Playground, Pos, RunKind, Sel, example,
+};
 use rune::{AppSpec, Block, ClipboardContent, Key, KeyEvent, Mark, MarkRange, TextEdit, Tx};
 
 /// The side panel's tab.
@@ -141,18 +143,33 @@ impl State {
                 }
             }
             Key::Tab => self.edit_with(|p| p.tab(m.shift)),
-            Key::Command(c) => match c {
-                'b' => self.edit_with(|p| p.format_text("bold")),
-                'i' => self.edit_with(|p| p.format_text("italic")),
-                'u' => self.edit_with(|p| p.format_text("underline")),
-                'a' => self.edit_with(Playground::select_all),
+            // A shortcut: the core's `KEY_DOWN_COMMAND` handler turns it
+            // into its command (⌘B bolds, ⌘Z undoes, ⌘A selects all), as
+            // Lexical's root element hears the key down.
+            Key::Command(c) => {
+                let c = *c;
+                let modifiers = KeyModifiers {
+                    alt: m.alt,
+                    shift: m.shift,
+                    ..KeyModifiers::primary()
+                };
+                let code = match c.to_ascii_uppercase() {
+                    l if l.is_ascii_uppercase() => format!("Key{l}"),
+                    d if d.is_ascii_digit() => format!("Digit{d}"),
+                    _ => String::new(),
+                };
+                let mut prevented = false;
+                self.edit_with(|p| {
+                    let (outcome, handled) = p.key_down(&c.to_string(), &code, modifiers);
+                    prevented = handled;
+                    outcome
+                });
                 // Lexical's history, not the field's own undo, which would
                 // edit behind Lexical's back.
-                'z' | 'Z' if m.shift => self.edit_with(Playground::redo),
-                'z' => self.edit_with(Playground::undo),
-                'y' => {}
-                _ => return false,
-            },
+                if !prevented && !matches!(c, 'z' | 'Z' | 'y') {
+                    return false;
+                }
+            }
             _ => return false,
         }
         true

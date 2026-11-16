@@ -2,7 +2,9 @@
 //! over the previous and next trees, for what it reports to mutation
 //! listeners (`setMutatedNode`, in `LexicalUtils.ts`): the nodes it creates,
 //! updates and destroys. There is no DOM, so nothing is rendered, and the
-//! text, format and direction caches the walk fills are not kept.
+//! text, format and direction caches the walk fills are not kept, except
+//! for what the root's text cache (`__cachedText`) does to the commit: a
+//! stale one marks the root dirty (`commit_pending_updates`).
 //!
 //! The children fast paths of `$reconcileChildren` (a dirty suffix of four
 //! or more children) only save DOM work: they reach the same nodes in the

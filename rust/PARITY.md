@@ -31,8 +31,11 @@ updated with each milestone.
 | Editor | `createEditor` (node registration), `update`, `read`, `getEditorState`, `setEditorState`, `registerNodeTransform`, `registerUpdateListener`, `registerTextContentListener`, `registerCommand`, `dispatchCommand`, `createCommand` | `editor` | `scripts/*` |
 | History (the `history` feature) | `packages/lexical-history/src/index.ts`: `registerHistory` (with `dateNow`, `onHistoryStateChange` and `maxDepth`), `createEmptyHistoryState`, `createMergeActionGetter`, `getChangeType`, `getDirtyNodes`, `isTextNodeUnchanged`, `areNodesUnchanged`, `getInverseEntry`, `getUndoEntry`, `undo`, `redo`, `clearHistory`; the commands it handles and dispatches from `LexicalCommands.ts` (`UNDO_COMMAND`, `REDO_COMMAND`, `CAN_UNDO_COMMAND`, `CAN_REDO_COMMAND`, `CLEAR_HISTORY_COMMAND`, `CLEAR_EDITOR_COMMAND`) and its tags from `LexicalUpdateTags.ts` | `history`, `commands`, `editor` | `scripts/history`, `property/sequences`; unit tests for a history shared by two editors (upstream's #8623 test) and `maxDepth` |
 | Rich text nodes (the `rich-text` feature) | `packages/lexical-rich-text/src/index.ts`: `HeadingNode` (`getTag`, `setTag`, `insertNewAfter`, `collapseAtStart`, `extractWithChild`), `QuoteNode` (`insertNewAfter`, `collapseAtStart`, `canMergeWhenEmpty`, the opt-in shadow root), `$createHeadingNode`, `$isHeadingNode`, `$createQuoteNode`, `$isQuoteNode`; their generated JSON (`LexicalRichTextGeneratedJSON.ts`); `ElementNode.collapseAtStart` as a node hook, and `ElementNode`'s own `$transform` (`$normalizeShadowRootChildren`); from `@lexical/selection` and `@lexical/utils` only `$isAtEdgeOfElement`, `$isAtStartOfNode`, `$isAtEndOfNode`, `$findMatchingParent` and `$handleIndentAndOutdent` | `rich_text`, `selection`, `utils`, `updates` | `scripts/rich-text`, the heading and quote cases of `property/documents` |
-| `registerRichText` (the `rich-text` feature) | `packages/lexical-rich-text/src/index.ts` `registerRichText`: the handlers of `DELETE_CHARACTER_COMMAND` (with `NodeSelection.deleteNodes`), `DELETE_WORD_COMMAND`, `DELETE_LINE_COMMAND`, `CONTROLLED_TEXT_INSERTION_COMMAND` (string form), `REMOVE_TEXT_COMMAND`, `FORMAT_TEXT_COMMAND`, `SET_TEXT_FORMAT_COMMAND`, `FORMAT_ELEMENT_COMMAND`, `INSERT_LINE_BREAK_COMMAND`, `INSERT_PARAGRAPH_COMMAND`, `INSERT_TAB_COMMAND`, `INDENT_CONTENT_COMMAND`, `OUTDENT_CONTENT_COMMAND`, `SELECT_ALL_COMMAND`, and `KEY_ENTER_COMMAND` (with `$escapeFormatsForTrigger` on `DEFAULT_ESCAPE_FORMAT_TRIGGERS`); those commands from `LexicalCommands.ts`, with a `KeyboardEvent` of the modifier keys and `preventDefault`; `ElementNode.canIndent` | `rich_text::register_rich_text`, `commands`, `selection_deletion`, `utils` | `scripts/rich-text-commands`, `property/sequences` |
+| `registerRichText` (the `rich-text` feature) | `packages/lexical-rich-text/src/index.ts` `registerRichText`: the handlers of `DELETE_CHARACTER_COMMAND` (with `NodeSelection.deleteNodes`), `DELETE_WORD_COMMAND`, `DELETE_LINE_COMMAND`, `CONTROLLED_TEXT_INSERTION_COMMAND` (string form), `REMOVE_TEXT_COMMAND`, `FORMAT_TEXT_COMMAND`, `SET_TEXT_FORMAT_COMMAND`, `FORMAT_ELEMENT_COMMAND`, `INSERT_LINE_BREAK_COMMAND`, `INSERT_PARAGRAPH_COMMAND`, `INSERT_TAB_COMMAND`, `INDENT_CONTENT_COMMAND`, `OUTDENT_CONTENT_COMMAND`, `SELECT_ALL_COMMAND`, and `KEY_ENTER_COMMAND` (with `$escapeFormatsForTrigger` on `DEFAULT_ESCAPE_FORMAT_TRIGGERS`); those commands from `LexicalCommands.ts`, with the events of the event commands row; `ElementNode.canIndent` | `rich_text::register_rich_text`, `commands`, `selection_deletion`, `utils` | `scripts/rich-text-commands`, `property/sequences` |
 | `registerPlainText` (the `plain-text` feature) | `packages/lexical-plain-text/src/index.ts` `registerPlainText`: the handlers of `DELETE_CHARACTER_COMMAND`, `DELETE_WORD_COMMAND`, `DELETE_LINE_COMMAND`, `CONTROLLED_TEXT_INSERTION_COMMAND` (string form), `REMOVE_TEXT_COMMAND`, `INSERT_LINE_BREAK_COMMAND`, `INSERT_PARAGRAPH_COMMAND` (a line break), `KEY_ENTER_COMMAND` and `SELECT_ALL_COMMAND` | `plain_text` | `scripts/plain-text` |
+| Event commands and payloads | `LexicalCommands.ts`'s DOM event commands (`SELECTION_CHANGE_COMMAND`, `CLICK_COMMAND`, `BEFORE_INPUT_COMMAND`, `INPUT_COMMAND`, `COMPOSITION_START_COMMAND`, `COMPOSITION_END_COMMAND`, `KEY_DOWN_COMMAND` (named `KEYDOWN_COMMAND`, as in JS), `KEY_ARROW_RIGHT_COMMAND`, `MOVE_TO_END`, `KEY_ARROW_LEFT_COMMAND`, `MOVE_TO_START`, `KEY_ARROW_UP_COMMAND`, `KEY_ARROW_DOWN_COMMAND`, `KEY_SPACE_COMMAND`, `KEY_BACKSPACE_COMMAND`, `KEY_ESCAPE_COMMAND`, `KEY_DELETE_COMMAND`, `KEY_TAB_COMMAND`, `KEY_MODIFIER_COMMAND`, `DROP_COMMAND`, `DRAGSTART_COMMAND`, `DRAGOVER_COMMAND`, `DRAGEND_COMMAND`, `FOCUS_COMMAND`, `BLUR_COMMAND`) and the payloads of `PASTE_COMMAND` (`PasteCommandType`), `COPY_COMMAND` and `CUT_COMMAND` (`ClipboardOrKeyboardEvent`), `SELECT_ALL_COMMAND` and `KEY_ENTER_COMMAND`; the DOM's events as Swift models them (`Event` with `preventDefault`, `defaultPrevented` and `stopPropagation`, `KeyboardEvent`, `MouseEvent` with the app's `target_key`, `DragEvent`, `FocusEvent`, `InputEvent`, `CompositionEvent`, `ClipboardEvent`), shared as `Rc`s so a handler's `preventDefault` reaches the dispatcher; `DataTransfer`'s files (`DataTransferFile`, read lazily, `"Files"` in `types`), `clearData`, `dropEffect` and `effectAllowed` | `commands`, `events` | `scripts/events`, `scripts/events-apple` |
+| Keyboard shortcuts | `LexicalKeyboardShortcuts.ts` (`KeyboardShortcutMatch`, `KeyboardShortcut`, `CONTROL_OR_META` and `CONTROL_OR_ALT` as functions of the platform, `compileKeyboardShortcuts` with `add`, `matches` and `match`: by `key` case-insensitively, by `code` for a non-ASCII key, by the modifier mask); `LexicalUtils.ts`' `isModifierMatch`, `isExactShortcutMatch`, `KeyboardEventModifierMask` (`true`, `false` and `'any'` as `ModifierExpectation`), `keyboardEventMaskForPlatform`, `isModifier`, `isBackspace`, `isEscape`, `isDelete`, `isSelectAll`; `environment.ts`'s `IS_APPLE` as `is_apple()`, `true` on Apple targets, which `with_is_apple` overrides on a thread as Swift's `withIsApple` does | `keyboard_shortcuts`, `lexical_utils`, `environment` | `scripts/events` (off Apple platforms, as Node is), `scripts/events-apple` (recorded with `IS_APPLE` mocked to `true`) |
+| The core's event handlers | `LexicalEvents.ts`, the part that needs no DOM: `registerDefaultCommandHandlers` (which `create_editor` calls) with `$handleKeyDown` (the compiled `buildKeyDownShortcuts` table, kept per platform, then `KEY_MODIFIER_COMMAND`), `$handleBeforeInput` in controlled mode (the input types JS handles, `deleteContentBackward` with no selection restoring the previous one, Shift+Enter making the next `insertParagraph` a line break, `$maybeMoveSelectionPastTrailingAcceptanceBoundary`, `$canRemoveText`), `$handleCompositionStart`, `$handleCompositionEnd` (`$onCompositionEndImpl`, `$cleanupComposedSubclass`), and `onKeyDown`'s, `onBeforeInput`'s and the composition listeners' model half as entry points an app calls with its own events (`on_key_down`, `on_before_input`, `on_composition_start`, `on_composition_end`); composition through the core: `_compositionKey`, `$setCompositionKey`, `$getCompositionKey`, `isComposing` on the editor and on a `TextNode`, the key following a split, merge, replace or point move, transforms skipping the composed node, `DEFER_COMPOSITION_MERGE_TAG`, the garbage collector clearing it, `insertText`'s composition paths, and `editor.isComposing()` in `@lexical/history`, the markdown shortcuts, the character limit and the tree view's `compositionKey` line; `SKIP_SELECTION_FOCUS_TAG`; `RootNode.__cachedText`'s effect on a commit with a root element (a stale cache marks the root dirty) | `events`, `editor`, `lexical_utils`, `lexical_selection`, `nodes::text`, `node`, `normalization`, `updates`, `gc`, `selection_insert_text`, `history`, `markdown`, `overflow`, `devtools` | `scripts/events` |
 | List nodes (the `list` feature) | `packages/lexical-list/src/LexicalListNode.ts` (`ListNode`: `getListType`, `setListType`, `getTag`, `getStart`, `setStart`, `canBeEmpty`, `canIndent`, `splice`, its `$transform`), `LexicalListItemNode.ts` (`ListItemNode`: `append`, `replace`, `insertAfter`, `remove`, `resetOnCopyNodeFrom`, `insertNewAfter`, `collapseAtStart`, `getValue`, `setValue`, `getChecked`, `setChecked`, `toggleChecked`, `getIndent`, `setIndent`, `canMergeWith`, `isParentRequired`, `createParentElementNode`, `canMergeWhenEmpty`, its `$transform`), `$createListNode`, `$isListNode`, `$createListItemNode`, `$isListItemNode`; their generated JSON (`LexicalListGeneratedJSON.ts`); `utils.ts`; the `LexicalNode` hooks they override (`append`, `splice`, `replace`, `insertAfter`, `remove`, `getIndent`, `setIndent`, `resetOnCopyNodeFrom`, a class's own `$transform`); from the core `$copyNode`, `getPreviousSiblings`, `getNextSiblings`, `$splitTextPointCaret`, `$splitAtPointCaretNext`, `$insertNodeToNearestRootAtCaret`; from `@lexical/utils` `$getNearestNodeOfType` | `list`, `lexical_utils`, `caret_utils`, `node`, `nodes::element`, `utils` | `serialization/list`, the list cases of `property/documents`, `scripts/list` |
 | `formatList.ts`, `registerList` and `registerCheckList` (the `list` feature) | `formatList.ts` (`$insertList`, `$createListOrMerge`, `mergeLists`, `$removeList`, `updateChildrenListItemValue`, `mergeNextSiblingListIfSameType`, `$handleIndent`, `$handleOutdent`, `$outdentFromItemWithContent`, `$handleListInsertParagraph`); `registerList.ts` `registerList` (`INSERT_ORDERED_LIST_COMMAND`, `INSERT_UNORDERED_LIST_COMMAND`, `REMOVE_LIST_COMMAND`, `UPDATE_LIST_START_COMMAND`, `INSERT_PARAGRAPH_COMMAND`, and the `ListItemNode` and `TextNode` transforms), with `RegisterListOptions`; `checkList.ts` `INSERT_CHECK_LIST_COMMAND` and its handler | `list::format_list`, `list::register_list` | `scripts/list`, `property/sequences` |
 | Link nodes (the `link` feature) | `packages/lexical-link/src/LexicalLinkNode.ts` (`LinkNode`: `getURL`, `setURL`, `getTarget`, `setTarget`, `getRel`, `setRel`, `getTitle`, `setTitle`, `insertNewAfter`, `canInsertTextBefore`, `canInsertTextAfter`, `canBeEmpty`, `isInline`, `extractWithChild`, `isEmailURI`, `isWebSiteURI`, `shouldMergeAdjacentLink`; `AutoLinkNode`: `getIsUnlinked`, `setIsUnlinked`, its `shouldMergeAdjacentLink`), `$createLinkNode`, `$isLinkNode`, `$createAutoLinkNode`, `$isAutoLinkNode`, `$linkNodeTransform`, `formatUrl`; their generated JSON (`LexicalLinkGeneratedJSON.ts`, with `afterCloneLinkNode` and `afterCloneAutoLinkNode` as `Clone`); `ElementNode.extractWithChild` as a node hook and `isParentOf`; from the core `RangeSelection.extract` and `NodeSelection.extract` | `link`, `node`, `selection_editing` | `serialization/link`, the link cases of `property/documents`, `scripts/link` |
@@ -157,8 +160,8 @@ touches:
   takes them so. `PreventSelectAllExtension`'s
   `register` is a capturing `keydown` listener on the root element, so
   only its config and signal are ported; `TabIndentationExtension`'s
-  `KEY_TAB_COMMAND` handler reads a `KeyboardEvent`, which the core
-  doesn't have yet (the code marks where it goes). Of the
+  `KEY_TAB_COMMAND` handler isn't ported yet, though the core's keydown
+  handler now dispatches the command (the code marks where it goes). Of the
   packages' extensions, the DOM, click and focus ones
   (`ClickableLinkExtension`, `DragonExtension`,
   `NormalizeTripleClickSelectionExtension`, `CheckListExtension`'s
@@ -206,8 +209,8 @@ touches:
   `addClassNamesToElement`, `removeClassNamesFromElement`, `isHTMLElement`,
   `isHTMLAnchorElement`, `isBlockDomNode`, `isInlineDomNode`,
   `getScrollParent`, `calculateZoomLevel` (DOM elements); `mediaFileReader`,
-  `isMimeType` and `eventFiles` (`File`, which the port has no type for, and
-  a `DataTransfer`'s files, which the port's `DataTransfer` doesn't carry); the `CAN_USE_*` and `IS_*` environment flags (a
+  `isMimeType` and `eventFiles`, not ported yet, though a `DataTransfer` now
+  carries files (`DataTransferFile`, as Swift's); the `CAN_USE_*` and `IS_*` environment flags (a
   browser's user agent); `$getComputedStyleForElement`,
   `$getComputedStyleForParent` and `$isParentRTL` (computed styles, so
   `$isParentElementRTL` and the vertical writing mode `$moveCharacter` and
@@ -224,7 +227,8 @@ touches:
   `NodeStructureExtension` isn't ported;
   `registerList`'s `KEY_BACKSPACE_COMMAND` handler and
   `registerCheckList`'s pointer, focus, arrow, Space and Escape handlers,
-  which need an input layer (`deleteCharacter` reaches the same
+  which aren't ported yet (the core now dispatches the key commands; the
+  pointer and focus ones need an input layer;`deleteCharacter` reaches the same
   `ListItemNode.collapseAtStart`, and a toggle is `toggle_checked`), and
   `$insertList`'s skipping of a named slot's value, which no vector covers
   yet. What `@lexical/list` does where `NodeStructureExtension` enforces
@@ -347,8 +351,7 @@ touches:
   ported (a tree view holding their nodes would be `NotPorted` in the
   runner; no `devtools/tree` case holds one); the printing of slots
   (`$resolveSlotContext`, `$slotValueMetaSuffix`), which Swift has but no
-  `devtools/tree` vector holds a slot to check; the `compositionKey` line, as a headless editor never
-  composes; and the React parts, `TreeView.tsx` and
+  `devtools/tree` vector holds a slot to check; and the React parts, `TreeView.tsx` and
   `useLexicalCommandsLog.ts` (a log of commands is the caller's, as
   `LexicalCommandLogEntry`s with the payload already printed).
   `obfuscateText`'s `*` and the `^` widths count UTF-16
@@ -364,16 +367,16 @@ touches:
   passes its signals to the same code), and `maxDepth` as a `usize`.
   `HistoryExtension`'s deviations are with the extension API above.
 - `registerRichText`'s handlers of DOM events (click, the arrow keys,
-  Backspace, Delete, Enter, Escape, Space and Tab keys, `MOVE_TO_START` and
-  `MOVE_TO_END`, drop and drag), which wait for an input layer, with its
-  `escapeFormatTriggers` and `shouldHandlePasteAsFiles` (`DRAG_DROP_PASTE`,
-  for a paste of files, which the port's `DataTransfer` doesn't carry; so
+  Backspace, Delete, Escape, Space and Tab keys, `MOVE_TO_START` and
+  `MOVE_TO_END`, drop and drag), with its `escapeFormatTriggers` and
+  `shouldHandlePasteAsFiles` (`DRAG_DROP_PASTE`, for a paste of files); so
   `RichTextExtension`'s config, `RichTextConfig`, which only those read,
-  isn't ported);
+  isn't ported. The core's keydown handler now dispatches the key commands
+  and a `DataTransfer` carries files, so these are a follow-up;
   `CONTROLLED_TEXT_INSERTION_COMMAND`'s `beforeinput` form; and
   `updateDOM`.
 - `registerPlainText`'s handlers of DOM events (the arrow keys, Backspace,
-  Delete, Enter, drop and drag) and two of `PlainTextExtension`'s
+  Delete, drop and drag; the core now dispatches the key commands) and two of `PlainTextExtension`'s
   dependencies (`DragonExtension`,
   `NormalizeTripleClickSelectionExtension`), which need an input layer.
   `quoteShadowRootState` is a flat NodeState, as in JS
@@ -394,7 +397,7 @@ touches:
   every other kind of rule.
   Also `updateDOM`, `getDOMSlot` and the
   rest of what only the reconciler calls, and `$setTextContent`'s
-  composition suffix (nothing composes headless). So the render config
+  composition suffix (only an HTML export while composing would show it). So the render config
   and `DOMRenderExtension`'s overrides have only the hooks export reaches
   (`$createDOM`, `$exportDOM`, `$extractWithChild`, `$shouldInclude`,
   `$shouldExclude`), and toggling an override through
@@ -413,9 +416,8 @@ touches:
   - `copyToClipboard`'s DOM and timer plumbing (without an event it fires a
     `copy` at the document, with a 50 ms timeout and a guard against a copy
     in flight) and the promise it returns. The copy and cut handlers take
-    the clipboard event's `DataTransfer` as their payload (`None` for a
-    keyboard event or no event) and, with none, copy nothing; a cut still
-    removes the selection. `$copyToClipboardEvent` also declines in JS
+    JS's payload (`ClipboardOrKeyboardEvent`, or `None`) and, without a
+    clipboard event, copy nothing; a cut still removes the selection. `$copyToClipboardEvent` also declines in JS
     when the window has no DOM selection or it is outside the editor,
     which in headless JS is always (a copy writes nothing); the port, like
     Swift, writes the selection, since without a DOM the platform only
@@ -424,13 +426,12 @@ touches:
   - `INTERNAL_$withExportMemo`, a cache that changes no output.
   - `$sliceSelectedTextNodeContent`'s `'self'` mode, which writes a node's
     text without `getWritable`; every ported caller passes `'clone'`.
-  - `DataTransfer`'s files, `clearData`, `dropEffect` and `effectAllowed`,
-    which nothing ported reads.
-- Composition, the DOM half of the reconciler (the elements, the text,
-  format and direction caches, `editor._keyToDOMMap`), its slot walks
+- The DOM half of the reconciler (the elements, the text, format and
+  direction caches, `editor._keyToDOMMap`), its slot walks
   (`$mountSlotChildren`, `$reconcileSlotChildren` and `$destroyNode`'s of a
   host's slot subtrees, so a node in a slot reports no mutation), selection-change
-  notifications and `RootNode.__cachedText`. With a root element an update
+  notifications, and `RootNode.__cachedText` itself (only its effect on
+  the dirty root is ported; `getTextContent` always walks the tree). With a root element an update
   starts with the last selection, as in a headless editor and in Swift:
   JS reads the DOM selection (`$internalCreateSelection`), which an app's
   view keeps in step (in Node JS has none, so the vectors select in each
@@ -446,9 +447,26 @@ touches:
   and resize handling. Auto-embed's `parseUrl` is synchronous, so the menu
   opens in the paste's mutation listener where JS awaits it.
   `BlockWithAlignableContents` (`@lexical/react`) is a React component,
-  and isn't ported; Swift has its commands as an extension. So `history` passes
-  `false` where JS passes `editor.isComposing()`, as a headless JS editor
-  does; the `composition-start` and `composition-end` tags work as in JS.
+  and isn't ported; Swift has its commands as an extension.
+- Of `LexicalEvents.ts` (the event commands and core handlers rows): the
+  root element listeners themselves, which an app replaces by calling
+  `on_key_down`, `on_before_input`, `on_composition_start` and
+  `on_composition_end` with its own events; `$handleInput` (the
+  `INPUT_COMMAND` handler, which reads what the browser wrote to the DOM,
+  so it isn't registered), the selection-change, click, focus, blur, drag
+  and drop handlers, and the Android, iOS, Safari and Firefox workarounds,
+  which read the DOM or the browser. `$handleBeforeInput` runs in
+  controlled mode: there are no target ranges (`getTargetRanges()`), so an
+  app sets the model selection to the input's range before it dispatches,
+  and `deleteContentForward` dispatches `DELETE_LINE_COMMAND(false)` as JS
+  does outside a slot. `$handleCompositionStart` doesn't apply the empty
+  space heuristic (the placeholder JS inserts for the browser to compose
+  into, or `$prepareCompositionTarget`), and `$onCompositionEndImpl` reads
+  nothing back from the DOM (`$updateTextNodeFromDOMContent`,
+  `$updateSelectedTextFromDOM`): an app writes an input method's marked
+  text through the model, as Swift's views do. `scripts/events` records
+  composition at a clock past the last keydown, where JS skips the
+  heuristic too. `IS_APPLE` is the target's vendor, not a user agent.
 
 - Of `@lexical/markdown` (the `markdown` feature):
   `$generateNodesFromMarkdownString`, which imports into
@@ -464,10 +482,7 @@ touches:
   the object; `replace` returns `false` for JS's `false` and `true` for
   its `true` and `undefined`, and a text match transformer's `export` is
   `None` for an unset one. `register_markdown_shortcuts` returns an error
-  where JS's invariant throws (a transformer's node not registered), and
-  reads the editor as never composing: an app keeps an input method's
-  composition outside Lexical until it commits, and the commit's
-  `composition-end` tag works as in JS (`scripts/markdown-shortcuts`).
+  where JS's invariant throws (a transformer's node not registered).
 How `getHashtagMatch`'s regular expression runs without one (the
 `hashtag` feature): JS builds it with `i` and without `u`, so it matches
 UTF-16 code units, and the matcher works on the text's code units too.

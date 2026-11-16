@@ -259,6 +259,9 @@ fn normalize_all_dirty_text_nodes(editor: &Editor) -> Result<(), LexicalError> {
 /// why `full_*` is `None` until the editor's set is first swapped out.
 fn apply_all_transforms(editor: &Editor) -> Result<(), LexicalError> {
     let mut cache = HashMap::new();
+    // `$isNodeValidForTransform`: nodes being composed aren't transformed.
+    let composition_key = crate::lexical_utils::get_composition_key();
+    let is_composing = |node: &NodeRef| composition_key.as_deref() == Some(node.get_key());
     let mut full_leaves: Option<OrderedSet> = None;
     let mut full_elements: Option<OrderedMap<bool>> = None;
 
@@ -279,7 +282,7 @@ fn apply_all_transforms(editor: &Editor) -> Result<(), LexicalError> {
                     if should_normalize(&node) {
                         normalize_text_node(&node)?;
                     }
-                    if node.is_attached() {
+                    if !is_composing(&node) && node.is_attached() {
                         apply_transforms(editor, &node, &mut cache)?;
                     }
                 }
@@ -319,6 +322,7 @@ fn apply_all_transforms(editor: &Editor) -> Result<(), LexicalError> {
                 continue;
             }
             if let Some(node) = get_node_by_key(&key)
+                && !is_composing(&node)
                 && node.is_attached()
             {
                 apply_transforms(editor, &node, &mut cache)?;
@@ -504,17 +508,35 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
             },
             || {
                 with_updating(editor, || {
-                    crate::reconciler::reconcile_root(
+                    let mutated = crate::reconciler::reconcile_root(
                         &current,
                         &pending,
                         editor,
                         dirty.dirty_type,
                         &dirty.elements,
                         &dirty.leaves,
-                    )
+                    );
+                    (mutated, get_root().get_text_content())
                 })
             },
         );
+        drop(dirty);
+        let (mutated, text) = mutated;
+        // The end of `$reconcileNode('root')`: the root caches its text
+        // content (`__cachedText`). A stale cache (a root not reconciled
+        // since it was cloned or made) is written through `getWritable()`,
+        // which marks the root dirty, as the update listeners then see.
+        let root = pending.0.node_map.borrow().get("root").cloned();
+        if let Some(root) = root {
+            let mut cache = editor.0.root_text_cache.borrow_mut();
+            let fresh = cache.as_ref().is_some_and(|(cached, cached_text)| {
+                Rc::ptr_eq(cached, &root) && *cached_text == text
+            });
+            if !fresh {
+                editor.0.dirty.borrow_mut().elements.set("root", true);
+                *cache = Some((root, text));
+            }
+        }
         Some(mutated)
     } else {
         None

@@ -19,8 +19,8 @@ use crate::merge_register::merge_register;
 use crate::updates::on_update;
 use crate::{
     COMMAND_PRIORITY_EDITOR, Editor, LexicalCommand, LexicalError, MutationListenerOptions,
-    NodeKey, NodeMutation, NodeRef, PASTE_COMMAND, PASTE_TAG, Unregister, UpdateOptions,
-    get_node_by_key,
+    NodeKey, NodeMutation, NodeRef, PASTE_COMMAND, PASTE_TAG, PasteCommandType, Unregister,
+    UpdateOptions, get_node_by_key,
 };
 use std::any::Any;
 use std::cell::{Cell, RefCell};
@@ -382,9 +382,13 @@ pub fn register_auto_embed(
             let Some(state) = pasting.upgrade() else {
                 return Ok(false);
             };
-            let is_single_token_paste = payload
-                .as_ref()
-                .is_some_and(|data| is_single_token(&data.get_data("text/plain")));
+            let is_single_token_paste = match payload {
+                PasteCommandType::Clipboard(event) => event
+                    .clipboard_data
+                    .as_ref()
+                    .is_some_and(|data| is_single_token(&data.get_data("text/plain"))),
+                PasteCommandType::Input(_) | PasteCommandType::Keyboard(_) => false,
+            };
             state.is_single_token_paste.set(is_single_token_paste);
             if is_single_token_paste {
                 let state = Rc::downgrade(&state);

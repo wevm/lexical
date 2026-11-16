@@ -391,14 +391,12 @@ impl MergeActionGetter {
         let change_type = if has(PASTE_TAG) || has(CUT_TAG) {
             ChangeType::Other
         } else {
-            // JS passes `editor.isComposing()`. Composition isn't ported
-            // (rust/PARITY.md), so it is false, as in a headless JS editor.
             get_change_type(
                 &prev_editor_state,
                 next_editor_state,
                 dirty_leaves,
                 dirty_elements,
-                false,
+                editor.is_composing(),
             )
         };
 

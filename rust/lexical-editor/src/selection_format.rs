@@ -225,7 +225,7 @@ fn update_text_format(
     if !has_text {
         let format = apply_format(range.format);
         selection.set_format(format);
-        // `$setCompositionKey(null)`: composition is not ported.
+        crate::lexical_utils::set_composition_key(None);
     } else if let Some(first_format) = first_format {
         let format = f64::from(to_int32(first_format) | to_int32(last_format));
         selection.with_range(|r| r.format = format);

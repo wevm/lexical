@@ -493,10 +493,6 @@ fn last_unit(text: &str) -> Option<String> {
 /// multiline element transformers and the element transformers with
 /// `trigger_on_enter` on Enter at the end of a line. Fails, as JS's
 /// invariant, when the editor lacks a node type a transformer depends on.
-///
-/// The editor is never composing here (`editor.isComposing()`): an app
-/// keeps an input method's composition outside Lexical until it commits
-/// (rust/DESIGN.md), and the commit's `composition-end` tag works as in JS.
 pub fn register_markdown_shortcuts(
     editor: &Editor,
     transformers: &[Transformer],
@@ -542,6 +538,11 @@ pub fn register_markdown_shortcuts(
         let has_tag = |tag: &str| payload.tags.iter().any(|t| t == tag);
         // Collaboration and undo/redo bring changes already transformed.
         if has_tag(COLLABORATION_TAG) || has_tag(HISTORIC_TAG) {
+            return;
+        }
+        // While an input method composes (backticks, say), wait for the
+        // user to confirm the key.
+        if listener_editor.is_composing() {
             return;
         }
         // A composition's commit lands without moving the selection (the

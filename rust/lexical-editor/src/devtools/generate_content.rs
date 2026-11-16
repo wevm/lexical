@@ -4,8 +4,7 @@
 //! table nodes and table selections (`@lexical/mark`, `@lexical/table`); and
 //! the printing of slots (`$resolveSlotContext`, `$slotValueMetaSuffix`),
 //! which no `devtools/tree` vector checks yet, so a tree prints no slot
-//! entries. A headless
-//! editor never composes, so no `compositionKey` line is printed.
+//! entries.
 
 use crate::constants::{IS_DIRECTIONLESS, TEXT_TYPE_TO_FORMAT, lookup};
 use crate::node_state::{is_default, unparse};
@@ -127,6 +126,9 @@ pub fn generate_content(
     }
     res.push_str(&format!("\n\n editor (v{}):", Editor::VERSION));
     res.push_str(&format!("\n  └ namespace {}", editor.get_namespace()));
+    if let Some(composition_key) = editor.composition_key() {
+        res.push_str(&format!("\n  └ compositionKey {composition_key}"));
+    }
     res.push_str(&format!("\n  └ editable {}", editor.is_editable()));
 
     Ok(res)

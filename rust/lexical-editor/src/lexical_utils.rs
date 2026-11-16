@@ -5,7 +5,7 @@ use crate::caret_tree::detach_node;
 use crate::constants::{LTR, RTL};
 use crate::editor::DirtyType;
 use crate::error::invariant;
-use crate::node::{LexicalNode, NodeRef};
+use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::nodes::element::{Direction, is_root_or_shadow_root as is_root_or_shadow_root_node};
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::updates::{
@@ -381,4 +381,202 @@ pub fn get_text_direction(text: &str) -> Option<Direction> {
             None
         }
     })
+}
+
+/// `$setCompositionKey(compositionKey)`: the node an input method is
+/// composing in, or none. The previous and the new composition nodes are
+/// made writable, so they reconcile.
+pub fn set_composition_key(composition_key: Option<&str>) {
+    error_on_read_only();
+    let editor = get_active_editor().expect("an active editor");
+    let previous_composition_key = editor.composition_key();
+    if composition_key != previous_composition_key.as_deref() {
+        *editor.0.composition_key.borrow_mut() = composition_key.map(str::to_owned);
+        *editor.0.composition_merge_held.borrow_mut() = None;
+        if let Some(previous) = previous_composition_key
+            && let Some(node) = get_node_by_key(&previous)
+        {
+            get_writable(node.get_key());
+        }
+        if let Some(key) = composition_key
+            && let Some(node) = get_node_by_key(key)
+        {
+            get_writable(node.get_key());
+        }
+    }
+}
+
+/// `$getCompositionKey()`: the node an input method is composing in;
+/// always none in a read.
+pub fn get_composition_key() -> Option<NodeKey> {
+    if crate::updates::is_currently_read_only_mode() {
+        return None;
+    }
+    get_active_editor()?.composition_key()
+}
+
+/// `KeyboardEventModifiers`: a `KeyboardEvent`, or anything with its `key`,
+/// `code` and modifier fields.
+pub trait KeyboardEventModifiers {
+    fn key(&self) -> &str;
+    fn code(&self) -> &str;
+    fn alt_key(&self) -> bool;
+    fn ctrl_key(&self) -> bool;
+    fn meta_key(&self) -> bool;
+    fn shift_key(&self) -> bool;
+}
+
+/// The expected state of one modifier in a [`KeyboardEventModifierMask`]:
+/// JS's `true`, `false` (or omitted) and `'any'`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ModifierExpectation {
+    Pressed,
+    #[default]
+    Released,
+    Any,
+}
+
+impl ModifierExpectation {
+    fn matches(self, pressed: bool) -> bool {
+        match self {
+            ModifierExpectation::Any => true,
+            ModifierExpectation::Pressed => pressed,
+            ModifierExpectation::Released => !pressed,
+        }
+    }
+}
+
+impl From<bool> for ModifierExpectation {
+    fn from(pressed: bool) -> Self {
+        if pressed {
+            ModifierExpectation::Pressed
+        } else {
+            ModifierExpectation::Released
+        }
+    }
+}
+
+/// `KeyboardEventControlOrOther`'s `CONTROL_OR_OTHER_KEY`: the modifier
+/// that stands in for Control on the other platform.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ControlOrOther {
+    MetaKey,
+    AltKey,
+}
+
+/// `KeyboardEventModifierMask` (with `KeyboardEventControlOrOther`): the
+/// expected state of each modifier; none pressed by default.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct KeyboardEventModifierMask {
+    pub alt_key: ModifierExpectation,
+    pub ctrl_key: ModifierExpectation,
+    pub meta_key: ModifierExpectation,
+    pub shift_key: ModifierExpectation,
+    /// `[CONTROL_OR_OTHER_KEY]`: set on `CONTROL_OR_META` (`MetaKey`) and
+    /// `CONTROL_OR_ALT` (`AltKey`).
+    pub control_or_other: Option<ControlOrOther>,
+}
+
+impl KeyboardEventModifierMask {
+    fn other(&mut self, other: ControlOrOther) -> &mut ModifierExpectation {
+        match other {
+            ControlOrOther::MetaKey => &mut self.meta_key,
+            ControlOrOther::AltKey => &mut self.alt_key,
+        }
+    }
+}
+
+/// `keyboardEventMaskForPlatform(mask, isApple)` (`@internal`): the mask as
+/// it is on the platform `is_apple` names, when it is a control-or-other
+/// mask made for the other one.
+pub fn keyboard_event_mask_for_platform(
+    mask: KeyboardEventModifierMask,
+    is_apple: bool,
+) -> KeyboardEventModifierMask {
+    match mask.control_or_other {
+        Some(other) if is_apple != crate::environment::is_apple() => {
+            let mut result = mask;
+            let mut source = mask;
+            result.ctrl_key = *source.other(other);
+            *result.other(other) = mask.ctrl_key;
+            result
+        }
+        _ => mask,
+    }
+}
+
+/// `isModifierMatch(event, mask)`: whether the event's modifiers are as the
+/// mask expects.
+pub fn is_modifier_match(
+    event: &impl KeyboardEventModifiers,
+    mask: &KeyboardEventModifierMask,
+) -> bool {
+    mask.alt_key.matches(event.alt_key())
+        && mask.ctrl_key.matches(event.ctrl_key())
+        && mask.shift_key.matches(event.shift_key())
+        && mask.meta_key.matches(event.meta_key())
+}
+
+/// `isExactShortcutMatch(event, expectedKey, mask)`: whether the event is
+/// `expected_key` (case-insensitive) with exactly the modifiers of `mask`,
+/// falling back to `event.code` for a single-character key on a non-Latin
+/// layout.
+pub fn is_exact_shortcut_match(
+    event: &impl KeyboardEventModifiers,
+    expected_key: &str,
+    mask: &KeyboardEventModifierMask,
+) -> bool {
+    if !is_modifier_match(event, mask) {
+        return false;
+    }
+    let key = event.key();
+    if key.to_lowercase() == expected_key.to_lowercase() {
+        // Special keys (Enter, Tab, ArrowUp...), and keys of an
+        // English-based layout.
+        return true;
+    }
+    if crate::utf16::len(expected_key) > 1 {
+        // A special key on another layout must not match by `event.code`.
+        return false;
+    }
+    if crate::utf16::len(key) == 1 && key.encode_utf16().next().is_some_and(|c| c <= 127) {
+        // An ASCII key must not match by `event.code`, which would break
+        // remapped layouts (Dvorak...).
+        return false;
+    }
+    let code = event.code();
+    // Fallback for number keys
+    if code.starts_with("Digit")
+        && expected_key.len() == 1
+        && expected_key.as_bytes()[0].is_ascii_digit()
+    {
+        return code == format!("Digit{expected_key}");
+    }
+    // Keys of a layout whose `event.key` isn't ASCII match by `event.code`.
+    code == format!("Key{}", expected_key.to_uppercase())
+}
+
+/// `isModifier(event)`: whether any modifier is down.
+pub fn is_modifier(event: &impl KeyboardEventModifiers) -> bool {
+    event.ctrl_key() || event.shift_key() || event.alt_key() || event.meta_key()
+}
+
+/// `isBackspace(event)`.
+pub fn is_backspace(event: &impl KeyboardEventModifiers) -> bool {
+    event.key() == "Backspace"
+}
+
+/// `isEscape(event)`.
+pub fn is_escape(event: &impl KeyboardEventModifiers) -> bool {
+    event.key() == "Escape"
+}
+
+/// `isDelete(event)`.
+pub fn is_delete(event: &impl KeyboardEventModifiers) -> bool {
+    event.key() == "Delete"
+}
+
+/// `isSelectAll(event)`: ⌘A on Apple platforms, Ctrl+A elsewhere.
+pub fn is_select_all(event: &impl KeyboardEventModifiers) -> bool {
+    is_exact_shortcut_match(event, "a", &crate::keyboard_shortcuts::control_or_meta())
 }

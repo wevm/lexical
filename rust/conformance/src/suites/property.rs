@@ -275,7 +275,7 @@ fn run_step(editor: &Editor, step: &Value) -> Result<Object, String> {
             None => Ok(()),
             Some(command) => {
                 let payload = step.get("payload").cloned().unwrap_or(Value::Null);
-                handled = Some(command.dispatch(editor, payload)?);
+                handled = Some(command.dispatch(editor, payload)?.0);
                 Ok(())
             }
         });

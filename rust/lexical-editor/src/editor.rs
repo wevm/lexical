@@ -186,6 +186,14 @@ pub const COMPOSITION_START_TAG: &str = "composition-start";
 /// method composition.
 pub const COMPOSITION_END_TAG: &str = "composition-end";
 
+/// `DEFER_COMPOSITION_MERGE_TAG` (`LexicalUpdateTags.ts`): the update must
+/// not merge text into or out of the node being composed.
+pub const DEFER_COMPOSITION_MERGE_TAG: &str = "defer-composition-merge";
+
+/// `SKIP_SELECTION_FOCUS_TAG` (`LexicalUpdateTags.ts`): the update must
+/// not move the focus to the editor.
+pub const SKIP_SELECTION_FOCUS_TAG: &str = "skip-selection-focus";
+
 /// `CreateEditorArgs`: the node classes to register besides the core ones,
 /// the editor's `namespace` (when empty, its parent editor's, or a random
 /// one, `createUID()`), the theme, the parent editor, and (with the `html`
@@ -523,6 +531,19 @@ pub(crate) struct EditorInner {
     root_listeners: RefCell<Vec<RootListenerEntry>>,
     /// `_deferred`: the `$onUpdate` callbacks of the pending update.
     pub(crate) deferred: RefCell<Vec<Box<dyn FnOnce()>>>,
+    /// `_compositionKey`: the node an input method is composing in.
+    pub(crate) composition_key: RefCell<Option<NodeKey>>,
+    /// `_compositionMergeHeld`: the composed node a merge was held back
+    /// for (`DEFER_COMPOSITION_MERGE_TAG`).
+    pub(crate) composition_merge_held: RefCell<Option<NodeKey>>,
+    /// `_inputState`, the part the model reads.
+    pub(crate) input_state: RefCell<crate::events::InputState>,
+    /// `_keyDownShortcuts`: the compiled key-down bindings.
+    pub(crate) key_down_shortcuts: RefCell<Option<crate::events::KeyDownShortcuts>>,
+    /// `RootNode.__cachedText`: the root the reconciler last cached its
+    /// text content on, and that text. JS keeps it on the root node, which
+    /// a clone resets; here the cache names the root by identity.
+    pub(crate) root_text_cache: RefCell<Option<(Rc<dyn LexicalNode>, String)>>,
     /// The `LexicalBuilder` that built the editor (JS's
     /// `editor[builderSymbol]`).
     #[cfg(feature = "extension")]
@@ -583,7 +604,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
             (node_type, Rc::new(shared))
         })
         .collect();
-    Editor(Rc::new(EditorInner {
+    let editor = Editor(Rc::new(EditorInner {
         nodes,
         node_order,
         shared_node_states,
@@ -618,9 +639,16 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         editable_listeners: RefCell::new(Vec::new()),
         root_listeners: RefCell::new(Vec::new()),
         deferred: RefCell::new(Vec::new()),
+        composition_key: RefCell::new(None),
+        composition_merge_held: RefCell::new(None),
+        input_state: RefCell::new(crate::events::InputState::default()),
+        key_down_shortcuts: RefCell::new(None),
+        root_text_cache: RefCell::new(None),
         #[cfg(feature = "extension")]
         builder: RefCell::new(None),
-    }))
+    }));
+    let _unregister = crate::events::register_default_command_handlers(&editor);
+    editor
 }
 
 impl Editor {
@@ -633,6 +661,17 @@ impl Editor {
     /// `lexical-swift@<upstream>`, for the upstream release in
     /// [`UPSTREAM_VERSION`](crate::UPSTREAM_VERSION).
     pub const VERSION: &'static str = "lexical-rust@0.53.0";
+
+    /// `isComposing()`: whether an input method is composing
+    /// (`_compositionKey` is set).
+    pub fn is_composing(&self) -> bool {
+        self.0.composition_key.borrow().is_some()
+    }
+
+    /// `_compositionKey`.
+    pub(crate) fn composition_key(&self) -> Option<NodeKey> {
+        self.0.composition_key.borrow().clone()
+    }
 
     /// `_config.namespace`: the namespace the editor was created with.
     pub fn get_namespace(&self) -> &str {
@@ -713,6 +752,7 @@ impl Editor {
         // `resetEditor(this, prev, next, pendingEditorState, {preserveUpdateQueue: true})`.
         *self.0.editor_state.borrow_mut() = create_empty_editor_state();
         *self.0.pending.borrow_mut() = Some(pending_editor_state);
+        *self.0.composition_key.borrow_mut() = None;
         *self.0.dirty.borrow_mut() = Dirty::default();
         if next_root_element.is_some() {
             self.0.dirty.borrow_mut().dirty_type = DirtyType::FullReconcile;
@@ -975,6 +1015,7 @@ impl Editor {
             dirty.dirty_type = DirtyType::FullReconcile;
             dirty.elements.set("root", false);
         }
+        *self.0.composition_key.borrow_mut() = None;
         self.0
             .slots_used
             .set(self.0.slots_used.get() || editor_state.0.slots_used.get());

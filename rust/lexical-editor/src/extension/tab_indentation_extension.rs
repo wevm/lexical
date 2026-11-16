@@ -41,8 +41,9 @@ pub fn register_tab_indentation(
 ) -> Unregister {
     // KEY_TAB_COMMAND: Tab and Shift+Tab dispatch INDENT_CONTENT_COMMAND or
     // OUTDENT_CONTENT_COMMAND when `$indentOverTab(selection)`, and
-    // INSERT_TAB_COMMAND otherwise, at COMMAND_PRIORITY_EDITOR, first; it
-    // goes here once the core has keyboard events.
+    // INSERT_TAB_COMMAND otherwise, at COMMAND_PRIORITY_EDITOR, first. The
+    // core's KEY_DOWN_COMMAND handler dispatches KEY_TAB_COMMAND now; the
+    // handler isn't ported yet (rust/PARITY.md).
     editor.register_command(
         &INDENT_CONTENT_COMMAND,
         move |_, _| {

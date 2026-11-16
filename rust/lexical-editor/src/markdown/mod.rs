@@ -37,6 +37,8 @@ pub use markdown_transformers::{
     text_match_transformers, transformers, unordered_list,
 };
 pub use reg_exp::{RegExp, RegExpMatch};
+#[cfg(test)]
+pub(crate) use utils::unescape_text;
 
 use crate::{LexicalError, NodeRef, SelectionRef, get_root, get_selection};
 

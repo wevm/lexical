@@ -7039,5 +7039,29 @@
   "lexical-extension/src/__tests__/unit/BlockIdExtension.format.test.ts::block id format > utf8 matches the standard, lone surrogates included": {
     "reason": "deviation",
     "note": "Tests the JS utf8() encoder of positionalBlockId.ts, which exists because JS strings are UTF-16 and may hold lone surrogates. A Rust str is always valid UTF-8 and cannot hold a lone surrogate, so the port hashes str::as_bytes and has no encoder to test."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown export of long runs of formatted spaces > visits each sibling a bounded number of times exporting the document": {
+    "reason": "deviation",
+    "note": "Upstream counts the calls to TextNode.prototype.getNextSibling and getPreviousSibling with vi.spyOn and asserts fewer than 10 per space. Rust can't spy on a node method (a language difference); the exported markdown it also asserts is what Swift's port checks, but without the visit count the test isn't the same, so it is not marked."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown export of long runs of formatted spaces > visits each sibling a bounded number of times exporting a selection between text points": {
+    "reason": "deviation",
+    "note": "Upstream counts the calls to TextNode.prototype.getNextSibling and getPreviousSibling with vi.spyOn and asserts fewer than 10 per space. Rust can't spy on a node method (a language difference); the exported markdown it also asserts is what Swift's port checks, but without the visit count the test isn't the same, so it is not marked."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown export of long runs of formatted spaces > visits each sibling a bounded number of times exporting a selection between element points": {
+    "reason": "deviation",
+    "note": "Upstream counts the calls to TextNode.prototype.getNextSibling and getPreviousSibling with vi.spyOn and asserts fewer than 10 per space. Rust can't spy on a node method (a language difference); the exported markdown it also asserts is what Swift's port checks, but without the visit count the test isn't the same, so it is not marked."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > searches a line once for a text match that it does not hold": {
+    "reason": "deviation",
+    "note": "Upstream subclasses RegExp (CountingRegExp overriding exec) to count the characters import searches. markdown::RegExp is a struct whose exec can't be overridden (a language difference), so the count can't be taken."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > searches the line for a link a few times with escaped openers": {
+    "reason": "deviation",
+    "note": "Upstream spies on RegExp.prototype.exec (vi.spyOn) to count the searches with LINK's importRegExp. Rust can't spy on markdown::RegExp::exec (a language difference)."
+  },
+  "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::emphasis next to Unicode punctuation and symbols > searches the line for a link a few times with code spans before a link": {
+    "reason": "deviation",
+    "note": "Upstream spies on RegExp.prototype.exec (vi.spyOn) to count the searches with LINK's importRegExp. Rust can't spy on markdown::RegExp::exec (a language difference)."
   }
 }

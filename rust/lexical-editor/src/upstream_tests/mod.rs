@@ -4,4 +4,6 @@
 //! Shared helpers live in `support`.
 
 mod lexical;
+#[cfg(feature = "selection")]
+mod lexical_selection;
 mod support;

@@ -46,6 +46,8 @@ pub use link_extension::{LinkConfig, ValidateUrl, register_link};
 pub use link_extension::{
     LinkConfigOverrides, LinkExtensionType, LinkOutput, ValidateUrlFn, link_extension,
 };
+#[cfg(feature = "html")]
+pub use link_node::link_dom::sanitize_url;
 pub use link_node::{
     AutoLinkAttributes, AutoLinkNode, LinkAttributes, LinkNode, TOGGLE_LINK_COMMAND,
     ToggleLinkPayload, create_auto_link_node, create_link_node, format_url, is_auto_link_node,

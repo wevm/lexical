@@ -70,6 +70,10 @@ pub use clear_editor_extension::{
     OnClear, clear_editor_extension, register_clear_editor,
 };
 pub use config::{KnownTypesAndNodes, get_known_types_and_nodes, get_node_config};
+#[cfg(feature = "html")]
+pub use decorator_text_extension::{
+    DEFAULT_TAG_NAME_TO_FORMAT, apply_format_from_style, apply_format_to_dom,
+};
 pub use decorator_text_extension::{
     DecoratorTextNode, create_decorator_text_node, decorator_text_extension,
     decorator_text_format_state, is_decorator_text_node,

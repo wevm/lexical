@@ -6891,5 +6891,117 @@
   "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > Paste text, move selection and delete word forward (#138)": {
     "reason": "dom-only",
     "note": "One case of the table-driven `suite`: it moves the window's DOM selection (setNativeSelectionWithPaths, moveNativeSelection and the polyfilled Selection.modify that the arrow keys drive), dispatches keydown and paste events on the contenteditable, and asserts window.getSelection()'s anchor and focus DOM nodes. The Rust port has no DOM selection and its reconciler renders no DOM (rust/PARITY.md, the DOM half of the reconciler), so there is no window selection to set or compare."
+  },
+  "lexical-headless/src/__tests__/unit/LexicalHeadlessEditor.test.ts::LexicalHeadlessEditor > throws from DOM-only methods": {
+    "reason": "deviation",
+    "note": "JS replaces getRootElement and registerRootListener with throwing stubs. Rust's get_root_element returns an Option and register_root_listener an Unregister, so they can't fail; a headless editor only refuses set_root_element, and the others behave as on an editor with no root (rust/PARITY.md, @lexical/headless)."
+  },
+  "lexical-mark/__tests__/unit/LexicalMarkNode.test.ts::MarkNode overlap theme class > updateDOM adds the overlap class when going from 1 to 3 ids": {
+    "reason": "dom-only",
+    "note": "Reads the class of the element the reconciler patched (editor.getElementByKey after setIDs); the Rust reconciler is its model half only and renders no DOM, and MarkNode's updateDOM is the reconciler's (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/__tests__/unit/LexicalMarkNode.test.ts::MarkNode overlap theme class > updateDOM removes the overlap class when going from 2 to 0 ids": {
+    "reason": "dom-only",
+    "note": "Reads the class of the element the reconciler patched (editor.getElementByKey after setIDs); the Rust reconciler is its model half only and renders no DOM, and MarkNode's updateDOM is the reconciler's (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkGeneratedJSON.test.ts::the field `ids` stands in for > a subclass override of setIDs still decides": {
+    "reason": "deviation",
+    "note": "Tests that importJSON writes ids through a JS subclass's override of setIDs (DedupeMarkNode). A Rust node class is a struct of its own, not a subclass of MarkNode, and set_ids is a NodeRef method, not a hook a node type can override; a type that normalizes its ids does so in its own update_from_json."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateProperty.test.ts::MarkStateExtension property test > 40 random edit sequences of 30 steps keep the ids of every character": {
+    "reason": "dom-only",
+    "note": "After every step its check asserts, for every text node and each flavor, the element the reconciler rendered (editor.getElementByKey): the ids attribute and the theme's mark and markOverlap classes that $decorateMarkIDs writes. Rust's reconciler renders no DOM and the renderer half of MarkStateExtension.ts isn't ported (rust/PARITY.md, @lexical/mark's updateDOM and $decorateMarkIDs); the model it also checks is covered by the ported MarkStateBlockConversion and MarkStateExtension tests and scripts/mark-extension."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateProperty.test.ts::MarkStateExtension property test with two mark flavors > 40 random edit sequences of 30 steps keep the ids of every character": {
+    "reason": "dom-only",
+    "note": "After every step its check asserts, for every text node and each flavor, the element the reconciler rendered (editor.getElementByKey): the ids attribute and the flavors' theme classes that $decorateMarkIDs writes. Rust's reconciler renders no DOM and the renderer half of MarkStateExtension.ts isn't ported (rust/PARITY.md, @lexical/mark's updateDOM and $decorateMarkIDs); the model it also checks is covered by the ported MarkStateBlockConversion, MarkFlavors and MarkStateExtension tests and scripts/mark-extension."
+  },
+  "lexical-mark/src/__tests__/unit/MarkFlavors.test.ts::mark flavors > two flavors on the same text > each flavor renders its own classes and attribute": {
+    "reason": "dom-only",
+    "note": "Reads the classes and ids attributes $decorateMarkIDs writes on the elements the reconciler rendered (editor.getElementByKey); Rust's reconciler renders no DOM and the renderer half of MarkStateExtension.ts isn't ported (rust/PARITY.md, @lexical/mark's updateDOM and $decorateMarkIDs)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkFlavors.test.ts::mark flavors > two flavors on the same text > flavors that share a class do not remove it from each other": {
+    "reason": "dom-only",
+    "note": "Reads the classes $decorateMarkIDs writes on the elements the reconciler rendered (editor.getElementByKey); Rust's reconciler renders no DOM and the renderer half of MarkStateExtension.ts isn't ported (rust/PARITY.md, @lexical/mark's updateDOM and $decorateMarkIDs)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkFlavors.test.ts::mark flavors > isMarkIDShown per flavor > a flavor filter hides only that flavor": {
+    "reason": "dom-only",
+    "note": "isMarkIDShown filters what $decorateMarkIDs renders on the reconciled elements, which the test reads (editor.getElementByKey); the renderer and isMarkIDShown aren't ported, as Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM and $decorateMarkIDs)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkFlavors.test.ts::mark flavors > types > the definition types the flavor": {
+    "reason": "deviation",
+    "note": "TypeScript-only typing (expectTypeOf of the string literal types of name and stateKey); Rust's MarkFlavorExtension carries them as Strings, with no literal types to check."
+  },
+  "lexical-mark/src/__tests__/unit/MarkFlavors.test.ts::mark flavors > types > the original signatures stay the last overloads": {
+    "reason": "deviation",
+    "note": "TypeScript-only typing (the order of overloads Parameters<> reads); Rust has no overloads: the flavor forms are separate functions (add_mark_id_for...), and the original signatures are unchanged."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > typing at the edges of a mark > a plain TextNode given the ids array of a marked hashtag is taken for a piece split off it": {
+    "reason": "deviation",
+    "note": "Its 'copied state' case relies on JS object identity surviving exportJSON/updateFromJSON without a string round trip: the copied `$` record holds the hashtag's own ids array, which $isSplitOffEntity then takes for the array splitText copied. Rust's json::Value is owned, so export_json and update_from_json always give the node a new ids value (what JS gives after JSON.stringify), and the text keeps its ids. The '$addMarkID' case is the same in Rust. rust/PARITY.md, mark ids as NodeState."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > strict ids > invalid ids from JSON are dropped": {
+    "reason": "dom-only",
+    "note": "Besides the tree and the output, it asserts the ids attribute $decorateMarkIDs wrote on the element the reconciler rendered (editor.getElementByKey). The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM). The dropping of invalid ids is ported in 'invalid ids applied as NodeState' and 'ids in JSON are a set'."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > DOM > marked leaves get the theme classes and the ids attribute": {
+    "reason": "dom-only",
+    "note": "Reads the classes and ids attributes of the spans the reconciler rendered under the root element. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > DOM > toggling disabled removes and restores the decoration": {
+    "reason": "dom-only",
+    "note": "Reads the ids attribute and mark class of the rendered spans as disabled toggles. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > the default renders every id": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > hidden ids are not rendered but stay in the document": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > newly marked text follows the filter": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > assigning a new filter at runtime re-renders the affected leaves": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > a new filter re-renders nothing in a document without marks": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > a filter assigned inside an edit re-renders after it, without changing it": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > a filter assigned in an update listener with an edit re-renders after that edit, which keeps its caret update": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > a filter assigned in an update listener after its edit re-renders after that edit, which keeps its caret update": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > a new filter does not move the DOM selection out of another editable": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > a filter changed while disabled applies when re-enabled": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > a filter set before the root element is attached applies on mount": {
+    "reason": "dom-only",
+    "note": "Sets the isMarkIDShown filter and reads the spans (and for some the DOM selection) the reconciler rendered. The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM)."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > isMarkIDShown > assigning a new filter changes no node, also where an element's stored text format is not its first text's": {
+    "reason": "deviation",
+    "note": "Assigns the isMarkIDShown output signal, which the port leaves out with the rest of the renderer (rust/PARITY.md, @lexical/mark's updateDOM: 'the isMarkIDShown config and output are left out'); there is no filter or re-render to check for side effects."
+  },
+  "lexical-mark/src/__tests__/unit/MarkStateExtension.test.ts::MarkStateExtension > markable nodes > by default TextNode, LineBreakNode and inline decorators, including DecoratorTextNode": {
+    "reason": "dom-only",
+    "note": "Its last assertion finds the ids attribute $decorateMarkIDs wrote on the DecoratorTextNode's rendered element (root.querySelector). The renderer half of MarkStateExtension.ts ($decorateMarkIDs, isMarkIDShown with registerMarkIDShownRerender) isn't ported, and Rust's reconciler renders no DOM (rust/PARITY.md, @lexical/mark's updateDOM). The default markable nodes are checked in 'line breaks, inline decorators and links' and 'extending the default with a block decorator' (not with a DecoratorTextNode, which 'a guard function' marks)."
   }
 }

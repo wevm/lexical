@@ -3,10 +3,10 @@
   "lexical-extension": "pending",
   "lexical-rich-text": "pending",
   "lexical-plain-text": "enforced",
-  "lexical-history": "pending",
+  "lexical-history": "enforced",
   "lexical-selection": "enforced",
   "lexical-utils": "pending",
-  "lexical-headless": "pending",
+  "lexical-headless": "enforced",
   "lexical-html": "pending",
   "lexical-clipboard": "pending",
   "lexical-a11y": "pending",
@@ -17,8 +17,8 @@
   "lexical-markdown": "pending",
   "lexical-overflow": "enforced",
   "lexical-text": "pending",
-  "lexical-hashtag": "pending",
+  "lexical-hashtag": "enforced",
   "lexical-react": "pending",
-  "lexical-mark": "pending",
+  "lexical-mark": "enforced",
   "lexical-file": "enforced"
 }

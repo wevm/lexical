@@ -1097,7 +1097,7 @@ fn modify_selection_around_decorators_and_blocks(
 /// `$needsBlockCursorBeside(node)`: whether a caret beside the node needs a
 /// block cursor, as a block decorator, a top-level shadow root and an
 /// element that can't be empty do.
-fn needs_block_cursor_beside(node: &NodeRef) -> bool {
+pub(crate) fn needs_block_cursor_beside(node: &NodeRef) -> bool {
     if node.is_inline() {
         return false;
     }

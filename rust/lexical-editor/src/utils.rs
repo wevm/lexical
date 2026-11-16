@@ -4,10 +4,9 @@
 //!
 //! Not ported: the DOM helpers (`markSelection`, `positionNodeOnRange`,
 //! `selectionAlwaysOnDisplay`, `dedupeSelectionRects`, `calculateZoomLevel`,
-//! `getScrollParent`, `mediaFileReader`, `eventFiles`, `isMimeType`, the
-//! class name helpers and the DOM predicates), and `objectKlassEquals`,
-//! of JS constructors the port has no counterpart for; see
-//! `rust/PARITY.md`.
+//! `getScrollParent`, `mediaFileReader`, the class name helpers and the DOM
+//! predicates), and `objectKlassEquals`, of JS constructors the port has no
+//! counterpart for; see `rust/PARITY.md`.
 
 use crate::caret::{
     CaretDirection, NodeCaret, RootMode, SiblingCaret, get_adjacent_child_caret, get_caret_range,
@@ -21,6 +20,7 @@ use crate::caret_utils::{
 };
 use crate::editor::DirtyType;
 use crate::editor_state::NodeMap;
+use crate::events::{DataTransferFile, DragEvent, KeyboardEvent, PasteCommandType};
 use crate::lexical_selection::{get_selection, set_selection};
 use crate::lexical_utils::get_root;
 use crate::nodes::paragraph::create_paragraph_node;
@@ -717,20 +717,27 @@ pub fn make_state_wrapper<V>(state_config: StateConfig<V>) -> StateConfigWrapper
 /// `$onEscapeUp($isContainerNode, event)`: with the collapsed selection at
 /// the start of the nearest container (as `is_container_node` tells) that is
 /// its parent's first child, inserts a paragraph before the container and
-/// selects it. Returns whether it did. (JS also prevents the keyboard
-/// event's default action; the port has no events.)
-pub fn on_escape_up(is_container_node: impl Fn(&NodeRef) -> bool) -> Result<bool, LexicalError> {
-    on_escape(is_container_node, CaretDirection::Previous)
+/// selects it, and prevents the default action of `event`, if any. Returns
+/// whether it did.
+pub fn on_escape_up(
+    is_container_node: impl Fn(&NodeRef) -> bool,
+    event: Option<&KeyboardEvent>,
+) -> Result<bool, LexicalError> {
+    on_escape(is_container_node, event, CaretDirection::Previous)
 }
 
 /// `$onEscapeDown($isContainerNode, event)`: as [`on_escape_up`], after a
 /// container that is its parent's last child, with the selection at its end.
-pub fn on_escape_down(is_container_node: impl Fn(&NodeRef) -> bool) -> Result<bool, LexicalError> {
-    on_escape(is_container_node, CaretDirection::Next)
+pub fn on_escape_down(
+    is_container_node: impl Fn(&NodeRef) -> bool,
+    event: Option<&KeyboardEvent>,
+) -> Result<bool, LexicalError> {
+    on_escape(is_container_node, event, CaretDirection::Next)
 }
 
 fn on_escape(
     is_container_node: impl Fn(&NodeRef) -> bool,
+    event: Option<&KeyboardEvent>,
     direction: CaretDirection,
 ) -> Result<bool, LexicalError> {
     let Some(range) = get_selection().and_then(|s| s.range()) else {
@@ -764,7 +771,48 @@ fn on_escape(
         container_node.insert_after(&paragraph, true)?;
     }
     paragraph.select_end()?;
+    if let Some(event) = event {
+        event.prevent_default();
+    }
     Ok(true)
+}
+
+/// `isMimeType(file, acceptableMimeTypes)`: whether the file's type starts
+/// with one of `acceptable_mime_types` (`"image/"` takes every image).
+pub fn is_mime_type(file: &DataTransferFile, acceptable_mime_types: &[&str]) -> bool {
+    acceptable_mime_types
+        .iter()
+        .any(|acceptable| file.type_.starts_with(acceptable))
+}
+
+/// The event [`event_files`] reads the data of: a drag or a paste.
+pub enum FilesEvent<'a> {
+    /// A `DragEvent`.
+    Drag(&'a DragEvent),
+    /// A paste (`PasteCommandType`), whose files are its `ClipboardEvent`'s.
+    Paste(&'a PasteCommandType),
+}
+
+/// `eventFiles(event)`: whether the event's data carries files (`"Files"`
+/// in its types), the files, and whether it carries HTML or plain text
+/// too. A paste that isn't a `ClipboardEvent` (JS's `objectKlassEquals`)
+/// carries none.
+pub fn event_files(event: FilesEvent<'_>) -> (bool, Vec<DataTransferFile>, bool) {
+    let data_transfer = match event {
+        FilesEvent::Drag(event) => event.data_transfer.as_ref(),
+        FilesEvent::Paste(PasteCommandType::Clipboard(event)) => event.clipboard_data.as_ref(),
+        FilesEvent::Paste(_) => None,
+    };
+    let Some(data_transfer) = data_transfer else {
+        return (false, Vec::new(), false);
+    };
+    let types = data_transfer.types();
+    let has = |type_: &str| types.iter().any(|t| t == type_);
+    (
+        has("Files"),
+        data_transfer.files(),
+        has("text/html") || has("text/plain"),
+    )
 }
 
 /// `$isAtStartOfNode(point, node)`: whether the collapsed `point` sits at

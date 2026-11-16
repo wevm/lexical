@@ -17,10 +17,16 @@
 //! (and, with both, [`clipboard_dom_import_extension`]) configure the
 //! stacks of each MIME type that copy and paste run.
 //!
-//! Not ported (rust/PARITY.md): drag and drop (`$handleRichTextDrop`,
-//! `$handlePlainTextDrop`, `$writeDragSourceToDataTransfer`,
-//! `caretFromPoint`), which needs a DOM, and `copyToClipboard`'s event and
-//! timer plumbing.
+//! Drag and drop: [`write_drag_source_to_data_transfer`] marks a drag's
+//! data with the editor it started in, and [`handle_rich_text_drop`] and
+//! [`handle_plain_text_drop`] insert a marked drag's data at the drop
+//! caret, which the root element resolves from the event's point
+//! ([`RootElement::caret_from_point`](crate::RootElement::caret_from_point),
+//! where JS's `caretFromPoint` hit-tests the DOM).
+//!
+//! Not ported (rust/PARITY.md): `copyToClipboard`'s event and timer
+//! plumbing, and a cross-editor drop's `deleteByDrag` at the source
+//! editor's DOM root.
 
 mod clipboard_import_extension;
 
@@ -36,13 +42,20 @@ pub use clipboard_import_extension::{
     ClipboardImportConfigOverrides, ClipboardImportExtensionType, clipboard_import_extension,
 };
 
+use crate::caret::{
+    PointCaret, compare_point_caret_next, get_collapsed_caret_range, get_sibling_caret,
+};
+use crate::caret_utils::{
+    SplitAtPointCaretNextOptions, caret_range_from_selection, get_caret_range_in_direction,
+    normalize_caret, rewind_sibling_caret, set_selection_from_caret_range,
+    split_at_point_caret_next,
+};
 use crate::commands::{InsertClipboardNodesPayload, SELECTION_INSERT_CLIPBOARD_NODES_COMMAND};
 #[cfg(feature = "rich-text")]
 use crate::events::ClipboardEvent;
-use crate::events::DataTransfer;
+use crate::events::{DataTransfer, DragEvent, MouseEvent};
 use crate::json::{self, Object, Value};
 use crate::lexical_selection::SelectionRef;
-#[cfg(feature = "rich-text")]
 use crate::lexical_selection::get_selection;
 use crate::lexical_utils::get_root;
 use crate::node::NodeRef;
@@ -621,6 +634,190 @@ pub fn set_lexical_clipboard_data_transfer(
     for (k, v) in data {
         clipboard_data.set_data(k, v);
     }
+}
+
+/// `LEXICAL_DRAG_MIME_TYPE`: the MIME type of a drag's marker.
+const LEXICAL_DRAG_MIME_TYPE: &str = "application/x-lexical-drag";
+
+/// `$writeDragSourceToDataTransfer(dataTransfer, editor)`: marks
+/// `data_transfer` as a drag that started in `editor` (`{"editorKey"}`),
+/// so the drop side can remove the source range.
+pub fn write_drag_source_to_data_transfer(data_transfer: &DataTransfer, editor: &Editor) {
+    let mut marker = Object::new();
+    marker.insert("editorKey", editor.get_key().into());
+    data_transfer.set_data(
+        LEXICAL_DRAG_MIME_TYPE,
+        &json::stringify(&marker.into()).unwrap_or_default(),
+    );
+}
+
+/// `readDragMarker(dataTransfer)`: the key of the editor the drag started
+/// in, or `None` when it didn't start in a Lexical editor.
+fn read_drag_marker(data_transfer: &DataTransfer) -> Option<String> {
+    let raw = data_transfer.get_data(LEXICAL_DRAG_MIME_TYPE);
+    if raw.is_empty() {
+        return None;
+    }
+    let parsed = json::parse(&raw).ok()?;
+    parsed.get("editorKey")?.as_str().map(str::to_owned)
+}
+
+/// `$normalizeDropBoundary(point)`: a text edge and the element point
+/// beside it are the same drop position. Inline wrappers do not introduce
+/// another position at their outer edges, but block boundaries, line
+/// breaks and decorators do.
+fn normalize_drop_boundary(point: &PointCaret) -> Result<PointCaret, LexicalError> {
+    let mut caret = point.clone();
+    if let Some(offset) = caret.offset() {
+        if offset == 0 {
+            caret = rewind_sibling_caret(&caret.get_sibling_caret())?;
+        } else if offset == caret.origin().get_text_content_size() {
+            caret = caret.get_sibling_caret();
+        } else {
+            return Ok(caret);
+        }
+    }
+    loop {
+        let Some(parent) = caret.get_parent_at_caret() else {
+            return Ok(caret);
+        };
+        if !parent.is_inline() || parent.get_latest().is_shadow_root() {
+            return Ok(caret);
+        }
+        if caret.is_child_caret() {
+            caret = rewind_sibling_caret(&get_sibling_caret(&parent, CaretDirection::Next))?;
+        } else if caret.get_node_at_caret().is_none() {
+            caret = get_sibling_caret(&parent, CaretDirection::Next);
+        } else {
+            return Ok(caret);
+        }
+    }
+}
+
+/// `$isDropCaretInsideSelection(dropCaret, selection)`.
+fn is_drop_caret_inside_selection(
+    drop_caret: &PointCaret,
+    selection: &SelectionRef,
+) -> Result<bool, LexicalError> {
+    let Some(range) = selection.range() else {
+        return Ok(false);
+    };
+    let range =
+        get_caret_range_in_direction(&caret_range_from_selection(&range)?, CaretDirection::Next)?;
+    let drop = normalize_drop_boundary(drop_caret)?;
+    Ok(
+        compare_point_caret_next(&normalize_drop_boundary(&range.anchor)?, &drop)?.is_le()
+            && compare_point_caret_next(&drop, &normalize_drop_boundary(&range.focus)?)?.is_le(),
+    )
+}
+
+/// `$doDrop(event, editor, $insertDataTransfer)`, with the drop caret the
+/// root element resolved at the event's point.
+fn do_drop(
+    event: &DragEvent,
+    editor: &Editor,
+    drop_caret: Option<PointCaret>,
+    insert_data_transfer: impl FnOnce(&DataTransfer, &SelectionRef, &Editor) -> Result<(), LexicalError>,
+) -> Result<bool, LexicalError> {
+    let Some(data_transfer) = &event.data_transfer else {
+        return Ok(false);
+    };
+    // Drags that didn't originate in a Lexical editor (no marker) fall
+    // through to the platform's own drop handling.
+    let Some(source_editor_key) = read_drag_marker(data_transfer) else {
+        return Ok(false);
+    };
+    let Some(drop_caret) = drop_caret else {
+        return Ok(false);
+    };
+    let is_same_editor_drag = source_editor_key == editor.get_key();
+    let current_selection = get_selection();
+    if is_same_editor_drag {
+        // Same-editor drag: remove the dragged range here, then insert at
+        // the stable drop caret.
+        let Some(range) = current_selection
+            .as_ref()
+            .filter(|s| s.range().is_some_and(|r| !r.is_collapsed()))
+        else {
+            return Ok(false);
+        };
+        if is_drop_caret_inside_selection(&drop_caret, range)? {
+            event.prevent_default();
+            return Ok(true);
+        }
+    }
+    // Prefer a text boundary to its containing element: deletion can merge
+    // blocks and remove the element while its unselected children survive.
+    // Only split text; splitting an element here would add a paragraph break.
+    let normalized_drop_caret = normalize_caret(&drop_caret);
+    let stable_drop_caret = if normalized_drop_caret.is_text_point_caret() {
+        split_at_point_caret_next(
+            &normalized_drop_caret,
+            &SplitAtPointCaretNextOptions::default(),
+        )?
+    } else {
+        Some(normalized_drop_caret)
+    };
+    let Some(stable_drop_caret) = stable_drop_caret else {
+        return Ok(false);
+    };
+    let opposite_drop_caret = stable_drop_caret.get_flipped()?;
+    if is_same_editor_drag
+        && let Some(selection) = current_selection.as_ref().filter(|s| s.is_range())
+    {
+        selection.remove_text()?;
+    }
+    // Either side can move with the surviving content. Keep both rather
+    // than falling back to the source selection when one origin is removed.
+    let insert_caret = if stable_drop_caret.origin().is_attached() {
+        stable_drop_caret
+    } else {
+        opposite_drop_caret
+    };
+    crate::error::invariant!(
+        insert_caret.origin().is_attached(),
+        "$doDrop: drop position was removed by source deletion"
+    );
+    let drop_selection = set_selection_from_caret_range(&get_collapsed_caret_range(insert_caret))?;
+    insert_data_transfer(data_transfer, &drop_selection, editor)?;
+    // A cross-editor drag leaves the source range to the source editor's
+    // platform, where JS dispatches `deleteByDrag` at its DOM root.
+    event.prevent_default();
+    Ok(true)
+}
+
+/// `$handleRichTextDrop(event, editor)`: inserts a drag's data with
+/// [`insert_data_transfer_for_rich_text`] at the caret the root element
+/// resolves at the drop point and, for a drag from this editor (marked by
+/// [`write_drag_source_to_data_transfer`]), removes the source range.
+/// Returns whether it took the drop: not without a marker or a caret.
+pub fn handle_rich_text_drop(event: &DragEvent, editor: &Editor) -> Result<bool, LexicalError> {
+    do_drop(
+        event,
+        editor,
+        caret_from_event(event, editor),
+        insert_data_transfer_for_rich_text,
+    )
+}
+
+/// `$handlePlainTextDrop(event, editor)`: [`handle_rich_text_drop`],
+/// inserting with [`insert_data_transfer_for_plain_text`].
+pub fn handle_plain_text_drop(event: &DragEvent, editor: &Editor) -> Result<bool, LexicalError> {
+    do_drop(
+        event,
+        editor,
+        caret_from_event(event, editor),
+        |data_transfer, selection, _| insert_data_transfer_for_plain_text(data_transfer, selection),
+    )
+}
+
+/// `caretFromPoint(event.clientX, event.clientY, editor.getRootElement())`
+/// as a caret: what the root element resolves at the event's point.
+pub fn caret_from_event(event: &MouseEvent, editor: &Editor) -> Option<PointCaret> {
+    editor
+        .get_root_element()?
+        .0
+        .caret_from_point(event.client_x, event.client_y)
 }
 
 /// `$copyToClipboardEvent(editor, event)` without `data`: the selection's

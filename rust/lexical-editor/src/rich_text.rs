@@ -2,11 +2,15 @@
 //! `QuoteNode`, from `packages/lexical-rich-text/src/index.ts`, with their
 //! generated JSON (`LexicalRichTextGeneratedJSON.ts`).
 //!
-//! `registerRichText`'s command handlers ([`register_rich_text`]) that act
-//! on the model, its `KEY_ENTER_COMMAND` handler, and those of copy, cut
-//! and paste, which read the `DataTransfer` of the platform's clipboard
-//! event. The handlers of the other DOM events (click, arrow keys,
-//! Backspace, Delete, Escape, Space, Tab and drag and drop) wait for an input layer, and the DOM parts
+//! `registerRichText`'s command handlers ([`register_rich_text`]): those
+//! that act on the model, those of the keys the core's keydown handler
+//! dispatches (arrows, Backspace, Delete, Enter, Escape, Space, Tab,
+//! `MOVE_TO_START` and `MOVE_TO_END`), of a click, of copy, cut and paste,
+//! which read the `DataTransfer` of the platform's clipboard event, and of
+//! drag and drop, whose position the root element resolves
+//! ([`RootElement::caret_from_point`](crate::RootElement::caret_from_point)),
+//! with its `escapeFormatTriggers` and `shouldHandlePasteAsFiles`
+//! ([`RichTextConfig`], [`DRAG_DROP_PASTE`]). The DOM parts
 //! (`createDOM`, `exportDOM`, `importDOM`) come with `html`. With the
 //! `extension` feature, [`rich_text_extension`] is `RichTextExtension`, and
 //! with `a11y`, `heading_announce_extension` is `HeadingAnnounceExtension`
@@ -14,22 +18,44 @@
 //! `@lexical/react`'s `TableOfContentsPlugin`
 //! (`LexicalTableOfContentsPlugin.tsx`).
 
-use crate::clipboard::{copy_to_clipboard, insert_data_transfer_for_rich_text};
-use crate::commands::{
-    CONTROLLED_TEXT_INSERTION_COMMAND, COPY_COMMAND, CUT_COMMAND, DELETE_CHARACTER_COMMAND,
-    DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND,
-    INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND,
-    INSERT_TAB_COMMAND, KEY_ENTER_COMMAND, OUTDENT_CONTENT_COMMAND, PASTE_COMMAND,
-    REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
+use crate::caret::{
+    CaretDirection, PointCaret, compare_point_caret_next, extend_caret_to_range, get_caret_range,
+    get_child_caret, get_collapsed_caret_range, get_sibling_caret,
 };
-use crate::editor::COMMAND_PRIORITY_EDITOR;
-use crate::events::{ClipboardOrKeyboardEvent, PasteCommandType};
+use crate::caret_utils::{
+    caret_from_point, get_caret_range_in_direction, normalize_caret, rewind_sibling_caret,
+    set_selection_from_caret_range,
+};
+use crate::clipboard::{
+    caret_from_event, copy_to_clipboard, get_clipboard_data_from_selection, handle_rich_text_drop,
+    insert_data_transfer_for_rich_text, set_lexical_clipboard_data_transfer,
+    write_drag_source_to_data_transfer,
+};
+use crate::commands::{
+    CLICK_COMMAND, CONTROLLED_TEXT_INSERTION_COMMAND, COPY_COMMAND, CUT_COMMAND,
+    DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, DRAGOVER_COMMAND,
+    DRAGSTART_COMMAND, DROP_COMMAND, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND,
+    INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND,
+    INSERT_TAB_COMMAND, KEY_ARROW_DOWN_COMMAND, KEY_ARROW_LEFT_COMMAND, KEY_ARROW_RIGHT_COMMAND,
+    KEY_ARROW_UP_COMMAND, KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND, KEY_ENTER_COMMAND,
+    KEY_ESCAPE_COMMAND, KEY_SPACE_COMMAND, KEY_TAB_COMMAND, MOVE_TO_END, MOVE_TO_START,
+    OUTDENT_CONTENT_COMMAND, PASTE_COMMAND, REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND,
+    SET_TEXT_FORMAT_COMMAND,
+};
+use crate::editor::{COMMAND_PRIORITY_EDITOR, LexicalCommand};
+use crate::events::{ClipboardOrKeyboardEvent, DataTransferFile, KeyboardEvent, PasteCommandType};
 use crate::generated_json::{
     export_compact_element_node, export_element_node, update_element_node,
 };
 use crate::json::{Object, Value};
 use crate::lexical_selection::SelectionRef;
 use crate::lexical_selection::get_selection;
+use crate::lexical_selection::{
+    PointType, RangeSelection, Which, create_node_selection, has_ancestor, set_selection,
+};
+use crate::lexical_utils::{
+    get_node_by_key, get_root, is_root_or_shadow_root, is_shadow_root_node,
+};
 use crate::lexical_utils::{set_node_key, with_writable};
 use crate::node::{LexicalNode, NodeBase, NodeRef};
 use crate::node_state::{
@@ -39,10 +65,15 @@ use crate::nodes::element::ElementData;
 use crate::nodes::paragraph::create_paragraph_node;
 use crate::nodes::tab::create_tab_node;
 use crate::schema::{NodeSchema, SchemaValue, enum_value, node_schema, with_field};
+use crate::selection::{move_character, should_override_default_character_selection};
+use crate::selection_deletion::{SelectionGranularity, needs_block_cursor_beside};
+use crate::selection_insert_nodes::normalize_selection;
 use crate::selection_insert_nodes::{insert_nodes, select_all};
+use crate::utils::{FilesEvent, event_files, get_nearest_block_element_ancestor_or_throw};
 use crate::utils::{find_matching_parent, handle_indent_and_outdent};
 use crate::utils::{is_at_end_of_node, is_at_start_of_node};
 use crate::{CUT_TAG, Editor, LexicalError, NodeClass, PASTE_TAG, Unregister, UpdateOptions};
+use std::rc::Rc;
 
 #[cfg(feature = "extension")]
 mod lexical_rich_text_extension;
@@ -53,7 +84,9 @@ mod table_of_contents;
 pub use table_of_contents::{TableOfContentsEntry, register_table_of_contents};
 
 #[cfg(feature = "extension")]
-pub use lexical_rich_text_extension::{RichTextExtensionType, rich_text_extension};
+pub use lexical_rich_text_extension::{
+    RichTextConfigOverrides, RichTextExtensionType, RichTextOutput, rich_text_extension,
+};
 #[cfg(all(feature = "html", feature = "extension"))]
 pub use rich_text_import_extension::{rich_text_import_rules, shadow_root_quote_rule};
 #[cfg(feature = "a11y")]
@@ -594,16 +627,594 @@ fn on_cut_for_rich_text(
     )
 }
 
-/// `$escapeFormatsForTrigger(selection, 'enter', 'both', config)` with
-/// `DEFAULT_ESCAPE_FORMAT_TRIGGERS`: turns `capitalize`, `lowercase` and
-/// `uppercase` off the pending format. None of them is `onlyAtBoundary`,
-/// so the style is kept.
-fn escape_formats_for_enter(selection: &SelectionRef) {
-    for format in ["capitalize", "lowercase", "uppercase"] {
+/// `DRAG_DROP_PASTE`: files dropped or pasted into the editor
+/// (`DRAG_DROP_PASTE_FILE`), unread; a handler reads each with
+/// [`DataTransferFile::bytes`], as JS's `mediaFileReader` reads a `File`.
+pub const DRAG_DROP_PASTE: LexicalCommand<Vec<DataTransferFile>> =
+    LexicalCommand::constant(u64::MAX - 58, "DRAG_DROP_PASTE_FILE");
+
+/// `EscapeFormatTrigger`: the interactions that can escape a format.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EscapeFormatTrigger {
+    Enter,
+    Click,
+    Arrow,
+    Space,
+    Tab,
+}
+
+/// `TriggerConfig`: the triggers that escape one format, `Some(true)` for
+/// each that does (`None` is an absent key). With `only_at_boundary`, the
+/// format is escaped only at the start or end of a formatted text node with
+/// no sibling in that direction.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TriggerConfig {
+    pub enter: Option<bool>,
+    pub click: Option<bool>,
+    pub arrow: Option<bool>,
+    pub space: Option<bool>,
+    pub tab: Option<bool>,
+    pub only_at_boundary: Option<bool>,
+}
+
+impl TriggerConfig {
+    /// `config[trigger]`.
+    pub fn get(&self, trigger: EscapeFormatTrigger) -> Option<bool> {
+        match trigger {
+            EscapeFormatTrigger::Enter => self.enter,
+            EscapeFormatTrigger::Click => self.click,
+            EscapeFormatTrigger::Arrow => self.arrow,
+            EscapeFormatTrigger::Space => self.space,
+            EscapeFormatTrigger::Tab => self.tab,
+        }
+    }
+
+    /// `shallowMergeConfig(self, override)`: the keys `override` has
+    /// replace this one's.
+    pub fn merged(&self, override_: &TriggerConfig) -> TriggerConfig {
+        TriggerConfig {
+            enter: override_.enter.or(self.enter),
+            click: override_.click.or(self.click),
+            arrow: override_.arrow.or(self.arrow),
+            space: override_.space.or(self.space),
+            tab: override_.tab.or(self.tab),
+            only_at_boundary: override_.only_at_boundary.or(self.only_at_boundary),
+        }
+    }
+}
+
+/// `EscapeFormatTriggerConfig`: the triggers of each text format, in key
+/// order. A format mapped to `None` (JS `null`) has escaping disabled,
+/// which matters when overriding the defaults.
+pub type EscapeFormatTriggerConfig = Vec<(String, Option<TriggerConfig>)>;
+
+/// `DEFAULT_ESCAPE_FORMAT_TRIGGERS`: `capitalize`, `lowercase` and
+/// `uppercase` are escaped on Enter, Space and Tab.
+pub fn default_escape_format_triggers() -> EscapeFormatTriggerConfig {
+    ["capitalize", "lowercase", "uppercase"]
+        .into_iter()
+        .map(|format| {
+            (
+                format.to_owned(),
+                Some(TriggerConfig {
+                    enter: Some(true),
+                    space: Some(true),
+                    tab: Some(true),
+                    ..TriggerConfig::default()
+                }),
+            )
+        })
+        .collect()
+}
+
+/// `ShouldHandlePasteAsFiles(files, hasTextContent)`: whether a paste
+/// carrying files is handled by dispatching [`DRAG_DROP_PASTE`] with them,
+/// rather than as the clipboard's other data. Compared by identity, as JS
+/// compares functions.
+#[derive(Clone)]
+pub struct ShouldHandlePasteAsFiles(pub Rc<ShouldHandlePasteAsFilesFn>);
+
+/// The function of a [`ShouldHandlePasteAsFiles`].
+pub type ShouldHandlePasteAsFilesFn = dyn Fn(&[DataTransferFile], bool) -> bool;
+
+impl PartialEq for ShouldHandlePasteAsFiles {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Default for ShouldHandlePasteAsFiles {
+    /// [`default_should_handle_paste_as_files`].
+    fn default() -> Self {
+        ShouldHandlePasteAsFiles(Rc::new(default_should_handle_paste_as_files))
+    }
+}
+
+/// `defaultShouldHandlePasteAsFiles(files, hasTextContent)`: files are
+/// handled only when the clipboard carries no text content.
+pub fn default_should_handle_paste_as_files(
+    files: &[DataTransferFile],
+    has_text_content: bool,
+) -> bool {
+    !files.is_empty() && !has_text_content
+}
+
+/// `RichTextConfig` (`LexicalRichTextExtension.ts`): what
+/// [`register_rich_text_with_config`] reads, `RichTextExtension`'s config.
+#[derive(Clone, PartialEq)]
+pub struct RichTextConfig {
+    /// `escapeFormatTriggers`: the formats an interaction escapes,
+    /// [`default_escape_format_triggers`] by default.
+    pub escape_format_triggers: EscapeFormatTriggerConfig,
+    /// `shouldHandlePasteAsFiles`,
+    /// [`default_should_handle_paste_as_files`] by default.
+    pub should_handle_paste_as_files: ShouldHandlePasteAsFiles,
+}
+
+impl Default for RichTextConfig {
+    /// `DEFAULT_RICH_TEXT_CONFIG`.
+    fn default() -> Self {
+        RichTextConfig {
+            escape_format_triggers: default_escape_format_triggers(),
+            should_handle_paste_as_files: ShouldHandlePasteAsFiles::default(),
+        }
+    }
+}
+
+/// Where `$escapeFormatsForTrigger` looks for a text node boundary.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum EscapeDirection {
+    Start,
+    End,
+    Both,
+}
+
+/// `$escapeFormatsForTrigger(selection, trigger, direction, config)`:
+/// turns off the pending format of each format `config` escapes on
+/// `trigger`; one that is `onlyAtBoundary` only at a collapsed caret at the
+/// start or end (as `direction` says) of a text node of that format with
+/// no sibling there, which also clears the pending style.
+fn escape_formats_for_trigger(
+    selection: &SelectionRef,
+    trigger: EscapeFormatTrigger,
+    direction: EscapeDirection,
+    config: &EscapeFormatTriggerConfig,
+) -> Result<(), LexicalError> {
+    let Some(range) = selection.range() else {
+        return Ok(());
+    };
+    let mut is_boundary = false;
+    let mut anchor_node = None;
+    if range.is_collapsed() && range.anchor.point_type == PointType::Text {
+        let node = range.anchor.get_node()?;
+        if node.is_text() {
+            let offset = range.anchor.offset;
+            let at_end =
+                offset == node.get_text_content_size() && node.get_next_sibling().is_none();
+            let at_start = offset == 0 && node.get_previous_sibling().is_none();
+            is_boundary = match direction {
+                EscapeDirection::End => at_end,
+                EscapeDirection::Start => at_start,
+                EscapeDirection::Both => at_end || at_start,
+            };
+            anchor_node = Some(node);
+        }
+    }
+    let mut did_escape_boundary = false;
+    for (format, triggers) in config {
+        let Some(triggers) = triggers else {
+            continue;
+        };
+        if triggers.get(trigger) != Some(true) {
+            continue;
+        }
+        if triggers.only_at_boundary == Some(true) {
+            if !is_boundary || !anchor_node.as_ref().is_some_and(|n| n.has_format(format)) {
+                continue;
+            }
+            did_escape_boundary = true;
+        }
         if selection.has_format(format) {
             selection.toggle_format(format);
         }
     }
+    if did_escape_boundary {
+        selection.set_style("");
+    }
+    Ok(())
+}
+
+/// `$isSelectionAtEndOfRoot(selection)`.
+fn is_selection_at_end_of_root(selection: &RangeSelection) -> bool {
+    selection.focus.key == "root" && selection.focus.offset == get_root().get_children_size()
+}
+
+/// `$isSelectionAtStartOfRoot(selection)`.
+fn is_selection_at_start_of_root(selection: &RangeSelection) -> bool {
+    selection.focus.key == "root" && selection.focus.offset == 0
+}
+
+/// `$isBlockCursorAtRootEdge(selection, direction)`: a collapsed element
+/// point at the start or end of the root beside a child that renders a
+/// block cursor, where horizontal arrows have nowhere to go (#7999).
+fn is_block_cursor_at_root_edge(selection: &RangeSelection, direction: CaretDirection) -> bool {
+    if !selection.is_collapsed() {
+        return false;
+    }
+    let is_next = direction == CaretDirection::Next;
+    if !(if is_next {
+        is_selection_at_end_of_root(selection)
+    } else {
+        is_selection_at_start_of_root(selection)
+    }) {
+        return false;
+    }
+    let offset = selection.focus.offset;
+    let child = if is_next {
+        offset
+            .checked_sub(1)
+            .and_then(|index| get_root().get_child_at_index(index))
+    } else {
+        get_root().get_child_at_index(offset)
+    };
+    child.is_some_and(|child| needs_block_cursor_beside(&child))
+}
+
+/// `$isSelectionCollapsedAtFrontOfIndentedBlock(selection)`: a caret at
+/// the start of an indented block, where Backspace outdents.
+fn is_selection_collapsed_at_front_of_indented_block(
+    selection: &RangeSelection,
+) -> Result<bool, LexicalError> {
+    if !selection.is_collapsed() || selection.anchor.offset != 0 {
+        return Ok(false);
+    }
+    let anchor_node = selection.anchor.get_node()?;
+    if anchor_node.is_root() {
+        return Ok(false);
+    }
+    let element = get_nearest_block_element_ancestor_or_throw(&anchor_node)?;
+    Ok(element.get_indent()? > 0.0
+        && (element == anchor_node
+            || element.get_first_descendant().as_ref() == Some(&anchor_node)))
+}
+
+/// `$isParentRTL(node)` (`@lexical/selection`): whether the computed style
+/// of the node's parent has `direction: rtl`. Without a DOM there is no
+/// computed style, as for a JS editor that renders nothing, so it is false.
+fn is_parent_rtl(_node: &NodeRef) -> bool {
+    false
+}
+
+/// `$tryEnterFromBlockCursor(selection, direction)`: from a block cursor
+/// beside a block shadow root, into its content.
+fn try_enter_from_block_cursor(
+    selection: &RangeSelection,
+    direction: CaretDirection,
+) -> Result<bool, LexicalError> {
+    if !selection.is_collapsed() || selection.anchor.point_type != PointType::Element {
+        return Ok(false);
+    }
+    let caret = caret_from_point(&selection.anchor, direction)?;
+    if let Some(child) = caret.get_node_at_caret()
+        && is_shadow_root_node(&child)
+        && !child.is_inline()
+        && let Some(child_caret) = get_child_caret(&child, direction)
+    {
+        set_selection_from_caret_range(&get_collapsed_caret_range(normalize_caret(&child_caret)))?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+/// `$tryBlockCursorShadowRootNavigation(selection, direction)`.
+fn try_block_cursor_shadow_root_navigation(
+    selection: &RangeSelection,
+    direction: CaretDirection,
+) -> Result<bool, LexicalError> {
+    Ok(try_exit_shadow_root_to_block_cursor(selection, direction)?
+        || try_enter_from_block_cursor(selection, direction)?)
+}
+
+/// `$tryExitShadowRootToBlockCursor(selection, direction)`: from the edge
+/// of a shadow root, out to a block cursor beside it (or beside the
+/// shadow roots it is nested in) when the sibling there needs one.
+fn try_exit_shadow_root_to_block_cursor(
+    selection: &RangeSelection,
+    direction: CaretDirection,
+) -> Result<bool, LexicalError> {
+    if !selection.is_collapsed() {
+        return Ok(false);
+    }
+    let focus_caret = caret_from_point(&selection.focus, direction)?;
+    // Walk up from focus to find the nearest shadow root ancestor, starting
+    // from the focus node itself since it may be a shadow root.
+    let Some(shadow_root) = find_matching_parent(focus_caret.origin(), is_shadow_root_node) else {
+        return Ok(false);
+    };
+    // An element point's caret origin is a child of the focus node, which
+    // may be (or sit in) a shadow root the selection isn't inside.
+    let focus_node = selection.focus.get_node()?;
+    if shadow_root != focus_node && !has_ancestor(&focus_node, &shadow_root) {
+        return Ok(false);
+    }
+    // The focus has to be at the edge of the shadow root in this direction.
+    let text_range = get_caret_range(focus_caret, get_sibling_caret(&shadow_root, direction))?;
+    if text_range.get_text_slices().iter().any(|slice| {
+        slice
+            .as_ref()
+            .is_some_and(|s| s.get_text_content_size() > 0)
+    }) {
+        return Ok(false);
+    }
+    // Normalize the anchor in case it started with a ChildCaret.
+    let range = get_caret_range(
+        text_range.anchor.get_sibling_caret(),
+        text_range.focus.clone(),
+    )?;
+    // From the edge to the shadow root, only parent nodes are expected, as
+    // sibling carets.
+    let mut prev_origin = range.anchor.origin().clone();
+    for caret in range.iter() {
+        if !(caret.is_sibling_caret() && Some(caret.origin()) == prev_origin.get_parent().as_ref())
+        {
+            return Ok(false);
+        }
+        prev_origin = caret.origin().clone();
+    }
+    // Walk outward through nested shadow roots until a sibling needs a
+    // block cursor beside it.
+    let mut prev_shadow = shadow_root.clone();
+    for caret in extend_caret_to_range(&get_sibling_caret(&shadow_root, direction))?.iter() {
+        // A caret whose origin is the parent of the current level is the
+        // "leave" step walking outward; keep going only through shadow
+        // roots.
+        if Some(caret.origin()) == prev_shadow.get_parent().as_ref() {
+            if !is_shadow_root_node(caret.origin()) {
+                break;
+            }
+            prev_shadow = caret.origin().clone();
+            continue;
+        }
+        if needs_block_cursor_beside(caret.origin()) {
+            let sr = get_sibling_caret(&prev_shadow, direction);
+            set_selection_from_caret_range(&get_caret_range(sr.clone(), sr)?)?;
+            return Ok(true);
+        }
+        break;
+    }
+    Ok(false)
+}
+
+/// `$isSelectableBlockDecorator(node)`.
+fn is_selectable_block_decorator(node: &NodeRef) -> bool {
+    node.is_decorator() && !node.is_inline() && !node.is_isolated() && node.is_keyboard_selectable()
+}
+
+/// `$selectNode(key)`: a node selection of the node.
+fn select_node(key: &str) {
+    let node_selection = create_node_selection();
+    node_selection.add(key);
+    set_selection(Some(node_selection));
+}
+
+/// `$tryDecoratorLineNavigation(selection, isBackward)`: an up or down
+/// arrow that leaves the top-level block beside a selectable block
+/// decorator selects the decorator. JS probes `Selection.modify('move',
+/// …, 'line')`; here the editor's [`SelectionMovement`](crate::SelectionMovement)
+/// says where the line move lands, and without one (as JS without a DOM
+/// selection) nothing happens.
+fn try_decorator_line_navigation(
+    selection: &RangeSelection,
+    is_backward: bool,
+    editor: &Editor,
+) -> Result<bool, LexicalError> {
+    if !selection.is_collapsed() {
+        return Ok(false);
+    }
+    let focus = &selection.focus;
+    let focus_node = focus.get_node()?;
+    let direction = if is_backward {
+        CaretDirection::Previous
+    } else {
+        CaretDirection::Next
+    };
+    let focus_caret = caret_from_point(focus, direction)?;
+    if focus.point_type == PointType::Element
+        && focus_node.is_element()
+        && is_root_or_shadow_root(&focus_node)
+    {
+        if let Some(adjacent_child) = focus_caret.get_node_at_caret()
+            && is_selectable_block_decorator(&adjacent_child)
+        {
+            select_node(adjacent_child.get_key());
+            return Ok(true);
+        }
+        return Ok(false);
+    }
+    let start = if focus_node.is_element() {
+        focus_node.clone()
+    } else {
+        focus_node.get_parent_or_throw()?
+    };
+    let Some(top_block) = find_matching_parent(&start, |n| {
+        n.is_element()
+            && !n.is_inline()
+            && n.get_parent().is_some_and(|p| is_root_or_shadow_root(&p))
+    }) else {
+        return Ok(false);
+    };
+    let Some(adjacent_sibling) = get_sibling_caret(&top_block, direction)
+        .get_node_at_caret()
+        .filter(is_selectable_block_decorator)
+    else {
+        return Ok(false);
+    };
+    // Empty blocks always escape on line-move, so skip the layout probe.
+    if top_block.get_text_content_size() == 0 {
+        select_node(adjacent_sibling.get_key());
+        return Ok(true);
+    }
+    let Some(movement) = editor
+        .selection_movement()
+        .filter(|movement| movement.has_dom_selection())
+    else {
+        return Ok(false);
+    };
+    let Some(landed) = movement.landed_point(focus, is_backward, SelectionGranularity::Line)?
+    else {
+        return Ok(false);
+    };
+    let Some(moved_node) = get_node_by_key(&landed.key) else {
+        return Ok(false);
+    };
+    // No movement means the line move hit the block edge.
+    if landed.key == focus.key && landed.offset == focus.offset {
+        select_node(adjacent_sibling.get_key());
+        return Ok(true);
+    }
+    if moved_node == top_block || has_ancestor(&moved_node, &top_block) {
+        return Ok(false);
+    }
+    select_node(adjacent_sibling.get_key());
+    Ok(true)
+}
+
+/// `$exitNodeSelectionToward(node, direction)`: a node selection left by an
+/// arrow key becomes a caret beside the node, or at the edge of a block
+/// shadow root next to it.
+fn exit_node_selection_toward(
+    node: &NodeRef,
+    direction: CaretDirection,
+) -> Result<(), LexicalError> {
+    let caret = get_sibling_caret(node, direction);
+    if let Some(sibling) = caret.get_adjacent_caret()
+        && sibling.origin().is_element()
+        && !sibling.origin().is_inline()
+        && sibling.origin().get_latest().is_shadow_root()
+    {
+        set_selection_from_caret_range(&get_collapsed_caret_range(caret))?;
+    } else if direction == CaretDirection::Next {
+        node.select_next(Some(0), Some(0))?;
+    } else {
+        node.select_previous(None, None)?;
+    }
+    Ok(())
+}
+
+/// The `'next'` sibling carets of `nodes`, sorted in document order
+/// (`.sort($comparePointCaretNext)`).
+fn sorted_sibling_carets(nodes: Vec<NodeRef>) -> Result<Vec<PointCaret>, LexicalError> {
+    let mut carets: Vec<PointCaret> = nodes
+        .iter()
+        .map(|node| get_sibling_caret(node, CaretDirection::Next))
+        .collect();
+    let mut error = None;
+    carets.sort_by(|a, b| match compare_point_caret_next(a, b) {
+        Ok(ordering) => ordering,
+        Err(e) => {
+            error.get_or_insert(e);
+            std::cmp::Ordering::Equal
+        }
+    });
+    match error {
+        Some(error) => Err(error),
+        None => Ok(carets),
+    }
+}
+
+/// `$convertContiguousNodeSelection(selection, direction)`: a node
+/// selection of contiguous siblings becomes the range selection that
+/// covers them, committed when the update ends (`$flushSyncAfterUpdate`).
+fn convert_contiguous_node_selection(
+    selection: &SelectionRef,
+    direction: CaretDirection,
+) -> Result<bool, LexicalError> {
+    let carets = sorted_sibling_carets(selection.get_nodes()?)?;
+    let (Some(first_caret), Some(last_caret)) = (carets.first(), carets.last()) else {
+        return Ok(false);
+    };
+    for pair in carets.windows(2) {
+        if pair[0].get_node_at_caret().as_ref() != Some(pair[1].origin()) {
+            return Ok(false);
+        }
+    }
+    set_selection_from_caret_range(&get_caret_range_in_direction(
+        &get_caret_range(rewind_sibling_caret(first_caret)?, last_caret.clone())?,
+        direction,
+    )?)?;
+    // The vertical arrow handlers leave the extension to the platform's
+    // default action, which reads the committed selection.
+    crate::updates::flush_sync_after_update();
+    Ok(true)
+}
+
+/// `$promoteNodeSelectionToBlockEdge(selection, isBackward, event)`:
+/// `MOVE_TO_START` or `MOVE_TO_END` at a node selection collapses it to
+/// the start or end of the block around its first or last node (in
+/// document order), or of the root.
+fn promote_node_selection_to_block_edge(
+    selection: &SelectionRef,
+    is_backward: bool,
+    event: &KeyboardEvent,
+) -> Result<bool, LexicalError> {
+    event.prevent_default();
+    event.stop_propagation();
+    let nodes = selection.get_nodes()?;
+    if nodes.is_empty() {
+        return Ok(true);
+    }
+    let sorted = sorted_sibling_carets(nodes)?;
+    let target = if is_backward {
+        sorted.first()
+    } else {
+        sorted.last()
+    }
+    .expect("not empty")
+    .origin()
+    .clone();
+    let block = find_matching_parent(&target, |n| {
+        n != &target && n.is_element() && !n.is_inline()
+    })
+    .unwrap_or_else(get_root);
+    let offset = if is_backward {
+        0
+    } else {
+        block.get_children_size()
+    };
+    block.select(Some(offset), Some(offset))?;
+    Ok(true)
+}
+
+/// The nearest block element at or above `node`.
+fn nearest_block(node: &NodeRef) -> Option<NodeRef> {
+    find_matching_parent(node, |n| n.is_element() && !n.is_inline())
+}
+
+/// The arrow keys' first step: an arrow at a node selection collapses it
+/// beside its first node, toward `direction` (or, with Shift, makes a range
+/// of contiguous nodes and goes on). Returns whether it handled the key,
+/// and the selection to go on with.
+fn arrow_node_selection(
+    event: &KeyboardEvent,
+    direction: impl Fn(&NodeRef) -> CaretDirection,
+) -> Result<(bool, Option<SelectionRef>), LexicalError> {
+    let mut selection = get_selection();
+    if let Some(node_selection) = selection.clone().filter(SelectionRef::is_node) {
+        // If selection is on a node, try to move it back to a range.
+        let nodes = node_selection.get_nodes()?;
+        if let Some(first) = nodes.first() {
+            let direction = direction(first);
+            if event.shift_key && convert_contiguous_node_selection(&node_selection, direction)? {
+                // Fall through.
+                selection = get_selection();
+            } else {
+                event.prevent_default();
+                exit_node_selection_toward(first, direction)?;
+                return Ok((true, selection));
+            }
+        }
+    }
+    Ok((false, selection))
 }
 
 /// The current selection when it is a range selection.
@@ -718,33 +1329,162 @@ mod rich_text_dom {
     }
 }
 
-/// `registerRichText(editor)`: registers the rich text command handlers
-/// that act on the model, at `COMMAND_PRIORITY_EDITOR`, and returns what
-/// unregisters them.
+/// `KEY_ARROW_LEFT_COMMAND` (`is_left`) and `KEY_ARROW_RIGHT_COMMAND`.
+fn horizontal_arrow(
+    event: &KeyboardEvent,
+    is_left: bool,
+    triggers: &EscapeFormatTriggerConfig,
+) -> Result<bool, LexicalError> {
+    // Left is backward, unless the text is right-to-left.
+    let backward_unless_rtl = |node: &NodeRef| {
+        if is_parent_rtl(node) == is_left {
+            CaretDirection::Next
+        } else {
+            CaretDirection::Previous
+        }
+    };
+    let (handled, selection) = arrow_node_selection(event, backward_unless_rtl)?;
+    if handled {
+        return Ok(true);
+    }
+    let Some(selection) = selection.filter(SelectionRef::is_range) else {
+        return Ok(false);
+    };
+    let range = selection.range().expect("a range selection");
+    let direction = backward_unless_rtl(&range.anchor.get_node()?);
+    if is_block_cursor_at_root_edge(&range, direction) {
+        event.prevent_default();
+        return Ok(true);
+    }
+    if !event.shift_key && try_block_cursor_shadow_root_navigation(&range, direction)? {
+        event.prevent_default();
+        return Ok(true);
+    }
+    if !event.shift_key {
+        escape_formats_for_trigger(
+            &selection,
+            EscapeFormatTrigger::Arrow,
+            if is_left {
+                EscapeDirection::Start
+            } else {
+                EscapeDirection::End
+            },
+            triggers,
+        )?;
+    }
+    let range = selection.range().expect("a range selection");
+    if should_override_default_character_selection(&range, is_left)? {
+        event.prevent_default();
+        move_character(&selection, event.shift_key, is_left)?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+/// `registerRichText(editor)`: registers the rich text command handlers,
+/// at `COMMAND_PRIORITY_EDITOR`, with the default [`RichTextConfig`], and
+/// returns what unregisters them.
 ///
-/// `KEY_ENTER_COMMAND` escapes the default `escapeFormatTriggers` and
-/// dispatches `INSERT_PARAGRAPH_COMMAND`, or `INSERT_LINE_BREAK_COMMAND`
-/// with Shift. JS's `escapeFormatTriggers` config (for click and arrow keys, and other
-/// than its default) goes with those
-/// events' handlers, which aren't ported, and `shouldHandlePasteAsFiles`
-/// (`DRAG_DROP_PASTE`) with files, which the port's `DataTransfer` doesn't
-/// carry. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form,
-/// and `SELECT_ALL_COMMAND` selects the whole document, or the slot frame
-/// the caret is in.
+/// The key handlers are JS's, less what a platform without `beforeinput`
+/// or a DOM has no counterpart for: the `IS_IOS`/`IS_SAFARI` returns that
+/// leave Backspace and Enter to `beforeinput`, inline-grid line
+/// navigation (CSS grid layout), and the iOS text-file drop. The arrows
+/// leave a node selection, step over block cursors at the root's edges and
+/// shadow roots, select a block decorator a line move reaches (as the
+/// editor's [`SelectionMovement`](crate::SelectionMovement) says), and move
+/// across decorators and blocks (`$shouldOverrideDefaultCharacterSelection`,
+/// `$moveCharacter`); Backspace outdents an indented block at its start
+/// and otherwise dispatches `DELETE_CHARACTER_COMMAND`, as Delete does;
+/// Enter escapes formats and dispatches `INSERT_PARAGRAPH_COMMAND`, or
+/// `INSERT_LINE_BREAK_COMMAND` with Shift; Escape blurs the editor
+/// ([`Editor::blur`]); Space, Tab, a click and the arrows escape the formats
+/// `escapeFormatTriggers` names; `MOVE_TO_START` and `MOVE_TO_END` move past
+/// an inline decorator at a block's start and collapse a node selection to
+/// its block's edge. A click at a node selection clears it, unless it hit
+/// (`MouseEvent::target_key`) a selected node or one inside it, where JS
+/// asks whether the selected node's DOM contains the event's target.
+///
+/// `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form, and
+/// `SELECT_ALL_COMMAND` selects the whole document, or the slot frame the
+/// caret is in.
 ///
 /// `COPY_COMMAND`, `CUT_COMMAND` and `PASTE_COMMAND` read the clipboard
 /// event's `clipboardData` (none for a keyboard or input event): a copy
 /// writes the selection to it (`copyToClipboard`), a cut copies and then
-/// removes the selection (`onCutForRichText`), and a paste inserts it with
-/// `$insertDataTransferForRichText` (`onPasteForRichText`), each in an
-/// update of its own with JS's tags. A copy or cut without one writes
-/// nothing, where JS goes through the DOM to get an event; a cut still
-/// removes the selection. JS's cut removes it after the copy's promise
-/// settles, in a later update; here that update is queued with the others.
+/// removes the selection (`onCutForRichText`), and a paste dispatches
+/// [`DRAG_DROP_PASTE`] with its files when `shouldHandlePasteAsFiles` says
+/// so, and otherwise inserts its data with `$insertDataTransferForRichText`
+/// (`onPasteForRichText`), each in an update of its own with JS's tags. A
+/// copy or cut without one writes nothing, where JS goes through the DOM to
+/// get an event; a cut still removes the selection. JS's cut removes it
+/// after the copy's promise settles, in a later update; here that update is
+/// queued with the others. A drop of files dispatches [`DRAG_DROP_PASTE`],
+/// a drop of a drag that started in a Lexical editor is inserted at the
+/// drop point (`$handleRichTextDrop`), and a drag start writes the
+/// selection's clipboard data and the editor's marker to the drag's data.
 /// Without a DOM, no event comes from an input inside a decorator
-/// (`$isEventFromEmbeddedInput`).
+/// (`$isEventFromEmbeddedInput`, `$isTargetWithinDecorator`).
 pub fn register_rich_text(editor: &Editor) -> Unregister {
+    register_rich_text_with_config(editor, RichTextConfig::default())
+}
+
+/// `registerRichText(editor, escapeFormatTriggers,
+/// shouldHandlePasteAsFiles)` with the values of `config`: see
+/// [`register_rich_text`].
+pub fn register_rich_text_with_config(editor: &Editor, config: RichTextConfig) -> Unregister {
+    let config = Rc::new(config);
+    let triggers = config.clone();
+    register_rich_text_with(
+        editor,
+        Rc::new(move || triggers.escape_format_triggers.clone()),
+        Rc::new(move || config.should_handle_paste_as_files.clone()),
+    )
+}
+
+/// `registerRichText(editor, escapeFormatTriggers,
+/// shouldHandlePasteAsFiles)` with the options read (`peek()`) each time a
+/// handler needs them, as `RichTextExtension` passes its signals.
+pub(crate) fn register_rich_text_with(
+    editor: &Editor,
+    escape_format_triggers: Rc<dyn Fn() -> EscapeFormatTriggerConfig>,
+    should_handle_paste_as_files: Rc<dyn Fn() -> ShouldHandlePasteAsFiles>,
+) -> Unregister {
+    let triggers = escape_format_triggers;
     let unregisters: Vec<Unregister> = vec![
+        {
+            let triggers = triggers.clone();
+            editor.register_command(
+                &CLICK_COMMAND,
+                move |event, _| match get_selection() {
+                    Some(selection) if selection.is_node() => {
+                        // A click on an already-selected node is an
+                        // interaction with that node, not a deselect
+                        // gesture (meta/lexical#8907).
+                        if let Some(target) = event.target_key.as_deref().and_then(get_node_by_key)
+                        {
+                            for node in selection.get_nodes()? {
+                                if node == target || has_ancestor(&target, &node) {
+                                    return Ok(false);
+                                }
+                            }
+                        }
+                        selection.clear();
+                        Ok(true)
+                    }
+                    Some(selection) => {
+                        escape_formats_for_trigger(
+                            &selection,
+                            EscapeFormatTrigger::Click,
+                            EscapeDirection::Both,
+                            &triggers(),
+                        )?;
+                        Ok(false)
+                    }
+                    None => Ok(false),
+                },
+                COMMAND_PRIORITY_EDITOR,
+            )
+        },
         editor.register_command(
             &DELETE_CHARACTER_COMMAND,
             |&is_backward, _| match get_selection() {
@@ -869,33 +1609,52 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
             },
             COMMAND_PRIORITY_EDITOR,
         ),
+        {
+            let triggers = triggers.clone();
+            editor.register_command(
+                &KEY_ENTER_COMMAND,
+                move |event, editor| {
+                    let mut selection = get_selection();
+                    // A block decorator selected alone as a NodeSelection: Enter
+                    // inserts a paragraph after it.
+                    if let Some(s) = selection.as_ref().filter(|s| s.is_node()) {
+                        let nodes = s.get_nodes()?;
+                        if let [node] = nodes.as_slice()
+                            && node.is_decorator()
+                            && !node.is_inline()
+                        {
+                            selection = Some(node.select_next(None, None)?);
+                        }
+                    }
+                    let Some(selection) = selection.filter(SelectionRef::is_range) else {
+                        return Ok(false);
+                    };
+                    escape_formats_for_trigger(
+                        &selection,
+                        EscapeFormatTrigger::Enter,
+                        EscapeDirection::Both,
+                        &triggers(),
+                    )?;
+                    if let Some(event) = event {
+                        // No beforeinput to defer to (JS's iOS and Safari path).
+                        event.prevent_default();
+                        if event.shift_key {
+                            return editor.dispatch_command(&INSERT_LINE_BREAK_COMMAND, false);
+                        }
+                    }
+                    editor.dispatch_command(&INSERT_PARAGRAPH_COMMAND, ())
+                },
+                COMMAND_PRIORITY_EDITOR,
+            )
+        },
         editor.register_command(
-            &KEY_ENTER_COMMAND,
-            |event, editor| {
-                let mut selection = get_selection();
-                // A block decorator selected alone as a NodeSelection: Enter
-                // inserts a paragraph after it.
-                if let Some(s) = selection.as_ref().filter(|s| s.is_node()) {
-                    let nodes = s.get_nodes()?;
-                    if let [node] = nodes.as_slice()
-                        && node.is_decorator()
-                        && !node.is_inline()
-                    {
-                        selection = Some(node.select_next(None, None)?);
-                    }
-                }
-                let Some(selection) = selection.filter(SelectionRef::is_range) else {
+            &KEY_ESCAPE_COMMAND,
+            |_, editor| {
+                if range_selection().is_none() {
                     return Ok(false);
-                };
-                escape_formats_for_enter(&selection);
-                if let Some(event) = event {
-                    // No beforeinput to defer to (JS's iOS and Safari path).
-                    event.prevent_default();
-                    if event.shift_key {
-                        return editor.dispatch_command(&INSERT_LINE_BREAK_COMMAND, false);
-                    }
                 }
-                editor.dispatch_command(&INSERT_PARAGRAPH_COMMAND, ())
+                editor.blur();
+                Ok(true)
             },
             COMMAND_PRIORITY_EDITOR,
         ),
@@ -936,6 +1695,119 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
             COMMAND_PRIORITY_EDITOR,
         ),
         editor.register_command(
+            &KEY_ARROW_UP_COMMAND,
+            |event, editor| {
+                let (handled, selection) =
+                    arrow_node_selection(event, |_| CaretDirection::Previous)?;
+                if handled {
+                    return Ok(true);
+                }
+                if let Some(selection) = selection.as_ref().and_then(SelectionRef::range) {
+                    if is_selection_at_start_of_root(&selection) {
+                        event.prevent_default();
+                        return Ok(true);
+                    }
+                    if !event.shift_key
+                        && try_block_cursor_shadow_root_navigation(
+                            &selection,
+                            CaretDirection::Previous,
+                        )?
+                    {
+                        event.prevent_default();
+                        return Ok(true);
+                    }
+                    if !event.shift_key && try_decorator_line_navigation(&selection, true, editor)?
+                    {
+                        event.prevent_default();
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &KEY_ARROW_DOWN_COMMAND,
+            |event, editor| {
+                let (handled, selection) = arrow_node_selection(event, |_| CaretDirection::Next)?;
+                if handled {
+                    return Ok(true);
+                }
+                if let Some(selection) = selection.as_ref().and_then(SelectionRef::range) {
+                    if is_selection_at_end_of_root(&selection) {
+                        event.prevent_default();
+                        return Ok(true);
+                    }
+                    if !event.shift_key
+                        && try_block_cursor_shadow_root_navigation(
+                            &selection,
+                            CaretDirection::Next,
+                        )?
+                    {
+                        event.prevent_default();
+                        return Ok(true);
+                    }
+                    if !event.shift_key && try_decorator_line_navigation(&selection, false, editor)?
+                    {
+                        event.prevent_default();
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        {
+            let triggers = triggers.clone();
+            editor.register_command(
+                &KEY_ARROW_LEFT_COMMAND,
+                move |event, _| horizontal_arrow(event, true, &triggers()),
+                COMMAND_PRIORITY_EDITOR,
+            )
+        },
+        {
+            let triggers = triggers.clone();
+            editor.register_command(
+                &KEY_ARROW_RIGHT_COMMAND,
+                move |event, _| horizontal_arrow(event, false, &triggers()),
+                COMMAND_PRIORITY_EDITOR,
+            )
+        },
+        editor.register_command(
+            &KEY_BACKSPACE_COMMAND,
+            |event, editor| {
+                // A platform sends key events to the editor itself, never to
+                // a control inside a decorator, so JS's decorator
+                // pass-through ($isTargetWithinDecorator) has no
+                // counterpart.
+                match get_selection() {
+                    Some(selection) if selection.is_range() => {
+                        let range = selection.range().expect("a range selection");
+                        if is_selection_collapsed_at_front_of_indented_block(&range)? {
+                            event.prevent_default();
+                            return editor.dispatch_command(&OUTDENT_CONTENT_COMMAND, ());
+                        }
+                    }
+                    Some(_) => {}
+                    None => return Ok(false),
+                }
+                event.prevent_default();
+                editor.dispatch_command(&DELETE_CHARACTER_COMMAND, true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &KEY_DELETE_COMMAND,
+            |event, editor| {
+                if get_selection().is_none() {
+                    return Ok(false);
+                }
+                event.prevent_default();
+                editor.dispatch_command(&DELETE_CHARACTER_COMMAND, false)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
             &SELECT_ALL_COMMAND,
             |_, _| {
                 // Scoped to the slot frame the caret is in, if any: a
@@ -955,6 +1827,71 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
                     _ => {
                         select_all()?;
                     }
+                }
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &DROP_COMMAND,
+            |event, editor| {
+                let (_, files, _) = event_files(FilesEvent::Drag(event));
+                if !files.is_empty() {
+                    if let Some(caret) = caret_from_event(event, editor) {
+                        let selection =
+                            set_selection_from_caret_range(&get_collapsed_caret_range(caret))?;
+                        normalize_selection(&selection)?;
+                        set_selection(Some(selection));
+                    }
+                    // The drop point does not always resolve to a caret; the
+                    // files are forwarded regardless, or the drop would be
+                    // discarded.
+                    editor.dispatch_command(&DRAG_DROP_PASTE, files)?;
+                    event.prevent_default();
+                    return Ok(true);
+                }
+                handle_rich_text_drop(event, editor)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &DRAGSTART_COMMAND,
+            |event, editor| {
+                let (is_file_transfer, _, _) = event_files(FilesEvent::Drag(event));
+                let selection = range_selection();
+                if is_file_transfer && selection.is_none() {
+                    return Ok(false);
+                }
+                if let Some(selection) = selection
+                    && !selection.range().is_some_and(|r| r.is_collapsed())
+                    && let Some(data_transfer) = &event.data_transfer
+                {
+                    // Lexical's own serialization lets custom nodes survive a
+                    // drop back into a Lexical editor; the marker lets another
+                    // editor remove the source range.
+                    set_lexical_clipboard_data_transfer(
+                        data_transfer,
+                        &get_clipboard_data_from_selection(Some(&selection))?,
+                    );
+                    write_drag_source_to_data_transfer(data_transfer, editor);
+                }
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &DRAGOVER_COMMAND,
+            |event, editor| {
+                let (is_file_transfer, _, _) = event_files(FilesEvent::Drag(event));
+                if is_file_transfer && range_selection().is_none() {
+                    return Ok(false);
+                }
+                // Only a decorator, which shows no drop caret, cancels the
+                // dragover; text drags keep the platform's drop handling.
+                if caret_from_event(event, editor)
+                    .is_some_and(|caret| caret.origin().is_decorator())
+                {
+                    event.prevent_default();
                 }
                 Ok(true)
             },
@@ -981,12 +1918,130 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
         ),
         editor.register_command(
             &PASTE_COMMAND,
-            |event, editor| {
+            move |event, editor| {
+                let (_, files, has_text_content) = event_files(FilesEvent::Paste(event));
+                if (should_handle_paste_as_files().0)(&files, has_text_content)
+                    && editor.dispatch_command(&DRAG_DROP_PASTE, files)?
+                {
+                    return Ok(true);
+                }
                 if get_selection().is_some() {
                     on_paste_for_rich_text(event, editor)?;
                     return Ok(true);
                 }
                 Ok(false)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        {
+            let triggers = triggers.clone();
+            editor.register_command(
+                &KEY_SPACE_COMMAND,
+                move |_, _| {
+                    if let Some(selection) = range_selection() {
+                        escape_formats_for_trigger(
+                            &selection,
+                            EscapeFormatTrigger::Space,
+                            EscapeDirection::Both,
+                            &triggers(),
+                        )?;
+                    }
+                    Ok(false)
+                },
+                COMMAND_PRIORITY_EDITOR,
+            )
+        },
+        editor.register_command(
+            &KEY_TAB_COMMAND,
+            move |_, _| {
+                if let Some(selection) = range_selection() {
+                    escape_formats_for_trigger(
+                        &selection,
+                        EscapeFormatTrigger::Tab,
+                        EscapeDirection::Both,
+                        &triggers(),
+                    )?;
+                }
+                Ok(false)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &MOVE_TO_END,
+            |event, _| {
+                let selection = get_selection();
+                if let Some(selection) = selection.as_ref().filter(|s| s.is_node()) {
+                    return promote_node_selection_to_block_edge(selection, false, event);
+                }
+                let Some(selection) = selection.filter(SelectionRef::is_range) else {
+                    return Ok(false);
+                };
+                let anchor = selection.point(Which::Anchor).expect("a range selection");
+                if anchor.point_type != PointType::Element || anchor.offset != 0 {
+                    return Ok(false);
+                }
+                let element = anchor.get_node()?;
+                if !element.is_element() {
+                    return Ok(false);
+                }
+                if !element
+                    .get_first_child()
+                    .is_some_and(|child| child.is_decorator() && child.is_inline())
+                {
+                    return Ok(false);
+                }
+                // The platform's caret stops at an inline decorator at
+                // element offset 0, so move it here; `selectEnd` handles
+                // every last-descendant case.
+                let ending = element.select_end()?;
+                if event.shift_key {
+                    ending.point_set(Which::Anchor, element.get_key(), 0, PointType::Element)?;
+                }
+                event.prevent_default();
+                event.stop_propagation();
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &MOVE_TO_START,
+            |event, _| {
+                let selection = get_selection();
+                if let Some(selection) = selection.as_ref().filter(|s| s.is_node()) {
+                    return promote_node_selection_to_block_edge(selection, true, event);
+                }
+                let Some(selection) = selection.filter(SelectionRef::is_range) else {
+                    return Ok(false);
+                };
+                let range = selection.range().expect("a range selection");
+                let (anchor, focus) = (&range.anchor, &range.focus);
+                let Some(focus_block) = nearest_block(&focus.get_node()?) else {
+                    return Ok(false);
+                };
+                if !focus_block
+                    .get_first_child()
+                    .is_some_and(|child| child.is_decorator() && child.is_inline())
+                {
+                    return Ok(false);
+                }
+                // Cross-block selections fall through to the platform.
+                if nearest_block(&anchor.get_node()?).as_ref() != Some(&focus_block) {
+                    return Ok(false);
+                }
+                let block_key = focus_block.get_key();
+                if focus.point_type == PointType::Element
+                    && focus.key == block_key
+                    && focus.offset == 0
+                {
+                    return Ok(false);
+                }
+                selection.point_set(Which::Focus, block_key, 0, PointType::Element)?;
+                if !event.shift_key {
+                    selection.point_set(Which::Anchor, block_key, 0, PointType::Element)?;
+                }
+                event.prevent_default();
+                event.stop_propagation();
+                Ok(true)
             },
             COMMAND_PRIORITY_EDITOR,
         ),

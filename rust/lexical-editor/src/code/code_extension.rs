@@ -88,8 +88,7 @@ mod extension {
             /// tabs.
             tab_size: Option<usize>,
             /// `escapeWithArrows`: the arrow keys leave a code block with
-            /// nothing around it. Only the arrow key handlers read it, and
-            /// they wait for an input layer.
+            /// nothing around it.
             escape_with_arrows: bool,
         }
     }
@@ -116,12 +115,13 @@ mod extension {
                             return None;
                         }
                         let tab_size = stores.tab_size.value();
-                        // `registerCodeIndentation(editor, tabSize,
-                        // escapeWithArrows)`: JS reads `escapeWithArrows`
-                        // here too, for the arrow key handlers.
-                        let _ = stores.escape_with_arrows.value();
+                        let escape_with_arrows = stores.escape_with_arrows.value();
                         let editor = editor.upgrade().map(Editor)?;
-                        Some(register_code_indentation(&editor, tab_size))
+                        Some(register_code_indentation(
+                            &editor,
+                            tab_size,
+                            escape_with_arrows,
+                        ))
                     }))
                 },
             )),

@@ -309,6 +309,21 @@ final class TestExtensions {
           }
           return true
         })
+    case "RichTextExtension":
+      return try configured(
+        RichTextExtension,
+        partials(key, configs) { (p: inout Partial<RichTextConfig>, field, value) in
+          switch field {
+          case "escapeFormatTriggers":
+            p.set(\.escapeFormatTriggers, try escapeFormatTriggers(value))
+          // `shouldHandlePasteAsFiles: 'always'` pastes the files of a paste
+          // that has any.
+          case "shouldHandlePasteAsFiles" where value.stringValue == "always":
+            p.set(\.shouldHandlePasteAsFiles) { files, _ in !files.isEmpty }
+          default: return false
+          }
+          return true
+        })
     case "CodeIndentExtension":
       return try configured(
         CodeIndentExtension,
@@ -871,4 +886,33 @@ private func template(_ value: JSONValue?) -> String {
   guard let value else { return "undefined" }
   if case .string(let s) = value { return s }
   return value.stringify()
+}
+
+/// `RichTextConfig['escapeFormatTriggers']` from JSON: each format's
+/// `TriggerConfig` (booleans by trigger), or `null`.
+private func escapeFormatTriggers(_ value: JSONValue) throws -> EscapeFormatTriggerConfig {
+  guard let object = value.objectValue else { throw ScriptError("not triggers: \(value)") }
+  var config: EscapeFormatTriggerConfig = [:]
+  for (format, triggers) in object {
+    if triggers == .null {
+      config.updateValue(nil, forKey: format)
+      continue
+    }
+    guard let triggers = triggers.objectValue else { throw ScriptError("not triggers: \(value)") }
+    var trigger = TriggerConfig()
+    for (name, on) in triggers {
+      guard let on = on.boolValue else { throw ScriptError("not a trigger: \(on)") }
+      switch name {
+      case "enter": trigger.enter = on
+      case "click": trigger.click = on
+      case "arrow": trigger.arrow = on
+      case "space": trigger.space = on
+      case "tab": trigger.tab = on
+      case "onlyAtBoundary": trigger.onlyAtBoundary = on
+      default: throw ScriptError("unknown trigger \(name)")
+      }
+    }
+    config.updateValue(trigger, forKey: format)
+  }
+  return config
 }

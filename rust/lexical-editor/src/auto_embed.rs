@@ -195,6 +195,9 @@ pub struct AutoEmbedConfig {
     pub on_open_embed_modal_for_config: Option<OpenEmbedModalForConfig>,
     /// `$disableMenuFor`: no menu for a link where it returns true.
     pub disable_menu_for: Option<DisableMenuFor>,
+    /// `menuCommandPriority`: the priority of the menu's keyboard commands
+    /// (`COMMAND_PRIORITY_LOW` in JS's default).
+    pub menu_command_priority: u8,
 }
 
 /// `EmbedMatch`.
@@ -360,10 +363,11 @@ pub fn register_auto_embed(
             close_menu();
             Ok(())
         });
+    let menu_command_priority = config.menu_command_priority;
     let state = Rc::new(AutoEmbedState {
         editor: editor.clone(),
         config,
-        menu: NodeMenu::new(editor, on_select_option),
+        menu: NodeMenu::new(editor, on_select_option, menu_command_priority),
         embed_match: RefCell::new(None),
         is_single_token_paste: Cell::new(false),
         latest_check: Cell::new(0),

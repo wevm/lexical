@@ -78,13 +78,21 @@ private enum CoreCommand {
   case input(LexicalCommand<InputEvent>)
   /// A composition command and its event's type: `{data}`.
   case composition(LexicalCommand<CompositionEvent>, String)
-  /// `CLICK_COMMAND`: `{targetKey, altKey, ctrlKey, metaKey, shiftKey}`,
-  /// where JS's target is the DOM of the node `targetKey` and Swift's
-  /// `targetKey` is the key.
+  /// `CLICK_COMMAND`: `{targetKey, clientX, clientY, button, detail}` and
+  /// the modifier flags, where JS's target is the DOM of the node
+  /// `targetKey` and Swift's `targetKey` is the key.
   case mouse(LexicalCommand<MouseEvent>)
-  /// `PASTE_COMMAND`, which scripts only listen to: the keydown and
-  /// beforeinput handlers dispatch it with their event.
+  /// A drag command and its event's type: a mouse event's fields and
+  /// `dataTransfer`, `{data: {type: data...}, files: [{name, type,
+  /// text}...]}` or `null`.
+  case drag(LexicalCommand<DragEvent>, String)
+  /// `PASTE_COMMAND`: a `paste` `ClipboardEvent` of `clipboardData`, a data
+  /// transfer as a drag event's. The keydown and beforeinput handlers
+  /// dispatch it with their event.
   case paste(LexicalCommand<PasteCommandType>)
+  /// `DRAG_DROP_PASTE`, which scripts only listen to: its files are logged
+  /// as `[{name, type}...]`.
+  case files(LexicalCommand<[DataTransferFile]>)
   /// `COPY_COMMAND` and `CUT_COMMAND`, which scripts only listen to.
   case clipboardOrKeyboard(LexicalCommand<ClipboardOrKeyboardEvent?>)
   /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
@@ -100,6 +108,10 @@ private let coreCommands: [String: CoreCommand] = [
   "CLEAR_HISTORY_COMMAND": .void(CLEAR_HISTORY_COMMAND),
   "CLICK_COMMAND": .mouse(CLICK_COMMAND),
   "BEFORE_INPUT_COMMAND": .input(BEFORE_INPUT_COMMAND),
+  "DRAGEND_COMMAND": .drag(DRAGEND_COMMAND, "dragend"),
+  "DRAGOVER_COMMAND": .drag(DRAGOVER_COMMAND, "dragover"),
+  "DRAGSTART_COMMAND": .drag(DRAGSTART_COMMAND, "dragstart"),
+  "DROP_COMMAND": .drag(DROP_COMMAND, "drop"),
   "COMPOSITION_END_COMMAND": .composition(COMPOSITION_END_COMMAND, "compositionend"),
   "COMPOSITION_START_COMMAND": .composition(COMPOSITION_START_COMMAND, "compositionstart"),
   "CONTROLLED_TEXT_INSERTION_COMMAND": .string(CONTROLLED_TEXT_INSERTION_COMMAND),
@@ -144,6 +156,7 @@ private let coreCommands: [String: CoreCommand] = [
   "TOGGLE_LINK_COMMAND": .toggleLink(TOGGLE_LINK_COMMAND),
   "INSERT_EMBED_COMMAND": .string(INSERT_EMBED_COMMAND),
   "INSERT_HORIZONTAL_RULE_COMMAND": .void(INSERT_HORIZONTAL_RULE_COMMAND),
+  "DRAG_DROP_PASTE": .files(DRAG_DROP_PASTE),
 ]
 
 /// `TestDecoratorBlockNode` in ops.ts: a `DecoratorBlockNode` that adds
@@ -382,20 +395,6 @@ private func keyboardEvent(_ payload: JSONValue) throws -> KeyboardEvent {
     shiftKey: flag("shiftKey"))
 }
 
-/// `eventPayload`'s `MouseEvent`: a cancelable `click` of the modifier
-/// flags of a JSON object, whose target is the node `targetKey` (none when
-/// it is absent or `null`). JS's target is `editor.getElementByKey`, which
-/// the click scripts reach through a root element.
-private func mouseEvent(_ payload: JSONValue) throws -> MouseEvent {
-  guard let object = payload.objectValue else {
-    throw ScriptError("\(payload) is not a mouse event")
-  }
-  let flag = { (key: String) in object[key]?.boolValue == true }
-  return MouseEvent(
-    altKey: flag("altKey"), ctrlKey: flag("ctrlKey"), metaKey: flag("metaKey"),
-    shiftKey: flag("shiftKey"), targetKey: object["targetKey"]?.stringValue)
-}
-
 /// `eventPayload`'s `InputEvent`: a cancelable `beforeinput` of
 /// `inputType`, with `data` when it is a string.
 private func inputEvent(_ payload: JSONValue) throws -> InputEvent {
@@ -404,6 +403,66 @@ private func inputEvent(_ payload: JSONValue) throws -> InputEvent {
   }
   return InputEvent(
     inputType: object["inputType"]?.stringValue ?? "undefined", data: object["data"]?.stringValue)
+}
+
+/// `eventPayload`'s `MouseEvent` fields: `clientX`, `clientY`, `button`,
+/// `detail` and the modifier flags of a JSON object, whose target is the
+/// node `targetKey` (none when it is absent or `null`). JS's target is
+/// `editor.getElementByKey`, which the click scripts reach through a root
+/// element.
+private func mouseEvent(_ type: String, _ payload: JSONValue) throws -> MouseEvent {
+  guard let object = payload.objectValue else {
+    throw ScriptError("\(payload) is not a mouse event")
+  }
+  let flag = { (key: String) in object[key]?.boolValue == true }
+  return MouseEvent(
+    type, clientX: object["clientX"]?.numberValue ?? 0,
+    clientY: object["clientY"]?.numberValue ?? 0,
+    button: object["button"]?.int ?? 0, detail: object["detail"]?.int ?? 1,
+    altKey: flag("altKey"), ctrlKey: flag("ctrlKey"), metaKey: flag("metaKey"),
+    shiftKey: flag("shiftKey"), targetKey: object["targetKey"]?.stringValue)
+}
+
+/// `scriptDataTransfer`: a data transfer's JSON, `{data: {type: data...},
+/// files: [{name, type, text}...]}`, or `nil` for anything else (`null`).
+private func scriptDataTransfer(_ json: JSONValue?) throws -> DataTransfer? {
+  guard let object = json?.objectValue else { return nil }
+  let dataTransfer = DataTransfer()
+  for (type, value) in object["data"]?.objectValue ?? JSONObject() {
+    dataTransfer.setData(type, try value.stringValue.orThrow())
+  }
+  dataTransfer.files = try (object["files"]?.arrayValue ?? []).map { file in
+    DataTransferFile(
+      name: try file["name"]?.stringValue.orThrow() ?? "",
+      type: try file["type"]?.stringValue.orThrow() ?? "",
+      data: Array((file["text"]?.stringValue ?? "").utf8))
+  }
+  return dataTransfer
+}
+
+/// `['dataTransfer', [[type, data]...]]` of what a drag event's data
+/// transfer carries: the drag marker of this editor
+/// (`application/x-lexical-drag` of its `editorKey`), whose key is random,
+/// as `'<this editor>'`.
+private func dataTransferEntry(_ dataTransfer: DataTransfer, _ editor: Editor) -> JSONValue {
+  let types = dataTransfer.types.filter { $0 != "Files" }
+  return .array([
+    .string("dataTransfer"),
+    .array(
+      types.map { type in
+        let data = dataTransfer.getData(type)
+        let thisEditor =
+          type == "application/x-lexical-drag"
+          && (try? JSONValue.parse(data))?["editorKey"]?.stringValue == editor.getKey()
+        return .array([.string(type), .string(thisEditor ? "<this editor>" : data)])
+      }),
+  ])
+}
+
+/// `payloadJson` of files: `[{name, type}...]`.
+private func filesJSON(_ files: [DataTransferFile]) -> JSONValue {
+  .array(
+    files.map { .object(JSONObject([("name", .string($0.name)), ("type", .string($0.type))])) })
 }
 
 /// `payloadJson` of a `KeyboardEvent`, its keys in order; a keyboard event
@@ -438,15 +497,21 @@ private func noJSON(_ event: DOMEvent) -> ScriptError {
   ScriptError("no JSON for a \(event.type) event")
 }
 
+/// What a dispatch did: whether a handler handled it, whether the event
+/// the payload became had its default prevented, and for a drag event with
+/// a data transfer, its `['dataTransfer', ...]` entry (`dataTransferEntry`).
+private typealias Dispatched = (handled: Bool, defaultPrevented: Bool?, dataTransfer: JSONValue?)
+
 /// What `dispatchLogged` logs of a dispatch: `['dispatched', name,
 /// handled]`, then `['defaultPrevented', prevented]` when the payload
-/// became an event.
-private func logDispatched(
-  _ ctx: ScriptContext, _ name: String, _ dispatched: (handled: Bool, defaultPrevented: Bool?)
-) {
+/// became an event, then a drag event's `['dataTransfer', ...]`.
+private func logDispatched(_ ctx: ScriptContext, _ name: String, _ dispatched: Dispatched) {
   ctx.log.append(.array([.string("dispatched"), .string(name), .bool(dispatched.handled)]))
   if let prevented = dispatched.defaultPrevented {
     ctx.log.append(.array([.string("defaultPrevented"), .bool(prevented)]))
+  }
+  if let entry = dispatched.dataTransfer {
+    ctx.log.append(entry)
   }
 }
 
@@ -650,35 +715,45 @@ private final class ScriptContext {
 
   /// `editor.dispatchCommand(command(ctx, name), payload)`, and whether the
   /// event the payload became had its default prevented.
-  func dispatch(
-    _ name: String, _ payload: JSONValue
-  ) throws -> (
-    handled: Bool, defaultPrevented: Bool?
-  ) {
+  func dispatch(_ name: String, _ payload: JSONValue) throws -> Dispatched {
     switch coreCommands[name] {
     case .keyboard(let command):
       if payload == .null {
-        return (try editor.dispatchCommand(command, KeyboardEvent("")), nil)
+        return (try editor.dispatchCommand(command, KeyboardEvent("")), nil, nil)
       }
       let event = try keyboardEvent(payload)
-      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented, nil)
     case .key(let command) where payload != .null:
       let event = try keyboardEvent(payload)
-      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented, nil)
     case .input(let command):
       let event = try inputEvent(payload)
-      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
-    case .mouse(let command):
-      let event = try mouseEvent(payload)
-      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented, nil)
     case .composition(let command, let type):
       guard let object = payload.objectValue else {
         throw ScriptError("\(name) takes a composition event")
       }
       let event = CompositionEvent(type, data: object["data"]?.stringValue ?? "")
-      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented, nil)
+    case .mouse(let command):
+      let event = try mouseEvent("click", payload)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented, nil)
+    case .drag(let command, let type):
+      let mouse = try mouseEvent(type, payload)
+      let dataTransfer = try scriptDataTransfer(payload["dataTransfer"])
+      let event = DragEvent(
+        type, dataTransfer: dataTransfer, clientX: mouse.clientX, clientY: mouse.clientY)
+      let handled = try editor.dispatchCommand(command, event)
+      return (handled, event.defaultPrevented, dataTransfer.map { dataTransferEntry($0, editor) })
+    case .paste(let command):
+      guard let object = payload.objectValue else {
+        throw ScriptError("\(name) takes a clipboard event")
+      }
+      let event = ClipboardEvent(
+        "paste", clipboardData: try scriptDataTransfer(object["clipboardData"]))
+      return (try editor.dispatchCommand(command, .clipboard(event)), event.defaultPrevented, nil)
     default:
-      return (try dispatchJSON(name, payload), nil)
+      return (try dispatchJSON(name, payload), nil, nil)
     }
   }
 
@@ -698,7 +773,7 @@ private final class ScriptContext {
     case .key(let command):
       guard payload == .null else { throw ScriptError("\(name) takes no payload") }
       return try editor.dispatchCommand(command, nil)
-    case .keyboard, .input, .composition, .mouse, .paste, .clipboardOrKeyboard:
+    case .keyboard, .input, .composition, .mouse, .drag, .paste, .files, .clipboardOrKeyboard:
       throw ScriptError("\(payload) is not a payload \(name) takes")
     case .listStart(let command):
       return try editor.dispatchCommand(command, try listStart(payload))
@@ -763,6 +838,11 @@ private final class ScriptContext {
           case .clipboard(let event)?: throw noJSON(event)
           }
         }, priority)
+    case .drag(let command, _):
+      return editor.registerCommand(command, { payload, _ in throw noJSON(payload) }, priority)
+    case .files(let command):
+      return editor.registerCommand(
+        command, { payload, _ in try listener(filesJSON(payload)) }, priority)
     case .listStart(let command):
       return editor.registerCommand(
         command,

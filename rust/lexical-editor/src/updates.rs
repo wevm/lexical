@@ -107,6 +107,15 @@ pub(crate) fn error_on_read_only() {
     }
 }
 
+/// `$flushSyncAfterUpdate()`: the running update commits when it ends, as
+/// a discrete one does, rather than at the next read or discrete update.
+#[cfg_attr(not(feature = "rich-text"), allow(dead_code))]
+pub(crate) fn flush_sync_after_update() {
+    let editor_state = get_active_editor_state();
+    error_on_read_only();
+    editor_state.0.flush_sync.set(true);
+}
+
 /// `$onUpdate(updateFn)` (`LexicalUtils.ts`): runs `update_fn` once the
 /// update that is running commits, after its listeners.
 pub fn on_update(update_fn: impl FnOnce() + 'static) {

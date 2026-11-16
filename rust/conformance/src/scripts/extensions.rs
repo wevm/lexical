@@ -99,6 +99,34 @@ fn https_only(url: &str) -> bool {
     url.starts_with("https://")
 }
 
+/// `RichTextConfig['escapeFormatTriggers']` from JSON: each format's
+/// `TriggerConfig` (booleans by trigger), or `null`, in key order.
+fn escape_format_triggers_of(value: &Value) -> Option<rich_text::EscapeFormatTriggerConfig> {
+    value
+        .as_object()?
+        .iter()
+        .map(|(format, triggers)| {
+            if triggers.is_null() {
+                return Some((format.to_owned(), None));
+            }
+            let mut config = rich_text::TriggerConfig::default();
+            for (trigger, on) in triggers.as_object()?.iter() {
+                let on = Some(on.as_bool()?);
+                match trigger {
+                    "enter" => config.enter = on,
+                    "click" => config.click = on,
+                    "arrow" => config.arrow = on,
+                    "space" => config.space = on,
+                    "tab" => config.tab = on,
+                    "onlyAtBoundary" => config.only_at_boundary = on,
+                    _ => return None,
+                }
+            }
+            Some((format.to_owned(), Some(config)))
+        })
+        .collect()
+}
+
 /// `PREFILLED_HISTORY_STATE`.
 const PREFILLED_HISTORY_STATE: &str = r#"{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"prefilled","type":"text","version":1}],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}"#;
 
@@ -264,6 +292,29 @@ fn real_configured(
                     _ => unknown(field, v)?,
                 }
             }),
+        ),
+        "RichTextExtension" => config_extension(
+            &rich_text::rich_text_extension(),
+            overrides!(
+                rich_text::RichTextConfigOverrides,
+                |o, field, v| match field {
+                    "escapeFormatTriggers" => {
+                        o.escape_format_triggers = Some(
+                            escape_format_triggers_of(v)
+                                .ok_or_else(|| bad_config(key, field, v))?,
+                        )
+                    }
+                    // `shouldHandlePasteAsFiles: 'always'` pastes the files of a
+                    // paste that has any.
+                    "shouldHandlePasteAsFiles" if v.as_str() == Some("always") => {
+                        o.should_handle_paste_as_files =
+                            Some(rich_text::ShouldHandlePasteAsFiles(Rc::new(|files, _| {
+                                !files.is_empty()
+                            })))
+                    }
+                    _ => unknown(field, v)?,
+                }
+            ),
         ),
         "CodeIndentExtension" => config_extension(
             &code::code_indent_extension(),

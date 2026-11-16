@@ -10,6 +10,7 @@ import type {SerializedLexicalNode} from 'lexical';
 import {expect, test} from 'vitest';
 
 import {eventScripts} from './eventScripts';
+import {keyHandlerScripts} from './keyHandlerScripts';
 import {
   type Action,
   type CodeHighlightSpec,
@@ -8497,5 +8498,16 @@ test('scripts/horizontal-rule', () => {
         ],
       },
     ],
+  );
+});
+
+test('scripts/key-handlers', () => {
+  // The packages' handlers of the commands the core's keydown handler
+  // dispatches, and of a click, a paste and drag and drop (see
+  // keyHandlerScripts.ts).
+  emit(
+    'key-handlers',
+    "The packages' handlers of the key commands (arrows, Backspace, Delete, Escape, Space, Tab, MOVE_TO_START, MOVE_TO_END), clicks, pastes and drag and drop: rich and plain text, the list's Backspace, code indentation, TabIndentationExtension and the link's paste of a URL.",
+    keyHandlerScripts(),
   );
 });

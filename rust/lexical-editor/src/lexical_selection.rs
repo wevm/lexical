@@ -157,6 +157,13 @@ impl NodeSelection {
     pub fn has(&self, key: &str) -> bool {
         self.nodes.contains(key)
     }
+
+    /// `clear()`: no node is selected.
+    pub fn clear(&mut self) {
+        self.dirty = true;
+        self.nodes = OrderedSet::new();
+        self.cached_nodes = None;
+    }
 }
 
 /// A selection's value.
@@ -241,6 +248,11 @@ impl SelectionRef {
     /// `nodeSelection.delete(key)`; nothing on a range selection.
     pub fn delete(&self, key: &str) {
         self.with_node(|n| n.delete(key));
+    }
+
+    /// `nodeSelection.clear()`; nothing on a range selection.
+    pub fn clear(&self) {
+        self.with_node(NodeSelection::clear);
     }
 
     /// A node selection's keys, in the order added; empty for a range

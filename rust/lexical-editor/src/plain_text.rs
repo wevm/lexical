@@ -2,21 +2,28 @@
 //! command handlers that act on the model, from
 //! `packages/lexical-plain-text/src/index.ts`.
 //!
-//! Its copy, cut and paste handlers read the `DataTransfer` of the
-//! platform's clipboard event. The handlers of the other DOM events (the
-//! arrow keys, Backspace, Delete, Enter, drop and drag) wait for an input
-//! layer. With the `extension` feature, [`plain_text_extension`] is
+//! Its key handlers take the keys the core's keydown handler dispatches;
+//! its copy, cut and paste handlers read the `DataTransfer` of the
+//! platform's clipboard event, and its drop and drag handlers the drag's.
+//! With the `extension` feature, [`plain_text_extension`] is
 //! `PlainTextExtension`.
 
+use crate::clipboard::{handle_plain_text_drop, write_drag_source_to_data_transfer};
 use crate::commands::{
     CONTROLLED_TEXT_INSERTION_COMMAND, DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND,
     DELETE_WORD_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, KEY_ENTER_COMMAND,
     REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND,
 };
 use crate::commands::{COPY_COMMAND, CUT_COMMAND, PASTE_COMMAND};
+use crate::commands::{
+    DRAGSTART_COMMAND, DROP_COMMAND, KEY_ARROW_LEFT_COMMAND, KEY_ARROW_RIGHT_COMMAND,
+    KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND,
+};
 use crate::editor::COMMAND_PRIORITY_EDITOR;
+use crate::events::KeyboardEvent;
 use crate::events::{ClipboardOrKeyboardEvent, PasteCommandType};
 use crate::lexical_selection::{SelectionRef, get_selection};
+use crate::selection::{move_character, should_override_default_character_selection};
 use crate::selection_insert_nodes::select_all;
 use crate::{CUT_TAG, PASTE_TAG, UpdateOptions};
 use crate::{Editor, LexicalError, Unregister};
@@ -132,13 +139,34 @@ fn on_range<P: 'static>(
     )
 }
 
-/// `registerPlainText(editor)`: registers the plain text command handlers
-/// that act on the model, at `COMMAND_PRIORITY_EDITOR`, and returns what
-/// unregisters them. Enter (`KEY_ENTER_COMMAND` and
-/// `INSERT_PARAGRAPH_COMMAND`) inserts a line
-/// break. `CONTROLLED_TEXT_INSERTION_COMMAND` takes only the string form,
-/// and `SELECT_ALL_COMMAND` selects the whole document, or the slot frame
-/// the caret is in.
+/// `KEY_ARROW_LEFT_COMMAND` (`is_backward`) and `KEY_ARROW_RIGHT_COMMAND`:
+/// Lexical moves the caret (`$moveCharacter`) where the platform can't
+/// (`$shouldOverrideDefaultCharacterSelection`).
+fn horizontal_arrow(event: &KeyboardEvent, is_backward: bool) -> Result<bool, LexicalError> {
+    let Some(selection) = range_selection() else {
+        return Ok(false);
+    };
+    let range = selection.range().expect("a range selection");
+    if should_override_default_character_selection(&range, is_backward)? {
+        event.prevent_default();
+        move_character(&selection, event.shift_key, is_backward)?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
+/// `registerPlainText(editor)`: registers the plain text command handlers,
+/// at `COMMAND_PRIORITY_EDITOR`, and returns what unregisters them. Enter
+/// (`KEY_ENTER_COMMAND` and `INSERT_PARAGRAPH_COMMAND`) inserts a line
+/// break; Backspace and Delete dispatch `DELETE_CHARACTER_COMMAND`; the
+/// left and right arrows move across decorators and blocks, as rich text's
+/// do. JS's `IS_IOS`/`IS_SAFARI` returns that leave Backspace and Enter to
+/// `beforeinput` have no counterpart. `CONTROLLED_TEXT_INSERTION_COMMAND`
+/// takes only the string form, and `SELECT_ALL_COMMAND` selects the whole
+/// document, or the slot frame the caret is in. A drop of a drag that
+/// started in a Lexical editor is inserted as text at the drop point
+/// (`$handlePlainTextDrop`), and a drag start of a selection marks the
+/// drag's data with the editor.
 pub fn register_plain_text(editor: &Editor) -> Unregister {
     let unregisters: Vec<Unregister> = vec![
         on_range(
@@ -168,6 +196,38 @@ pub fn register_plain_text(editor: &Editor) -> Unregister {
         on_range(editor, &INSERT_PARAGRAPH_COMMAND, |selection, _| {
             selection.insert_line_break(false)
         }),
+        editor.register_command(
+            &KEY_ARROW_LEFT_COMMAND,
+            |event, _| horizontal_arrow(event, true),
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &KEY_ARROW_RIGHT_COMMAND,
+            |event, _| horizontal_arrow(event, false),
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &KEY_BACKSPACE_COMMAND,
+            |event, editor| {
+                if range_selection().is_none() {
+                    return Ok(false);
+                }
+                event.prevent_default();
+                editor.dispatch_command(&DELETE_CHARACTER_COMMAND, true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &KEY_DELETE_COMMAND,
+            |event, editor| {
+                if range_selection().is_none() {
+                    return Ok(false);
+                }
+                event.prevent_default();
+                editor.dispatch_command(&DELETE_CHARACTER_COMMAND, false)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
         editor.register_command(
             &KEY_ENTER_COMMAND,
             |event, editor| {
@@ -224,6 +284,28 @@ pub fn register_plain_text(editor: &Editor) -> Unregister {
         on_range(editor, &PASTE_COMMAND, |_, event| {
             on_paste_for_plain_text(event)
         }),
+        editor.register_command(
+            &DROP_COMMAND,
+            |event, editor| handle_plain_text_drop(event, editor),
+            COMMAND_PRIORITY_EDITOR,
+        ),
+        editor.register_command(
+            &DRAGSTART_COMMAND,
+            |event, editor| {
+                let Some(selection) = range_selection() else {
+                    return Ok(false);
+                };
+                // Mark the drag source so a drop in another editor can
+                // remove the source range.
+                if !selection.range().is_some_and(|r| r.is_collapsed())
+                    && let Some(data_transfer) = &event.data_transfer
+                {
+                    write_drag_source_to_data_transfer(data_transfer, editor);
+                }
+                Ok(true)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        ),
     ];
     Box::new(move || {
         for unregister in unregisters {

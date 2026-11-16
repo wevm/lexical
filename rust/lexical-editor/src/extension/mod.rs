@@ -40,7 +40,7 @@
 //! `WatchEditable`, `HMR`; rust/PARITY.md).
 
 mod auto_focus_extension;
-mod block_handles;
+pub(crate) mod block_handles;
 mod block_id_extension;
 mod clear_editor_extension;
 mod click_after_last_block_extension;
@@ -55,14 +55,14 @@ mod horizontal_rule_extension;
 mod ime_extension;
 mod initial_state_extension;
 mod keyboard_shortcuts_extension;
-mod lexical_builder;
+pub(crate) mod lexical_builder;
 mod named_signals;
 mod nested_editor_extension;
 mod node_selection_extension;
 mod node_structure_extension;
 mod normalize_inline_elements_extension;
 mod normalize_triple_click_selection_extension;
-mod positional_block_id;
+pub(crate) mod positional_block_id;
 mod root_element_extension;
 mod select_block_extension;
 pub mod signals;

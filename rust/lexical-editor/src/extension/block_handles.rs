@@ -87,10 +87,20 @@ fn lower_bound(sorted: &[String], value: &str) -> usize {
     sorted.partition_point(|key| crate::utf16::cmp(key, value) == Ordering::Less)
 }
 
+#[cfg(test)]
+thread_local! {
+    /// How many times [`build_handle_table`] has run on this thread, which
+    /// the unit tests spy on as JS's `vi.mock` of `buildHandleTable` does.
+    pub(crate) static BUILD_HANDLE_TABLE_CALLS: std::cell::Cell<usize> =
+        const { std::cell::Cell::new(0) };
+}
+
 /// `buildHandleTable(ids)`: the handles of `ids` (duplicates allowed), in
 /// O(n log n): after sorting their hash keys, only a key's neighbours can
 /// share a longer prefix with it than any other key.
 pub(crate) fn build_handle_table<'a>(ids: impl IntoIterator<Item = &'a str>) -> HandleTable {
+    #[cfg(test)]
+    BUILD_HANDLE_TABLE_CALLS.with(|calls| calls.set(calls.get() + 1));
     let mut ids_of_key: OrderedMap<Vec<String>> = OrderedMap::new();
     let mut seen = crate::ordered::OrderedSet::new();
     for id in ids {

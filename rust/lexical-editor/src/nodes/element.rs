@@ -490,22 +490,16 @@ pub fn update_from_json(data: &mut ElementData, json: &crate::json::Object) {
 }
 
 /// `ElementNode.splice(start, deleteCount, nodesToInsert)`, which nodes that
-/// override it call as `super.splice`. The root takes only elements
-/// (`RootNode.splice`).
+/// override it call as `super.splice`, and code that bypasses an override
+/// (`ElementNode.prototype.splice.call`), as the node structure
+/// normalization's `$append` does, calls directly. `RootNode.splice`'s check
+/// is the root's own override.
 pub fn splice(
     this: &NodeRef,
     start: usize,
     delete_count: usize,
     nodes_to_insert: &[NodeRef],
 ) -> Result<(), LexicalError> {
-    if this.is_root() {
-        for node in nodes_to_insert {
-            invariant!(
-                node.is_element() || node.is_decorator(),
-                "rootNode.splice: Only element or decorator nodes can be inserted to the root node"
-            );
-        }
-    }
     let old_size = this.get_children_size();
     get_writable(this.get_key());
     invariant!(

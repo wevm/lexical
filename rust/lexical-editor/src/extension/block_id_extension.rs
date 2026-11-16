@@ -38,7 +38,7 @@ use crate::ordered::{OrderedMap, OrderedSet};
 use crate::slot::{
     get_slot, get_slot_host, get_slot_name_within_host, get_slot_names, slots_field,
 };
-use crate::updates::{get_active_editor, read_editor_state};
+use crate::updates::{get_active_editor, internal_get_active_editor_state, read_editor_state};
 use crate::{
     COLLABORATION_TAG, Editor, HISTORIC_TAG, HISTORY_MERGE_TAG, LexicalError, NodeRef, Unregister,
     UpdateListenerPayload, UpdateOptions, get_node_by_key, get_root, has_update_tag,
@@ -326,6 +326,7 @@ pub fn generate_block_id() -> String {
     let mut bits = [
         state.hash_one((count, nanos, 0u8)),
         state.hash_one((count, nanos, 1u8)),
+        state.hash_one((count, nanos, 2u8)),
     ];
     let mut id = String::with_capacity(ID_LENGTH);
     for i in 0..ID_LENGTH {
@@ -527,7 +528,17 @@ impl BlockIdIndex {
 struct HandleView {
     table: HandleTable,
     scan: Option<OrderedMap<Vec<NodeKey>>>,
+    /// `frozenLookup`'s memo: the block of each id looked up, per frozen
+    /// state it was asked about (JS's `WeakMap`, keyed weakly here too).
+    frozen: FrozenLookups,
 }
+
+type FrozenLookups = RefCell<
+    Vec<(
+        Weak<crate::editor_state::EditorStateInner>,
+        HashMap<String, Option<NodeRef>>,
+    )>,
+>;
 
 /// A generated id given to a block created in the same update, and the id
 /// it gave up for it, if it was a copy that yielded to the block it was
@@ -1710,7 +1721,11 @@ fn get_handle_view(
             return Ok(view.clone());
         }
         let table = build_handle_table(runtime.index.borrow().keys_of_id.keys());
-        let view = Rc::new(HandleView { table, scan: None });
+        let view = Rc::new(HandleView {
+            table,
+            scan: None,
+            frozen: RefCell::default(),
+        });
         *runtime.handles.borrow_mut() = Some((view.clone(), version));
         return Ok(view);
     }
@@ -1742,13 +1757,55 @@ fn get_handle_view(
     let view = Rc::new(HandleView {
         table,
         scan: Some(keys_of_id),
+        frozen: RefCell::default(),
     });
     *runtime.scan.borrow_mut() = Some((view.clone(), committed));
     Ok(view)
 }
 
-/// The live block of `id` among the blocks `view` sees.
+/// The live block of `id` among the blocks `view` sees, remembered per id
+/// for each frozen state it is asked about (a read of a committed state;
+/// JS's `frozenLookup`), so that reading the handle of every holder of a
+/// repeated id costs the holders once, not once per holder. While the
+/// active state is not frozen (an update), it looks every time.
 fn lookup(
+    runtime: &BlockIdRuntime,
+    view: &HandleView,
+    id: &str,
+) -> Result<Option<NodeRef>, LexicalError> {
+    let Some(state) = internal_get_active_editor_state().filter(|s| s.0.read_only.get()) else {
+        return lookup_now(runtime, view, id);
+    };
+    {
+        let mut frozen = view.frozen.borrow_mut();
+        frozen.retain(|(state, _)| state.strong_count() > 0);
+        if let Some(node) = frozen
+            .iter()
+            .find(|(s, _)| std::ptr::eq(s.as_ptr(), Rc::as_ptr(&state.0)))
+            .and_then(|(_, found)| found.get(id))
+        {
+            return Ok(node.clone());
+        }
+    }
+    let node = lookup_now(runtime, view, id)?;
+    let mut frozen = view.frozen.borrow_mut();
+    match frozen
+        .iter_mut()
+        .find(|(s, _)| std::ptr::eq(s.as_ptr(), Rc::as_ptr(&state.0)))
+    {
+        Some((_, found)) => {
+            found.insert(id.to_owned(), node.clone());
+        }
+        None => frozen.push((
+            Rc::downgrade(&state.0),
+            HashMap::from([(id.to_owned(), node.clone())]),
+        )),
+    }
+    Ok(node)
+}
+
+/// `$lookup(id)`, unremembered.
+fn lookup_now(
     runtime: &BlockIdRuntime,
     view: &HandleView,
     id: &str,

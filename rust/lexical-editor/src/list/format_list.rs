@@ -360,6 +360,12 @@ pub fn remove_list() -> Result<(), LexicalError> {
     }
 
     for list_node in &list_nodes {
+        // A list occupying a named slot is left as-is: unwinding it would
+        // insert siblings through the tree API (which would fail) and vacate
+        // a slot whose assignment the node or extension that owns it manages.
+        if crate::slot::get_slot_host(list_node).is_some() {
+            continue;
+        }
         let mut insertion_point = list_node.clone();
         for list_item_node in get_all_list_items(list_node) {
             let (format, style) = selection

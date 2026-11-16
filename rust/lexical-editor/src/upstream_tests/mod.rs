@@ -4,6 +4,8 @@
 //! Shared helpers live in `support`.
 
 mod lexical;
+#[cfg(feature = "extension")]
+mod lexical_extension;
 #[cfg(feature = "hashtag")]
 mod lexical_hashtag;
 mod lexical_headless;

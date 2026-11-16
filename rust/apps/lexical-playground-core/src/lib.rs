@@ -795,6 +795,29 @@ fn floor_char_boundary(s: &str, byte: usize) -> usize {
     byte
 }
 
+/// The modifier keys held for a key press: a `KeyboardEvent`'s `altKey`,
+/// `ctrlKey`, `metaKey` and `shiftKey`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct KeyModifiers {
+    pub alt: bool,
+    pub ctrl: bool,
+    pub meta: bool,
+    pub shift: bool,
+}
+
+impl KeyModifiers {
+    /// The platform's shortcut modifier, as `CONTROL_OR_META` reads it: ⌘
+    /// on Apple platforms, Ctrl elsewhere.
+    pub fn primary() -> Self {
+        let apple = lexical::is_apple();
+        KeyModifiers {
+            ctrl: !apple,
+            meta: apple,
+            ..KeyModifiers::default()
+        }
+    }
+}
+
 /// One edit's outcome.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Outcome {
@@ -997,6 +1020,38 @@ impl Playground {
     /// `INSERT_PARAGRAPH_COMMAND`, so a list item's handler runs.
     pub fn insert_paragraph(&mut self) -> Outcome {
         self.dispatch("KEY_ENTER_COMMAND", None)
+    }
+
+    /// A key press, as the app's own key event: `KEY_DOWN_COMMAND` with a
+    /// `KeyboardEvent` of the DOM's `key` (`"b"`, `"Enter"`) and `code`
+    /// (`"KeyB"`), which the core's handler (`$handleKeyDown`) turns into
+    /// the command the key stands for: a format, undo and redo, select
+    /// all, the deletion and Enter commands. Also returns whether a handler
+    /// prevented the key's default, in which case the app must not act on
+    /// the key itself.
+    pub fn key_down(&mut self, key: &str, code: &str, modifiers: KeyModifiers) -> (Outcome, bool) {
+        let mut event = Object::new();
+        event.insert("altKey", modifiers.alt.into());
+        event.insert("code", code.into());
+        event.insert("ctrlKey", modifiers.ctrl.into());
+        event.insert("key", key.into());
+        event.insert("metaKey", modifiers.meta.into());
+        event.insert("shiftKey", modifiers.shift.into());
+        let outcome = self.dispatch("KEY_DOWN_COMMAND", Some(event.into()));
+        // The dispatch logs `['defaultPrevented', prevented]` after it.
+        let prevented = outcome.error.is_none()
+            && self
+                .results
+                .last()
+                .and_then(|result| result.get("log"))
+                .and_then(Value::as_array)
+                .and_then(|log| log.last())
+                .and_then(Value::as_array)
+                .is_some_and(|entry| {
+                    entry.first().and_then(Value::as_str) == Some("defaultPrevented")
+                        && entry.get(1).and_then(Value::as_bool) == Some(true)
+                });
+        (outcome, prevented)
     }
 
     /// Shift-Enter: `INSERT_LINE_BREAK_COMMAND`.

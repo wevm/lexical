@@ -1,7 +1,10 @@
-//! `LexicalNormalization.ts`: merging adjacent simple text nodes. A
-//! headless editor never composes, so the composition holds don't apply.
+//! `LexicalNormalization.ts`: merging adjacent simple text nodes, except
+//! into or out of the node being composed in an update tagged
+//! `defer-composition-merge`. (`$isEmptyCompositionTarget` is desktop
+//! WebKit's, so always false here.)
 
 use crate::LexicalError;
+use crate::editor::DEFER_COMPOSITION_MERGE_TAG;
 use crate::node::NodeRef;
 use crate::node_state::node_states_are_equivalent;
 use crate::updates::get_active_editor;
@@ -50,12 +53,35 @@ pub(crate) fn normalize_text_node(text_node: &NodeRef) -> Result<(), LexicalErro
         return Ok(());
     }
 
+    // An update tagged DEFER_COMPOSITION_MERGE_TAG never merges text into
+    // or out of the node being composed. Once such a merge was held back,
+    // later updates of the same composition hold it back too. The nodes
+    // merge when the composition ends.
+    let editor = get_active_editor();
+    let composition_key = editor.as_ref().and_then(|e| e.composition_key());
+    let hold_composition = editor.as_ref().is_some_and(|editor| {
+        composition_key.is_some()
+            && (*editor.0.composition_merge_held.borrow() == composition_key
+                || editor.0.tags.borrow().contains(DEFER_COMPOSITION_MERGE_TAG))
+    });
+    let holds_merge = |node1: &NodeRef, node2: &NodeRef| {
+        let key = composition_key.as_deref();
+        if let Some(editor) = editor.as_ref().filter(|_| hold_composition)
+            && (Some(node1.get_key()) == key || Some(node2.get_key()) == key)
+            && can_simple_text_nodes_be_merged(node1, node2)
+        {
+            *editor.0.composition_merge_held.borrow_mut() = composition_key.clone();
+            return true;
+        }
+        false
+    };
+
     // Backward
     while let Some(previous) = node.get_previous_sibling().filter(is_mergeable_simple_text) {
         if previous.get_text_content().is_empty() {
             previous.remove(false)?;
         } else {
-            if can_simple_text_nodes_be_merged(&previous, &node) {
+            if !holds_merge(&previous, &node) && can_simple_text_nodes_be_merged(&previous, &node) {
                 node = merge_text_nodes(&previous, &node)?;
             }
             break;
@@ -67,7 +93,7 @@ pub(crate) fn normalize_text_node(text_node: &NodeRef) -> Result<(), LexicalErro
         if next.get_text_content().is_empty() {
             next.remove(false)?;
         } else {
-            if can_simple_text_nodes_be_merged(&node, &next) {
+            if !holds_merge(&node, &next) && can_simple_text_nodes_be_merged(&node, &next) {
                 merge_text_nodes(&node, &next)?;
             }
             break;

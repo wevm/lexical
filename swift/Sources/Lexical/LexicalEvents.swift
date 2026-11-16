@@ -710,10 +710,11 @@ func buildKeyDownShortcuts() -> [KeyDownShortcut] {
 }
 
 /// `$handleKeyDown`: turns a key-down into the command it stands for.
-/// Always reports the event as handled, as in JS.
+/// Always reports the event as handled, as in JS. A key with no name (JS
+/// returns early only for none at all) still reaches `KEY_MODIFIER_COMMAND`,
+/// and `onKeyDown` (the views' `keyDown`) records the last key.
 func handleKeyDown(_ event: KeyboardEvent, _: Editor) throws -> Bool {
   let editor = try getActiveEditor()
-  if event.key.isEmpty { return true }
   let isApple = IS_APPLE
   let compiled: CompiledKeyboardShortcuts<KeyDownShortcut>
   if let cached = editor._keyDownShortcuts, cached.isApple == isApple {
@@ -722,7 +723,6 @@ func handleKeyDown(_ event: KeyboardEvent, _: Editor) throws -> Bool {
     compiled = try compileKeyboardShortcuts(buildKeyDownShortcuts())
     editor._keyDownShortcuts = (isApple, compiled)
   }
-  editor._inputState.lastKeyCode = event.key
   if let shortcut = compiled.match(event) {
     try shortcut.onMatch(event, editor)
   }
@@ -819,7 +819,9 @@ func handleBeforeInput(_ event: InputEvent, _: Editor) throws -> Bool {
       }
       try setSelection(prevSelection.clone())
     }
-    if try getSelection() is RangeSelection {
+    // The selection read before, as in JS: one taken from the previous
+    // update is only restored, and nothing is deleted.
+    if selection is RangeSelection {
       try setCompositionKey(nil)
       event.preventDefault()
       try dispatchCommand(editor, DELETE_CHARACTER_COMMAND, true)

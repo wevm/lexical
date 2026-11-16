@@ -1,9 +1,9 @@
 //! `insertText` from `LexicalSelection.ts` (`$insertText`,
 //! `$insertTextAtPoint` and their helpers).
 //!
-//! A headless editor never composes, so `$getCompositionKey()` is always
-//! `null` and `isComposing()` always false: the composition branches are
-//! left out, each noted where JS has it. Without the text edit log,
+//! While an input method composes (`$getCompositionKey()`), text goes into
+//! the composed node and the anchor stays before it, as in JS, where the
+//! browser has already drawn it. Without the text edit log,
 //! `$recordDeleted` and `$recordTextInserted` do nothing; `$carryNodeState`
 //! gives a segmented node's replacement its NodeState as in JS.
 
@@ -11,12 +11,14 @@ use crate::LexicalError;
 use crate::caret::{CaretDirection, get_sibling_caret};
 use crate::error::invariant;
 use crate::lexical_selection::{PointType, SelectionRef, Which, get_selection, set_selection};
+use crate::lexical_utils::get_composition_key;
 use crate::node::NodeRef;
 use crate::node_state::carry_node_state;
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::nodes::paragraph::{ParagraphNode, create_paragraph_node};
 use crate::nodes::tab::TabNode;
 use crate::nodes::text::create_text_node;
+use crate::updates::get_active_editor;
 
 impl SelectionRef {
     /// `selection.insertText(text)`: inserts `text` at a range selection,
@@ -80,15 +82,16 @@ fn insert_text(selection: &SelectionRef, text: &str) -> Result<(), LexicalError>
         if text.is_empty() {
             return Ok(());
         }
-        // `$getCompositionKey()` is always null headless, so JS never falls
-        // through to the collapsed code here.
-        if selection.point(Which::Anchor).expect("a range").point_type == PointType::Element {
-            transfer_starting_element_point_to_text_point(selection, format, &style)?;
+        if get_composition_key().is_none() {
+            if selection.point(Which::Anchor).expect("a range").point_type == PointType::Element {
+                transfer_starting_element_point_to_text_point(selection, format, &style)?;
+            }
+            return insert_text_at_point(selection, text, format, &style);
         }
-        return insert_text_at_point(selection, text, format, &style);
+        // Composing: fall through to the collapsed code below.
     }
 
-    if range.anchor.point_type == PointType::Element {
+    if selection.point(Which::Anchor).expect("a range").point_type == PointType::Element {
         transfer_starting_element_point_to_text_point(selection, format, &style)?;
     }
 
@@ -120,8 +123,19 @@ fn insert_text(selection: &SelectionRef, text: &str) -> Result<(), LexicalError>
         // Segmented node with cursor in the middle: convert to normal
         // text node so that the recursive insertText can proceed.
         if anchor_node.is_segmented() && offset != 0 && offset != anchor_size {
-            // JS sets the node's mode to normal instead while composing,
-            // which a headless editor never does.
+            if get_composition_key().is_some() {
+                anchor_node.set_mode("normal")?;
+                anchor_node.set_format(format);
+                anchor_node.set_style(&style);
+                if let Some(editor) = get_active_editor() {
+                    editor.0.input_state.borrow_mut().composed_segmented_key =
+                        Some(anchor_node.get_key().to_owned());
+                }
+                if !text.is_empty() {
+                    insert_text(selection, text)?;
+                }
+                return Ok(());
+            }
             let anchor_data = anchor_node.text_data();
             let replacement = create_text_node(anchor_data.get_text());
             replacement.set_format(format);
@@ -223,8 +237,25 @@ fn insert_text(selection: &SelectionRef, text: &str) -> Result<(), LexicalError>
     }
 
     anchor_node.splice_text(offset as i64, 0, text, true)?;
-    // JS moves the anchor back over the text when the node is composing,
-    // which it never is headless.
+    move_anchor_back_if_composing(selection, &anchor_node, text)
+}
+
+/// While `node` is composed, the anchor goes back over the text just
+/// inserted, which the browser has drawn as the composition.
+fn move_anchor_back_if_composing(
+    selection: &SelectionRef,
+    node: &NodeRef,
+    text: &str,
+) -> Result<(), LexicalError> {
+    let anchor = selection.point(Which::Anchor).expect("a range selection");
+    if node.is_composing() && anchor.point_type == PointType::Text {
+        selection.point_set(
+            Which::Anchor,
+            &anchor.key,
+            anchor.offset.saturating_sub(crate::utf16::len(text)),
+            anchor.point_type,
+        )?;
+    }
     Ok(())
 }
 
@@ -279,9 +310,7 @@ fn insert_text_at_point(
         anchor_node.remove(false)?;
     }
     text_node.select_end()?;
-    // JS moves the anchor back over the text when the node is composing,
-    // which it never is headless.
-    Ok(())
+    move_anchor_back_if_composing(selection, &text_node, text)
 }
 
 /// `$transferStartingElementPointToTextPoint(start, end, format, style)`

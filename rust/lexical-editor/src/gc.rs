@@ -190,4 +190,13 @@ pub(crate) fn garbage_collect_detached_nodes(
     for key in node_map_delete {
         node_map.remove(&key);
     }
+    // Clear the composition key if it points at a node that just got
+    // collected, so `isComposing()` doesn't keep reporting true.
+    let mut composition_key = editor.0.composition_key.borrow_mut();
+    if composition_key
+        .as_ref()
+        .is_some_and(|key| !node_map.contains_key(key))
+    {
+        *composition_key = None;
+    }
 }

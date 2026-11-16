@@ -70,6 +70,14 @@ use lexical::rich_text::{HeadingTagType, create_heading_node, create_quote_node,
 use lexical::selection::{self, set_blocks_type};
 use lexical::utils;
 use lexical::{
+    BEFORE_INPUT_COMMAND, COMPOSITION_END_COMMAND, COMPOSITION_START_COMMAND, COPY_COMMAND,
+    CUT_COMMAND, ClipboardOrKeyboardEvent, CompositionEvent, Event, InputEvent,
+    KEY_ARROW_DOWN_COMMAND, KEY_ARROW_LEFT_COMMAND, KEY_ARROW_RIGHT_COMMAND, KEY_ARROW_UP_COMMAND,
+    KEY_BACKSPACE_COMMAND, KEY_DELETE_COMMAND, KEY_DOWN_COMMAND, KEY_ESCAPE_COMMAND,
+    KEY_MODIFIER_COMMAND, KEY_SPACE_COMMAND, KEY_TAB_COMMAND, MOVE_TO_END, MOVE_TO_START,
+    PASTE_COMMAND, PasteCommandType, with_is_apple,
+};
+use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
     COMMAND_PRIORITY_EDITOR, CONTROLLED_TEXT_INSERTION_COMMAND, CaretDirection, CreateEditorArgs,
     DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, DataTransfer, Direction,
@@ -466,11 +474,34 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
         "INSERT_LINE_BREAK_COMMAND" => ScriptCommand::Bool(INSERT_LINE_BREAK_COMMAND),
         "INSERT_PARAGRAPH_COMMAND" => ScriptCommand::Void(INSERT_PARAGRAPH_COMMAND),
         "INSERT_TAB_COMMAND" => ScriptCommand::Void(INSERT_TAB_COMMAND),
+        "BEFORE_INPUT_COMMAND" => ScriptCommand::Input(BEFORE_INPUT_COMMAND),
+        "COMPOSITION_END_COMMAND" => {
+            ScriptCommand::Composition(COMPOSITION_END_COMMAND, "compositionend")
+        }
+        "COMPOSITION_START_COMMAND" => {
+            ScriptCommand::Composition(COMPOSITION_START_COMMAND, "compositionstart")
+        }
+        "COPY_COMMAND" => ScriptCommand::ClipboardOrKeyboard(COPY_COMMAND),
+        "CUT_COMMAND" => ScriptCommand::ClipboardOrKeyboard(CUT_COMMAND),
+        "KEY_ARROW_DOWN_COMMAND" => ScriptCommand::Keyboard(KEY_ARROW_DOWN_COMMAND),
+        "KEY_ARROW_LEFT_COMMAND" => ScriptCommand::Keyboard(KEY_ARROW_LEFT_COMMAND),
+        "KEY_ARROW_RIGHT_COMMAND" => ScriptCommand::Keyboard(KEY_ARROW_RIGHT_COMMAND),
+        "KEY_ARROW_UP_COMMAND" => ScriptCommand::Keyboard(KEY_ARROW_UP_COMMAND),
+        "KEY_BACKSPACE_COMMAND" => ScriptCommand::Keyboard(KEY_BACKSPACE_COMMAND),
+        "KEY_DELETE_COMMAND" => ScriptCommand::Keyboard(KEY_DELETE_COMMAND),
+        "KEY_DOWN_COMMAND" => ScriptCommand::Keyboard(KEY_DOWN_COMMAND),
         "KEY_ENTER_COMMAND" => ScriptCommand::Key(KEY_ENTER_COMMAND),
+        "KEY_ESCAPE_COMMAND" => ScriptCommand::Keyboard(KEY_ESCAPE_COMMAND),
+        "KEY_MODIFIER_COMMAND" => ScriptCommand::Keyboard(KEY_MODIFIER_COMMAND),
+        "KEY_SPACE_COMMAND" => ScriptCommand::Keyboard(KEY_SPACE_COMMAND),
+        "KEY_TAB_COMMAND" => ScriptCommand::Keyboard(KEY_TAB_COMMAND),
+        "MOVE_TO_END" => ScriptCommand::Keyboard(MOVE_TO_END),
+        "MOVE_TO_START" => ScriptCommand::Keyboard(MOVE_TO_START),
         "OUTDENT_CONTENT_COMMAND" => ScriptCommand::Void(OUTDENT_CONTENT_COMMAND),
+        "PASTE_COMMAND" => ScriptCommand::Paste(PASTE_COMMAND),
         "REDO_COMMAND" => ScriptCommand::Void(REDO_COMMAND),
         "REMOVE_TEXT_COMMAND" => ScriptCommand::Void(REMOVE_TEXT_COMMAND),
-        "SELECT_ALL_COMMAND" => ScriptCommand::Void(SELECT_ALL_COMMAND),
+        "SELECT_ALL_COMMAND" => ScriptCommand::Keyboard(SELECT_ALL_COMMAND),
         "SET_TEXT_FORMAT_COMMAND" => ScriptCommand::Formats(SET_TEXT_FORMAT_COMMAND),
         "UNDO_COMMAND" => ScriptCommand::Void(UNDO_COMMAND),
         "INSERT_CHECK_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_CHECK_LIST_COMMAND),
@@ -485,15 +516,32 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
 }
 
 /// A command a script names, by its payload type: Lexical's own take
-/// nothing (`void`), a boolean, a string or a map of formats to booleans,
-/// and those the script makes take any JSON.
+/// nothing (`void`), a boolean, a string, a map of formats to booleans or
+/// a DOM event, and those the script makes take any JSON.
+///
+/// A JSON object is the event it describes for the commands of ops.ts's
+/// `EVENT_COMMANDS` (`eventPayload`), and a handler logs an event as the
+/// fields Lexical reads of it (`payloadJson`).
 pub(crate) enum ScriptCommand {
     Void(LexicalCommand<()>),
     Bool(LexicalCommand<bool>),
     Str(LexicalCommand<String>),
     Formats(LexicalCommand<Vec<(String, bool)>>),
-    /// A key command: `null`, as a script can't make a `KeyboardEvent`.
-    Key(LexicalCommand<Option<KeyboardEvent>>),
+    /// A keyboard command: `{key, code, altKey, ctrlKey, metaKey,
+    /// shiftKey}`, or `null`, which JS passes on as it is: here a keyboard
+    /// event of no type, which handlers log as `null`.
+    Keyboard(LexicalCommand<Rc<KeyboardEvent>>),
+    /// `KEY_ENTER_COMMAND`: a keyboard event or `null`.
+    Key(LexicalCommand<Option<Rc<KeyboardEvent>>>),
+    /// `BEFORE_INPUT_COMMAND`: `{inputType, data}`.
+    Input(LexicalCommand<Rc<InputEvent>>),
+    /// A composition command and its event's type: `{data}`.
+    Composition(LexicalCommand<Rc<CompositionEvent>>, &'static str),
+    /// `PASTE_COMMAND`, which scripts only listen to: the keydown and
+    /// beforeinput handlers dispatch it with their event.
+    Paste(LexicalCommand<PasteCommandType>),
+    /// `COPY_COMMAND` and `CUT_COMMAND`, which scripts only listen to.
+    ClipboardOrKeyboard(LexicalCommand<Option<ClipboardOrKeyboardEvent>>),
     /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
     ListStart(LexicalCommand<list::UpdateListStartPayload>),
     /// `TOGGLE_LINK_COMMAND`: `null`, a URL, or `{url, target, rel, title}`.
@@ -574,10 +622,152 @@ fn formats_of(payload: &Value) -> Option<Vec<(String, bool)>> {
         .collect()
 }
 
+/// `eventPayload`'s `KeyboardEvent`: `key`, `code` and the modifier flags
+/// of a JSON object, cancelable.
+fn keyboard_event_of(payload: &Value) -> Option<Rc<KeyboardEvent>> {
+    let object = payload.as_object()?;
+    let string = |key: &str| {
+        object
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_owned()
+    };
+    let flag = |key: &str| object.get(key).and_then(Value::as_bool) == Some(true);
+    Some(Rc::new(KeyboardEvent {
+        key: string("key"),
+        code: string("code"),
+        alt_key: flag("altKey"),
+        ctrl_key: flag("ctrlKey"),
+        meta_key: flag("metaKey"),
+        shift_key: flag("shiftKey"),
+        ..KeyboardEvent::default()
+    }))
+}
+
+/// `eventPayload`'s `InputEvent`: a cancelable `beforeinput` of
+/// `inputType`, with `data` when it is a string.
+fn input_event_of(payload: &Value) -> Option<Rc<InputEvent>> {
+    let object = payload.as_object()?;
+    let input_type = match object.get("inputType") {
+        Some(Value::String(input_type)) => input_type.to_owned(),
+        _ => "undefined".to_owned(),
+    };
+    Some(Rc::new(InputEvent {
+        data: object
+            .get("data")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        ..InputEvent::new(&input_type)
+    }))
+}
+
+/// `payloadJson` of a `KeyboardEvent`, its keys in order; a keyboard event
+/// of no type stands for JS's `null`.
+fn keyboard_json(event: &KeyboardEvent) -> Value {
+    if event.type_.is_empty() {
+        return Value::Null;
+    }
+    let mut json = Object::new();
+    json.insert("altKey", event.alt_key.into());
+    json.insert("code", event.code.as_str().into());
+    json.insert("ctrlKey", event.ctrl_key.into());
+    json.insert("key", event.key.as_str().into());
+    json.insert("metaKey", event.meta_key.into());
+    json.insert("shiftKey", event.shift_key.into());
+    json.insert("type", event.type_.as_str().into());
+    json.into()
+}
+
+/// `payloadJson` of an `InputEvent`.
+fn input_json(event: &InputEvent) -> Value {
+    let mut json = Object::new();
+    json.insert(
+        "data",
+        event.data.as_deref().map_or(Value::Null, Value::from),
+    );
+    json.insert("inputType", event.input_type.as_str().into());
+    json.insert("type", event.type_.as_str().into());
+    json.into()
+}
+
+/// `payloadJson` of a `CompositionEvent`.
+fn composition_json(event: &CompositionEvent) -> Value {
+    let mut json = Object::new();
+    json.insert("data", event.data.as_str().into());
+    json.insert("type", event.type_.as_str().into());
+    json.into()
+}
+
+/// `payloadJson` of an event it has no JSON for, which throws in JS.
+fn no_json(event: &Event) -> LexicalError {
+    err(format!("no JSON for a {} event", event.type_))
+}
+
+/// What `dispatchLogged` logs of a dispatch: `['dispatched', name,
+/// handled]`, then `['defaultPrevented', prevented]` when the payload
+/// became an event.
+pub(crate) fn log_dispatched(
+    log: impl Fn(Vec<Value>),
+    name: &str,
+    dispatched: (bool, Option<bool>),
+) {
+    let (handled, default_prevented) = dispatched;
+    log(vec!["dispatched".into(), name.into(), handled.into()]);
+    if let Some(prevented) = default_prevented {
+        log(vec!["defaultPrevented".into(), prevented.into()]);
+    }
+}
+
 impl ScriptCommand {
-    /// `editor.dispatchCommand(command, payload)`. A payload the command
+    /// `editor.dispatchCommand(command, payload)`, and whether the event
+    /// the payload became had its default prevented. A payload the command
     /// doesn't take is an error, which JS would pass on as it is.
-    pub(crate) fn dispatch(&self, editor: &Editor, payload: Value) -> Result<bool, LexicalError> {
+    pub(crate) fn dispatch(
+        &self,
+        editor: &Editor,
+        payload: Value,
+    ) -> Result<(bool, Option<bool>), LexicalError> {
+        let not_taken = || err(format!("{payload} is not a payload this command takes"));
+        match self {
+            ScriptCommand::Keyboard(command) if payload.is_null() => {
+                let event = Rc::new(KeyboardEvent {
+                    event: Event::new(""),
+                    ..KeyboardEvent::default()
+                });
+                Ok((editor.dispatch_command(command, event)?, None))
+            }
+            ScriptCommand::Keyboard(command) => {
+                let event = keyboard_event_of(&payload).ok_or_else(not_taken)?;
+                let handled = editor.dispatch_command(command, event.clone())?;
+                Ok((handled, Some(event.default_prevented())))
+            }
+            ScriptCommand::Key(command) if !payload.is_null() => {
+                let event = keyboard_event_of(&payload).ok_or_else(not_taken)?;
+                let handled = editor.dispatch_command(command, Some(event.clone()))?;
+                Ok((handled, Some(event.default_prevented())))
+            }
+            ScriptCommand::Input(command) => {
+                let event = input_event_of(&payload).ok_or_else(not_taken)?;
+                let handled = editor.dispatch_command(command, event.clone())?;
+                Ok((handled, Some(event.default_prevented())))
+            }
+            ScriptCommand::Composition(command, type_) => {
+                let object = payload.as_object().ok_or_else(not_taken)?;
+                let data = object.get("data").and_then(Value::as_str).unwrap_or("");
+                let event = Rc::new(CompositionEvent::new(type_, data));
+                let handled = editor.dispatch_command(command, event.clone())?;
+                Ok((handled, Some(event.default_prevented())))
+            }
+            _ => self
+                .dispatch_json(editor, payload)
+                .map(|handled| (handled, None)),
+        }
+    }
+
+    /// `editor.dispatchCommand(command, payload)` of a payload that is no
+    /// event.
+    fn dispatch_json(&self, editor: &Editor, payload: Value) -> Result<bool, LexicalError> {
         match self {
             ScriptCommand::Void(command) if payload.is_null() => {
                 editor.dispatch_command(command, ())
@@ -648,9 +838,55 @@ impl ScriptCommand {
                 },
                 priority,
             ),
+            ScriptCommand::Keyboard(command) => editor.register_command(
+                command,
+                move |payload, editor| listener(&keyboard_json(payload), editor),
+                priority,
+            ),
             ScriptCommand::Key(command) => editor.register_command(
                 command,
-                move |_, editor| listener(&Value::Null, editor),
+                move |payload, editor| {
+                    listener(
+                        &payload.as_deref().map_or(Value::Null, keyboard_json),
+                        editor,
+                    )
+                },
+                priority,
+            ),
+            ScriptCommand::Input(command) => editor.register_command(
+                command,
+                move |payload, editor| listener(&input_json(payload), editor),
+                priority,
+            ),
+            ScriptCommand::Composition(command, _) => editor.register_command(
+                command,
+                move |payload, editor| listener(&composition_json(payload), editor),
+                priority,
+            ),
+            ScriptCommand::Paste(command) => editor.register_command(
+                command,
+                move |payload, editor| {
+                    let json = match payload {
+                        PasteCommandType::Input(event) => input_json(event),
+                        PasteCommandType::Keyboard(event) => keyboard_json(event),
+                        PasteCommandType::Clipboard(event) => return Err(no_json(event)),
+                    };
+                    listener(&json, editor)
+                },
+                priority,
+            ),
+            ScriptCommand::ClipboardOrKeyboard(command) => editor.register_command(
+                command,
+                move |payload, editor| {
+                    let json = match payload {
+                        None => Value::Null,
+                        Some(ClipboardOrKeyboardEvent::Keyboard(event)) => keyboard_json(event),
+                        Some(ClipboardOrKeyboardEvent::Clipboard(event)) => {
+                            return Err(no_json(event));
+                        }
+                    };
+                    listener(&json, editor)
+                },
                 priority,
             ),
             ScriptCommand::ListStart(command) => editor.register_command(
@@ -1892,8 +2128,8 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");
             let payload = action.get("payload").cloned().unwrap_or(Value::Null);
-            let handled = ctx.command(name).dispatch(editor, payload)?;
-            ctx.log(vec!["dispatched".into(), name.into(), handled.into()]);
+            let dispatched = ctx.command(name).dispatch(editor, payload)?;
+            log_dispatched(|entry| ctx.log(entry), name, dispatched);
             Ok(())
         }
         other => Err(err(format!("unsupported action {other:?}"))),
@@ -2758,8 +2994,36 @@ impl Session {
                     Value::Array(tags.into_iter().map(Value::from).collect()),
                 ]);
             });
-            // Mutation listeners only hear from the DOM reconciler, which a
-            // headless editor doesn't run, so JS logs no `mutation` entries.
+            // Mutation listeners only hear from the reconciler, which runs
+            // with a root element (`setRootElement`).
+            for node_type in ["text", "paragraph"] {
+                let log = ctx.clone();
+                let _unregister = editor
+                    .register_mutation_listener(
+                        node_type,
+                        move |mutations, _| {
+                            log.log(vec![
+                                "mutation".into(),
+                                node_type.into(),
+                                Value::Array(
+                                    mutations
+                                        .iter()
+                                        .map(|(key, mutation)| {
+                                            Value::Array(vec![
+                                                key.as_str().into(),
+                                                mutation.as_str().into(),
+                                            ])
+                                        })
+                                        .collect(),
+                                ),
+                            ]);
+                        },
+                        MutationListenerOptions {
+                            skip_initialization: true,
+                        },
+                    )
+                    .map_err(|e| e.to_string())?;
+            }
             let log = ctx.clone();
             let _unregister = editor.register_text_content_listener(move |text| {
                 log.log(vec!["textContent".into(), text.into()]);
@@ -2883,7 +3147,7 @@ impl Session {
             let payload = step.get("payload").cloned().unwrap_or(Value::Null);
             ctx.command(name)
                 .dispatch(editor, payload)
-                .map(|handled| ctx.log(vec!["dispatched".into(), name.into(), handled.into()]))
+                .map(|dispatched| log_dispatched(|entry| ctx.log(entry), name, dispatched))
         } else if let Some(on) = step.get("setRootElement").and_then(Value::as_bool) {
             let root = ctx.session_dom();
             editor.set_root_element(on.then(|| RootElementRef(root)))
@@ -2980,8 +3244,14 @@ fn nested_entry(editor: &Editor, parent: &Editor) -> Result<Value, String> {
     ]))
 }
 
-/// `scripts/*.json`: each step's result matches what JS recorded.
-pub fn check(case: &Value, _file: &Value) -> Result<Outcome, String> {
+/// `scripts/*.json`: each step's result matches what JS recorded, on the
+/// platform the script's `isApple` names (not Apple's when left out).
+pub fn check(case: &Value, file: &Value) -> Result<Outcome, String> {
+    let is_apple = case.get("isApple").and_then(Value::as_bool) == Some(true);
+    with_is_apple(is_apple, || check_case(case, file))
+}
+
+fn check_case(case: &Value, _file: &Value) -> Result<Outcome, String> {
     if let Some(part) = unported(case) {
         return Ok(Outcome::NotPorted(part));
     }

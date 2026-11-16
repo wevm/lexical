@@ -1189,6 +1189,9 @@ pub(crate) fn replace(
             }
         }
     }
+    if crate::lexical_utils::get_composition_key().as_deref() == Some(to_replace_key.as_str()) {
+        crate::lexical_utils::set_composition_key(Some(replace_with.get_key()));
+    }
     Ok(replace_with.clone())
 }
 

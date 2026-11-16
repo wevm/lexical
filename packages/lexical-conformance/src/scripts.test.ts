@@ -9,6 +9,7 @@ import type {SerializedLexicalNode} from 'lexical';
 
 import {expect, test} from 'vitest';
 
+import {eventScripts} from './eventScripts';
 import {
   type Action,
   type CodeHighlightSpec,
@@ -8296,5 +8297,18 @@ test('scripts/markdown-shortcuts', () => {
         ],
       },
     ],
+  );
+});
+
+test('scripts/events', () => {
+  // The core's own handlers of DOM events, as `registerDefaultCommandHandlers`
+  // registers them: KEY_DOWN_COMMAND (`$handleKeyDown`), BEFORE_INPUT_COMMAND
+  // (`$handleBeforeInput`) and the composition commands, off Apple platforms
+  // (`IS_APPLE` is false in Node). scriptsApple.test.ts records the keys on
+  // Apple platforms.
+  emit(
+    'events',
+    'The core handlers of KEY_DOWN_COMMAND, BEFORE_INPUT_COMMAND and the composition commands, off Apple platforms: which command each event dispatches, with which payload, and what rich text then does.',
+    eventScripts(false),
   );
 });

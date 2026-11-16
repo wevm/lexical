@@ -4,7 +4,7 @@
 //!
 //! `registerRichText`'s command handlers ([`register_rich_text`]) that act
 //! on the model, its `KEY_ENTER_COMMAND` handler, and those of copy, cut
-//! and paste, which take the `DataTransfer` of the platform's clipboard
+//! and paste, which read the `DataTransfer` of the platform's clipboard
 //! event. The handlers of the other DOM events (click, arrow keys,
 //! Backspace, Delete, Escape, Space, Tab and drag and drop) wait for an input layer, and the DOM parts
 //! (`createDOM`, `exportDOM`, `importDOM`) come with `html`. With the
@@ -23,6 +23,7 @@ use crate::commands::{
     REMOVE_TEXT_COMMAND, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND,
 };
 use crate::editor::COMMAND_PRIORITY_EDITOR;
+use crate::events::{ClipboardOrKeyboardEvent, PasteCommandType};
 use crate::generated_json::{
     export_compact_element_node, export_element_node, update_element_node,
 };
@@ -482,11 +483,13 @@ impl LexicalNode for QuoteNode {
 
 /// `onPasteForRichText(event, editor)`: in an update tagged `paste`, the
 /// clipboard data at the selection.
-fn on_paste_for_rich_text(
-    clipboard_data: Option<std::rc::Rc<crate::DataTransfer>>,
-    editor: &Editor,
-) -> Result<(), LexicalError> {
+fn on_paste_for_rich_text(event: &PasteCommandType, editor: &Editor) -> Result<(), LexicalError> {
+    event.event().prevent_default();
     let target = editor.clone();
+    let clipboard_data = match event {
+        PasteCommandType::Clipboard(event) => event.clipboard_data.clone(),
+        PasteCommandType::Input(_) | PasteCommandType::Keyboard(_) => None,
+    };
     editor.update(
         move || {
             let selection = get_selection();
@@ -508,7 +511,7 @@ fn on_paste_for_rich_text(
 /// removal takes, #5835), copies, then removes the selection, all tagged
 /// `cut`.
 fn on_cut_for_rich_text(
-    clipboard_data: Option<std::rc::Rc<crate::DataTransfer>>,
+    event: Option<&ClipboardOrKeyboardEvent>,
     editor: &Editor,
 ) -> Result<(), LexicalError> {
     let cut = || vec![CUT_TAG.to_owned()];
@@ -527,7 +530,10 @@ fn on_cut_for_rich_text(
             ..UpdateOptions::default()
         },
     )?;
-    copy_to_clipboard(editor, clipboard_data)?;
+    copy_to_clipboard(
+        editor,
+        ClipboardOrKeyboardEvent::clipboard_event(event).cloned(),
+    )?;
     editor.update(
         || {
             match get_selection() {
@@ -687,8 +693,8 @@ mod rich_text_dom {
 /// and `SELECT_ALL_COMMAND` selects the whole document, or the slot frame
 /// the caret is in.
 ///
-/// `COPY_COMMAND`, `CUT_COMMAND` and `PASTE_COMMAND` take the clipboard
-/// event's `clipboardData` (`None` for a keyboard or input event): a copy
+/// `COPY_COMMAND`, `CUT_COMMAND` and `PASTE_COMMAND` read the clipboard
+/// event's `clipboardData` (none for a keyboard or input event): a copy
 /// writes the selection to it (`copyToClipboard`), a cut copies and then
 /// removes the selection (`onCutForRichText`), and a paste inserts it with
 /// `$insertDataTransferForRichText` (`onPasteForRichText`), each in an
@@ -917,25 +923,28 @@ pub fn register_rich_text(editor: &Editor) -> Unregister {
         ),
         editor.register_command(
             &COPY_COMMAND,
-            |clipboard_data, editor| {
-                copy_to_clipboard(editor, clipboard_data.clone())?;
+            |event, editor| {
+                copy_to_clipboard(
+                    editor,
+                    ClipboardOrKeyboardEvent::clipboard_event(event.as_ref()).cloned(),
+                )?;
                 Ok(true)
             },
             COMMAND_PRIORITY_EDITOR,
         ),
         editor.register_command(
             &CUT_COMMAND,
-            |clipboard_data, editor| {
-                on_cut_for_rich_text(clipboard_data.clone(), editor)?;
+            |event, editor| {
+                on_cut_for_rich_text(event.as_ref(), editor)?;
                 Ok(true)
             },
             COMMAND_PRIORITY_EDITOR,
         ),
         editor.register_command(
             &PASTE_COMMAND,
-            |clipboard_data, editor| {
+            |event, editor| {
                 if get_selection().is_some() {
-                    on_paste_for_rich_text(clipboard_data.clone(), editor)?;
+                    on_paste_for_rich_text(event, editor)?;
                     return Ok(true);
                 }
                 Ok(false)

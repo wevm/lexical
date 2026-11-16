@@ -37,6 +37,8 @@ pub use clipboard_import_extension::{
 };
 
 use crate::commands::{InsertClipboardNodesPayload, SELECTION_INSERT_CLIPBOARD_NODES_COMMAND};
+#[cfg(feature = "rich-text")]
+use crate::events::ClipboardEvent;
 use crate::events::DataTransfer;
 use crate::json::{self, Object, Value};
 use crate::lexical_selection::SelectionRef;
@@ -622,13 +624,14 @@ pub fn set_lexical_clipboard_data_transfer(
 }
 
 /// `$copyToClipboardEvent(editor, event)` without `data`: the selection's
-/// clipboard data written to the event's `clipboardData`, unless nothing is
-/// selected. JS also declines when the DOM selection is missing or outside
-/// the editor; without a DOM the caller is the editor's own platform,
-/// which sends only the editor's copy (as in Swift). Returns whether it
-/// wrote. (Only `registerRichText` copies through it.)
+/// clipboard data written to the event's `clipboardData` (the default
+/// prevented), unless nothing is selected or the event has none. JS also
+/// declines when the DOM selection is missing or outside the editor;
+/// without a DOM the caller is the editor's own platform, which sends only
+/// the editor's copy (as in Swift). Returns whether it wrote. (Only
+/// `registerRichText` copies through it.)
 #[cfg(feature = "rich-text")]
-pub(crate) fn copy_to_clipboard_event(clipboard_data: &DataTransfer) -> Result<bool, LexicalError> {
+pub(crate) fn copy_to_clipboard_event(event: &ClipboardEvent) -> Result<bool, LexicalError> {
     let Some(selection) = get_selection() else {
         return Ok(false);
     };
@@ -636,26 +639,30 @@ pub(crate) fn copy_to_clipboard_event(clipboard_data: &DataTransfer) -> Result<b
         return Ok(false);
     }
     let data = get_clipboard_data_from_selection(Some(&selection))?;
+    event.prevent_default();
+    let Some(clipboard_data) = &event.clipboard_data else {
+        return Ok(false);
+    };
     set_lexical_clipboard_data_transfer(clipboard_data, &data);
     Ok(true)
 }
 
 /// `copyToClipboard(editor, event)` as `registerRichText`'s copy and cut
-/// handlers call it: with the event's `clipboardData`, an update that
-/// writes the selection to it (`$copyToClipboardEvent`). Without one, JS
-/// fires a `copy` event at the DOM to get one, which a headless editor
-/// can't; nothing is written. (The promise JS returns, and its guard
-/// against a copy in flight, have no counterpart.)
+/// handlers call it: with a clipboard event, an update that writes the
+/// selection to its data (`$copyToClipboardEvent`). Without one, JS fires
+/// a `copy` event at the DOM to get one, which a headless editor can't;
+/// nothing is written. (The promise JS returns, and its guard against a
+/// copy in flight, have no counterpart.)
 #[cfg(feature = "rich-text")]
 pub(crate) fn copy_to_clipboard(
     editor: &Editor,
-    clipboard_data: Option<std::rc::Rc<DataTransfer>>,
+    event: Option<std::rc::Rc<ClipboardEvent>>,
 ) -> Result<(), LexicalError> {
-    let Some(clipboard_data) = clipboard_data else {
+    let Some(event) = event else {
         return Ok(());
     };
     editor.update(
-        move || copy_to_clipboard_event(&clipboard_data).map(|_| ()),
+        move || copy_to_clipboard_event(&event).map(|_| ()),
         crate::UpdateOptions::default(),
     )
 }
@@ -663,10 +670,26 @@ pub(crate) fn copy_to_clipboard(
 #[cfg(all(test, feature = "rich-text", feature = "plain-text"))]
 mod tests {
     use crate::{
-        COPY_COMMAND, CUT_COMMAND, CreateEditorArgs, DataTransfer, Editor, PASTE_COMMAND,
-        UpdateOptions, create_editor, create_paragraph_node, create_text_node, get_root,
+        COPY_COMMAND, CUT_COMMAND, ClipboardEvent, ClipboardOrKeyboardEvent, CreateEditorArgs,
+        DataTransfer, Editor, KeyboardEvent, PASTE_COMMAND, PasteCommandType, UpdateOptions,
+        create_editor, create_paragraph_node, create_text_node, get_root,
     };
     use std::rc::Rc;
+
+    /// A `copy` or `cut` clipboard event carrying `data`.
+    fn clipboard_event(type_: &str, data: &Rc<DataTransfer>) -> Rc<ClipboardEvent> {
+        Rc::new(ClipboardEvent::new(type_, Some(data.clone())))
+    }
+
+    fn copy(type_: &str, data: &Rc<DataTransfer>) -> Option<ClipboardOrKeyboardEvent> {
+        Some(ClipboardOrKeyboardEvent::Clipboard(clipboard_event(
+            type_, data,
+        )))
+    }
+
+    fn paste(data: &Rc<DataTransfer>) -> PasteCommandType {
+        PasteCommandType::Clipboard(clipboard_event("paste", data))
+    }
 
     /// An editor holding `hello world`, with `world` selected.
     fn editor(register: fn(&Editor) -> crate::Unregister) -> Editor {
@@ -705,11 +728,16 @@ mod tests {
     fn rich_text_copy_cut_and_paste() {
         let editor = editor(crate::rich_text::register_rich_text);
         let clipboard = Rc::new(DataTransfer::new());
+        let event = clipboard_event("copy", &clipboard);
         assert!(
             editor
-                .dispatch_command(&COPY_COMMAND, Some(clipboard.clone()))
+                .dispatch_command(
+                    &COPY_COMMAND,
+                    Some(ClipboardOrKeyboardEvent::Clipboard(event.clone()))
+                )
                 .unwrap()
         );
+        assert!(event.default_prevented());
         assert_eq!(text(&editor), "hello world");
         #[cfg(not(feature = "html"))]
         assert_eq!(
@@ -736,14 +764,20 @@ mod tests {
         let cut = Rc::new(DataTransfer::new());
         assert!(
             editor
-                .dispatch_command(&CUT_COMMAND, Some(cut.clone()))
+                .dispatch_command(&CUT_COMMAND, copy("cut", &cut))
                 .unwrap()
         );
         assert_eq!(text(&editor), "hello ");
         assert_eq!(cut.get_data("text/plain"), "world");
 
-        assert!(editor.dispatch_command(&PASTE_COMMAND, Some(cut)).unwrap());
-        assert!(editor.dispatch_command(&PASTE_COMMAND, None).unwrap());
+        assert!(
+            editor
+                .dispatch_command(&PASTE_COMMAND, paste(&cut))
+                .unwrap()
+        );
+        // A paste by a key event carries no data.
+        let key = PasteCommandType::Keyboard(Rc::new(KeyboardEvent::default()));
+        assert!(editor.dispatch_command(&PASTE_COMMAND, key).unwrap());
         assert_eq!(text(&editor), "hello world");
     }
 
@@ -756,7 +790,7 @@ mod tests {
         let clipboard = Rc::new(DataTransfer::new());
         assert!(
             editor
-                .dispatch_command(&CUT_COMMAND, Some(clipboard.clone()))
+                .dispatch_command(&CUT_COMMAND, copy("cut", &clipboard))
                 .unwrap()
         );
         assert_eq!(text(&editor), "hello ");
@@ -774,7 +808,7 @@ mod tests {
         clipboard.set_data("text/plain", "there\nyou");
         assert!(
             editor
-                .dispatch_command(&PASTE_COMMAND, Some(clipboard))
+                .dispatch_command(&PASTE_COMMAND, paste(&clipboard))
                 .unwrap()
         );
         assert_eq!(text(&editor), "hello there\nyou");

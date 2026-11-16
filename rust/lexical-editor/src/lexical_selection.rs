@@ -411,10 +411,13 @@ impl SelectionRef {
             point_type.as_str()
         );
         let read_only = is_currently_read_only_mode();
+        let old_key = self.point(which).map(|p| p.key);
+        if !read_only && old_key.is_some() && crate::lexical_utils::get_composition_key() == old_key
+        {
+            crate::lexical_utils::set_composition_key(Some(key));
+        }
         self.with_range(|r| {
             *r.point_mut(which) = Point::new(key, offset, point_type);
-            // The composition key follows the point once composition is
-            // ported; a headless editor never composes.
             if !read_only {
                 r.cached_nodes = None;
                 r.cached_is_backward = None;

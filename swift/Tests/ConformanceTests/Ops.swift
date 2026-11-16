@@ -58,19 +58,31 @@ struct StepRecord {
 
 /// `CORE_COMMANDS` in ops.ts: Lexical's own commands, which `dispatch` and
 /// handlers name as JS exports them. Their payloads are typed in Swift, so
-/// the script's JSON payload is converted on the way in and out.
+/// the script's JSON payload is converted on the way in and out. For the
+/// commands of ops.ts's `EVENT_COMMANDS`, a JSON object is the event it
+/// describes (`eventPayload`), and a handler logs an event as the fields
+/// Lexical reads of it (`payloadJson`).
 private enum CoreCommand {
   case void(LexicalCommand<Void>)
   case bool(LexicalCommand<Bool>)
   case string(LexicalCommand<String>)
   /// `SET_TEXT_FORMAT_COMMAND`: an object of booleans, in key order.
   case formats(LexicalCommand<[(TextFormatType, Bool)]>)
-  /// `SELECT_ALL_COMMAND`, whose keyboard event no handler reads; ops.ts
-  /// dispatches it with `null`.
+  /// A keyboard command: `{key, code, altKey, ctrlKey, metaKey, shiftKey}`,
+  /// or `null`, which JS passes on as it is: here a keyboard event of no
+  /// type, which handlers log as `null`.
   case keyboard(LexicalCommand<KeyboardEvent>)
-  /// `KEY_ENTER_COMMAND`, which takes a keyboard event or `null`; ops.ts
-  /// dispatches it with `null`.
+  /// `KEY_ENTER_COMMAND`: a keyboard event or `null`.
   case key(LexicalCommand<KeyboardEvent?>)
+  /// `BEFORE_INPUT_COMMAND`: `{inputType, data}`.
+  case input(LexicalCommand<InputEvent>)
+  /// A composition command and its event's type: `{data}`.
+  case composition(LexicalCommand<CompositionEvent>, String)
+  /// `PASTE_COMMAND`, which scripts only listen to: the keydown and
+  /// beforeinput handlers dispatch it with their event.
+  case paste(LexicalCommand<PasteCommandType>)
+  /// `COPY_COMMAND` and `CUT_COMMAND`, which scripts only listen to.
+  case clipboardOrKeyboard(LexicalCommand<ClipboardOrKeyboardEvent?>)
   /// `UPDATE_LIST_START_COMMAND`: `{listNodeKey, newStart}`.
   case listStart(LexicalCommand<UpdateListStartPayload>)
   /// `TOGGLE_LINK_COMMAND`: `null`, a URL, or `{url, target, rel, title}`.
@@ -82,7 +94,12 @@ private let coreCommands: [String: CoreCommand] = [
   "CAN_UNDO_COMMAND": .bool(CAN_UNDO_COMMAND),
   "CLEAR_EDITOR_COMMAND": .void(CLEAR_EDITOR_COMMAND),
   "CLEAR_HISTORY_COMMAND": .void(CLEAR_HISTORY_COMMAND),
+  "BEFORE_INPUT_COMMAND": .input(BEFORE_INPUT_COMMAND),
+  "COMPOSITION_END_COMMAND": .composition(COMPOSITION_END_COMMAND, "compositionend"),
+  "COMPOSITION_START_COMMAND": .composition(COMPOSITION_START_COMMAND, "compositionstart"),
   "CONTROLLED_TEXT_INSERTION_COMMAND": .string(CONTROLLED_TEXT_INSERTION_COMMAND),
+  "COPY_COMMAND": .clipboardOrKeyboard(COPY_COMMAND),
+  "CUT_COMMAND": .clipboardOrKeyboard(CUT_COMMAND),
   "DELETE_CHARACTER_COMMAND": .bool(DELETE_CHARACTER_COMMAND),
   "DELETE_LINE_COMMAND": .bool(DELETE_LINE_COMMAND),
   "DELETE_WORD_COMMAND": .bool(DELETE_WORD_COMMAND),
@@ -92,8 +109,22 @@ private let coreCommands: [String: CoreCommand] = [
   "INSERT_LINE_BREAK_COMMAND": .bool(INSERT_LINE_BREAK_COMMAND),
   "INSERT_PARAGRAPH_COMMAND": .void(INSERT_PARAGRAPH_COMMAND),
   "INSERT_TAB_COMMAND": .void(INSERT_TAB_COMMAND),
+  "KEY_ARROW_DOWN_COMMAND": .keyboard(KEY_ARROW_DOWN_COMMAND),
+  "KEY_ARROW_LEFT_COMMAND": .keyboard(KEY_ARROW_LEFT_COMMAND),
+  "KEY_ARROW_RIGHT_COMMAND": .keyboard(KEY_ARROW_RIGHT_COMMAND),
+  "KEY_ARROW_UP_COMMAND": .keyboard(KEY_ARROW_UP_COMMAND),
+  "KEY_BACKSPACE_COMMAND": .keyboard(KEY_BACKSPACE_COMMAND),
+  "KEY_DELETE_COMMAND": .keyboard(KEY_DELETE_COMMAND),
+  "KEY_DOWN_COMMAND": .keyboard(KEY_DOWN_COMMAND),
   "KEY_ENTER_COMMAND": .key(KEY_ENTER_COMMAND),
+  "KEY_ESCAPE_COMMAND": .keyboard(KEY_ESCAPE_COMMAND),
+  "KEY_MODIFIER_COMMAND": .keyboard(KEY_MODIFIER_COMMAND),
+  "KEY_SPACE_COMMAND": .keyboard(KEY_SPACE_COMMAND),
+  "KEY_TAB_COMMAND": .keyboard(KEY_TAB_COMMAND),
+  "MOVE_TO_END": .keyboard(MOVE_TO_END),
+  "MOVE_TO_START": .keyboard(MOVE_TO_START),
   "OUTDENT_CONTENT_COMMAND": .void(OUTDENT_CONTENT_COMMAND),
+  "PASTE_COMMAND": .paste(PASTE_COMMAND),
   "REDO_COMMAND": .void(REDO_COMMAND),
   "REMOVE_TEXT_COMMAND": .void(REMOVE_TEXT_COMMAND),
   "SELECT_ALL_COMMAND": .keyboard(SELECT_ALL_COMMAND),
@@ -279,6 +310,73 @@ private func toggleLinkPayload(_ payload: JSONValue) throws -> ToggleLinkPayload
     url: try object["url"]?.stringValue.orThrow() ?? "",
     LinkAttributes(
       rel: try attribute("rel"), target: try attribute("target"), title: try attribute("title")))
+}
+
+/// `eventPayload`'s `KeyboardEvent`: `key`, `code` and the modifier flags
+/// of a JSON object, cancelable.
+private func keyboardEvent(_ payload: JSONValue) throws -> KeyboardEvent {
+  guard let object = payload.objectValue else {
+    throw ScriptError("\(payload) is not a keyboard event")
+  }
+  let flag = { (key: String) in object[key]?.boolValue == true }
+  return KeyboardEvent(
+    key: object["key"]?.stringValue ?? "", code: object["code"]?.stringValue ?? "",
+    altKey: flag("altKey"), ctrlKey: flag("ctrlKey"), metaKey: flag("metaKey"),
+    shiftKey: flag("shiftKey"))
+}
+
+/// `eventPayload`'s `InputEvent`: a cancelable `beforeinput` of
+/// `inputType`, with `data` when it is a string.
+private func inputEvent(_ payload: JSONValue) throws -> InputEvent {
+  guard let object = payload.objectValue else {
+    throw ScriptError("\(payload) is not an input event")
+  }
+  return InputEvent(
+    inputType: object["inputType"]?.stringValue ?? "undefined", data: object["data"]?.stringValue)
+}
+
+/// `payloadJson` of a `KeyboardEvent`, its keys in order; a keyboard event
+/// of no type stands for JS's `null`.
+private func keyboardJSON(_ event: KeyboardEvent) -> JSONValue {
+  if event.type.isEmpty { return .null }
+  return .object(
+    JSONObject([
+      ("altKey", .bool(event.altKey)), ("code", .string(event.code)),
+      ("ctrlKey", .bool(event.ctrlKey)), ("key", .string(event.key)),
+      ("metaKey", .bool(event.metaKey)), ("shiftKey", .bool(event.shiftKey)),
+      ("type", .string(event.type)),
+    ]))
+}
+
+/// `payloadJson` of an `InputEvent`.
+private func inputJSON(_ event: InputEvent) -> JSONValue {
+  .object(
+    JSONObject([
+      ("data", event.data.map { .string($0) } ?? .null), ("inputType", .string(event.inputType)),
+      ("type", .string(event.type)),
+    ]))
+}
+
+/// `payloadJson` of a `CompositionEvent`.
+private func compositionJSON(_ event: CompositionEvent) -> JSONValue {
+  .object(JSONObject([("data", .string(event.data)), ("type", .string(event.type))]))
+}
+
+/// `payloadJson` of an event it has no JSON for, which throws in JS.
+private func noJSON(_ event: DOMEvent) -> ScriptError {
+  ScriptError("no JSON for a \(event.type) event")
+}
+
+/// What `dispatchLogged` logs of a dispatch: `['dispatched', name,
+/// handled]`, then `['defaultPrevented', prevented]` when the payload
+/// became an event.
+private func logDispatched(
+  _ ctx: ScriptContext, _ name: String, _ dispatched: (handled: Bool, defaultPrevented: Bool?)
+) {
+  ctx.log.append(.array([.string("dispatched"), .string(name), .bool(dispatched.handled)]))
+  if let prevented = dispatched.defaultPrevented {
+    ctx.log.append(.array([.string("defaultPrevented"), .bool(prevented)]))
+  }
 }
 
 /// `TOGGLE_LINK_COMMAND`'s payload as JSON: `url`, then the attributes it has.
@@ -479,8 +577,40 @@ private final class ScriptContext {
     return command
   }
 
-  /// `editor.dispatchCommand(command(ctx, name), payload)`.
-  func dispatch(_ name: String, _ payload: JSONValue) throws -> Bool {
+  /// `editor.dispatchCommand(command(ctx, name), payload)`, and whether the
+  /// event the payload became had its default prevented.
+  func dispatch(
+    _ name: String, _ payload: JSONValue
+  ) throws -> (
+    handled: Bool, defaultPrevented: Bool?
+  ) {
+    switch coreCommands[name] {
+    case .keyboard(let command):
+      if payload == .null {
+        return (try editor.dispatchCommand(command, KeyboardEvent("")), nil)
+      }
+      let event = try keyboardEvent(payload)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+    case .key(let command) where payload != .null:
+      let event = try keyboardEvent(payload)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+    case .input(let command):
+      let event = try inputEvent(payload)
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+    case .composition(let command, let type):
+      guard let object = payload.objectValue else {
+        throw ScriptError("\(name) takes a composition event")
+      }
+      let event = CompositionEvent(type, data: object["data"]?.stringValue ?? "")
+      return (try editor.dispatchCommand(command, event), event.defaultPrevented)
+    default:
+      return (try dispatchJSON(name, payload), nil)
+    }
+  }
+
+  /// `editor.dispatchCommand(command(ctx, name), payload)` of a payload
+  /// that is no event.
+  private func dispatchJSON(_ name: String, _ payload: JSONValue) throws -> Bool {
     switch coreCommands[name] {
     case .void(let command):
       guard payload == .null else { throw ScriptError("\(name) takes no payload") }
@@ -491,12 +621,11 @@ private final class ScriptContext {
       return try editor.dispatchCommand(command, try payload.stringValue.orThrow())
     case .formats(let command):
       return try editor.dispatchCommand(command, try formats(payload))
-    case .keyboard(let command):
-      guard payload == .null else { throw ScriptError("\(name) takes no payload") }
-      return try editor.dispatchCommand(command, KeyboardEvent())
     case .key(let command):
       guard payload == .null else { throw ScriptError("\(name) takes no payload") }
       return try editor.dispatchCommand(command, nil)
+    case .keyboard, .input, .composition, .paste, .clipboardOrKeyboard:
+      throw ScriptError("\(payload) is not a payload \(name) takes")
     case .listStart(let command):
       return try editor.dispatchCommand(command, try listStart(payload))
     case .toggleLink(let command):
@@ -526,9 +655,37 @@ private final class ScriptContext {
         { payload, _ in try listener(.object(JSONObject(payload.map { ($0, .bool($1)) }))) },
         priority)
     case .keyboard(let command):
-      return editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
+      return editor.registerCommand(
+        command, { payload, _ in try listener(keyboardJSON(payload)) }, priority)
     case .key(let command):
-      return editor.registerCommand(command, { _, _ in try listener(.null) }, priority)
+      return editor.registerCommand(
+        command, { payload, _ in try listener(payload.map(keyboardJSON) ?? .null) }, priority)
+    case .input(let command):
+      return editor.registerCommand(
+        command, { payload, _ in try listener(inputJSON(payload)) }, priority)
+    case .composition(let command, _):
+      return editor.registerCommand(
+        command, { payload, _ in try listener(compositionJSON(payload)) }, priority)
+    case .paste(let command):
+      return editor.registerCommand(
+        command,
+        { payload, _ in
+          switch payload {
+          case .input(let event): return try listener(inputJSON(event))
+          case .keyboard(let event): return try listener(keyboardJSON(event))
+          case .clipboard(let event): throw noJSON(event)
+          }
+        }, priority)
+    case .clipboardOrKeyboard(let command):
+      return editor.registerCommand(
+        command,
+        { payload, _ in
+          switch payload {
+          case nil: return try listener(.null)
+          case .keyboard(let event)?: return try listener(keyboardJSON(event))
+          case .clipboard(let event)?: throw noJSON(event)
+          }
+        }, priority)
     case .listStart(let command):
       return editor.registerCommand(
         command,
@@ -1229,8 +1386,7 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     try mergePrevious(overflowNode)
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
-    let handled = try ctx.dispatch(name, action["payload"] ?? .null)
-    ctx.log.append(.array([.string("dispatched"), .string(name), .bool(handled)]))
+    logDispatched(ctx, name, try ctx.dispatch(name, action["payload"] ?? .null))
   default:
     guard try runSelectionUtilsAction(kind ?? "", action, ctx) else {
       throw ScriptError("unknown action \(String(describing: kind))")
@@ -1504,6 +1660,15 @@ func runScript(_ script: JSONValue) throws -> [StepRecord] {
 /// recorded (`build`: the log, then the editor's state, selection and text,
 /// or the message it threw, after which there are no steps).
 func runScriptWithBuild(_ script: JSONValue) throws -> (build: JSONValue?, steps: [StepRecord]) {
+  // On the platform the script's `isApple` names (not Apple's when left out).
+  try withIsApple(script["isApple"]?.boolValue == true) { try runScriptOnPlatform(script) }
+}
+
+private func runScriptOnPlatform(
+  _ script: JSONValue
+) throws -> (
+  build: JSONValue?, steps: [StepRecord]
+) {
   resetRandomKey()
   let ctx = ScriptContext()
   var built: TestExtensions?
@@ -1754,8 +1919,7 @@ private func runSteps(
             }
           }, EditorUpdateOptions(tag: tags, discrete: true))
       } else if let name = step["dispatch"]?.stringValue {
-        let handled = try ctx.dispatch(name, step["payload"] ?? .null)
-        ctx.log.append(.array([.string("dispatched"), .string(name), .bool(handled)]))
+        logDispatched(ctx, name, try ctx.dispatch(name, step["payload"] ?? .null))
       } else if let on = step["setRootElement"]?.boolValue {
         try editor.setRootElement(on ? ctx.sessionRoot() : nil)
       } else if let editable = step["setEditable"]?.boolValue {

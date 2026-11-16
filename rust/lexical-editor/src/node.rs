@@ -229,6 +229,12 @@ pub trait LexicalNode: NodeClone + fmt::Debug + 'static {
         Ok(false)
     }
 
+    /// `TextNode.isTextEntity()`: whether `registerLexicalTextEntity` (the
+    /// `text` feature) treats the text node as an entity. False by default.
+    fn is_text_entity(&self) -> bool {
+        false
+    }
+
     /// `ElementNode.excludeFromCopy(destination)`: whether copying (to
     /// `"clone"` or `"html"`) leaves this element out and keeps its
     /// children. `ElementNode` returns false. Nothing in the core calls it;
@@ -535,6 +541,11 @@ impl NodeRef {
     ) -> Result<bool, LexicalError> {
         self.get_latest()
             .extract_with_child(self, child, selection, destination)
+    }
+
+    /// `TextNode.isTextEntity()`.
+    pub fn is_text_entity(&self) -> bool {
+        self.get_latest().is_text_entity()
     }
 
     /// `ElementNode.excludeFromCopy(destination)`.

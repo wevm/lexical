@@ -1,10 +1,11 @@
 use crate::case::{Case, Outcome, same};
-use lexical::hashtag::{HashtagConfig, get_hashtag_match, hashtag_nodes, register_lexical_hashtag};
+use lexical::extension::{LexicalEditorWithDispose, build_editor_from_extensions};
+use lexical::hashtag::{get_hashtag_match, hashtag_extension};
 use lexical::json::{Object, Value};
 use lexical::link::{LinkMatcherResult, auto_link_email_matcher, auto_link_url_matcher};
 use lexical::{
-    CreateEditorArgs, Editor, NodeRef, UpdateOptions, create_editor, create_paragraph_node,
-    create_text_node, get_root, get_selection,
+    Editor, LexicalExtension, NodeRef, UpdateOptions, create_paragraph_node, create_text_node,
+    define_extension, get_root, get_selection,
 };
 
 /// A `LinkMatcherResult` as `JSON.stringify` writes it (the built-in
@@ -55,16 +56,15 @@ pub fn check_hashtag_match(case: &Value, _file: &Value) -> Result<Outcome, Strin
     Ok(Outcome::Pass)
 }
 
-/// The editor of `entities.test.ts`'s `build()`,
-/// `buildEditorFromExtensions` with `HashtagExtension`: its nodes and
-/// `registerLexicalHashtag` with the default config.
-fn build() -> Editor {
-    let editor = create_editor(CreateEditorArgs {
-        nodes: hashtag_nodes(),
-        ..CreateEditorArgs::default()
+/// The editor of `entities.test.ts`'s `build()`:
+/// `buildEditorFromExtensions` of an extension that depends on
+/// `HashtagExtension`.
+fn build() -> LexicalEditorWithDispose {
+    let root = define_extension(LexicalExtension::<()> {
+        dependencies: vec![hashtag_extension().into()],
+        ..LexicalExtension::new("conformance-hashtag", ())
     });
-    let _unregister = register_lexical_hashtag(&editor, HashtagConfig::default());
-    editor
+    build_editor_from_extensions(vec![root.into()]).expect("HashtagExtension builds")
 }
 
 /// A discrete `editor.update(f)`.

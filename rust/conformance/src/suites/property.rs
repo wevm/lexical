@@ -1,15 +1,22 @@
 use super::package_of;
 use crate::case::{Case, Outcome, same};
 use crate::scripts::{known_command, selection_snapshot};
-use lexical::history::{create_empty_history_state, register_history};
+use lexical::code::code_extension;
+use lexical::extension::{LexicalEditorWithDispose, build_editor_from_extensions};
+use lexical::hashtag::hashtag_extension;
+use lexical::history::{HistoryConfigOverrides, history_extension};
 use lexical::json::{self, Object, Value};
-use lexical::rich_text::{HeadingTagType, create_heading_node, create_quote_node};
+use lexical::link::link_extension;
+use lexical::list::{check_list_extension, list_extension};
+use lexical::rich_text::{
+    HeadingTagType, create_heading_node, create_quote_node, rich_text_extension,
+};
 use lexical::selection::set_blocks_type;
 use lexical::{
-    CreateEditorArgs, Editor, HISTORY_MERGE_TAG, LexicalError, NodeClass, NodeRef, Point,
-    PointType, SelectionGranularity, SelectionMovement, Unregister, UpdateOptions, Which,
-    create_editor, create_paragraph_node, create_range_selection, get_root, get_selection,
-    reset_random_key, set_selection,
+    CreateEditorArgs, Editor, HISTORY_MERGE_TAG, LexicalError, LexicalExtension, NodeClass,
+    NodeRef, Point, PointType, SelectionGranularity, SelectionMovement, UpdateOptions, Which,
+    config_extension, create_editor, create_paragraph_node, create_range_selection,
+    define_extension, get_root, get_selection, reset_random_key, set_selection,
 };
 use std::rc::Rc;
 
@@ -140,85 +147,44 @@ impl SelectionMovement for WindowWithoutSelection {
     }
 }
 
-/// `sequenceEditor()` in property.ts, without `buildEditorFromExtensions`:
-/// the nodes its extensions list, in their order, and what each registers,
-/// in the order the builder registers them (dependencies first).
-///
-/// - `RichTextExtension`: `registerRichText`. Of its dependencies only
-///   `NormalizeInlineElementsExtension` touches the model, with a transform
-///   that removes an empty inline element; `HeadingAnnounceExtension`
-///   (a mutation listener), `DragonExtension` and
-///   `NormalizeTripleClickSelectionExtension` (root listeners) do nothing
-///   without a root element, and the DOM import extensions are inert.
-/// - `ListExtension`: `registerList` with `restoreNumbering: false`;
-///   `CheckListExtension`: `registerCheckList`.
-/// - `LinkExtension`: `registerLink` with its defaults.
-/// - `HashtagExtension`: `registerLexicalHashtag`.
-/// - `CodeExtension`: its `TabNode` transform. It doesn't register
-///   `registerCodeIndentation` (`CodeIndentExtension` does, and the editor
-///   doesn't have it).
-/// - `HistoryExtension` with `{delay: 0, disabled: false}`: `registerHistory`
-///   with a fresh history state and `Date.now`.
-///
-/// Then `InitialStateExtension`, which every built editor has, gives the
-/// empty root its paragraph.
-///
-/// Returns the editor and what unregisters the history, whose entries hold
-/// the editor.
-fn sequence_editor() -> (Editor, Unregister) {
+/// `sequenceEditor()` in property.ts: `buildEditorFromExtensions` of a root
+/// extension whose dependencies are `RichTextExtension`, `ListExtension`,
+/// `CheckListExtension`, `LinkExtension`, `HashtagExtension`,
+/// `CodeExtension` and `HistoryExtension` with `{delay: 0, disabled:
+/// false}`, in that order, and whose nodes are `AutoLinkNode` and
+/// `OverflowNode`. Its `namespace: ''` and `onError` are editor options a
+/// Rust editor doesn't take (rust/PARITY.md); and the window JS gives it is
+/// the editor's selection movement.
+fn sequence_editor() -> LexicalEditorWithDispose {
     reset_random_key();
-    let editor = create_editor(CreateEditorArgs {
-        nodes: [
-            lexical::rich_text::rich_text_nodes(),
-            lexical::list::list_nodes(),
-            vec![NodeClass::of::<lexical::link::LinkNode>()],
-            lexical::hashtag::hashtag_nodes(),
-            lexical::code::code_nodes(),
-            vec![NodeClass::of::<lexical::link::AutoLinkNode>()],
-            lexical::overflow::overflow_nodes(),
-        ]
-        .concat(),
-        ..CreateEditorArgs::default()
+    let root = define_extension(LexicalExtension::<()> {
+        dependencies: vec![
+            rich_text_extension().into(),
+            list_extension().into(),
+            check_list_extension().into(),
+            link_extension().into(),
+            hashtag_extension().into(),
+            code_extension().into(),
+            // No time-based merging, so history doesn't depend on the clock.
+            config_extension(
+                &history_extension(),
+                [HistoryConfigOverrides {
+                    delay: Some(0.0),
+                    disabled: Some(false),
+                    ..HistoryConfigOverrides::default()
+                }],
+            ),
+        ],
+        nodes: vec![
+            NodeClass::of::<lexical::link::AutoLinkNode>(),
+            NodeClass::of::<lexical::overflow::OverflowNode>(),
+        ],
+        ..LexicalExtension::new("[root]", ())
     });
-    // Registered for the editor's life; dropping an unregister function
-    // doesn't call it.
-    let _unregister = lexical::extension::register_normalize_inline_elements(&editor);
-    let _unregister = lexical::rich_text::register_rich_text(&editor);
-    let _unregister =
-        lexical::list::register_list(&editor, lexical::list::RegisterListOptions::default());
-    let _unregister = lexical::list::register_check_list(&editor);
-    let _unregister = lexical::link::register_link(&editor, lexical::link::LinkConfig::default());
-    let _unregister = lexical::hashtag::register_lexical_hashtag(
-        &editor,
-        lexical::hashtag::HashtagConfig::default(),
-    );
-    let _unregister = lexical::code::register_code(&editor);
-    let unregister_history = register_history(
-        &editor,
-        &create_empty_history_state(),
-        0.0,
-        None,
-        None,
-        None,
-    );
-    // `InitialStateExtension`'s `afterRegistration`, with its default
-    // `$initialEditorState` (`$defaultInitializer`): an empty root gets a
-    // paragraph, in an update tagged `history-merge`.
-    let _ = editor.update(
-        || {
-            let root = get_root();
-            if root.is_empty() {
-                root.append(&[create_paragraph_node()])?;
-            }
-            Ok(())
-        },
-        UpdateOptions {
-            tags: vec![HISTORY_MERGE_TAG.to_owned()],
-            ..UpdateOptions::default()
-        },
-    );
+    let editor =
+        build_editor_from_extensions(vec![root.into()]).expect("sequenceEditor's extensions build");
     editor.set_selection_movement(Some(Rc::new(WindowWithoutSelection)));
-    (editor, unregister_history)
+    editor
 }
 
 /// A step's `anchor` or `focus`: `[key, offset, type]`.
@@ -346,7 +312,7 @@ pub fn check_sequence(case: &Value, _file: &Value) -> Result<Outcome, String> {
     let steps = case.arr("steps")?;
     let results = case.arr("results")?;
     same("steps recorded", results.len(), steps.len())?;
-    let (editor, unregister_history) = sequence_editor();
+    let editor = sequence_editor();
     let outcome = (|| {
         let state = editor
             .parse_editor_state(document)
@@ -382,6 +348,7 @@ pub fn check_sequence(case: &Value, _file: &Value) -> Result<Outcome, String> {
         }
         Ok(Outcome::Pass)
     })();
-    unregister_history();
+    // The history's entries hold the editor until it is disposed.
+    editor.dispose();
     outcome
 }

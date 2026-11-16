@@ -822,3 +822,100 @@ pub fn register_auto_link(editor: &Editor, config: AutoLinkConfig) -> Unregister
         ),
     ])
 }
+
+#[cfg(feature = "extension")]
+pub use extension::*;
+
+#[cfg(feature = "extension")]
+mod extension {
+    use super::{AutoLinkConfig, ChangeHandler, ExcludeParent, LinkMatcher, register_auto_link};
+    use crate::extension_core::{
+        ExtensionConfigBase, ExtensionRegisterState, LexicalExtension, define_extension,
+    };
+    use crate::link::{AutoLinkNode, link_extension};
+    use crate::{Editor, NodeClass};
+    use regex::Regex;
+    use std::rc::Rc;
+
+    /// `Partial<AutoLinkConfig>`.
+    #[derive(Clone, Default)]
+    pub struct AutoLinkConfigOverrides {
+        pub change_handlers: Option<Vec<ChangeHandler>>,
+        pub exclude_parents: Option<Vec<ExcludeParent>>,
+        pub matchers: Option<Vec<LinkMatcher>>,
+        pub separator_regex: Option<Regex>,
+    }
+
+    impl ExtensionConfigBase for AutoLinkConfig {
+        type Partial = AutoLinkConfigOverrides;
+
+        fn shallow_merge(&self, o: &AutoLinkConfigOverrides) -> Self {
+            AutoLinkConfig {
+                change_handlers: o
+                    .change_handlers
+                    .clone()
+                    .unwrap_or_else(|| self.change_handlers.clone()),
+                exclude_parents: o
+                    .exclude_parents
+                    .clone()
+                    .unwrap_or_else(|| self.exclude_parents.clone()),
+                matchers: o.matchers.clone().unwrap_or_else(|| self.matchers.clone()),
+                separator_regex: o
+                    .separator_regex
+                    .clone()
+                    .unwrap_or_else(|| self.separator_regex.clone()),
+            }
+        }
+    }
+
+    /// `AutoLinkExtension.mergeConfig`: a shallow merge, except that the
+    /// overrides' `matchers`, `changeHandlers` and `excludeParents` are
+    /// added after the config's.
+    fn merge_auto_link_config(
+        config: &AutoLinkConfig,
+        overrides: &AutoLinkConfigOverrides,
+    ) -> AutoLinkConfig {
+        let mut merged = config.shallow_merge(overrides);
+        if let Some(v) = &overrides.matchers {
+            merged.matchers = config.matchers.iter().chain(v).cloned().collect();
+        }
+        if let Some(v) = &overrides.change_handlers {
+            merged.change_handlers = config.change_handlers.iter().chain(v).cloned().collect();
+        }
+        if let Some(v) = &overrides.exclude_parents {
+            merged.exclude_parents = config.exclude_parents.iter().chain(v).cloned().collect();
+        }
+        merged
+    }
+
+    /// `AutoLinkExtension`.
+    pub type AutoLinkExtensionType = LexicalExtension<AutoLinkConfig, (), ()>;
+
+    fn make() -> Rc<AutoLinkExtensionType> {
+        define_extension(LexicalExtension {
+            // Of JS's dependencies, `LinkExtension`;
+            // `AutoLinkAnnounceExtension` announces new links to a screen
+            // reader (`@lexical/a11y`), which needs a DOM.
+            dependencies: vec![link_extension().into()],
+            merge_config: Some(Rc::new(merge_auto_link_config)),
+            nodes: vec![NodeClass::of::<AutoLinkNode>()],
+            register: Some(Rc::new(
+                |editor: &Editor, config: &AutoLinkConfig, _: &ExtensionRegisterState<(), ()>| {
+                    Ok(register_auto_link(editor, config.clone()))
+                },
+            )),
+            ..LexicalExtension::new("@lexical/link/AutoLink", AutoLinkConfig::default())
+        })
+    }
+
+    thread_local! {
+        static AUTO_LINK_EXTENSION: Rc<AutoLinkExtensionType> = make();
+    }
+
+    /// `AutoLinkExtension`: `AutoLinkNode` and
+    /// [`register_auto_link`] with its config, after
+    /// [`link_extension`]. It has no matchers by default.
+    pub fn auto_link_extension() -> Rc<AutoLinkExtensionType> {
+        AUTO_LINK_EXTENSION.with(Rc::clone)
+    }
+}

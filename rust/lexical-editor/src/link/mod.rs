@@ -7,9 +7,11 @@
 //! `registerAutoLink` and its matchers (`LexicalAutoLinkExtension.ts`),
 //! whose regular expressions need the `regex` crate.
 //!
+//! With the `extension` feature, [`link_extension`] is `LinkExtension`, and
+//! with `autolink` as well, `auto_link_extension` is `AutoLinkExtension`.
+//!
 //! Not ported: the DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
 //! `importDOM`, `sanitizeUrl`, `LinkImportRules`), which come with `html`;
-//! `LinkExtension` and `AutoLinkExtension`, which need the extension API;
 //! `registerLink`'s paste handler, which reads clipboard data; and
 //! `ClickableLinkExtension` and `AutoLinkAnnounceExtension`, which need a
 //! DOM (rust/PARITY.md).
@@ -27,7 +29,15 @@ pub use auto_link_extension::{
     create_link_matcher_with_reg_exp, register_auto_link,
 };
 
-pub use link_extension::{LinkConfig, register_link};
+#[cfg(all(feature = "autolink", feature = "extension"))]
+pub use auto_link_extension::{
+    AutoLinkConfigOverrides, AutoLinkExtensionType, auto_link_extension,
+};
+pub use link_extension::{LinkConfig, ValidateUrl, register_link};
+#[cfg(feature = "extension")]
+pub use link_extension::{
+    LinkConfigOverrides, LinkExtensionType, LinkOutput, ValidateUrlFn, link_extension,
+};
 pub use link_node::{
     AutoLinkAttributes, AutoLinkNode, LinkAttributes, LinkNode, TOGGLE_LINK_COMMAND,
     ToggleLinkPayload, create_auto_link_node, create_link_node, format_url, is_auto_link_node,

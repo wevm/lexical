@@ -4723,3 +4723,362 @@ test('scripts/clipboard', () => {
     ],
   );
 });
+
+test('scripts/package-extensions', () => {
+  // The packages' own extensions (RichTextExtension, ListExtension,
+  // HistoryExtension...) built with buildEditorFromExtensions: what they
+  // bring (`hasExtensions`), the nodes the builder collects in dependency
+  // order (logged by `test/probe`'s init as `knownTypes`), their config
+  // overrides and merges, their `disabled` and other signals, and commands
+  // dispatched through the built editor. Every built editor starts with
+  // InitialStateExtension's paragraph, key 1; `start` replaces it.
+  const probe: ExtensionSpec = {
+    inspect: true,
+    name: 'test/probe',
+    phases: ['init'],
+  };
+  const script = (
+    name: string,
+    extensions: ExtensionArg[],
+    steps: Step[] = [],
+  ): Script => ({
+    extensionDefs: {probe},
+    extensions: ['probe', ...extensions],
+    name,
+    steps,
+  });
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const enter = run('INSERT_PARAGRAPH_COMMAND');
+  const indent = run('INDENT_CONTENT_COMMAND');
+  const start = (...blocks: Node[]): Step =>
+    update(node('root', 'clear'), {do: 'append', key: 'root', nodes: blocks});
+  const has = (...names: string[]): Step => ({hasExtensions: names});
+  const signals = (key: string, ...entries: [string, Json][]): Step => ({
+    setSignals: entries.map(([name, value]) => [key, name, value]),
+  });
+  const history: Step = {logHistory: true};
+  const at = (now: number, step: Step): Step => ({...step, now});
+  emit(
+    'package-extensions',
+    "The packages' extensions (RichTextExtension, PlainTextExtension, HistoryExtension, ListExtension, CheckListExtension, LinkExtension, AutoLinkExtension, HashtagExtension, OverflowExtension, CodeExtension, CodeIndentExtension, NormalizeInlineElementsExtension, TabIndentationExtension, SelectBlockExtension) through buildEditorFromExtensions: dependencies and the nodes they register, config overrides and merges, disabled and other signals, and commands dispatched through the built editor.",
+    [
+      script(
+        'RichTextExtension and its dependencies',
+        ['RichTextExtension'],
+        [
+          has(
+            '@lexical/rich-text',
+            '@lexical/NormalizeInlineElements',
+            '@lexical/plain-text',
+          ),
+          start(p(t('ab'))),
+          update(select(['3', 1, 'text'])),
+          type('x'),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          type('y'),
+          enter,
+          run('SELECT_ALL_COMMAND'),
+          run('FORMAT_ELEMENT_COMMAND', 'center'),
+        ],
+      ),
+      script('RichTextExtension conflicts with PlainTextExtension', [
+        'RichTextExtension',
+        'PlainTextExtension',
+      ]),
+      script(
+        'PlainTextExtension',
+        ['PlainTextExtension'],
+        [
+          has('@lexical/plain-text', '@lexical/NormalizeInlineElements'),
+          start(p(t('ab'))),
+          update(select(['3', 2, 'text'])),
+          enter,
+          type('c'),
+          // Plain text has no formatting handler.
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+        ],
+      ),
+      script('the nodes of every package, in dependency order', [
+        'CheckListExtension',
+        'AutoLinkExtension',
+        'CodeIndentExtension',
+        'HashtagExtension',
+        'OverflowExtension',
+        'RichTextExtension',
+        ['HistoryExtension', {disabled: false}],
+        'TabIndentationExtension',
+        'SelectBlockExtension',
+      ]),
+      script(
+        'CheckListExtension brings ListExtension',
+        ['CheckListExtension', 'RichTextExtension'],
+        [
+          has('@lexical/list/List', '@lexical/list/CheckList'),
+          start(p(t('a'))),
+          update(select(['3', 1, 'text'])),
+          run('INSERT_CHECK_LIST_COMMAND'),
+          run('INSERT_ORDERED_LIST_COMMAND'),
+          run('REMOVE_LIST_COMMAND'),
+        ],
+      ),
+      script(
+        'ListExtension with shouldPreserveNumbering',
+        [
+          ['ListExtension', {shouldPreserveNumbering: true}],
+          'RichTextExtension',
+        ],
+        [
+          start(list('number', li(t('a')), li(), li(t('b')))),
+          update(select(['5', 0, 'element'])),
+          enter,
+        ],
+      ),
+      script(
+        'ListExtension with shouldPreserveNumbering turned off by its signal',
+        [
+          ['ListExtension', {shouldPreserveNumbering: true}],
+          'RichTextExtension',
+        ],
+        [
+          signals('ListExtension', ['shouldPreserveNumbering', false]),
+          start(list('number', li(t('a')), li(), li(t('b')))),
+          update(select(['5', 0, 'element'])),
+          enter,
+        ],
+      ),
+      script(
+        'ListExtension with hasStrictIndent, then without',
+        [['ListExtension', {hasStrictIndent: true}], 'RichTextExtension'],
+        [
+          start(list('bullet', li(t('a')), li(t('b')))),
+          // The first item can't be indented.
+          update(select(['4', 0, 'text'])),
+          indent,
+          // The second only one level past the first.
+          update(select(['6', 0, 'text'])),
+          indent,
+          indent,
+          signals('ListExtension', ['hasStrictIndent', false]),
+          indent,
+        ],
+      ),
+      script(
+        'HistoryExtension: delay, and disabled by its signal',
+        [
+          ['HistoryExtension', {delay: 300, disabled: false}],
+          'RichTextExtension',
+        ],
+        [
+          history,
+          update(select(['1', 0, 'element'])),
+          at(0, type('a')),
+          at(100, type('b')),
+          at(1000, type('c')),
+          history,
+          run('UNDO_COMMAND'),
+          history,
+          signals('HistoryExtension', ['disabled', true]),
+          history,
+          at(2000, type('d')),
+          run('UNDO_COMMAND'),
+          signals('HistoryExtension', ['disabled', false]),
+          history,
+          at(3000, type('e')),
+          history,
+          run('UNDO_COMMAND'),
+          run('REDO_COMMAND'),
+          history,
+        ],
+      ),
+      script(
+        'HistoryExtension: maxDepth, and its signal',
+        [
+          ['HistoryExtension', {delay: 0, disabled: false, maxDepth: 2}],
+          'RichTextExtension',
+        ],
+        [
+          update(select(['1', 0, 'element'])),
+          type('a'),
+          type('b'),
+          type('c'),
+          type('d'),
+          history,
+          signals('HistoryExtension', ['maxDepth', 1]),
+          type('e'),
+          history,
+          signals('HistoryExtension', ['maxDepth', null]),
+          type('f'),
+          type('g'),
+          history,
+        ],
+      ),
+      script(
+        'HistoryExtension: createInitialHistoryState',
+        [
+          'RichTextExtension',
+          [
+            'HistoryExtension',
+            {createInitialHistoryState: 'prefilled', delay: 0},
+            {disabled: false},
+          ],
+        ],
+        [
+          history,
+          update(select(['3', 0, 'element'])),
+          type('a'),
+          history,
+          run('UNDO_COMMAND'),
+          run('UNDO_COMMAND'),
+          history,
+          run('UNDO_COMMAND'),
+          run('REDO_COMMAND'),
+          history,
+        ],
+      ),
+      script(
+        'LinkExtension: attributes merge, and validateUrl',
+        [
+          [
+            'LinkExtension',
+            {attributes: {rel: 'noopener'}},
+            {attributes: {target: '_blank'}, validateUrl: 'https'},
+          ],
+          'RichTextExtension',
+        ],
+        [
+          start(p(t('click here'))),
+          update(select(['3', 0, 'text'], ['3', 5, 'text'])),
+          run('TOGGLE_LINK_COMMAND', 'http://lexical.dev'),
+          run('TOGGLE_LINK_COMMAND', 'https://lexical.dev'),
+          run('TOGGLE_LINK_COMMAND', {
+            title: 'docs',
+            url: 'https://lexical.dev/docs',
+          }),
+          run('TOGGLE_LINK_COMMAND', {url: 'http://lexical.dev'}),
+          run('TOGGLE_LINK_COMMAND', null),
+        ],
+      ),
+      script(
+        'AutoLinkExtension: matchers and change handlers concatenate',
+        [
+          ['AutoLinkExtension', {matchers: ['url']}],
+          ['AutoLinkExtension', {changeHandlers: ['log'], matchers: ['email']}],
+          'RichTextExtension',
+        ],
+        [
+          has('@lexical/link/AutoLink', '@lexical/link/Link'),
+          update(select(['1', 0, 'element'])),
+          type('see https://lexical.dev or mail a@b.dev '),
+          type('x'),
+        ],
+      ),
+      script(
+        'NormalizeInlineElementsExtension removes an empty link',
+        ['LinkExtension', 'RichTextExtension'],
+        [
+          start(p(t('a'), a('https://lexical.dev', t('b')), t('c'))),
+          update(node('5', 'remove', true)),
+        ],
+      ),
+      script(
+        'NormalizeInlineElementsExtension disabled, then enabled',
+        [
+          ['NormalizeInlineElementsExtension', {disabled: true}],
+          'LinkExtension',
+          'RichTextExtension',
+        ],
+        [
+          start(p(t('a'), a('https://lexical.dev', t('b')), t('c'))),
+          update(node('5', 'remove', true)),
+          signals('NormalizeInlineElementsExtension', ['disabled', false]),
+          // The transform is added without marking links dirty.
+          update(node('3', 'setTextContent', 'A')),
+          update(node('4', 'markDirty')),
+        ],
+      ),
+      script(
+        'CodeIndentExtension: tabSize, and disabled',
+        [['CodeIndentExtension', {tabSize: 2}], 'RichTextExtension'],
+        [
+          has('@lexical/code', '@lexical/code-indent'),
+          start(codeBlock(null, ch('    a'), br(), ch('b'))),
+          update(select(['3', 5, 'text'])),
+          run('OUTDENT_CONTENT_COMMAND'),
+          indent,
+          signals('CodeIndentExtension', ['disabled', true]),
+          indent,
+          run('INSERT_TAB_COMMAND'),
+          signals('CodeIndentExtension', ['disabled', false], ['tabSize', 4]),
+          run('OUTDENT_CONTENT_COMMAND'),
+        ],
+      ),
+      script(
+        'CodeExtension: Enter in a code block adds a line',
+        ['CodeExtension', 'RichTextExtension'],
+        [
+          start(codeBlock(null, ch('a')), p(t('after'))),
+          update(select(['3', 1, 'text'])),
+          enter,
+          enter,
+          enter,
+          type('b'),
+        ],
+      ),
+      script(
+        'TabIndentationExtension: maxIndent, and disabled',
+        [['TabIndentationExtension', {maxIndent: 2}], 'RichTextExtension'],
+        [
+          update(select(['1', 0, 'element'])),
+          indent,
+          indent,
+          signals('TabIndentationExtension', ['disabled', true]),
+          indent,
+          signals(
+            'TabIndentationExtension',
+            ['disabled', false],
+            ['maxIndent', null],
+          ),
+          indent,
+          run('OUTDENT_CONTENT_COMMAND'),
+        ],
+      ),
+      script(
+        'TabIndentationExtension: $canIndent',
+        [
+          ['TabIndentationExtension', {$canIndent: 'never'}],
+          'RichTextExtension',
+        ],
+        [update(select(['1', 0, 'element'])), indent],
+      ),
+      script(
+        'SelectBlockExtension: the block, then the document',
+        ['SelectBlockExtension', 'RichTextExtension'],
+        [
+          has('@lexical/extension/PreventSelectAll'),
+          start(p(t('one')), p(t('two'))),
+          update(select(['3', 1, 'text'])),
+          run('SELECT_ALL_COMMAND'),
+          run('SELECT_ALL_COMMAND'),
+          run('SELECT_ALL_COMMAND'),
+          update(select(['3', 1, 'text'], ['5', 1, 'text'])),
+          run('SELECT_ALL_COMMAND'),
+          signals('SelectBlockExtension', ['disabled', true]),
+          update(select(['3', 1, 'text'])),
+          run('SELECT_ALL_COMMAND'),
+        ],
+      ),
+      script(
+        'HashtagExtension and OverflowExtension',
+        ['HashtagExtension', 'OverflowExtension', 'RichTextExtension'],
+        [
+          update(select(['1', 0, 'element'])),
+          type('#tag and #more'),
+          start(p(t('within '), overflow(t('past')))),
+        ],
+      ),
+    ],
+  );
+});

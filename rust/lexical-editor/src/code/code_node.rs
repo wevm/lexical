@@ -127,16 +127,35 @@ impl NodeRef {
     }
 }
 
+/// Whether the active editor was built with `CodeExtension`:
+/// `getPeerDependencyFromEditor($getEditor(), '@lexical/code')`. Without the
+/// `extension` feature no editor is.
+fn has_code_extension() -> bool {
+    #[cfg(feature = "extension")]
+    {
+        crate::updates::get_active_editor().is_some_and(|editor| {
+            crate::extension::LexicalBuilder::maybe_from_editor(&editor)
+                .is_some_and(|builder| builder.has_extension_by_name("@lexical/code"))
+        })
+    }
+    #[cfg(not(feature = "extension"))]
+    {
+        false
+    }
+}
+
 /// `CodeNode.insertNewAfter(selection, restoreSelection)`: a line break,
 /// followed by the leading tabs and spaces of the line the selection starts
 /// on, so the new line keeps its indentation. JS first exits the block
 /// (`$exitCodeNodeOnEnter`) when the editor has no `CodeExtension`, which
-/// handles that on `KEY_ENTER_COMMAND` instead; this port has no extension
-/// API, so it always does, as a JS editor made with `createEditor` does.
+/// handles that on `KEY_ENTER_COMMAND` instead, as here: an editor built
+/// with [`code_extension`](super::code_extension) only adds the line.
 fn insert_new_after(selection: &SelectionRef) -> Result<Option<NodeRef>, LexicalError> {
-    // `noExtensionDeprecation()` warns once; there is no console here.
-    if let Some(el) = exit_code_node_on_enter(selection)? {
-        return Ok(Some(el));
+    if !has_code_extension() {
+        // `noExtensionDeprecation()` warns once; there is no console here.
+        if let Some(el) = exit_code_node_on_enter(selection)? {
+            return Ok(Some(el));
+        }
     }
     // If the selection is within the codeblock, find all leading tabs and
     // spaces of the current line. Create a new line that has all those

@@ -1,12 +1,23 @@
 import Foundation
 import Lexical
+import LexicalCodeCore
 import LexicalExtension
+import LexicalHashtag
+import LexicalHistory
+import LexicalLink
+import LexicalList
+import LexicalOverflow
+import LexicalPlainText
+import LexicalRichText
 
 // Scripts with `extensions` (ops.ts): the editor is built with
 // `buildEditorFromExtensions` from test extensions that ops.ts's
 // `testExtension` makes from JSON (`ExtensionSpec`), and a few of
 // @lexical/extension's own (`REAL_EXTENSIONS`). Each test extension logs
 // every phase it runs, so the log is the order the builder ran them in.
+// The packages' own extensions (RichTextExtension, HistoryExtension...) are
+// real extensions too, whose JSON overrides name their functions by ops.ts's
+// CONFIG_PRESETS (`realConfigured`).
 
 /// A test extension's config: JSON, whose overrides are a
 /// `Partial<JSONObject>` of `\JSONObject[key]` key paths.
@@ -26,14 +37,94 @@ func testPartial(_ config: JSONObject) -> Partial<TestConfig> {
   }
 }
 
-/// `REAL_EXTENSIONS` in ops.ts.
+/// `REAL_EXTENSIONS` in ops.ts, without config overrides, but for
+/// `HistoryExtension`, which `TestExtensions.real` gives the session's
+/// clock.
 private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? {
   switch key {
   case "ClearEditorExtension": ClearEditorExtension
   case "DecoratorTextExtension": DecoratorTextExtension
   case "EditorStateExtension": EditorStateExtension
+  case "AutoLinkExtension": AutoLinkExtension
+  case "CheckListExtension": CheckListExtension
+  case "CodeExtension": CodeExtension
+  case "CodeIndentExtension": CodeIndentExtension
+  case "HashtagExtension": HashtagExtension
+  case "LinkExtension": LinkExtension
+  case "ListExtension": ListExtension
+  case "NormalizeInlineElementsExtension": NormalizeInlineElementsExtension
+  case "OverflowExtension": OverflowExtension
+  case "PlainTextExtension": PlainTextExtension
+  case "RichTextExtension": RichTextExtension
+  case "SelectBlockExtension": SelectBlockExtension
+  case "TabIndentationExtension": TabIndentationExtension
   default: nil
   }
+}
+
+/// `PREFILLED_HISTORY_STATE` in ops.ts.
+private let prefilledHistoryState =
+  #"{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"prefilled","type":"text","version":1}],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}"#
+
+/// `configExtension(extension, ...partials)`, which Swift spells
+/// variadically.
+private func configured<C, O, I>(
+  _ extension_: LexicalExtension<C, O, I>, _ partials: [Partial<C>]
+) throws -> any AnyLexicalExtensionArgument {
+  switch partials.count {
+  case 0: return extension_
+  case 1: return configExtension(extension_, partials[0])
+  case 2: return configExtension(extension_, partials[0], partials[1])
+  case 3: return configExtension(extension_, partials[0], partials[1], partials[2])
+  default: throw ScriptError("too many configs of \(extension_.name)")
+  }
+}
+
+/// Each JSON config as a `Partial<C>`, field by field: `set` returns false
+/// for a field it doesn't know.
+private func partials<C>(
+  _ key: String, _ configs: [JSONObject],
+  _ set: (inout Partial<C>, String, JSONValue) throws -> Bool
+) throws -> [Partial<C>] {
+  try configs.map { config in
+    var partial = Partial<C>()
+    for (field, value) in config where try !set(&partial, field, value) {
+      throw ScriptError("bad config of \(key): \(field) \(value.stringify())")
+    }
+    return partial
+  }
+}
+
+private func bool(_ value: JSONValue) throws -> Bool {
+  guard let b = value.boolValue else { throw ScriptError("not a boolean: \(value.stringify())") }
+  return b
+}
+
+private func number(_ value: JSONValue) throws -> Double {
+  guard let n = value.numberValue else { throw ScriptError("not a number: \(value.stringify())") }
+  return n
+}
+
+/// A JSON number or `null`, as an `Int?`.
+private func intOrNull(_ value: JSONValue) throws -> Int? {
+  if case .null = value { return nil }
+  return Int(try number(value))
+}
+
+/// `LinkAttributes` from JSON: `rel`, `target` and `title`, each absent,
+/// `null` or a string.
+private func linkAttributes(_ value: JSONValue) throws -> LinkAttributes {
+  guard let object = value.objectValue else { throw ScriptError("bad attributes") }
+  func attribute(_ key: String) throws -> String?? {
+    switch object[key] {
+    case nil: return .none
+    case .null?: return .some(nil)
+    case .string(let s)?: return .some(s)
+    default: throw ScriptError("bad attribute \(key)")
+    }
+  }
+  return LinkAttributes(
+    rel: try attribute("rel"), target: try attribute("target"), title: try attribute("title"))
 }
 
 private let extensionPhases = ["init", "build", "register", "afterRegistration"]
@@ -45,6 +136,9 @@ final class TestExtensions {
   var made: [String: TestExtension] = [:]
   var log: (JSONValue) -> Void = { _ in }
   var command: (String) -> LexicalCommand<JSONValue> = { LexicalCommand($0) }
+  /// The session's clock, which `HistoryExtension` reads as JS's reads
+  /// `Date.now()` while a step runs.
+  var clock: () -> Double = { 0 }
 
   init(_ defs: JSONObject) { self.defs = defs }
 
@@ -61,10 +155,19 @@ final class TestExtensions {
   /// `extensionArg(ctx, arg)`.
   func arg(_ arg: JSONValue) throws -> any AnyLexicalExtensionArgument {
     if let key = arg.stringValue {
+      if key == "HistoryExtension" { return try realConfigured(key, []) }
       return try realExtension(key) ?? of(key)
     }
     guard let parts = arg.arrayValue, let key = parts.first?.stringValue else {
       throw ScriptError("bad extension argument \(arg.stringify())")
+    }
+    if key == "HistoryExtension" || realExtension(key) != nil {
+      return try realConfigured(
+        key,
+        parts.dropFirst().map { config in
+          guard let object = config.objectValue else { throw ScriptError("bad config") }
+          return object
+        })
     }
     let configs = try parts.dropFirst().map { config in
       guard let object = config.objectValue else { throw ScriptError("bad config") }
@@ -78,6 +181,199 @@ final class TestExtensions {
     case 2: return configExtension(extension_, configs[0], configs[1])
     default: throw ScriptError("too many configs of \(key)")
     }
+  }
+
+  /// `configExtension(extension, ...configs.map(realConfig))` of a real
+  /// extension: each JSON config as its typed overrides, with the functions
+  /// `CONFIG_PRESETS` names.
+  private func realConfigured(
+    _ key: String, _ configs: [JSONObject]
+  ) throws
+    -> any AnyLexicalExtensionArgument
+  {
+    switch key {
+    case "HistoryExtension":
+      // The session's clock first; no JSON config can set `now`.
+      let clock = self.clock
+      let now = Partial<HistoryConfig> { $0.set(\.now, clock) }
+      return try configured(
+        HistoryExtension,
+        [now]
+          + partials(key, configs) { (p: inout Partial<HistoryConfig>, field, value) in
+            switch field {
+            case "delay": p.set(\.delay, try number(value))
+            case "disabled": p.set(\.disabled, try bool(value))
+            case "maxDepth": p.set(\.maxDepth, try intOrNull(value))
+            case "createInitialHistoryState" where value.stringValue == "prefilled":
+              p.set(\.createInitialHistoryState) { editor in
+                let editorState = try! editor.parseEditorState(prefilledHistoryState)
+                return HistoryState(
+                  undoStack: [HistoryStateEntry(editor: editor, editorState: editorState)])
+              }
+            default: return false
+            }
+            return true
+          })
+    case "ListExtension":
+      return try configured(
+        ListExtension,
+        partials(key, configs) { (p: inout Partial<ListConfig>, field, value) in
+          switch field {
+          case "hasStrictIndent": p.set(\.hasStrictIndent, try bool(value))
+          case "shouldPreserveNumbering": p.set(\.shouldPreserveNumbering, try bool(value))
+          default: return false
+          }
+          return true
+        })
+    case "CheckListExtension":
+      return try configured(
+        CheckListExtension,
+        partials(key, configs) { (p: inout Partial<CheckListConfig>, field, value) in
+          guard field == "disableTakeFocusOnClick" else { return false }
+          p.set(\.disableTakeFocusOnClick, try bool(value))
+          return true
+        })
+    case "LinkExtension":
+      return try configured(
+        LinkExtension,
+        partials(key, configs) { (p: inout Partial<LinkConfig>, field, value) in
+          switch field {
+          case "attributes": p.set(\.attributes, try linkAttributes(value))
+          case "validateUrl" where value.stringValue == "https":
+            p.set(\.validateUrl) { $0.hasPrefix("https://") }
+          default: return false
+          }
+          return true
+        })
+    case "AutoLinkExtension":
+      let log = self.log
+      return try configured(
+        AutoLinkExtension,
+        partials(key, configs) { (p: inout Partial<AutoLinkConfig>, field, value) in
+          let names = (value.arrayValue ?? []).map { $0.stringValue ?? "" }
+          switch field {
+          case "matchers":
+            p.set(
+              \.matchers,
+              try names.map { name -> LinkMatcher in
+                switch name {
+                case "url": return autoLinkUrlMatcher
+                case "email": return autoLinkEmailMatcher
+                default: throw ScriptError("unknown matcher \(name)")
+                }
+              })
+          case "changeHandlers":
+            p.set(
+              \.changeHandlers,
+              try names.map { name -> ChangeHandler in
+                guard name == "log" else { throw ScriptError("unknown change handler \(name)") }
+                return { url, prevUrl in
+                  log(
+                    .array([
+                      "autoLink", url.map { .string($0) } ?? .null,
+                      prevUrl.map { .string($0) } ?? .null,
+                    ]))
+                }
+              })
+          default: return false
+          }
+          return true
+        })
+    case "CodeIndentExtension":
+      return try configured(
+        CodeIndentExtension,
+        partials(key, configs) { (p: inout Partial<CodeIndentConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          case "tabSize": p.set(\.tabSize, try intOrNull(value))
+          case "escapeWithArrows": p.set(\.escapeWithArrows, try bool(value))
+          default: return false
+          }
+          return true
+        })
+    case "NormalizeInlineElementsExtension":
+      return try configured(
+        NormalizeInlineElementsExtension,
+        partials(key, configs) {
+          (p: inout Partial<NormalizeInlineElementsConfig>, field, value) in
+          guard field == "disabled" else { return false }
+          p.set(\.disabled, try bool(value))
+          return true
+        })
+    case "TabIndentationExtension":
+      return try configured(
+        TabIndentationExtension,
+        partials(key, configs) { (p: inout Partial<TabIndentationConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          case "maxIndent": p.set(\.maxIndent, try intOrNull(value))
+          case "$canIndent" where value.stringValue == "never": p.set(\.canIndent) { _ in false }
+          default: return false
+          }
+          return true
+        })
+    case "SelectBlockExtension":
+      return try configured(
+        SelectBlockExtension,
+        partials(key, configs) { (p: inout Partial<SelectBlockConfig>, field, value) in
+          switch field {
+          case "disabled": p.set(\.disabled, try bool(value))
+          case "cascadeSelection": p.set(\.cascadeSelection, try bool(value))
+          default: return false
+          }
+          return true
+        })
+    default:
+      throw ScriptError("\(key) takes no config overrides")
+    }
+  }
+
+  /// `output[name].value = value` for a signal of a real extension's
+  /// output; false when `key` isn't a real extension.
+  private func setRealSignal(
+    _ editor: Editor, _ key: String, _ name: String, _ value: JSONValue
+  ) throws -> Bool {
+    switch (key, name) {
+    case ("HistoryExtension", "disabled"):
+      try getExtensionDependencyFromEditor(editor, HistoryExtension).output.disabled.set(
+        try bool(value))
+    case ("HistoryExtension", "delay"):
+      try getExtensionDependencyFromEditor(editor, HistoryExtension).output.delay.set(
+        try number(value))
+    case ("HistoryExtension", "maxDepth"):
+      try getExtensionDependencyFromEditor(editor, HistoryExtension).output.maxDepth.set(
+        try intOrNull(value))
+    case ("ListExtension", "hasStrictIndent"):
+      try getExtensionDependencyFromEditor(editor, ListExtension).output.hasStrictIndent.set(
+        try bool(value))
+    case ("ListExtension", "shouldPreserveNumbering"):
+      try getExtensionDependencyFromEditor(editor, ListExtension).output.shouldPreserveNumbering
+        .set(try bool(value))
+    case ("NormalizeInlineElementsExtension", "disabled"):
+      try getExtensionDependencyFromEditor(editor, NormalizeInlineElementsExtension).output
+        .disabled.set(try bool(value))
+    case ("CodeIndentExtension", "disabled"):
+      try getExtensionDependencyFromEditor(editor, CodeIndentExtension).output.disabled.set(
+        try bool(value))
+    case ("CodeIndentExtension", "tabSize"):
+      try getExtensionDependencyFromEditor(editor, CodeIndentExtension).output.tabSize.set(
+        try intOrNull(value))
+    case ("TabIndentationExtension", "disabled"):
+      try getExtensionDependencyFromEditor(editor, TabIndentationExtension).output.disabled.set(
+        try bool(value))
+    case ("TabIndentationExtension", "maxIndent"):
+      try getExtensionDependencyFromEditor(editor, TabIndentationExtension).output.maxIndent.set(
+        try intOrNull(value))
+    case ("SelectBlockExtension", "disabled"):
+      try getExtensionDependencyFromEditor(editor, SelectBlockExtension).output.disabled.set(
+        try bool(value))
+    default:
+      if key == "HistoryExtension" || realExtension(key) != nil {
+        throw ScriptError("no signal \(name) of \(key)")
+      }
+      return false
+    }
+    return true
   }
 
   private func strings(_ value: JSONValue?) -> [String] {
@@ -291,6 +587,7 @@ final class TestExtensions {
           guard let parts = entry.arrayValue, parts.count == 3, let key = parts[0].stringValue,
             let signalName = parts[1].stringValue
           else { throw ScriptError("bad setSignals") }
+          if try setRealSignal(editor, key, signalName, parts[2]) { continue }
           let output = try getExtensionDependencyFromEditor(editor, try of(key)).output
           guard let signals = output as? NamedSignals<TestConfig> else {
             throw ScriptError("no signals of \(key)")
@@ -298,6 +595,20 @@ final class TestExtensions {
           try signals[dynamicMember: \TestConfig[signalName]].set(parts[2])
         }
       }
+    } else if let names = object["hasExtensions"]?.arrayValue {
+      let builder = try LexicalBuilder.fromEditor(editor)
+      for name in names.compactMap(\.stringValue) {
+        log(.array(["hasExtension", .string(name), .bool(builder.hasExtensionByName(name))]))
+      }
+    } else if object["logHistory"] != nil {
+      let output = try getExtensionDependencyFromEditor(editor, HistoryExtension).output
+      let historyState = output.historyState.value
+      log(
+        .array([
+          "history", .bool(output.canUndo.value), .bool(output.canRedo.value),
+          .number(Double(historyState.undoStack.count)),
+          .number(Double(historyState.redoStack.count)),
+        ]))
     } else if let key = object["logDependency"]?.stringValue {
       let dep = try getExtensionDependencyFromEditor(editor, try of(key))
       log(.array(["dependency", .string(key), .object(dep.config)]))

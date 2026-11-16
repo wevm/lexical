@@ -19,6 +19,7 @@ import {
 import {
   CodeExtension,
   CodeHighlightNode,
+  CodeIndentExtension,
   CodeNode,
   registerCodeIndentation,
 } from '@lexical/code-core';
@@ -35,14 +36,28 @@ import {
   getKnownTypesAndNodes,
   getPeerDependencyFromEditor,
   HorizontalRuleNode,
+  LexicalBuilder,
   namedSignals,
   type NamedSignalsOutput,
+  NormalizeInlineElementsExtension,
+  SelectBlockExtension,
+  TabIndentationExtension,
   untracked,
 } from '@lexical/extension';
-import {HashtagNode, registerLexicalHashtag} from '@lexical/hashtag';
-import {createEmptyHistoryState, registerHistory} from '@lexical/history';
+import {
+  HashtagExtension,
+  HashtagNode,
+  registerLexicalHashtag,
+} from '@lexical/hashtag';
+import {
+  createEmptyHistoryState,
+  HistoryExtension,
+  type HistoryState,
+  registerHistory,
+} from '@lexical/history';
 import {
   autoLinkEmailMatcher,
+  AutoLinkExtension,
   AutoLinkNode,
   autoLinkUrlMatcher,
   LinkExtension,
@@ -53,9 +68,11 @@ import {
 } from '@lexical/link';
 import {
   $isListItemNode,
+  CheckListExtension,
   INSERT_CHECK_LIST_COMMAND,
   INSERT_ORDERED_LIST_COMMAND,
   INSERT_UNORDERED_LIST_COMMAND,
+  ListExtension,
   ListItemNode,
   ListNode,
   registerCheckList,
@@ -75,8 +92,8 @@ import {
   $wrapSelectionInMarkNode,
   MarkNode,
 } from '@lexical/mark';
-import {OverflowNode} from '@lexical/overflow';
-import {registerPlainText} from '@lexical/plain-text';
+import {OverflowExtension, OverflowNode} from '@lexical/overflow';
+import {PlainTextExtension, registerPlainText} from '@lexical/plain-text';
 import {
   $createHeadingNode,
   $createQuoteNode,
@@ -84,6 +101,7 @@ import {
   type HeadingTagType,
   QuoteNode,
   registerRichText,
+  RichTextExtension,
 } from '@lexical/rich-text';
 import {$setBlocksType} from '@lexical/selection';
 import {
@@ -378,6 +396,17 @@ export type Step = (
    * `getPeerDependencyFromEditor(editor, name)`, or `null` without one.
    */
   | {logPeer: string}
+  /**
+   * Logs `['hasExtension', name, has]` for each name:
+   * `LexicalBuilder.fromEditor(editor).hasExtensionByName(name)`.
+   */
+  | {hasExtensions: string[]}
+  /**
+   * Logs `['history', canUndo, canRedo, undo, redo]`: the `canUndo` and
+   * `canRedo` signals of `HistoryExtension`'s output, and the lengths of its
+   * history state's undo and redo stacks.
+   */
+  | {logHistory: true}
 ) & {now?: number};
 
 /** A config of an extension of `extensionDefs`, or overrides of one. */
@@ -386,7 +415,8 @@ export type ExtensionConfig = {[key: string]: Json};
 /**
  * An extension, by its key in `extensionDefs` or its name in
  * REAL_EXTENSIONS, alone or with config overrides
- * (`configExtension(extension, ...overrides)`).
+ * (`configExtension(extension, ...overrides)`). The overrides of a real
+ * extension name its functions by CONFIG_PRESETS.
  */
 export type ExtensionArg = string | [string, ...ExtensionConfig[]];
 
@@ -1451,15 +1481,95 @@ const TRANSFORMS: Record<string, (ctx: Context) => () => void> = {
 };
 
 /**
- * The extensions of `@lexical/extension` an `ExtensionArg` may name, as the
- * package exports them, without config overrides (their configs aren't
- * JSON).
+ * The extensions of `@lexical/extension` and the other packages an
+ * `ExtensionArg` may name, as the packages export them. The first three
+ * take no config overrides (their configs aren't JSON); the others take
+ * the JSON fields of theirs, and their functions by CONFIG_PRESETS.
  */
 const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['ClearEditorExtension', ClearEditorExtension],
   ['DecoratorTextExtension', DecoratorTextExtension],
   ['EditorStateExtension', EditorStateExtension],
+  ['AutoLinkExtension', AutoLinkExtension],
+  ['CheckListExtension', CheckListExtension],
+  ['CodeExtension', CodeExtension],
+  ['CodeIndentExtension', CodeIndentExtension],
+  ['HashtagExtension', HashtagExtension],
+  ['HistoryExtension', HistoryExtension],
+  ['LinkExtension', LinkExtension],
+  ['ListExtension', ListExtension],
+  ['NormalizeInlineElementsExtension', NormalizeInlineElementsExtension],
+  ['OverflowExtension', OverflowExtension],
+  ['PlainTextExtension', PlainTextExtension],
+  ['RichTextExtension', RichTextExtension],
+  ['SelectBlockExtension', SelectBlockExtension],
+  ['TabIndentationExtension', TabIndentationExtension],
 ]);
+
+/**
+ * The editor state `createInitialHistoryState: 'prefilled'` puts on the
+ * undo stack: a paragraph with the text `prefilled`.
+ */
+export const PREFILLED_HISTORY_STATE =
+  '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"prefilled","type":"text","version":1}],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}';
+
+/**
+ * The functions a real extension's config overrides name, by field and
+ * name: `validateUrl: 'https'` (LinkExtension) accepts only `https://`
+ * URLs; `matchers: ['url', 'email']` (AutoLinkExtension) are
+ * `autoLinkUrlMatcher` and `autoLinkEmailMatcher`, and `changeHandlers:
+ * ['log']` logs `['autoLink', url, prevUrl]`; `$canIndent: 'never'`
+ * (TabIndentationExtension) indents nothing; `createInitialHistoryState:
+ * 'prefilled'` (HistoryExtension) starts with PREFILLED_HISTORY_STATE on the
+ * undo stack.
+ */
+function configPreset(ctx: Context, field: string, name: string): unknown {
+  switch (`${field}:${name}`) {
+    case 'validateUrl:https':
+      return (url: string) => url.startsWith('https://');
+    case 'matchers:url':
+      return autoLinkUrlMatcher;
+    case 'matchers:email':
+      return autoLinkEmailMatcher;
+    case 'changeHandlers:log':
+      return (url: string | null, prevUrl: string | null) => {
+        ctx.log.push(['autoLink', url, prevUrl]);
+      };
+    case '$canIndent:never':
+      return () => false;
+    case 'createInitialHistoryState:prefilled':
+      return (editor: LexicalEditor): HistoryState => ({
+        current: null,
+        redoStack: [],
+        undoStack: [
+          {
+            editor,
+            editorState: editor.parseEditorState(PREFILLED_HISTORY_STATE),
+          },
+        ],
+      });
+    default:
+      throw new Error(`unknown config preset ${field}: ${name}`);
+  }
+}
+
+/** A real extension's config overrides, with their presets resolved. */
+function realConfig(ctx: Context, config: ExtensionConfig): ExtensionConfig {
+  const out: {[key: string]: unknown} = {};
+  for (const [field, value] of Object.entries(config)) {
+    if (typeof value === 'string') {
+      out[field] = configPreset(ctx, field, value);
+    } else if (
+      Array.isArray(value) &&
+      (field === 'matchers' || field === 'changeHandlers')
+    ) {
+      out[field] = value.map(name => configPreset(ctx, field, name as string));
+    } else {
+      out[field] = value;
+    }
+  }
+  return out as ExtensionConfig;
+}
 
 /** The node classes an `ExtensionSpec`'s `nodes` names, by type. */
 const NODES = new Map<string, typeof LexicalNode>([
@@ -1499,6 +1609,12 @@ function extensionArg(
     return extensionOf(ctx, extensionArgument);
   }
   const [key, ...configs] = extensionArgument;
+  if (REAL_EXTENSIONS.has(key)) {
+    return configExtension(
+      extensionOf(ctx, key),
+      ...configs.map(config => realConfig(ctx, config)),
+    );
+  }
   return configExtension(extensionOf(ctx, key), ...configs);
 }
 
@@ -1962,6 +2078,21 @@ function runExtensionStep(
         output[name].value = value;
       }
     });
+  } else if ('hasExtensions' in step) {
+    const builder = LexicalBuilder.fromEditor(editor);
+    for (const name of step.hasExtensions) {
+      ctx.log.push(['hasExtension', name, builder.hasExtensionByName(name)]);
+    }
+  } else if ('logHistory' in step) {
+    const {output} = getExtensionDependencyFromEditor(editor, HistoryExtension);
+    const {redoStack, undoStack} = output.historyState.value;
+    ctx.log.push([
+      'history',
+      output.canUndo.value,
+      output.canRedo.value,
+      undoStack.length,
+      redoStack.length,
+    ]);
   } else if ('logDependency' in step) {
     const {config} = getExtensionDependencyFromEditor(
       editor,

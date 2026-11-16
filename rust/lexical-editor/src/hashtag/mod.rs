@@ -11,9 +11,9 @@
 //! source (`tables.rs`), over UTF-16 code units as JS's regular expression
 //! (`i`, no `u`) sees them.
 //!
-//! Not ported: `createDOM`, which comes with `html`, and `HashtagExtension`,
-//! which needs the extension API (its `nodes` are [`hashtag_nodes`], its
-//! `register` is [`register_lexical_hashtag`]).
+//! With the `extension` feature, `hashtag_extension` is `HashtagExtension`.
+//!
+//! Not ported: `createDOM`, which comes with `html`.
 
 mod lexical_hashtag_extension;
 mod lexical_hashtag_node;
@@ -23,5 +23,9 @@ mod tables;
 
 pub use lexical_hashtag_extension::{
     GetHashtagMatch, HashtagConfig, get_hashtag_match, register_lexical_hashtag,
+};
+#[cfg(feature = "extension")]
+pub use lexical_hashtag_extension::{
+    HashtagConfigOverrides, HashtagExtensionType, hashtag_extension,
 };
 pub use lexical_hashtag_node::{HashtagNode, create_hashtag_node, hashtag_nodes, is_hashtag_node};

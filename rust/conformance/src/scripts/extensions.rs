@@ -3,8 +3,18 @@
 //! `testExtension` makes from JSON (`ExtensionSpec`), and a few of
 //! `@lexical/extension`'s own (`REAL_EXTENSIONS`). Each test extension logs
 //! every phase it runs, so the log is the order the builder ran them in.
+//!
+//! The packages' own extensions (`RichTextExtension`, `HistoryExtension`...)
+//! are real extensions too, whose config overrides are the JSON fields of
+//! their configs and name their functions by `ops.ts`'s `CONFIG_PRESETS`
+//! ([`real_configured`]).
 
 use super::{Ctx, err};
+use lexical::extension::{
+    CanIndentPredicate, LexicalBuilder, NormalizeInlineElementsConfigOverrides,
+    SelectBlockConfigOverrides, TabIndentationConfigOverrides, normalize_inline_elements_extension,
+    select_block_extension, tab_indentation_extension,
+};
 use lexical::extension::{DecoratorTextNode, HorizontalRuleNode};
 use lexical::extension::{
     LexicalEditorWithDispose, NamedSignalsOutput, batch, build_editor_from_extensions,
@@ -19,6 +29,7 @@ use lexical::{
     LexicalError, LexicalExtension, NodeClass, Unregister, config_extension, create_paragraph_node,
     create_text_node, declare_peer_dependency, define_extension, get_root, shallow_merge_config,
 };
+use lexical::{code, hashtag, history, link, list, overflow, plain_text, rich_text};
 use std::rc::Rc;
 
 /// A test extension: its config is JSON, its output the `namedSignals` of
@@ -28,14 +39,329 @@ pub(super) type TestExtension = LexicalExtension<Object, NamedSignalsOutput, Val
 
 const PHASES: [&str; 4] = ["init", "build", "register", "afterRegistration"];
 
-/// `REAL_EXTENSIONS`.
+/// `REAL_EXTENSIONS`, without config overrides, but for `HistoryExtension`
+/// (see [`real_extension_in`]).
 fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
     Some(match key {
         "ClearEditorExtension" => clear_editor_extension().into(),
         "DecoratorTextExtension" => decorator_text_extension().into(),
         "EditorStateExtension" => editor_state_extension().into(),
+        "AutoLinkExtension" => link::auto_link_extension().into(),
+        "CheckListExtension" => list::check_list_extension().into(),
+        "CodeExtension" => code::code_extension().into(),
+        "CodeIndentExtension" => code::code_indent_extension().into(),
+        "HashtagExtension" => hashtag::hashtag_extension().into(),
+        "LinkExtension" => link::link_extension().into(),
+        "ListExtension" => list::list_extension().into(),
+        "NormalizeInlineElementsExtension" => normalize_inline_elements_extension().into(),
+        "OverflowExtension" => overflow::overflow_extension().into(),
+        "PlainTextExtension" => plain_text::plain_text_extension().into(),
+        "RichTextExtension" => rich_text::rich_text_extension().into(),
+        "SelectBlockExtension" => select_block_extension().into(),
+        "TabIndentationExtension" => tab_indentation_extension().into(),
         _ => return None,
     })
+}
+
+/// `REAL_EXTENSIONS` in a session: `HistoryExtension` reads the session's
+/// clock, as JS's reads `Date.now()`, which the session sets while a step
+/// runs.
+fn real_extension_in(
+    ctx: &Rc<Ctx>,
+    key: &str,
+) -> Option<Result<AnyLexicalExtensionArgument, LexicalError>> {
+    if key == "HistoryExtension" {
+        return Some(real_configured(ctx, key, &[]));
+    }
+    real_extension(key).map(Ok)
+}
+
+/// `CONFIG_PRESETS`' `validateUrl: 'https'`.
+fn https_only(url: &str) -> bool {
+    url.starts_with("https://")
+}
+
+/// `PREFILLED_HISTORY_STATE`.
+const PREFILLED_HISTORY_STATE: &str = r#"{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"prefilled","type":"text","version":1}],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}"#;
+
+fn bad_config(key: &str, field: &str, value: &Value) -> LexicalError {
+    err(format!("bad config of {key}: {field} {value}"))
+}
+
+/// `configExtension(extension, ...configs.map(realConfig))` of a real
+/// extension: each JSON config as its typed overrides, with the functions
+/// `CONFIG_PRESETS` names.
+fn real_configured(
+    ctx: &Rc<Ctx>,
+    key: &str,
+    configs: &[Object],
+) -> Result<AnyLexicalExtensionArgument, LexicalError> {
+    let bool_of = |field: &str, v: &Value| v.as_bool().ok_or_else(|| bad_config(key, field, v));
+    let number_of = |field: &str, v: &Value| v.as_f64().ok_or_else(|| bad_config(key, field, v));
+    let usize_or_null = |field: &str, v: &Value| match v {
+        Value::Null => Ok(None),
+        v => number_of(field, v).map(|n| Some(n as usize)),
+    };
+    // Each config, field by field, into `$partial` with `$apply`.
+    macro_rules! overrides {
+        ($partial:ty, |$o:ident, $field:ident, $value:ident| $apply:expr) => {
+            configs
+                .iter()
+                .map(|config| {
+                    let mut $o = <$partial>::default();
+                    for ($field, $value) in config.iter() {
+                        $apply;
+                    }
+                    Ok($o)
+                })
+                .collect::<Result<Vec<$partial>, LexicalError>>()?
+        };
+    }
+    let unknown =
+        |field: &str, v: &Value| -> Result<(), LexicalError> { Err(bad_config(key, field, v)) };
+    Ok(match key {
+        "HistoryExtension" => {
+            // The session's clock, first, so that a config could still set
+            // its own (none can: `now` isn't JSON).
+            let clock = ctx.clock.clone();
+            let mut all = vec![history::HistoryConfigOverrides {
+                now: Some(history::HistoryNow(Rc::new(move || clock.get()))),
+                ..Default::default()
+            }];
+            all.extend(overrides!(
+                history::HistoryConfigOverrides,
+                |o, field, v| match field {
+                    "delay" => o.delay = Some(number_of(field, v)?),
+                    "disabled" => o.disabled = Some(bool_of(field, v)?),
+                    "maxDepth" => o.max_depth = Some(usize_or_null(field, v)?),
+                    "createInitialHistoryState" if v.as_str() == Some("prefilled") => {
+                        o.create_initial_history_state = Some(history::CreateInitialHistoryState(
+                            Rc::new(|editor: &Editor| {
+                                let state = history::create_empty_history_state();
+                                let editor_state = editor
+                                    .parse_editor_state(PREFILLED_HISTORY_STATE)
+                                    .expect("the prefilled history state parses");
+                                state
+                                    .borrow_mut()
+                                    .undo_stack
+                                    .push(history::HistoryStateEntry {
+                                        editor: editor.clone(),
+                                        editor_state,
+                                    });
+                                state
+                            }),
+                        ));
+                    }
+                    _ => unknown(field, v)?,
+                }
+            ));
+            config_extension(&history::history_extension(), all)
+        }
+        "ListExtension" => config_extension(
+            &list::list_extension(),
+            overrides!(list::ListConfigOverrides, |o, field, v| match field {
+                "hasStrictIndent" => o.has_strict_indent = Some(bool_of(field, v)?),
+                "shouldPreserveNumbering" => o.should_preserve_numbering = Some(bool_of(field, v)?),
+                _ => unknown(field, v)?,
+            }),
+        ),
+        "CheckListExtension" => config_extension(
+            &list::check_list_extension(),
+            overrides!(list::CheckListConfigOverrides, |o, field, v| match field {
+                "disableTakeFocusOnClick" => {
+                    o.disable_take_focus_on_click = Some(bool_of(field, v)?)
+                }
+                _ => unknown(field, v)?,
+            }),
+        ),
+        "LinkExtension" => config_extension(
+            &link::link_extension(),
+            overrides!(link::LinkConfigOverrides, |o, field, v| match field {
+                "attributes" => {
+                    o.attributes = Some(Some(
+                        v.as_object()
+                            .and_then(super::link_attributes_of)
+                            .ok_or_else(|| bad_config(key, field, v))?,
+                    ))
+                }
+                "validateUrl" if v.as_str() == Some("https") => {
+                    o.validate_url = Some(Some(Rc::new(https_only)))
+                }
+                _ => unknown(field, v)?,
+            }),
+        ),
+        "AutoLinkExtension" => config_extension(
+            &link::auto_link_extension(),
+            overrides!(link::AutoLinkConfigOverrides, |o, field, v| {
+                let names = v
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|n| n.as_str().unwrap_or(""));
+                match field {
+                    "matchers" => {
+                        o.matchers =
+                            Some(
+                                names
+                                    .map(|name| match name {
+                                        "url" => Ok(Rc::new(link::auto_link_url_matcher)
+                                            as link::LinkMatcher),
+                                        "email" => Ok(Rc::new(link::auto_link_email_matcher)
+                                            as link::LinkMatcher),
+                                        _ => Err(bad_config(key, field, v)),
+                                    })
+                                    .collect::<Result<_, _>>()?,
+                            )
+                    }
+                    "changeHandlers" => {
+                        o.change_handlers = Some(
+                            names
+                                .map(|name| match name {
+                                    "log" => {
+                                        let ctx = ctx.clone();
+                                        Ok(Rc::new(
+                                            move |url: Option<&str>, prev_url: Option<&str>| {
+                                                let or_null = |u: Option<&str>| {
+                                                    u.map_or(Value::Null, Value::from)
+                                                };
+                                                ctx.log(vec![
+                                                    "autoLink".into(),
+                                                    or_null(url),
+                                                    or_null(prev_url),
+                                                ]);
+                                            },
+                                        )
+                                            as link::ChangeHandler)
+                                    }
+                                    _ => Err(bad_config(key, field, v)),
+                                })
+                                .collect::<Result<_, _>>()?,
+                        )
+                    }
+                    _ => unknown(field, v)?,
+                }
+            }),
+        ),
+        "CodeIndentExtension" => config_extension(
+            &code::code_indent_extension(),
+            overrides!(code::CodeIndentConfigOverrides, |o, field, v| match field {
+                "disabled" => o.disabled = Some(bool_of(field, v)?),
+                "tabSize" => o.tab_size = Some(usize_or_null(field, v)?),
+                "escapeWithArrows" => o.escape_with_arrows = Some(bool_of(field, v)?),
+                _ => unknown(field, v)?,
+            }),
+        ),
+        "NormalizeInlineElementsExtension" => config_extension(
+            &normalize_inline_elements_extension(),
+            overrides!(
+                NormalizeInlineElementsConfigOverrides,
+                |o, field, v| match field {
+                    "disabled" => o.disabled = Some(bool_of(field, v)?),
+                    _ => unknown(field, v)?,
+                }
+            ),
+        ),
+        "TabIndentationExtension" => config_extension(
+            &tab_indentation_extension(),
+            overrides!(TabIndentationConfigOverrides, |o, field, v| match field {
+                "disabled" => o.disabled = Some(bool_of(field, v)?),
+                "maxIndent" => {
+                    o.max_indent = Some(match v {
+                        Value::Null => None,
+                        v => Some(number_of(field, v)?),
+                    })
+                }
+                "$canIndent" if v.as_str() == Some("never") => {
+                    o.can_indent = Some(CanIndentPredicate(Rc::new(|_| false)))
+                }
+                _ => unknown(field, v)?,
+            }),
+        ),
+        "SelectBlockExtension" => config_extension(
+            &select_block_extension(),
+            overrides!(SelectBlockConfigOverrides, |o, field, v| match field {
+                "disabled" => o.disabled = Some(bool_of(field, v)?),
+                "cascadeSelection" => o.cascade_selection = Some(bool_of(field, v)?),
+                _ => unknown(field, v)?,
+            }),
+        ),
+        _ => return Err(err(format!("{key} takes no config overrides"))),
+    })
+}
+
+/// `output[name].value = value` for a signal of a real extension's output.
+fn set_real_signal(
+    editor: &Editor,
+    key: &str,
+    name: &str,
+    value: &Value,
+) -> Option<Result<(), LexicalError>> {
+    let bad = || err(format!("bad value of {key}'s {name}: {value}"));
+    let as_bool = || value.as_bool().ok_or_else(bad);
+    let as_usize_or_null = || match value {
+        Value::Null => Ok(None),
+        v => v.as_f64().map(|n| Some(n as usize)).ok_or_else(bad),
+    };
+    fn output<C: lexical::ExtensionConfigBase, O: Clone + 'static, I: 'static>(
+        editor: &Editor,
+        extension: &Rc<LexicalExtension<C, O, I>>,
+    ) -> Result<O, LexicalError> {
+        let dep = get_extension_dependency_from_editor(editor, extension)?;
+        dep.output
+            .map(|o| (*o).clone())
+            .ok_or_else(|| err("no output"))
+    }
+    let set = || -> Result<(), LexicalError> {
+        match (key, name) {
+            ("HistoryExtension", "disabled") => output(editor, &history::history_extension())?
+                .disabled
+                .set_value(as_bool()?),
+            ("HistoryExtension", "delay") => output(editor, &history::history_extension())?
+                .delay
+                .set_value(value.as_f64().ok_or_else(bad)?),
+            ("HistoryExtension", "maxDepth") => output(editor, &history::history_extension())?
+                .max_depth
+                .set_value(as_usize_or_null()?),
+            ("ListExtension", "hasStrictIndent") => output(editor, &list::list_extension())?
+                .has_strict_indent
+                .set_value(as_bool()?),
+            ("ListExtension", "shouldPreserveNumbering") => {
+                output(editor, &list::list_extension())?
+                    .should_preserve_numbering
+                    .set_value(as_bool()?)
+            }
+            ("NormalizeInlineElementsExtension", "disabled") => {
+                output(editor, &normalize_inline_elements_extension())?
+                    .disabled
+                    .set_value(as_bool()?)
+            }
+            ("CodeIndentExtension", "disabled") => output(editor, &code::code_indent_extension())?
+                .disabled
+                .set_value(as_bool()?),
+            ("CodeIndentExtension", "tabSize") => output(editor, &code::code_indent_extension())?
+                .tab_size
+                .set_value(as_usize_or_null()?),
+            ("TabIndentationExtension", "disabled") => {
+                output(editor, &tab_indentation_extension())?
+                    .disabled
+                    .set_value(as_bool()?)
+            }
+            ("TabIndentationExtension", "maxIndent") => {
+                output(editor, &tab_indentation_extension())?
+                    .max_indent
+                    .set_value(match value {
+                        Value::Null => None,
+                        v => Some(v.as_f64().ok_or_else(bad)?),
+                    })
+            }
+            ("SelectBlockExtension", "disabled") => output(editor, &select_block_extension())?
+                .disabled
+                .set_value(as_bool()?),
+            _ => return Err(err(format!("no signal {name} of {key}"))),
+        }
+        Ok(())
+    };
+    (key == "HistoryExtension" || real_extension(key).is_some()).then(set)
 }
 
 /// `extensionOf(ctx, key)` for a test extension: the one made for `key`,
@@ -67,8 +393,8 @@ pub(super) fn extension_arg(
     arg: &Value,
 ) -> Result<AnyLexicalExtensionArgument, LexicalError> {
     if let Some(key) = arg.as_str() {
-        if let Some(real) = real_extension(key) {
-            return Ok(real);
+        if let Some(real) = real_extension_in(ctx, key) {
+            return real;
         }
         return Ok(test_extension_of(ctx, key)?.into());
     }
@@ -81,6 +407,9 @@ pub(super) fn extension_arg(
         .iter()
         .map(|c| c.as_object().cloned().ok_or_else(|| err("bad config")))
         .collect::<Result<Vec<_>, _>>()?;
+    if real_extension_in(ctx, key).is_some() {
+        return real_configured(ctx, key, &configs);
+    }
     Ok(config_extension(&test_extension_of(ctx, key)?, configs))
 }
 
@@ -502,17 +831,46 @@ pub(super) fn run_step(
                 let Some([key, name, value]) = entry else {
                     return Err(err("bad setSignals"));
                 };
-                let extension = test_extension_of(ctx, key.as_str().unwrap_or(""))?;
+                let key = key.as_str().unwrap_or("");
+                let name = name.as_str().unwrap_or("");
+                if let Some(result) = set_real_signal(editor, key, name, value) {
+                    result?;
+                    continue;
+                }
+                let extension = test_extension_of(ctx, key)?;
                 let output = get_extension_dependency_from_editor(editor, &extension)?
                     .output
                     .ok_or_else(|| err("no output"))?;
                 let signal = output
-                    .get(name.as_str().unwrap_or(""))
+                    .get(name)
                     .ok_or_else(|| err(format!("no signal {name}")))?;
                 signal.set_value(value.clone());
             }
             Ok(())
         })?;
+    } else if let Some(names) = step.get("hasExtensions").and_then(Value::as_array) {
+        let builder = LexicalBuilder::from_editor(editor)?;
+        for name in names {
+            let name = name.as_str().unwrap_or("");
+            ctx.log(vec![
+                "hasExtension".into(),
+                name.into(),
+                builder.has_extension_by_name(name).into(),
+            ]);
+        }
+    } else if step.get("logHistory").is_some() {
+        let output = get_extension_dependency_from_editor(editor, &history::history_extension())?
+            .output
+            .ok_or_else(|| err("no output"))?;
+        let history_state = output.history_state.value();
+        let state = history_state.0.borrow();
+        ctx.log(vec![
+            "history".into(),
+            output.can_undo.value().into(),
+            output.can_redo.value().into(),
+            (state.undo_stack.len() as f64).into(),
+            (state.redo_stack.len() as f64).into(),
+        ]);
     } else if let Some(key) = step.get("logDependency").and_then(Value::as_str) {
         let extension = test_extension_of(ctx, key)?;
         let dep = get_extension_dependency_from_editor(editor, &extension)?;

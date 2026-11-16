@@ -10,7 +10,9 @@
 //! (`createDOM`, `exportDOM`, `importDOM`) come with `html`. With the
 //! `extension` feature, [`rich_text_extension`] is `RichTextExtension`, and
 //! with `a11y`, `heading_announce_extension` is `HeadingAnnounceExtension`
-//! (`HeadingAnnounceExtension.ts`).
+//! (`HeadingAnnounceExtension.ts`). [`register_table_of_contents`] is
+//! `@lexical/react`'s `TableOfContentsPlugin`
+//! (`LexicalTableOfContentsPlugin.tsx`).
 
 use crate::clipboard::{copy_to_clipboard, insert_data_transfer_for_rich_text};
 use crate::commands::{
@@ -42,6 +44,9 @@ use crate::{CUT_TAG, Editor, LexicalError, NodeClass, PASTE_TAG, Unregister, Upd
 
 #[cfg(feature = "extension")]
 mod lexical_rich_text_extension;
+mod table_of_contents;
+
+pub use table_of_contents::{TableOfContentsEntry, register_table_of_contents};
 
 #[cfg(feature = "extension")]
 pub use lexical_rich_text_extension::{RichTextExtensionType, rich_text_extension};

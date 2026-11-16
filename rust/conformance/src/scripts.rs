@@ -112,6 +112,8 @@ struct Ctx {
     /// The session's root element and its document's body (`ctx.dom`),
     /// made on first use (`setRootElement`).
     dom: RefCell<Option<Rc<SessionRoot>>>,
+    /// What `characterLimit` and `tableOfContents` mounted, to unmount.
+    mounted: RefCell<HashMap<String, Unregister>>,
 }
 
 /// The session's root element (`sessionDOM(ctx).root`): a `div` whose
@@ -263,6 +265,62 @@ fn text_match_json(text_match: &MenuTextMatch) -> Value {
         text_match.replaceable_string.as_str().into(),
     );
     json.into()
+}
+
+/// `STRLEN[name]` of `ops.ts`: UTF-16 code units, or with `"utf8"` UTF-8
+/// bytes (what `TextEncoder` encodes).
+fn strlen_of(name: Option<&str>) -> Result<lexical::overflow::Strlen, LexicalError> {
+    match name {
+        None | Some("utf16") => Ok(Rc::new(|s: &str| utf16::len(s) as i64)),
+        Some("utf8") => Ok(Rc::new(|s: &str| s.len() as i64)),
+        Some(other) => Err(err(format!("unknown strlen {other}"))),
+    }
+}
+
+/// `mountStep(step, ctx)` of `ops.ts`: `useCharacterLimit` or
+/// `TableOfContentsPlugin`, as their registrations.
+fn mount_step(step: &Value, ctx: &Rc<Ctx>, editor: &Editor) -> Result<(), LexicalError> {
+    if let Some(spec) = step.get("characterLimit") {
+        let max_characters = number(spec.get("maxCharacters").unwrap_or(&Value::Null))? as i64;
+        let strlen = match spec.get("strlen").and_then(Value::as_str) {
+            None => None,
+            name => Some(strlen_of(name)?),
+        };
+        let log = ctx.clone();
+        let unregister = lexical::overflow::register_character_limit(
+            editor,
+            max_characters,
+            strlen,
+            Some(Rc::new(move |characters| {
+                log.log(vec![
+                    "remainingCharacters".into(),
+                    (characters as f64).into(),
+                ]);
+            })),
+        )?;
+        ctx.mounted
+            .borrow_mut()
+            .insert("characterLimit".to_owned(), unregister);
+    } else {
+        let log = ctx.clone();
+        let unregister = lexical::rich_text::register_table_of_contents(editor, move |entries| {
+            let entries = entries
+                .iter()
+                .map(|e| {
+                    Value::Array(vec![
+                        e.key.as_str().into(),
+                        e.text.as_str().into(),
+                        e.tag.as_str().into(),
+                    ])
+                })
+                .collect();
+            log.log(vec!["tableOfContents".into(), Value::Array(entries)]);
+        })?;
+        ctx.mounted
+            .borrow_mut()
+            .insert("tableOfContents".to_owned(), unregister);
+    }
+    Ok(())
 }
 
 /// `ops.ts`'s `STATES`, one set per session (JS's are shared by every
@@ -677,7 +735,10 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "logFullMatchOffset"
             | "logDecoratorBlock"
             | "logUrlMatcher"
-            | "logSingleTokenPaste",
+            | "logSingleTokenPaste"
+            | "findOffset"
+            | "wrapOverflowedNodes"
+            | "mergePrevious",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
         _ => Some("unknown"),
@@ -744,6 +805,15 @@ fn list_item(node: NodeRef) -> Result<NodeRef, LexicalError> {
 }
 
 /// `$parse(nodes)`.
+/// `$nodeArg(value)`: the node `key` when `value` is a string, else
+/// `value` parsed.
+fn node_arg(value: &Value) -> Result<NodeRef, LexicalError> {
+    match value.as_str() {
+        Some(key) => node(key),
+        None => parse_serialized_node(value),
+    }
+}
+
 fn parse(nodes: &Value) -> Result<Vec<NodeRef>, LexicalError> {
     nodes
         .as_array()
@@ -964,11 +1034,12 @@ fn run_node_method(
                 has.into(),
             ]);
         }
+        // A string names an existing node, which moves.
         "insertAfter" => {
-            n.insert_after(&parse_serialized_node(&a(0))?, flag(&a(1), true))?;
+            n.insert_after(&node_arg(&a(0))?, flag(&a(1), true))?;
         }
         "insertBefore" => {
-            n.insert_before(&parse_serialized_node(&a(0))?, flag(&a(1), true))?;
+            n.insert_before(&node_arg(&a(0))?, flag(&a(1), true))?;
         }
         "markDirty" => n.mark_dirty(),
         "mergeWithSibling" => {
@@ -1703,6 +1774,41 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
                 is_single_token(text).into(),
             ]);
             Ok(())
+        }
+        Some("findOffset") => {
+            let text = action.str("text").map_err(err)?;
+            let strlen_name = action.get("strlen").and_then(Value::as_str);
+            let strlen = strlen_of(strlen_name)?;
+            let offsets = action
+                .arr("maxCharacters")
+                .map_err(err)?
+                .iter()
+                .map(|max| {
+                    let max = number(max)? as i64;
+                    Ok((lexical::overflow::find_offset(text, max, &*strlen) as f64).into())
+                })
+                .collect::<Result<Vec<Value>, LexicalError>>()?;
+            ctx.log(vec![
+                "findOffset".into(),
+                text.into(),
+                strlen_name.unwrap_or("utf16").into(),
+                Value::Array(offsets),
+            ]);
+            Ok(())
+        }
+        Some("wrapOverflowedNodes") => {
+            let offset = number(action.get("offset").unwrap_or(&Value::Null))?;
+            lexical::overflow::wrap_overflowed_nodes(offset as usize)
+        }
+        Some("mergePrevious") => {
+            let overflow_node = node(action.str("key").map_err(err)?)?;
+            if !lexical::overflow::is_overflow_node(&overflow_node) {
+                return Err(err(format!(
+                    "{} is not an overflow node",
+                    overflow_node.get_key()
+                )));
+            }
+            lexical::overflow::merge_previous(&overflow_node)
         }
         Some("dispatch") => {
             let name = action.get("command").and_then(Value::as_str).unwrap_or("");
@@ -2636,6 +2742,17 @@ impl Session {
                 ]);
                 Ok(())
             })
+        } else if step.get("characterLimit").is_some() || step.get("tableOfContents").is_some() {
+            mount_step(step, ctx, editor)
+        } else if let Some(name) = step.get("unmount").and_then(Value::as_str) {
+            let unmount = ctx.mounted.borrow_mut().remove(name);
+            match unmount {
+                None => Err(err(format!("nothing mounted as {name}"))),
+                Some(unmount) => {
+                    unmount();
+                    Ok(())
+                }
+            }
         } else {
             extensions::run_step(step, ctx, self.built.as_ref())
         };

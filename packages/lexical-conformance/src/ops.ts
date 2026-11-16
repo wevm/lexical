@@ -114,16 +114,25 @@ import {
   $wrapSelectionInMarkNode,
   MarkNode,
 } from '@lexical/mark';
-import {OverflowExtension, OverflowNode} from '@lexical/overflow';
+import {
+  $isOverflowNode,
+  OverflowExtension,
+  OverflowNode,
+} from '@lexical/overflow';
 import {PlainTextExtension, registerPlainText} from '@lexical/plain-text';
 import {
   INSERT_EMBED_COMMAND,
   URL_MATCHER,
 } from '@lexical/react/LexicalAutoEmbedPluginUtils';
+import * as CharacterLimitPlugin from '@lexical/react/LexicalCharacterLimitPlugin';
 import {
   $isDecoratorBlockNode,
   DecoratorBlockNode,
 } from '@lexical/react/LexicalDecoratorBlockNode';
+import {
+  type TableOfContentsEntry,
+  TableOfContentsPlugin,
+} from '@lexical/react/LexicalTableOfContentsPlugin';
 import * as TypeaheadMenuPlugin from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import {
   PUNCTUATION,
@@ -281,6 +290,7 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 
 import {browserWindow} from './browserWindow';
+import {mountHooks} from './reactHost';
 
 // A small, JSON-only script language for editor sessions, interpreted here by
 // the real JS code and by the Swift runner in
@@ -685,7 +695,36 @@ export type Action =
    * handler, which it does not export.
    */
   | {do: 'logSingleTokenPaste'; text: string}
+  /**
+   * Logs `['findOffset', text, strlen, offsets]`: `findOffset(text,
+   * maxCharacters, strlen)` (@lexical/react's shared/useCharacterLimit.ts,
+   * which segments with `Intl.Segmenter`) for each of `maxCharacters`, where
+   * `strlen` is `'utf16'` (the hook's default) unless it is `'utf8'`
+   * (STRLEN).
+   */
+  | {
+      do: 'findOffset';
+      text: string;
+      maxCharacters: number[];
+      strlen?: StrlenName;
+    }
+  /** `$wrapOverflowedNodes(offset)` (shared/useCharacterLimit.ts). */
+  | {do: 'wrapOverflowedNodes'; offset: number}
+  /** `$mergePrevious(node)` of the overflow node `key`. */
+  | {do: 'mergePrevious'; key: string}
   | {do: 'dispatch'; command: string; payload?: Json};
+
+/**
+ * How `findOffset` and `useCharacterLimit` measure text: `'utf16'` is the
+ * hook's default (`input.length`), `'utf8'` the UTF-8 byte length, as
+ * `CharacterLimitPlugin` measures with `charset: 'UTF-8'`.
+ */
+export type StrlenName = 'utf16' | 'utf8';
+
+const STRLEN: Record<StrlenName, (input: string) => number> = {
+  utf16: input => input.length,
+  utf8: input => new TextEncoder().encode(input).length,
+};
 
 /** The blocks the `$create` of an action makes. */
 export type BlockType = 'paragraph' | 'quote' | HeadingTagType;
@@ -760,6 +799,22 @@ export type Step = (
    * history state's undo and redo stacks.
    */
   | {logHistory: true}
+  /**
+   * `useCharacterLimit(editor, maxCharacters, {remainingCharacters,
+   * strlen})` (@lexical/react's shared/useCharacterLimit.ts), mounted as a
+   * first render runs it (src/reactHost.ts): its effects run at once.
+   * `remainingCharacters` logs `['remainingCharacters', n]`; `strlen` is
+   * left to the hook's default unless it is `'utf8'` (STRLEN).
+   */
+  | {characterLimit: {maxCharacters: number; strlen?: StrlenName}}
+  /**
+   * `TableOfContentsPlugin` (@lexical/react), mounted as `characterLimit`
+   * is: each time it sets its state, logs `['tableOfContents', entries]`,
+   * the `[key, text, tag]` of each entry.
+   */
+  | {tableOfContents: true}
+  /** Unmounts what `characterLimit` or `tableOfContents` mounted. */
+  | {unmount: 'characterLimit' | 'tableOfContents'}
   /**
    * `editor.setRootElement(root)` with the session's root element (a `div`
    * of a jsdom document of the session's own, made on first use, not in
@@ -1046,7 +1101,35 @@ type Context = {
   handles: Map<string, Map<string, string>>;
   /** The session's jsdom window and root element (`setRootElement`). */
   dom: {window: ReturnType<typeof browserWindow>; root: HTMLElement} | null;
+  /** What `characterLimit` and `tableOfContents` mounted, to unmount. */
+  mounted: Map<string, () => void>;
 };
+
+/**
+ * The module-private functions of `shared/useCharacterLimit.ts` that
+ * `vitest.config.mts` re-exports, unchanged, from
+ * `LexicalCharacterLimitPlugin.tsx`.
+ */
+type CharacterLimitInternals = {
+  INTERNAL_useCharacterLimit: (
+    editor: LexicalEditor,
+    maxCharacters: number,
+    options?: {
+      remainingCharacters?: (characters: number) => void;
+      strlen?: (input: string) => number;
+    },
+  ) => void;
+  INTERNAL_findOffset: (
+    source: string,
+    maxCharacters: number,
+    strlen: (input: string) => number,
+  ) => number;
+  INTERNAL_$wrapOverflowedNodes: (offset: number) => void;
+  INTERNAL_$mergePrevious: (overflowNode: OverflowNode) => void;
+};
+
+const CHARACTER_LIMIT =
+  CharacterLimitPlugin as unknown as CharacterLimitInternals;
 
 /**
  * `DecoratorBlockNode` (@lexical/react) as an app's block embed extends it,
@@ -1173,6 +1256,53 @@ function liveRegionEntry(ctx: Context): Json {
   ];
 }
 
+/** Mounts `characterLimit` or `tableOfContents` (see `Step`). */
+function mountStep(
+  step: Extract<Step, {characterLimit: unknown} | {tableOfContents: true}>,
+  ctx: Context,
+): void {
+  const {editor} = ctx;
+  if ('characterLimit' in step) {
+    const {maxCharacters, strlen} = step.characterLimit;
+    const remainingCharacters = (characters: number) => {
+      ctx.log.push(['remainingCharacters', characters]);
+    };
+    ctx.mounted.set(
+      'characterLimit',
+      mountHooks(
+        editor,
+        () => {},
+        () =>
+          CHARACTER_LIMIT.INTERNAL_useCharacterLimit(
+            editor,
+            maxCharacters,
+            strlen === undefined
+              ? {remainingCharacters}
+              : {remainingCharacters, strlen: STRLEN[strlen]},
+          ),
+      ),
+    );
+  } else {
+    ctx.mounted.set(
+      'tableOfContents',
+      mountHooks(
+        editor,
+        value => {
+          ctx.log.push([
+            'tableOfContents',
+            (value as TableOfContentsEntry[]).map(([key, content, tag]) => [
+              key,
+              content,
+              tag,
+            ]),
+          ]);
+        },
+        () => TableOfContentsPlugin({children: () => null as never}),
+      ),
+    );
+  }
+}
+
 /**
  * A headless `DataTransfer` (Node has none): the data by format, in the
  * order it was first set, with the format lowercased and `text` and `url`
@@ -1251,6 +1381,13 @@ function $node(key: string): LexicalNode {
     throw new Error(`no node ${key}`);
   }
   return node;
+}
+
+/** The node `key` when `value` is a string, else `value` parsed. */
+function $nodeArg(value: Json): LexicalNode {
+  return typeof value === 'string'
+    ? $node(value)
+    : $parseSerializedNode(value as unknown as SerializedLexicalNode);
 }
 
 function $parse(nodes: SerializedLexicalNode[]): LexicalNode[] {
@@ -1456,16 +1593,11 @@ const NODE_METHODS: Record<
     const id = arg(args, 0) as string;
     ctx.log.push(['hasID', n.getKey(), id, markNode(n).hasID(id)]);
   },
+  // A string names an existing node, which moves.
   insertAfter: (n, args) =>
-    n.insertAfter(
-      $parse([arg(args, 0) as SerializedLexicalNode])[0],
-      optional<boolean>(arg(args, 1)),
-    ),
+    n.insertAfter($nodeArg(arg(args, 0)), optional<boolean>(arg(args, 1))),
   insertBefore: (n, args) =>
-    n.insertBefore(
-      $parse([arg(args, 0) as SerializedLexicalNode])[0],
-      optional<boolean>(arg(args, 1)),
-    ),
+    n.insertBefore($nodeArg(arg(args, 0)), optional<boolean>(arg(args, 1))),
   markDirty: n => n.markDirty(),
   mergeWithSibling: (n, args) =>
     text(n).mergeWithSibling(text($node(arg(args, 0) as string))),
@@ -2341,6 +2473,29 @@ function $runAction(action: Action, ctx: Context): void {
         /^\S+$/.test(action.text),
       ]);
       return;
+    case 'findOffset': {
+      const strlen = action.strlen ?? 'utf16';
+      ctx.log.push([
+        'findOffset',
+        action.text,
+        strlen,
+        action.maxCharacters.map(max =>
+          CHARACTER_LIMIT.INTERNAL_findOffset(action.text, max, STRLEN[strlen]),
+        ),
+      ]);
+      return;
+    }
+    case 'wrapOverflowedNodes':
+      CHARACTER_LIMIT.INTERNAL_$wrapOverflowedNodes(action.offset);
+      return;
+    case 'mergePrevious': {
+      const overflowNode = $node(action.key);
+      if (!$isOverflowNode(overflowNode)) {
+        throw new Error(`${action.key} is not an overflow node`);
+      }
+      CHARACTER_LIMIT.INTERNAL_$mergePrevious(overflowNode);
+      return;
+    }
     case 'dispatch':
       ctx.log.push([
         'dispatched',
@@ -2906,6 +3061,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     extensions: new Map(),
     handles: new Map(),
     log: [],
+    mounted: new Map(),
     saved: new Map(),
   };
   let build: BuildResult | undefined;
@@ -3138,6 +3294,15 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
                 ),
           ]);
         });
+      } else if ('characterLimit' in step || 'tableOfContents' in step) {
+        mountStep(step, ctx);
+      } else if ('unmount' in step) {
+        const unmount = ctx.mounted.get(step.unmount);
+        if (unmount === undefined) {
+          throw new Error(`nothing mounted as ${step.unmount}`);
+        }
+        ctx.mounted.delete(step.unmount);
+        unmount();
       } else {
         runExtensionStep(step, ctx);
       }
@@ -3180,6 +3345,9 @@ function runExtensionStep(
     | {setEditable: boolean}
     | {announce: string}
     | {typeahead: TypeaheadSpec}
+    | {characterLimit: unknown}
+    | {tableOfContents: true}
+    | {unmount: string}
   >,
   ctx: Context,
 ): void {

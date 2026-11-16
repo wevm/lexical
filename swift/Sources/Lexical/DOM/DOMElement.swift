@@ -274,12 +274,14 @@ public final class CSSStyleDeclaration {
   }
 
   /// Replaces the declarations with those in `css`, without writing the
-  /// `style` attribute (which is where `css` came from).
-  func parse(_ css: String) {
+  /// `style` attribute (which is where `css` came from). A style rule's
+  /// block (`keepCase: false`) matches property names in any case, as
+  /// jsdom's CSSOM does; a style attribute's keeps their case.
+  func parse(_ css: String, keepCase: Bool = true) {
     entries = []
     for (name, rawValue) in parseCSSDeclarations(preprocessCSS(css)) {
       let (value, important) = splitImportant(rawValue)
-      _ = write(canonicalName(name, fromText: true), value, important ? "important" : "")
+      _ = write(canonicalName(name, fromText: keepCase), value, important ? "important" : "")
     }
   }
 

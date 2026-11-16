@@ -135,3 +135,39 @@ fn import(case: &Value, editor: lexical::Editor) -> Result<Outcome, String> {
     same("nodes", nodes.borrow().as_str(), case.str("nodes")?)?;
     Ok(Outcome::Pass)
 }
+
+/// `html/import-extension`: `DOMImportExtension`'s import, in an editor
+/// built from `CoreImportExtension` and `HorizontalRuleNode`, makes the
+/// nodes it made in jsdom (with the document's `<style>` sheets inlined).
+pub fn check_import_extension(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    use lexical::html::import::{core_import_extension, generate_nodes_from_dom_via_extension};
+    use lexical::{LexicalExtension, define_extension};
+    let host = define_extension(LexicalExtension::<(), (), ()> {
+        dependencies: vec![core_import_extension().into()],
+        nodes: lexical::extension::extension_nodes()
+            .into_iter()
+            .filter(|class| class.node_type() == "horizontalrule")
+            .collect(),
+        ..LexicalExtension::new("[conformance]", ())
+    });
+    let editor = lexical::extension::build_editor_from_extensions([host.into()])
+        .map_err(|e| e.to_string())?;
+    let dom = parse_from_string(case.str("html")?);
+    let nodes = Rc::new(RefCell::new(String::new()));
+    let out = nodes.clone();
+    let result = editor.update(
+        move || {
+            let nodes = generate_nodes_from_dom_via_extension(&dom, None)?;
+            *out.borrow_mut() = Value::Array(nodes.iter().map(node_to_json).collect()).to_string();
+            Ok(())
+        },
+        UpdateOptions {
+            discrete: true,
+            ..UpdateOptions::default()
+        },
+    );
+    editor.dispose();
+    result.map_err(|e| e.to_string())?;
+    same("nodes", nodes.borrow().as_str(), case.str("nodes")?)?;
+    Ok(Outcome::Pass)
+}

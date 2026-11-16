@@ -487,9 +487,11 @@ Reversible choices made porting `@lexical/extension` under Q18.
   Selector regexes are Swift `Regex`, and captures are `RegExpMatch`
   values (`[0]` the match, then the groups). `$inlineStylesFromStyleSheets`
   has no CSSOM to read: it parses each `<style>` sheet's style rules
-  (skipping at-rules) and matches their selectors with `parseSelector`'s
-  subset, skipping any selector outside it, as JS skips one
-  `querySelectorAll` rejects. `HorizontalRuleNode` is in
+  (`parseStyleSheet`, skipping at-rules, as jsdom's CSSOM parses them) and
+  matches their selectors with `querySelectorAll` (compound selectors,
+  combinators and attribute operators), skipping any selector outside
+  that, as JS skips one `querySelectorAll` rejects; `html/import-extension`
+  pins it against jsdom. `HorizontalRuleNode` is in
   `LexicalExtension`, with `HorizontalRuleExtension` (insert command and
   click selection).
 

@@ -2,8 +2,8 @@ import Lexical
 
 // Port of the legacy import half of packages/lexical-html/src/index.ts:
 // `$generateNodesFromDOM`, which converts with each node class's
-// `importDOM`. Inlining `<style>` sheets into elements
-// (`$inlineStylesFromStyleSheetsDOM`) is not ported yet.
+// `importDOM`, after inlining the document's `<style>` sheets into its
+// elements (`$inlineStylesFromStyleSheetsDOM`).
 
 private let ignoreTags: Set<String> = ["STYLE", "SCRIPT"]
 

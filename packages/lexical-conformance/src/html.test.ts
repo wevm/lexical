@@ -5,11 +5,19 @@
  * LICENSE file in the root directory of this source tree.
  *
  */
-import type {JSDOM} from 'jsdom';
-
-import {HorizontalRuleNode} from '@lexical/extension';
+import {
+  buildEditorFromExtensions,
+  HorizontalRuleExtension,
+  HorizontalRuleNode,
+} from '@lexical/extension';
 import {createHeadlessEditor} from '@lexical/headless';
-import {$generateHtmlFromNodes, $generateNodesFromDOM} from '@lexical/html';
+import {
+  $generateHtmlFromNodes,
+  $generateNodesFromDOM,
+  $generateNodesFromDOMViaExtension,
+  CoreImportExtension,
+} from '@lexical/html';
+import {JSDOM} from 'jsdom';
 import {
   $createLineBreakNode,
   $createParagraphNode,
@@ -17,6 +25,7 @@ import {
   $createTextNode,
   $getRoot,
   $isElementNode,
+  defineExtension,
   type EditorThemeClasses,
   type ElementFormatType,
   type LexicalNode,
@@ -46,14 +55,20 @@ type Case = {
  */
 function withJSDOM<T>(f: (dom: JSDOM['window']) => T): T {
   const dom = browserWindow();
-  const globals = globalThis as {window?: unknown; document?: unknown};
-  const prev = [globals.window, globals.document];
+  const globals = globalThis as {
+    window?: unknown;
+    document?: unknown;
+    CSSStyleRule?: unknown;
+  };
+  const prev = [globals.window, globals.document, globals.CSSStyleRule];
   globals.window = dom;
   globals.document = dom.document;
+  // `$inlineStylesFromStyleSheets` reads the global, as in a browser.
+  globals.CSSStyleRule = dom.CSSStyleRule;
   try {
     return f(dom);
   } finally {
-    [globals.window, globals.document] = prev;
+    [globals.window, globals.document, globals.CSSStyleRule] = prev;
     dom.close();
   }
 }
@@ -332,6 +347,100 @@ test('html/import-nodes', () => {
     'html/import-nodes',
     'html-import',
     'HTML for the node packages (curated, plus every property/documents HTML export) and the nodes $generateNodesFromDOM makes from it in jsdom with the property/documents nodes and HorizontalRuleNode, each as exportJSON with its children.',
+    cases,
+  );
+});
+
+/**
+ * HTML for `DOMImportExtension`'s walk and `CoreImportRules` that the legacy
+ * corpus doesn't reach: whitespace against unknown and block neighbors, the
+ * style overrides of the inline format rule, `<hr>`, and `<style>` sheets
+ * (`$inlineStylesFromStyleSheets`).
+ */
+const IMPORT_EXTENSION_CORPUS = [
+  '<p>a <foo> b </foo> c</p>',
+  '<p>x<span> </span>y</p>',
+  '<p> <b> bold </b> </p>',
+  '<div> one </div><div> two </div>',
+  '<p>end <br> next</p>',
+  '<p>a\r\nb</p>',
+  '<b><span style="font-weight: normal">plain</span> bold</b>',
+  '<b><span style="font-weight: 400">400</span></b><span style="font-weight: 700">700</span>',
+  '<i><span style="font-style: normal">upright</span></i>',
+  '<u><span style="text-decoration: none">none</span></u><span style="text-decoration: underline line-through">both</span>',
+  '<span style="text-transform: lowercase">L</span><span style="text-transform: capitalize">c</span><span style="text-transform: uppercase"><span style="text-transform: none">n</span></span>',
+  '<sup><span style="vertical-align: sub">sub</span></sup><sub><span style="vertical-align: baseline">base</span></sub>',
+  '<code><b>cb</b></code><mark><i>mi</i></mark>',
+  '<span style="color: red; font-weight: bold">styled</span>',
+  '<p align="justify">j</p><p align="middle">bad</p><p style="text-align: left" align="right">both</p>',
+  '<section style="text-align: center"><h1>h</h1>inline<p style="text-align: right">p</p></section>',
+  '<div><br></div><div>a<br></div><div><br>b</div>',
+  '<br>',
+  'a<br>',
+  '<hr>',
+  '<p>a<hr>b</p>',
+  '<div>x<hr>y</div>',
+  '<script>s</script><style>p { color: red }</style><p>visible</p>',
+  '<style>p { color: red; font-weight: bold }</style><p>red bold</p>',
+  '<style>.big { font-size: 20px } #i { font-style: italic }</style><p class="big" id="i">both</p>',
+  '<style>span { color: blue }</style><p><span style="color: green">own wins</span><span>blue</span></p>',
+  '<style>b, i { text-decoration: underline }</style><b>b</b><i>i</i>',
+  '<style>.xl1 { font-weight: 700; }</style><p><span class="xl1">bold</span></p>',
+  '<style>span.a[data-a="1"] { font-weight: 700 } p > span { font-style: italic } div span { text-decoration: underline }</style><p><span class="a" data-a="1">s</span></p><div><b><span>deep</span></b></div>',
+  '<style>b + i { font-style: normal } b ~ u { text-decoration: none } * { vertical-align: super }</style><p><b>b</b><i>i</i><u>u</u></p>',
+  '<style>span { FONT-WEIGHT: BOLD } .a, .b { font-style: italic }</style><p><span class="b">case</span></p>',
+  '<style>span { font-weight: bold</style><p><span>unterminated</span></p>',
+  '<style>span { content: "}"; font-weight: bold }</style><p><span>quoted</span></p>',
+  '<style>@media print { p { color: red } } p { font-style: italic }</style><p>media</p>',
+  '<style>/* c */ p { color: red !important } <!-- --></style><p>important</p>',
+  '<style>p { white-space: pre }</style><p>  pre   ws </p>',
+  '<style>div { display: inline }</style><p>a <div> b </div> c</p>',
+  '<html><head><style>p { font-weight: bold }</style></head><body><p>head sheet</p></body></html>',
+  '<!-- comment --><p>after comment</p>',
+  '<p>a<!-- c -->b</p>',
+  '<unknown>stray text</unknown>',
+  '<table><tr><td>a</td><td>b</td></tr></table>',
+];
+
+test('html/import-extension', () => {
+  const htmls = [
+    ...IMPORT_CORPUS,
+    ...IMPORT_EXTENSION_CORPUS,
+    ...JSON.parse(
+      readFileSync(
+        new URL('../vectors/html/export.json', import.meta.url),
+        'utf8',
+      ),
+    ).cases.map((c: Case) => c.html),
+  ];
+  const cases: ImportCase[] = htmls.map(html => {
+    const editor = buildEditorFromExtensions(
+      defineExtension({
+        dependencies: [CoreImportExtension, HorizontalRuleExtension],
+        name: '[conformance]',
+      }),
+    );
+    let nodes = '';
+    withJSDOM(() => {
+      // A document of its own, not DOMParser's: jsdom gives those no
+      // styleSheets, where a browser does.
+      const dom = new JSDOM(html).window.document;
+      editor.update(
+        () => {
+          nodes = JSON.stringify(
+            $generateNodesFromDOMViaExtension(dom).map($nodeToJSON),
+          );
+        },
+        {discrete: true},
+      );
+    });
+    editor.dispose();
+    return {html, nodes};
+  });
+  emitVectors(
+    'html/import-extension',
+    'html-import',
+    "HTML (html/import's corpus, curated cases for the walk, the inline format rule, <hr> and <style> sheets, and every html/export output) and the nodes DOMImportExtension's $generateNodesFromDOM makes from it in a jsdom document, in an editor built from CoreImportExtension and HorizontalRuleExtension, each as exportJSON with its children.",
     cases,
   );
 });

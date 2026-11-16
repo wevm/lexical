@@ -187,13 +187,16 @@ pub const COMPOSITION_START_TAG: &str = "composition-start";
 pub const COMPOSITION_END_TAG: &str = "composition-end";
 
 /// `CreateEditorArgs`: the node classes to register besides the core ones,
-/// the editor's `namespace` (a random one, `createUID()`, when empty), the
-/// theme, and (with the `html` feature) the HTML import and export
-/// overrides and the render config.
+/// the editor's `namespace` (when empty, its parent editor's, or a random
+/// one, `createUID()`), the theme, the parent editor, and (with the `html`
+/// feature) the HTML import and export overrides and the render config.
 #[derive(Clone, Default)]
 pub struct CreateEditorArgs {
     pub nodes: Vec<NodeClass>,
     pub namespace: String,
+    /// `parentEditor`: the editor this one is nested in, which commands
+    /// dispatched in this one reach after its own listeners.
+    pub parent_editor: Option<Editor>,
     /// `theme`: class names by node kind (`EditorThemeClasses`), as JSON:
     /// a string or an array of strings, or (for `text`) an object of them
     /// by format.
@@ -211,6 +214,17 @@ pub struct CreateEditorArgs {
 pub struct EditorConfig {
     /// `theme`.
     pub theme: Object,
+}
+
+/// `EditorReadMode`: which state [`Editor::read_with_mode`] reads.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EditorReadMode {
+    /// `'force-commit'`: commit the pending update, then read.
+    ForceCommit,
+    /// `'latest'`: the committed state, without committing.
+    Latest,
+    /// `'pending'`: the pending state, or the committed one without one.
+    Pending,
 }
 
 /// `EditorUpdateOptions`. `onUpdate` and `event` come with their users.
@@ -488,6 +502,8 @@ pub(crate) struct EditorInner {
     pub(crate) dom: RefCell<crate::lexical_dom::EditorDomRenderConfig>,
     /// `_config.namespace`.
     namespace: String,
+    /// `_parentEditor`.
+    parent_editor: Option<Editor>,
     /// `_editable`.
     editable: Cell<bool>,
     /// `_slotsUsed`: whether a slot was ever set in this editor, or in a
@@ -514,14 +530,20 @@ pub(crate) struct EditorInner {
 }
 
 /// `createEditor(config)`: registers the core nodes (root, text, line
-/// break, tab, paragraph, artificial) and `args.nodes`, in `args.namespace`. (JS takes
-/// a parent editor's namespace too; nested editors aren't ported.)
+/// break, tab, paragraph, artificial) and `args.nodes`, in `args.namespace`,
+/// or the parent editor's when that is empty. (JS's `createEditor()` with
+/// no config at all takes the active editor as the parent; Rust always
+/// takes a config, as Swift does.)
 pub fn create_editor(args: CreateEditorArgs) -> Editor {
-    // `config.namespace || createUID()` (an editor has no parent here).
-    let namespace = if args.namespace.is_empty() {
-        create_uid()
-    } else {
+    let parent_editor = args.parent_editor;
+    // `config.namespace || (parentEditor !== null ?
+    // parentEditor._config.namespace : createUID())`.
+    let namespace = if !args.namespace.is_empty() {
         args.namespace
+    } else if let Some(parent) = &parent_editor {
+        parent.get_namespace().to_owned()
+    } else {
+        create_uid()
     };
     let core = [
         // The root is an `ElementNode`.
@@ -587,6 +609,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         #[cfg(feature = "html")]
         dom: RefCell::new(args.dom.unwrap_or_default()),
         namespace,
+        parent_editor,
         editable: Cell::new(true),
         slots_used: Cell::new(false),
         root_element: RefCell::new(None),
@@ -614,6 +637,12 @@ impl Editor {
     /// `_config.namespace`: the namespace the editor was created with.
     pub fn get_namespace(&self) -> &str {
         &self.0.namespace
+    }
+
+    /// `_parentEditor`: the editor this one is nested in
+    /// ([`CreateEditorArgs::parent_editor`]), if any.
+    pub fn parent_editor(&self) -> Option<&Editor> {
+        self.0.parent_editor.as_ref()
     }
 
     /// `isEditable()`.
@@ -992,6 +1021,26 @@ impl Editor {
         Ok(read_editor_state(Some(self), &self.get_editor_state(), f))
     }
 
+    /// `read(mode, callbackFn)`: [`read`](Self::read) for
+    /// `EditorReadMode::ForceCommit`; `Latest` reads the committed state
+    /// without committing first, and `Pending` the state of the update in
+    /// progress or queued (the committed one without one), without
+    /// committing it.
+    pub fn read_with_mode<R>(
+        &self,
+        mode: EditorReadMode,
+        f: impl FnOnce() -> R,
+    ) -> Result<R, LexicalError> {
+        if mode == EditorReadMode::ForceCommit && !self.0.dispatching_commit_listeners.get() {
+            commit_pending_updates(self)?;
+        }
+        let editor_state = match mode {
+            EditorReadMode::Pending => self.pending().unwrap_or_else(|| self.get_editor_state()),
+            _ => self.get_editor_state(),
+        };
+        Ok(read_editor_state(Some(self), &editor_state, f))
+    }
+
     /// `registerNodeTransform(klass, listener)`, by the node type. Nodes of
     /// that type already in the editor are marked dirty, so the transform
     /// runs on them with the next update.
@@ -1168,13 +1217,14 @@ impl Editor {
     }
 
     /// `dispatchCommand(command, payload)`: runs the command's listeners, by
-    /// priority, until one handles it, and returns whether one did.
+    /// priority (within each, this editor's, then its parent editors'),
+    /// until one handles it, and returns whether one did.
     pub fn dispatch_command<P: 'static>(
         &self,
         command: &LexicalCommand<P>,
         payload: P,
     ) -> Result<bool, LexicalError> {
-        trigger_command_listeners(self, command, &payload)
+        trigger_command_listeners(self, command, &Rc::new(payload), self)
     }
 
     // The dirty records.

@@ -5424,6 +5424,208 @@ test('scripts/package-extensions', () => {
   );
 });
 
+test('scripts/nested-editor', () => {
+  // A nested editor (NestedEditorExtension) built in a `read` of a parent
+  // editor, both from extensions: its `_parentEditor`, namespace and theme,
+  // the parent's editable mode followed, commands reaching the parent's
+  // listeners after its own, SelectBlockExtension's `cascadeSelection` in
+  // the parent and SharedHistoryExtension taking the parent's history. The
+  // log of each step ends with the `nested` entry (ops.ts's `nestedEntry`).
+  const parent = (step: Step): Step => ({...step, inParent: true});
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const type = (text: string): Step =>
+    run('CONTROLLED_TEXT_INSERTION_COMMAND', text);
+  const start = (...blocks: Node[]): Step =>
+    update(node('root', 'clear'), {do: 'append', key: 'root', nodes: blocks});
+  const signals = (key: string, ...entries: [string, Json][]): Step => ({
+    setSignals: entries.map(([name, value]) => [key, name, value]),
+  });
+  const editable = (on: boolean): Step => ({setEditable: on});
+  const history: Step = {logHistory: true};
+  const selectAll = run('SELECT_ALL_COMMAND');
+  const themed = (
+    name: string,
+    theme: {[key: string]: Json},
+  ): ExtensionSpec => ({name, phases: [], theme});
+  const extensionDefs: {[key: string]: ExtensionSpec} = {
+    child: {name: 'test/child'},
+    childTheme: themed('test/child-theme', {text: {italic: 'child-italic'}}),
+    parent: {name: 'test/parent'},
+    themeA: themed('test/theme-a', {paragraph: 'a-p', text: {bold: 'a-bold'}}),
+    themeB: themed('test/theme-b', {
+      paragraph: 'b-p',
+      text: {italic: 'b-italic'},
+    }),
+  };
+  const script = (
+    name: string,
+    parentExtensions: ExtensionArg[],
+    extensions: ExtensionArg[],
+    steps: Step[] = [],
+    extra: Partial<Script> = {},
+  ): Script => ({
+    extensionDefs,
+    extensions,
+    name,
+    parent: parentExtensions,
+    steps,
+    ...extra,
+  });
+  emit(
+    'nested-editor',
+    "NestedEditorExtension (@lexical/extension) and the core's parent editor: an editor built from extensions in a read of a parent editor, its _parentEditor ($isEditorIsNestedEditor), namespace and theme (inherited, merged with deepThemeMergeInPlace, or its own), inheritEditableFromParent configured and toggled by its signal, $getParentEditor overridden, commands dispatched in the nested editor reaching the parent's listeners after its own (getEditorsToPropagate), SelectBlockExtension's cascadeSelection in the parent, and SharedHistoryExtension defaulting to the parent's history.",
+    [
+      script(
+        'without NestedEditorExtension the editor has no parent',
+        ['themeA'],
+        ['RichTextExtension'],
+      ),
+      script(
+        'the parent editor, namespace and theme',
+        ['themeA', 'themeB', 'RichTextExtension'],
+        ['NestedEditorExtension', 'RichTextExtension'],
+        [parent(start(p(t('parent')))), start(p(t('child')))],
+      ),
+      script(
+        "the nested editor's own theme is not merged with the parent's",
+        ['themeA'],
+        ['NestedEditorExtension', 'childTheme'],
+      ),
+      script(
+        '$getParentEditor, built outside the parent',
+        ['themeA'],
+        [['NestedEditorExtension', {$getParentEditor: 'parent'}]],
+        [],
+        {parentRead: false},
+      ),
+      script(
+        'inheritEditableFromParent off, then on by its signal, then off',
+        ['RichTextExtension'],
+        ['NestedEditorExtension', 'RichTextExtension'],
+        [
+          parent(editable(false)),
+          signals('NestedEditorExtension', ['inheritEditableFromParent', true]),
+          parent(editable(true)),
+          parent(editable(false)),
+          signals('NestedEditorExtension', [
+            'inheritEditableFromParent',
+            false,
+          ]),
+          parent(editable(true)),
+        ],
+      ),
+      script(
+        'inheritEditableFromParent configured',
+        ['RichTextExtension'],
+        [
+          ['NestedEditorExtension', {inheritEditableFromParent: true}],
+          'RichTextExtension',
+        ],
+        [
+          // The nested editor's own mode changes until the parent's does.
+          editable(false),
+          parent(editable(false)),
+          parent(editable(true)),
+          {dispose: true},
+          parent(editable(false)),
+        ],
+      ),
+      script(
+        "commands reach the parent's listeners after the nested editor's",
+        ['parent'],
+        ['NestedEditorExtension', 'child'],
+        [
+          run('EXTENSION_COMMAND', 'from the child'),
+          parent(run('EXTENSION_COMMAND', 'from the parent')),
+          // Dispatched while the nested editor updates.
+          update({
+            command: 'EXTENSION_COMMAND',
+            do: 'dispatch',
+            payload: 'in an update',
+          }),
+          {dispose: true},
+          run('EXTENSION_COMMAND', 'after dispose'),
+        ],
+      ),
+      script(
+        'SelectBlockExtension without cascadeSelection',
+        ['SelectBlockExtension', 'RichTextExtension'],
+        ['NestedEditorExtension', 'RichTextExtension'],
+        [
+          parent(start(p(t('first')), p(t('second')))),
+          start(p(t('caption'))),
+          update(node('root', 'selectStart')),
+          selectAll,
+          selectAll,
+        ],
+      ),
+      script(
+        'SelectBlockExtension with cascadeSelection',
+        [
+          ['SelectBlockExtension', {cascadeSelection: true}],
+          'RichTextExtension',
+        ],
+        ['NestedEditorExtension', 'RichTextExtension'],
+        [
+          parent(start(p(t('first')), p(t('second')))),
+          start(p(t('caption'))),
+          update(node('root', 'selectStart')),
+          // The nested editor selects its content, then the parent its own.
+          selectAll,
+          selectAll,
+          parent(update(node('root', 'selectStart'))),
+          // Dispatched in an update of the nested editor that selected all.
+          update(
+            {do: 'selectAll'},
+            {
+              command: 'SELECT_ALL_COMMAND',
+              do: 'dispatch',
+            },
+          ),
+          parent(update(node('root', 'selectStart'))),
+          // An empty nested editor is fully selected by its caret.
+          start(p()),
+          update(node('root', 'selectStart')),
+          selectAll,
+          parent(update(node('root', 'selectStart'))),
+          parent(signals('SelectBlockExtension', ['cascadeSelection', false])),
+          selectAll,
+        ],
+      ),
+      script(
+        "SharedHistoryExtension uses the parent's history",
+        [
+          ['HistoryExtension', {delay: 0, disabled: false}],
+          'RichTextExtension',
+        ],
+        [
+          'SharedHistoryExtension',
+          'NestedEditorExtension',
+          'RichTextExtension',
+        ],
+        [
+          history,
+          parent(history),
+          update(node('root', 'selectStart')),
+          type('a'),
+          type('b'),
+          history,
+          parent(history),
+          run('UNDO_COMMAND'),
+          history,
+          parent(history),
+          run('REDO_COMMAND'),
+          history,
+          parent(signals('HistoryExtension', ['disabled', true])),
+          type('c'),
+          history,
+        ],
+      ),
+    ],
+  );
+});
+
 test('scripts/selection-utils', () => {
   // The model part of @lexical/selection (lexical-node.ts,
   // range-selection.ts, utils.ts) and @lexical/utils, called directly: style

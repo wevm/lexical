@@ -14,10 +14,10 @@ use lexical::extension::{
     BlockIdConfigOverrides, GenerateId, IsIdentifiedBlock, block_id_extension, is_root_child_block,
 };
 use lexical::extension::{
-    CanIndentPredicate, LexicalBuilder, NodeStructureConfigOverrides,
-    NormalizeInlineElementsConfigOverrides, SelectBlockConfigOverrides,
-    TabIndentationConfigOverrides, normalize_inline_elements_extension, select_block_extension,
-    tab_indentation_extension,
+    CanIndentPredicate, GetParentEditor, LexicalBuilder, NestedEditorConfigOverrides,
+    NodeStructureConfigOverrides, NormalizeInlineElementsConfigOverrides,
+    SelectBlockConfigOverrides, TabIndentationConfigOverrides, nested_editor_extension,
+    normalize_inline_elements_extension, select_block_extension, tab_indentation_extension,
 };
 use lexical::extension::{DecoratorTextNode, HorizontalRuleNode};
 use lexical::extension::{
@@ -59,12 +59,14 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "HashtagExtension" => hashtag::hashtag_extension().into(),
         "LinkExtension" => link::link_extension().into(),
         "ListExtension" => list::list_extension().into(),
+        "NestedEditorExtension" => nested_editor_extension().into(),
         "NodeStructureExtension" => node_structure_extension().into(),
         "NormalizeInlineElementsExtension" => normalize_inline_elements_extension().into(),
         "OverflowExtension" => overflow::overflow_extension().into(),
         "PlainTextExtension" => plain_text::plain_text_extension().into(),
         "RichTextExtension" => rich_text::rich_text_extension().into(),
         "SelectBlockExtension" => select_block_extension().into(),
+        "SharedHistoryExtension" => history::shared_history_extension().into(),
         "TabIndentationExtension" => tab_indentation_extension().into(),
         "AriaLiveRegionExtension" => a11y::aria_live_region_extension().into(),
         "AutoLinkAnnounceExtension" => link::auto_link_announce_extension().into(),
@@ -267,6 +269,37 @@ fn real_configured(
                 "escapeWithArrows" => o.escape_with_arrows = Some(bool_of(field, v)?),
                 _ => unknown(field, v)?,
             }),
+        ),
+        "NestedEditorExtension" => config_extension(
+            &nested_editor_extension(),
+            overrides!(NestedEditorConfigOverrides, |o, field, v| match field {
+                "inheritEditableFromParent" => {
+                    o.inherit_editable_from_parent = Some(bool_of(field, v)?)
+                }
+                // `CONFIG_PRESETS`' `$getParentEditor: 'parent'`: the
+                // script's parent editor.
+                "$getParentEditor" if v.as_str() == Some("parent") => {
+                    let ctx = Rc::downgrade(ctx);
+                    o.get_parent_editor = Some(GetParentEditor(Rc::new(move || {
+                        ctx.upgrade()
+                            .and_then(|ctx| {
+                                ctx.parent.borrow().as_ref().map(|p| p.editor().clone())
+                            })
+                            .ok_or_else(|| err("the script has no parent editor"))
+                    })))
+                }
+                _ => unknown(field, v)?,
+            }),
+        ),
+        "SharedHistoryExtension" => config_extension(
+            &history::shared_history_extension(),
+            overrides!(
+                history::SharedHistoryConfigOverrides,
+                |o, field, v| match field {
+                    "disabled" => o.disabled = Some(bool_of(field, v)?),
+                    _ => unknown(field, v)?,
+                }
+            ),
         ),
         "NodeStructureExtension" => config_extension(
             &node_structure_extension(),
@@ -488,6 +521,16 @@ fn set_real_signal(
             ("SelectBlockExtension", "disabled") => output(editor, &select_block_extension())?
                 .disabled
                 .set_value(as_bool()?),
+            ("SelectBlockExtension", "cascadeSelection") => {
+                output(editor, &select_block_extension())?
+                    .cascade_selection
+                    .set_value(as_bool()?)
+            }
+            ("NestedEditorExtension", "inheritEditableFromParent") => {
+                output(editor, &nested_editor_extension())?
+                    .inherit_editable_from_parent
+                    .set_value(as_bool()?)
+            }
             ("AriaLiveRegionExtension", "politeness") => {
                 output(editor, &a11y::aria_live_region_extension())?
                     .politeness
@@ -673,6 +716,9 @@ fn test_extension(ctx: &Rc<Ctx>, spec: &Object) -> Result<Rc<TestExtension>, Lex
         extension
             .peer_dependencies
             .push(declare_peer_dependency::<Object>(peer_name, config));
+    }
+    if let Some(theme) = spec.get("theme").and_then(Value::as_object) {
+        extension.theme = Some(theme.clone());
     }
     for node_type in strings(spec.get("nodes")) {
         extension.nodes.push(match node_type.as_str() {

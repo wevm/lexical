@@ -68,6 +68,7 @@ import {
   LexicalBuilder,
   namedSignals,
   type NamedSignalsOutput,
+  NestedEditorExtension,
   NodeStructureExtension,
   NormalizeInlineElementsExtension,
   registerNodeStructure,
@@ -85,6 +86,7 @@ import {
   HistoryExtension,
   type HistoryState,
   registerHistory,
+  SharedHistoryExtension,
 } from '@lexical/history';
 import {
   AutoLinkAnnounceExtension,
@@ -199,6 +201,7 @@ import {
   $insertNodeIntoLeaf,
   $insertNodeToNearestRoot,
   $isBlockFullySelected,
+  $isEditorIsNestedEditor,
   $lastToFirstIterator,
   $onEscapeDown,
   $onEscapeUp,
@@ -895,7 +898,14 @@ export type Step = (
   | {registerNodeStructure: string}
   /** Calls the disposer `registerNodeStructure` kept under this name. */
   | {disposeNodeStructure: string}
-) & {now?: number};
+) & {
+  now?: number;
+  /**
+   * Run the step on the script's `parent` editor instead of the session's
+   * (which the step's result still records).
+   */
+  inParent?: true;
+};
 
 /**
  * A token of a `Tokenizer` as JSON: a string, or Prism's `Token` with its
@@ -969,6 +979,8 @@ export type ExtensionSpec = {
   conflictsWith?: string[];
   /** Node types, of `@lexical/extension`'s decorators (NODES). */
   nodes?: string[];
+  /** `theme`: an `EditorThemeClasses`, as JSON. */
+  theme?: {[key: string]: Json};
   /**
    * `$initialEditorState`: `null`, an editor state serialized with
    * `JSON.stringify` (`json`), or a function that appends a paragraph
@@ -1120,6 +1132,18 @@ export type Script = {
   /** The test extensions `extensions` names, by key. */
   extensionDefs?: {[key: string]: ExtensionSpec};
   /**
+   * With `extensions`, a parent editor: `buildEditorFromExtensions(...)` of
+   * these (from `extensionDefs` too), built first, and the session's
+   * editor is built in its `read` (so `NestedEditorExtension`'s default
+   * `$getParentEditor` finds it), unless `parentRead` is false. After the
+   * build and every step, the log ends with
+   * `['nested', isNested, parentIsParent, sameNamespace, theme, editable,
+   * parentEditable, parentText, parentSelection]` (`nestedEntry`).
+   */
+  parent?: ExtensionArg[];
+  /** Build the session's editor outside the parent's `read`. */
+  parentRead?: false;
+  /**
    * Register `@lexical/mark`'s `MarkNode`, as `MarkExtension` does. The
    * MarkState functions (`$addMarkID`...) run without `MarkStateExtension`,
    * with its default `markableNodes`.
@@ -1208,6 +1232,8 @@ type Context = {
   mounted: Map<string, () => void>;
   /** The disposers `registerNodeStructure` returned, by name. */
   structures: Map<string, () => void>;
+  /** The script's `parent` editor. */
+  parent: LexicalEditorWithDispose | null;
 };
 
 /**
@@ -3149,12 +3175,14 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['HistoryExtension', HistoryExtension],
   ['LinkExtension', LinkExtension],
   ['ListExtension', ListExtension],
+  ['NestedEditorExtension', NestedEditorExtension],
   ['NodeStructureExtension', NodeStructureExtension],
   ['NormalizeInlineElementsExtension', NormalizeInlineElementsExtension],
   ['OverflowExtension', OverflowExtension],
   ['PlainTextExtension', PlainTextExtension],
   ['RichTextExtension', RichTextExtension],
   ['SelectBlockExtension', SelectBlockExtension],
+  ['SharedHistoryExtension', SharedHistoryExtension],
   ['TabIndentationExtension', TabIndentationExtension],
   ['AriaLiveRegionExtension', AriaLiveRegionExtension],
   ['AutoLinkAnnounceExtension', AutoLinkAnnounceExtension],
@@ -3181,7 +3209,8 @@ export const PREFILLED_HISTORY_STATE =
  * undo stack. BlockIdExtension's `generateId: 'counter'` returns `id1`,
  * `id2`..., `'stutter'` returns each of those twice in a row, and
  * `'invalid'` always `not valid`; its `$isIdentifiedBlock: 'rootChild'` is
- * `$isRootChildBlock`.
+ * `$isRootChildBlock`. NestedEditorExtension's `$getParentEditor: 'parent'`
+ * returns the script's `parent` editor.
  */
 function configPreset(ctx: Context, field: string, name: string): unknown {
   switch (`${field}:${name}`) {
@@ -3209,6 +3238,13 @@ function configPreset(ctx: Context, field: string, name: string): unknown {
       return () => 'not valid';
     case '$isIdentifiedBlock:rootChild':
       return $isRootChildBlock;
+    case '$getParentEditor:parent':
+      return () => {
+        if (ctx.parent === null) {
+          throw new Error('the script has no parent editor');
+        }
+        return ctx.parent;
+      };
     case 'createInitialHistoryState:prefilled':
       return (editor: LexicalEditor): HistoryState => ({
         current: null,
@@ -3232,6 +3268,7 @@ const PRESET_FIELDS = new Set([
   'createInitialHistoryState',
   'generateId',
   '$isIdentifiedBlock',
+  '$getParentEditor',
 ]);
 
 /** A real extension's config overrides, with their presets resolved. */
@@ -3333,6 +3370,12 @@ function testExtension(ctx: Context, spec: ExtensionSpec): AnyLexicalExtension {
         ? declarePeerDependency(peer)
         : declarePeerDependency(peer, config),
     );
+  }
+  if (spec.theme !== undefined) {
+    // A copy: the builder's `deepThemeMergeInPlace` merges later themes
+    // into the objects of the first one it takes, which would change the
+    // spec that every session of a vector file shares.
+    extension.theme = JSON.parse(JSON.stringify(spec.theme));
   }
   if (spec.nodes !== undefined) {
     const nodes = spec.nodes;
@@ -3543,6 +3586,7 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     handles: new Map(),
     log: [],
     mounted: new Map(),
+    parent: null,
     saved: new Map(),
     structures: new Map(),
   };
@@ -3566,9 +3610,18 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     }
     let built: LexicalEditorWithDispose;
     try {
-      built = buildEditorFromExtensions(
-        ...script.extensions.map(e => extensionArg(ctx, e)),
-      );
+      const parent =
+        script.parent === undefined
+          ? null
+          : buildEditorFromExtensions(
+              ...script.parent.map(e => extensionArg(ctx, e)),
+            );
+      ctx.parent = parent;
+      const extensions = script.extensions.map(e => extensionArg(ctx, e));
+      built =
+        parent === null || script.parentRead === false
+          ? buildEditorFromExtensions(...extensions)
+          : parent.read(() => buildEditorFromExtensions(...extensions));
     } catch (e) {
       build = {error: (e as Error).message, log: ctx.log};
       return {
@@ -3582,6 +3635,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     ctx.editor = built;
     if (script.liveRegion) {
       ctx.log.push(liveRegionEntry(ctx));
+    }
+    if (ctx.parent !== null) {
+      ctx.log.push(nestedEntry(built, ctx.parent));
     }
     build = snapshotOf(built, ctx.log, true) as BuildResult;
   } else {
@@ -3743,77 +3799,18 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     ctx.log = [];
     let error = false;
     try {
-      if ('update' in step) {
-        editor.update(
-          () => {
-            for (const action of step.update) {
-              $runAction(action, ctx);
-            }
-          },
-          {discrete: true, tag: step.tag},
-        );
-      } else if ('dispatch' in step) {
-        ctx.log.push([
-          'dispatched',
-          step.dispatch,
-          editor.dispatchCommand(
-            command(ctx, step.dispatch),
-            step.payload ?? null,
-          ),
-        ]);
-      } else if ('setRootElement' in step) {
-        const root = step.setRootElement ? sessionDOM(ctx).root : null;
-        editor.setRootElement(root);
-      } else if ('setEditable' in step) {
-        editor.setEditable(step.setEditable);
-      } else if ('announce' in step) {
-        getExtensionDependencyFromEditor(
-          editor,
-          AriaLiveRegionExtension,
-        ).output.announce(step.announce);
-      } else if ('unregisterCodeHighlighting' in step) {
-        if (unregisterCodeHighlighting === undefined) {
-          throw new Error('no code highlighting to unregister');
+      if (step.inParent) {
+        if (ctx.parent === null) {
+          throw new Error('the script has no parent editor');
         }
-        unregisterCodeHighlighting();
-      } else if ('typeahead' in step) {
-        const spec = step.typeahead;
-        editor.getEditorState().read(() => {
-          const [textBefore, match] = $typeaheadMatch(spec, editor);
-          ctx.log.push([
-            'typeahead',
-            textBefore,
-            match,
-            match === null
-              ? null
-              : REACT_INTERNALS.INTERNAL_isSelectionOnEntityBoundary(
-                  editor,
-                  match.leadOffset,
-                ),
-          ]);
-        });
-      } else if ('characterLimit' in step || 'tableOfContents' in step) {
-        mountStep(step, ctx);
-      } else if ('registerNodeStructure' in step) {
-        ctx.structures.set(
-          step.registerNodeStructure,
-          registerNodeStructure(editor),
-        );
-      } else if ('disposeNodeStructure' in step) {
-        const dispose = ctx.structures.get(step.disposeNodeStructure);
-        if (dispose === undefined) {
-          throw new Error(`no registration ${step.disposeNodeStructure}`);
+        ctx.editor = ctx.parent;
+        try {
+          runStepOn(ctx.parent, step);
+        } finally {
+          ctx.editor = editor;
         }
-        dispose();
-      } else if ('unmount' in step) {
-        const unmount = ctx.mounted.get(step.unmount);
-        if (unmount === undefined) {
-          throw new Error(`nothing mounted as ${step.unmount}`);
-        }
-        ctx.mounted.delete(step.unmount);
-        unmount();
       } else {
-        runExtensionStep(step, ctx);
+        runStepOn(editor, step);
       }
     } catch {
       error = true;
@@ -3824,11 +3821,89 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     if (script.codeHighlight !== undefined) {
       ctx.log.push(codeBlocksEntry(editor));
     }
+    if (ctx.parent !== null) {
+      ctx.log.push(nestedEntry(editor, ctx.parent));
+    }
     const result = snapshotOf(editor, ctx.log, snapshot);
     if (error) {
       result.error = true;
     }
     return result;
+  };
+  /** Runs `step` on `target`, the session's editor or (`inParent`) the parent. */
+  const runStepOn = (target: LexicalEditor, step: Step): void => {
+    if ('update' in step) {
+      target.update(
+        () => {
+          for (const action of step.update) {
+            $runAction(action, ctx);
+          }
+        },
+        {discrete: true, tag: step.tag},
+      );
+    } else if ('dispatch' in step) {
+      ctx.log.push([
+        'dispatched',
+        step.dispatch,
+        target.dispatchCommand(
+          command(ctx, step.dispatch),
+          step.payload ?? null,
+        ),
+      ]);
+    } else if ('setRootElement' in step) {
+      const root = step.setRootElement ? sessionDOM(ctx).root : null;
+      target.setRootElement(root);
+    } else if ('setEditable' in step) {
+      target.setEditable(step.setEditable);
+    } else if ('announce' in step) {
+      getExtensionDependencyFromEditor(
+        target,
+        AriaLiveRegionExtension,
+      ).output.announce(step.announce);
+    } else if ('unregisterCodeHighlighting' in step) {
+      if (unregisterCodeHighlighting === undefined) {
+        throw new Error('no code highlighting to unregister');
+      }
+      unregisterCodeHighlighting();
+    } else if ('typeahead' in step) {
+      const spec = step.typeahead;
+      target.getEditorState().read(() => {
+        const [textBefore, match] = $typeaheadMatch(spec, target);
+        ctx.log.push([
+          'typeahead',
+          textBefore,
+          match,
+          match === null
+            ? null
+            : REACT_INTERNALS.INTERNAL_isSelectionOnEntityBoundary(
+                target,
+                match.leadOffset,
+              ),
+        ]);
+      });
+    } else if ('characterLimit' in step || 'tableOfContents' in step) {
+      mountStep(step, ctx);
+    } else if ('registerNodeStructure' in step) {
+      ctx.structures.set(
+        step.registerNodeStructure,
+        registerNodeStructure(target),
+      );
+    } else if ('disposeNodeStructure' in step) {
+      const dispose = ctx.structures.get(step.disposeNodeStructure);
+      if (dispose === undefined) {
+        throw new Error(`no registration ${step.disposeNodeStructure}`);
+      }
+      dispose();
+    } else if ('unmount' in step) {
+      const unmount = ctx.mounted.get(step.unmount);
+      if (unmount === undefined) {
+        throw new Error(`nothing mounted as ${step.unmount}`);
+      }
+      ctx.mounted.delete(step.unmount);
+      unmount();
+    } else {
+      runExtensionStep(step, ctx);
+    }
   };
   return build === undefined ? {editor, run} : {build, editor, run};
 }
@@ -3852,6 +3927,35 @@ function codeBlocksEntry(editor: LexicalEditor): Json {
         n.getChildrenKeys(),
       ]),
   ]);
+}
+
+/**
+ * `['nested', isNested, parentIsParent, sameNamespace, theme, editable,
+ * parentEditable, parentText, parentSelection]`: `$isEditorIsNestedEditor`
+ * of the session's editor, whether its `_parentEditor` is the script's
+ * `parent`, whether the two share a namespace, the `[key, value]` entries
+ * of its `_config.theme` sorted by key, whether each is editable, and the
+ * parent's text and selection (read with `parent.read`, which commits it).
+ */
+function nestedEntry(editor: LexicalEditor, parent: LexicalEditor): Json {
+  const theme = editor._config.theme as {[key: string]: Json};
+  const [parentText, parentSelection] = parent.read(() => [
+    $getRoot().getTextContent(),
+    $selectionSnapshot(),
+  ]);
+  return [
+    'nested',
+    $isEditorIsNestedEditor(editor),
+    editor._parentEditor === parent,
+    editor._config.namespace === parent._config.namespace,
+    Object.keys(theme)
+      .sort()
+      .map(k => [k, theme[k]]),
+    editor.isEditable(),
+    parent.isEditable(),
+    parentText,
+    parentSelection,
+  ];
 }
 
 /** Runs `script` on a new headless editor and records every step. */

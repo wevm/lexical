@@ -10,8 +10,8 @@ use crate::merge_register::merge_register;
 use crate::nodes::element::is_root_or_shadow_root;
 use crate::selection_deletion::is_block_fully_selected;
 use crate::{
-    COMMAND_PRIORITY_LOW, Editor, LexicalError, NodeRef, SELECT_ALL_COMMAND, Which, get_root,
-    get_selection, select_all,
+    COMMAND_PRIORITY_LOW, Editor, EditorReadMode, LexicalError, NodeRef, SELECT_ALL_COMMAND, Which,
+    get_root, get_selection, select_all,
 };
 use std::rc::Rc;
 
@@ -77,11 +77,36 @@ fn has_common_top_parent(nodes: &[NodeRef], common_top_parent: &NodeRef) -> bool
         .all(|node| get_top_level_element(node).as_ref() == Some(common_top_parent))
 }
 
-/// `SelectBlockExtension`'s `SELECT_ALL_COMMAND` handler.
-fn handle_select_all() -> Result<bool, LexicalError> {
-    // JS first handles the command bubbling up from a nested editor
-    // (`triggerEditor !== editor`, with `cascadeSelection`); a Rust editor
-    // has no parent, so it is always its own trigger.
+/// `SelectBlockExtension`'s `SELECT_ALL_COMMAND` handler, in `editor`, for
+/// the command dispatched in `trigger_editor`.
+fn handle_select_all(
+    editor: &Editor,
+    trigger_editor: &Editor,
+    cascade_selection: bool,
+) -> Result<bool, LexicalError> {
+    if trigger_editor != editor {
+        // The command bubbled up from a nested editor. Without
+        // cascadeSelection it is ignored, so that the nested editor's own
+        // handlers (such as RichTextExtension's) take care of it. With it,
+        // it is only handled once the nested editor's content is fully
+        // selected.
+        if !cascade_selection {
+            return Ok(false);
+        }
+        // `read('pending')` sees an update in progress or queued in the
+        // nested editor (such as its initial state) without flushing it.
+        let is_all_selected = trigger_editor.read_with_mode(EditorReadMode::Pending, || {
+            match get_selection().and_then(|s| s.range()) {
+                Some(nested_selection) => is_block_fully_selected(&get_root(), &nested_selection),
+                None => Ok(false),
+            }
+        })??;
+        if !is_all_selected {
+            return Ok(false);
+        }
+        select_all()?;
+        return Ok(true);
+    }
     let Some(selection) = get_selection() else {
         return Ok(false);
     };
@@ -149,9 +174,9 @@ named_signals_config! {
     pub struct SelectBlockConfigOverrides;
     /// `namedSignals(SelectBlockConfig)`: the extension's output.
     pub struct SelectBlockOutput {
-        /// `cascadeSelection`: select all of a parent editor once a nested
-        /// editor's content is fully selected. Rust editors have no parent,
-        /// so nothing reads it.
+        /// `cascadeSelection`: in a parent editor, select all of it when
+        /// the command comes from a nested editor whose content is fully
+        /// selected.
         cascade_selection: bool,
         /// `disabled`, which `PreventSelectAllExtension`'s follows.
         disabled: bool,
@@ -197,12 +222,21 @@ fn make_select_block() -> Rc<SelectBlockExtensionType> {
                         return None;
                     }
                     let editor = editor.upgrade().map(Editor)?;
+                    let (weak, cascade_selection) =
+                        (editor.weak(), stores.cascade_selection.clone());
                     // In a higher priority bucket than
-                    // COMMAND_PRIORITY_EDITOR, so it runs before
-                    // RichTextExtension's handler.
+                    // COMMAND_PRIORITY_EDITOR, for cascadeSelection: each
+                    // bucket runs in every editor, nested ones first, so in
+                    // the editor bucket this would run after the nested
+                    // editor's own RichTextExtension handler.
                     Some(editor.register_command(
                         &SELECT_ALL_COMMAND,
-                        |_, _| handle_select_all(),
+                        move |_, trigger_editor| {
+                            let Some(editor) = weak.upgrade().map(Editor) else {
+                                return Ok(false);
+                            };
+                            handle_select_all(&editor, trigger_editor, cascade_selection.peek())
+                        },
                         COMMAND_PRIORITY_LOW,
                     ))
                 });

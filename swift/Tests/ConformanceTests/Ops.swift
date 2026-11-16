@@ -394,6 +394,8 @@ private final class ScriptContext {
   var mounted: [String: () -> Void] = [:]
   /// The disposers `registerNodeStructure` returned, by name.
   var structures: [String: () -> Void] = [:]
+  /// The script's `parent` editor.
+  var parent: Editor?
   /// The session's root element, made on first use (`setRootElement`).
   private var root: SessionRoot?
 
@@ -1520,13 +1522,29 @@ func runScriptWithBuild(_ script: JSONValue) throws -> (build: JSONValue?, steps
     defs.clock = { [unowned ctx] in ctx.clock }
     built = defs
     do {
-      ctx.editor = try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
+      if let parentExtensions = script["parent"]?.arrayValue {
+        let parent = try buildEditorFromExtensions(try parentExtensions.map { try defs.arg($0) })
+        ctx.parent = parent
+        defs.parent = parent
+        if script["parentRead"]?.boolValue != false {
+          ctx.editor = try parent.read {
+            try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
+          }
+        } else {
+          ctx.editor = try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
+        }
+      } else {
+        ctx.editor = try buildEditorFromExtensions(try extensions.map { try defs.arg($0) })
+      }
     } catch {
       let message = (error as? LexicalError)?.message ?? "\(error)"
       return (.object(JSONObject([("error", .string(message)), ("log", .array(ctx.log))])), [])
     }
     if script["liveRegion"]?.boolValue == true {
       ctx.log.append(ctx.liveRegionEntry())
+    }
+    if let parent = ctx.parent {
+      ctx.log.append(try nestedEntry(ctx.editor, parent))
     }
     let (selection, content) = try ctx.editor.read {
       (try selectionSnapshot(), try getRoot().getTextContent())
@@ -1723,14 +1741,9 @@ private func runSteps(
     // ops.ts reads `Date.now()` at every update; here that is the session clock.
     _ = try registerHistory(editor, createEmptyHistoryState(), delay) { [unowned ctx] in ctx.clock }
   }
-  let steps = script["steps"]?.arrayValue ?? []
-  let finalOnly = script["snapshot"]?.stringValue == "final"
-  return try steps.enumerated().map { i, step in
-    if let now = step["now"]?.numberValue {
-      ctx.clock = now
-    }
-    ctx.log = []
-    var failed = false
+
+  /// Runs `step` on `editor`: the session's, or (`inParent`) the parent.
+  func runStep(_ step: JSONValue, on editor: Editor) throws {
     do {
       if let actions = step["update"]?.arrayValue {
         let tags = (step["tag"]?.arrayValue ?? []).compactMap(\.stringValue)
@@ -1780,6 +1793,26 @@ private func runSteps(
       } else {
         try extensions.orThrow().runStep(step, editor)
       }
+    }
+  }
+
+  let steps = script["steps"]?.arrayValue ?? []
+  let finalOnly = script["snapshot"]?.stringValue == "final"
+  return try steps.enumerated().map { i, step in
+    if let now = step["now"]?.numberValue {
+      ctx.clock = now
+    }
+    ctx.log = []
+    var failed = false
+    do {
+      if step["inParent"]?.boolValue == true {
+        guard let parent = ctx.parent else { throw ScriptError("the script has no parent editor") }
+        ctx.editor = parent
+        defer { ctx.editor = editor }
+        try runStep(step, on: parent)
+      } else {
+        try runStep(step, on: editor)
+      }
     } catch {
       failed = true
     }
@@ -1788,6 +1821,9 @@ private func runSteps(
     }
     if script["codeHighlight"] != nil {
       ctx.log.append(try codeBlocksEntry(editor))
+    }
+    if let parent = ctx.parent {
+      ctx.log.append(try nestedEntry(editor, parent))
     }
     let (selection, content) = try editor.read {
       (try selectionSnapshot(), try getRoot().getTextContent())
@@ -1801,4 +1837,21 @@ private func runSteps(
     }
     return record
   }
+}
+
+/// `nestedEntry(editor, parent)` in ops.ts: `['nested', isNested,
+/// parentIsParent, sameNamespace, theme, editable, parentEditable,
+/// parentText, parentSelection]`, the theme's entries sorted by key in
+/// UTF-16 order, as JS's `sort()`.
+private func nestedEntry(_ editor: Editor, _ parent: Editor) throws -> JSONValue {
+  let (parentText, parentSelection) = try parent.read {
+    (try getRoot().getTextContent(), try selectionSnapshot())
+  }
+  let theme = editor._config.theme.sorted { $0.key.utf16.lexicographicallyPrecedes($1.key.utf16) }
+  return .array([
+    "nested", .bool(isEditorIsNestedEditor(editor)), .bool(editor._parentEditor === parent),
+    .bool(editor._config.namespace == parent._config.namespace),
+    .array(theme.map { .array([.string($0.key), $0.value]) }),
+    .bool(editor.isEditable()), .bool(parent.isEditable()), .string(parentText), parentSelection,
+  ])
 }

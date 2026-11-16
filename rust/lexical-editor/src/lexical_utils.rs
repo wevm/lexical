@@ -11,12 +11,24 @@ use crate::nodes::paragraph::create_paragraph_node;
 use crate::updates::{
     error_on_infinite_transforms, error_on_read_only, get_active_editor, get_active_editor_state,
 };
-use crate::{EditorState, LexicalError};
+use crate::{Editor, EditorState, LexicalError};
 use std::cell::Cell;
 use std::rc::Rc;
 
 thread_local! {
     static KEY_COUNTER: Cell<u64> = const { Cell::new(1) };
+}
+
+/// `getEditorsToPropagate(editor)`: the editor, then its parent editor,
+/// then that one's, up to an editor without one.
+pub(crate) fn get_editors_to_propagate(editor: &Editor) -> Vec<Editor> {
+    let mut editors_to_propagate = Vec::new();
+    let mut current_editor = Some(editor.clone());
+    while let Some(editor) = current_editor {
+        current_editor = editor.parent_editor().cloned();
+        editors_to_propagate.push(editor);
+    }
+    editors_to_propagate
 }
 
 /// `resetRandomKey()`: restarts the key counter, for deterministic keys in

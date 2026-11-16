@@ -256,9 +256,9 @@ fn get_history_peer(
 pub struct SharedHistoryConfig {
     /// `disabled`.
     pub disabled: bool,
-    /// `parentEditor`: the editor whose history this one shares. JS falls
-    /// back to the editor's `_parentEditor` (which `NestedEditorExtension`
-    /// sets); a Rust editor has none, so it must be given.
+    /// `parentEditor`: the editor whose history this one shares; without
+    /// one, the editor's parent editor (which `NestedEditorExtension`
+    /// sets).
     pub parent_editor: Option<Editor>,
 }
 
@@ -297,10 +297,16 @@ pub type SharedHistoryExtensionType =
 fn make_shared_history_extension() -> Rc<SharedHistoryExtensionType> {
     define_extension(LexicalExtension {
         build: Some(Rc::new(
-            |_editor: &Editor, config: &SharedHistoryConfig, _: &ExtensionBuildState<()>| {
+            |editor: &Editor, config: &SharedHistoryConfig, _: &ExtensionBuildState<()>| {
                 Ok(SharedHistoryOutput {
                     disabled: signal(config.disabled),
-                    parent_editor: signal(config.parent_editor.clone()),
+                    // `parentEditor || editor._parentEditor`.
+                    parent_editor: signal(
+                        config
+                            .parent_editor
+                            .clone()
+                            .or_else(|| editor.parent_editor().cloned()),
+                    ),
                 })
             },
         )),
@@ -374,8 +380,8 @@ pub fn history_extension() -> Rc<HistoryExtensionType> {
 }
 
 /// `SharedHistoryExtension`: makes the editor's `HistoryExtension` (which
-/// it adds, disabled) use the history of its `parent_editor`, when that
-/// editor was built with `HistoryExtension`.
+/// it adds, disabled) use the history of its `parent_editor` (by default
+/// its parent editor), when that editor was built with `HistoryExtension`.
 pub fn shared_history_extension() -> Rc<SharedHistoryExtensionType> {
     SHARED_HISTORY_EXTENSION.with(Rc::clone)
 }

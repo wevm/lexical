@@ -17,7 +17,7 @@ use crate::error::invariant;
 use crate::gc::garbage_collect_detached_nodes;
 use crate::json::Value;
 use crate::lexical_selection::has_dirty_selection;
-use crate::lexical_utils::{get_node_by_key, get_root};
+use crate::lexical_utils::{get_editors_to_propagate, get_node_by_key, get_root};
 use crate::node::NodeRef;
 use crate::node_state::{apply_flat_states, update_state_from_json};
 use crate::nodes::element::is_root_or_shadow_root;
@@ -26,6 +26,7 @@ use crate::ordered::{OrderedMap, OrderedSet};
 use crate::{Editor, EditorState, LexicalError};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 /// JS's module-scope `activeEditor`, `activeEditorState` and
 /// `isReadOnlyMode`, per thread.
@@ -821,40 +822,71 @@ pub(crate) fn update_editor_sync(
     }
 }
 
-/// `triggerCommandListeners(editor, type, payload)`: the command's
-/// listeners from the highest priority down, each priority's in one update,
-/// until one returns true.
+/// `triggerCommandListeners(editor, type, payload, fromEditor)`: the
+/// command's listeners from the highest priority down, and within each
+/// priority those of the editor, then of its parent editors
+/// (`getEditorsToPropagate`), each editor's in one update of it, until one
+/// returns true. Every listener gets `from_editor`, the editor the command
+/// was dispatched in. A parent editor that is updating is skipped, and the
+/// command is dispatched again from it in an update queued after its own,
+/// whose result isn't known (JS's legacy delegation).
 pub(crate) fn trigger_command_listeners<P: 'static>(
     editor: &Editor,
     command: &LexicalCommand<P>,
-    payload: &P,
+    payload: &Rc<P>,
+    from_editor: &Editor,
 ) -> Result<bool, LexicalError> {
-    // A command dispatched from outside an update starts a new action.
-    if !editor.0.updating.get() {
-        editor.0.cascade_count.set(0);
+    let editors = get_editors_to_propagate(editor);
+    let mut updating_parent_editor: Option<Editor> = None;
+    // A command dispatched from outside an update starts a new action, in
+    // each editor it reaches that isn't updating.
+    for e in &editors {
+        if !e.0.updating.get() {
+            e.0.cascade_count.set(0);
+        }
     }
     for priority in (0..=4).rev() {
-        let listeners = editor.command_listeners(command, priority);
-        if listeners.is_empty() {
-            continue;
-        }
-        let mut handled = false;
-        update_editor_sync(
-            editor,
-            || {
-                for listener in &listeners {
-                    if listener(payload, editor)? {
-                        handled = true;
-                        return Ok(());
+        for (e, current_editor) in editors.iter().enumerate() {
+            if e > 0 && current_editor.0.updating.get() {
+                // An updating editor can't be updated synchronously without
+                // an early commit that could collect nodes too early.
+                updating_parent_editor = Some(current_editor.clone());
+                break;
+            }
+            let listeners = current_editor.command_listeners(command, priority);
+            if listeners.is_empty() {
+                continue;
+            }
+            let mut handled = false;
+            update_editor_sync(
+                current_editor,
+                || {
+                    for listener in &listeners {
+                        if listener(payload, from_editor)? {
+                            handled = true;
+                            return Ok(());
+                        }
                     }
-                }
-                Ok(())
-            },
-            None,
-        )?;
-        if handled {
-            return Ok(true);
+                    Ok(())
+                },
+                None,
+            )?;
+            if handled {
+                return Ok(true);
+            }
         }
+    }
+    if let Some(updating_parent_editor) = updating_parent_editor {
+        let (command, payload, from_editor) =
+            (command.clone(), payload.clone(), from_editor.clone());
+        let parent = updating_parent_editor.clone();
+        updating_parent_editor.update(
+            move || {
+                // An update of its own, so its result can't be known.
+                trigger_command_listeners(&parent, &command, &payload, &from_editor).map(|_| ())
+            },
+            UpdateOptions::default(),
+        )?;
     }
     Ok(false)
 }

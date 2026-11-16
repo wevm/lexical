@@ -80,7 +80,9 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "MarkExtension" => mark::mark_extension().into(),
         "MarkBaseExtension" => mark::mark_base_extension().into(),
         "HeadlessExtension" => lexical::headless::headless_extension().into(),
-        _ => return mark_flavor(key).map(Into::into),
+        _ => {
+            return super::input::real_extension(key).or_else(|| mark_flavor(key).map(Into::into));
+        }
     })
 }
 
@@ -605,7 +607,10 @@ fn real_configured(
                 _ => unknown(field, v)?,
             }),
         ),
-        _ => return Err(err(format!("{key} takes no config overrides"))),
+        _ => {
+            return super::input::real_configured(ctx, key, configs)
+                .unwrap_or_else(|| Err(err(format!("{key} takes no config overrides"))));
+        }
     })
 }
 
@@ -864,6 +869,11 @@ fn test_extension(ctx: &Rc<Ctx>, spec: &Object) -> Result<Rc<TestExtension>, Lex
         .unwrap_or_default();
     let mut extension = TestExtension::new(name.clone(), config);
     extension.conflicts_with = strings(spec.get("conflictsWith"));
+    extension.namespace = spec
+        .get("namespace")
+        .and_then(Value::as_str)
+        .map(str::to_owned);
+    extension.editable = spec.get("editable").and_then(Value::as_bool);
     for dep in spec
         .get("dependencies")
         .and_then(Value::as_array)

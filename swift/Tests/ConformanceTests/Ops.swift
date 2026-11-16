@@ -504,6 +504,14 @@ private func structureJSON(_ klass: LexicalNode.Type) -> JSONValue {
   return .object(out)
 }
 
+/// `command(ctx, name)` of a keyboard command, which a shortcut dispatches.
+func keyboardCommand(_ name: String) throws -> LexicalCommand<KeyboardEvent> {
+  guard case .keyboard(let command)? = coreCommands[name] else {
+    throw ScriptError("\(name) is not a keyboard command")
+  }
+  return command
+}
+
 /// The class the active editor registers under `type`.
 private func registeredClass(_ type: String) throws -> LexicalNode.Type {
   guard let klass = try getEditor()._nodes.get(type)?.klass else {
@@ -520,8 +528,11 @@ private final class SessionRoot: LexicalRootElement, LiveRegionHost, ComputedSty
   var isConnected: Bool { false }
   private(set) var regions: [LiveRegion] = []
   var computedStyles: [NodeKey: ComputedStyle] = [:]
+  /// With `script.rootFocus`, what `focus()` does: log `['rootFocus']`.
+  var onFocus: (() -> Void)?
 
   func computedStyle(forKey key: NodeKey) -> ComputedStyle? { computedStyles[key] }
+  func focus() { onFocus?() }
 
   func mountLiveRegion(_ region: LiveRegion) { regions.append(region) }
   func unmountLiveRegion(_ region: LiveRegion) { regions.removeAll { $0 === region } }
@@ -614,6 +625,28 @@ private func mouseEvent(_ type: String, _ payload: JSONValue) throws -> MouseEve
     button: object["button"]?.int ?? 0, detail: object["detail"]?.int ?? 1,
     altKey: flag("altKey"), ctrlKey: flag("ctrlKey"), metaKey: flag("metaKey"),
     shiftKey: flag("shiftKey"), targetKey: object["targetKey"]?.stringValue)
+}
+
+/// The `domEvent` step: the command a view sends for the event JS
+/// dispatches at the node's element, CLICK_COMMAND of the event's type with
+/// the node's key (`root`, the root element, when left out) as `targetKey`,
+/// or COMPOSITION_END_COMMAND; then `['domEvent', type, defaultPrevented]`.
+private func domEvent(_ json: JSONValue, _ ctx: ScriptContext) throws {
+  let type = try json["type"]?.stringValue.orThrow() ?? ""
+  let prevented: Bool
+  switch type {
+  case "click", "auxclick":
+    var object = try json.objectValue.orThrow()
+    if object["targetKey"] == nil { object["targetKey"] = "root" }
+    let event = try mouseEvent(type, .object(object))
+    _ = try ctx.editor.dispatchCommand(CLICK_COMMAND, event)
+    prevented = event.defaultPrevented
+  case "compositionend":
+    let payload = JSONValue.object(JSONObject([("data", json["data"] ?? "")]))
+    prevented = try ctx.dispatch("COMPOSITION_END_COMMAND", payload).defaultPrevented ?? false
+  default: throw ScriptError("unknown domEvent \(type)")
+  }
+  ctx.log.append(.array(["domEvent", .string(type), .bool(prevented)]))
 }
 
 /// `scriptDataTransfer`: a data transfer's JSON, `{data: {type: data...},
@@ -1800,6 +1833,14 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
       try createTextNode(try action["text"]?.stringValue.orThrow() ?? ""))
   case "logEditable":
     ctx.log.append(.array([.string("editable"), .bool(try getEditor().isEditable())]))
+  case "formatKeyboardShortcut":
+    let segments = formatKeyboardShortcut(
+      try shortcutMatch(action["shortcut"] ?? .null),
+      FormatKeyboardShortcutOptions(isApple: action["isApple"]?.boolValue))
+    ctx.log.append(.array(["formatKeyboardShortcut", .array(segments.map { .string($0) })]))
+  case "fixFocusOverselection":
+    try getExtensionDependencyFromEditor(try getEditor(), NormalizeTripleClickSelectionExtension)
+      .output.fixFocusOverselection.peek()()
   case "dispatch":
     let name = try action["command"]?.stringValue.orThrow() ?? ""
     logDispatched(ctx, name, try ctx.dispatch(name, action["payload"] ?? .null))
@@ -2087,6 +2128,9 @@ private func runScriptOnPlatform(
 ) {
   resetRandomKey()
   let ctx = ScriptContext()
+  if script["rootFocus"]?.boolValue == true {
+    ctx.sessionRoot().onFocus = { [unowned ctx] in ctx.log.append(.array(["rootFocus"])) }
+  }
   var built: TestExtensions?
   var build: JSONValue?
   if let extensions = script["extensions"]?.arrayValue {
@@ -2398,6 +2442,14 @@ private func runSteps(
         ctx.sessionRoot().computedStyles = stubs
       } else if let editable = step["setEditable"]?.boolValue {
         try editor.setEditable(editable)
+      } else if let event = step["domEvent"] {
+        try domEvent(event, ctx)
+      } else if step["logEditor"] != nil {
+        ctx.log.append(
+          .array([
+            "editor", .string(editor._config.namespace), .bool(editor.isEditable()),
+            .bool(editor.getRootElement() != nil),
+          ]))
       } else if let text = step["announce"]?.stringValue {
         try getExtensionDependencyFromEditor(editor, AriaLiveRegionExtension).output.announce(text)
       } else if step["unregisterCodeHighlighting"] != nil {

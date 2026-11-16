@@ -82,14 +82,17 @@ pub type InitialEditorStateFn = Rc<dyn Fn(&Editor) -> Result<(), LexicalError>>;
 pub type ExtensionWarningHandler = Rc<dyn Fn(LexicalError, &Editor) -> Result<(), LexicalError>>;
 
 /// `InitialEditorConfig`: the editor configuration an extension contributes,
-/// and what `init` may change. Of JS's fields, the ones the port has: the
-/// node classes and replacements, `$initialEditorState`, `theme`,
-/// `parentEditor`, `editable`, `onWarn`, and (with the `html` feature)
-/// `html` and `dom`. `namespace` and `disableEvents` aren't wired through
-/// the builder yet, and `onError` has no counterpart (an update's error is
+/// and what `init` may change. Of JS's fields, the ones the port has:
+/// `namespace`, the node classes and replacements, `$initialEditorState`,
+/// `theme`, `parentEditor`, `editable`, `onWarn`, and (with the `html`
+/// feature) `html` and `dom`. `disableEvents` has no counterpart (the app
+/// dispatches the events it has), nor has `onError` (an update's error is
 /// returned from [`Editor::update`]).
 #[derive(Clone, Default)]
 pub struct InitialEditorConfig {
+    /// `namespace`; `None` is JS's `undefined`, for which the editor takes
+    /// its parent editor's, or a random one.
+    pub namespace: Option<String>,
     /// `nodes`.
     pub nodes: Vec<NodeClass>,
     /// `editable`; `None` is JS's `undefined`.
@@ -164,6 +167,9 @@ pub struct LexicalExtension<
     /// `nodes`: node classes, and node replacements as `NodeClass`es
     /// ([`LexicalNodeReplacement`](crate::LexicalNodeReplacement)).
     pub nodes: Vec<NodeClass>,
+    /// `namespace`: the editor's namespace; the last extension that sets it
+    /// wins.
+    pub namespace: Option<String>,
     /// `editable`: whether the editor starts editable; the last extension
     /// that sets it wins.
     pub editable: Option<bool>,
@@ -197,6 +203,7 @@ impl<Config: ExtensionConfigBase, Output: 'static, Init: 'static>
             config,
             merge_config: None,
             nodes: Vec::new(),
+            namespace: None,
             editable: None,
             on_warn: None,
             initial_editor_state: None,
@@ -227,6 +234,7 @@ pub trait AnyLexicalExtension: sealed::Sealed + 'static {
     fn dependencies(&self) -> &[AnyLexicalExtensionArgument];
     fn peer_dependencies(&self) -> &[NormalizedPeerDependency];
     fn nodes(&self) -> &[NodeClass];
+    fn namespace(&self) -> Option<&str>;
     fn editable(&self) -> Option<bool>;
     fn on_warn(&self) -> Option<&ExtensionWarningHandler>;
     fn initial_editor_state(&self) -> Option<&InitialEditorStateType>;
@@ -287,6 +295,9 @@ impl<C: ExtensionConfigBase, O: 'static, I: 'static> AnyLexicalExtension
     }
     fn nodes(&self) -> &[NodeClass] {
         &self.nodes
+    }
+    fn namespace(&self) -> Option<&str> {
+        self.namespace.as_deref()
     }
     fn editable(&self) -> Option<bool> {
         self.editable

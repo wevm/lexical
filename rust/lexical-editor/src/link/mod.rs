@@ -10,16 +10,21 @@
 //! With the `extension` feature, [`link_extension`] is `LinkExtension`, and
 //! with `autolink` as well, `auto_link_extension` is `AutoLinkExtension`.
 //! With `a11y`, `auto_link_announce_extension` is
-//! `AutoLinkAnnounceExtension` (`AutoLinkAnnounceExtension.ts`).
+//! `AutoLinkAnnounceExtension` (`AutoLinkAnnounceExtension.ts`), and with
+//! `extension`, [`clickable_link_extension`] is `ClickableLinkExtension`
+//! (`ClickableLinkExtension.ts`), which opens a clicked link in an app's
+//! [`LinkWindow`].
 //!
 //! Not ported: the DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
-//! `importDOM`, `sanitizeUrl`, `LinkImportRules`), which come with `html`;
-//! and `ClickableLinkExtension`, which needs a DOM (rust/PARITY.md).
+//! `importDOM`, `LinkImportRules`), which come with `html`
+//! (rust/PARITY.md); `sanitizeUrl` is [`sanitize_url`].
 
 #[cfg(feature = "a11y")]
 mod auto_link_announce_extension;
 #[cfg(feature = "autolink")]
 mod auto_link_extension;
+#[cfg(feature = "extension")]
+mod clickable_link_extension;
 mod generated_json;
 mod link_extension;
 #[cfg(all(feature = "html", feature = "extension"))]
@@ -42,6 +47,12 @@ pub use auto_link_announce_extension::{
 pub use auto_link_extension::{
     AutoLinkConfigOverrides, AutoLinkExtensionType, auto_link_extension,
 };
+#[cfg(feature = "extension")]
+pub use clickable_link_extension::{
+    ClickableLinkConfig, ClickableLinkConfigOverrides, ClickableLinkExtensionType,
+    ClickableLinkOutput, GetLinkWindow, GetLinkWindowFn, LinkWindow, clickable_link_extension,
+    register_clickable_link,
+};
 pub use link_extension::{LinkConfig, ValidateUrl, register_link, register_link_paste};
 #[cfg(feature = "extension")]
 pub use link_extension::{
@@ -49,8 +60,7 @@ pub use link_extension::{
 };
 #[cfg(all(feature = "html", feature = "extension"))]
 pub use link_import_extension::link_import_rules;
-#[cfg(feature = "html")]
-pub use link_node::link_dom::sanitize_url;
+pub use link_node::sanitize::sanitize_url;
 pub use link_node::{
     AutoLinkAttributes, AutoLinkNode, LinkAttributes, LinkNode, TOGGLE_LINK_COMMAND,
     ToggleLinkPayload, create_auto_link_node, create_link_node, format_url, is_auto_link_node,

@@ -11,6 +11,7 @@ import {expect, test} from 'vitest';
 
 import {coreApiScripts} from './coreApiScripts';
 import {eventScripts} from './eventScripts';
+import {extensionScripts} from './extensionScripts';
 import {keyHandlerScripts} from './keyHandlerScripts';
 import {
   type Action,
@@ -9193,5 +9194,15 @@ test('scripts/reconciler', () => {
         textFormats: ['1', '3'],
       },
     ],
+  );
+});
+
+test('scripts/input-extensions', () => {
+  // The extensions that listen to keys, clicks, composition and focus (see
+  // extensionScripts.ts).
+  emit(
+    'input-extensions',
+    "@lexical/extension's KeyboardShortcutsExtension (with formatKeyboardShortcut), ClickAfterLastBlockExtension, NormalizeTripleClickSelectionExtension's $fixFocusOverselection, IMEExtension and AutoFocusExtension, @lexical/link's ClickableLinkExtension, and the builder's namespace, editable and disposal (setRootElement(null)).",
+    extensionScripts(),
   );
 });

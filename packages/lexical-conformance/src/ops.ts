@@ -239,6 +239,7 @@ import {
   $getAdjacentNode,
   $getCaretRange,
   $getChildCaret,
+  $getDocument,
   $getEditor,
   $getNodeByKey,
   $getRoot,
@@ -298,6 +299,7 @@ import {
   createState,
   CUT_COMMAND,
   declarePeerDependency,
+  DecoratorNode,
   DELETE_CHARACTER_COMMAND,
   DELETE_LINE_COMMAND,
   DELETE_WORD_COMMAND,
@@ -793,6 +795,11 @@ export type Action =
    */
   | {do: 'logDecoratorBlock'; key: string}
   /**
+   * Logs `['getDecorators', [[key, decoration]...]]`: the entries of
+   * `editor.getDecorators()`, in `Object.entries` order.
+   */
+  | {do: 'logDecorators'}
+  /**
    * Logs `['urlMatcher', text, match]`: `URL_MATCHER.exec(text)`
    * (LexicalAutoEmbedPluginUtils.ts) as `[index, match[0]]`, or `null`.
    */
@@ -1014,6 +1021,11 @@ export type Step = (
    * unregisters the highlighting transforms and the indent handlers.
    */
   | {unregisterCodeHighlighting: true}
+  /**
+   * `editor.setEditorState(state)` with the state `saveEditorState` kept
+   * under this name (committed, so read-only).
+   */
+  | {setEditorState: string}
   /**
    * `registerNodeStructure(editor)` (@lexical/extension), its disposer kept
    * under this name.
@@ -1301,6 +1313,26 @@ export type Script = {
    * block embed would extend it.
    */
   decoratorBlock?: boolean;
+  /**
+   * Register `TestDecoratorNode` (`test-decorator`) and
+   * `TestSharedDecoratorNode` (`test-shared-decorator`), inline decorators
+   * whose `decorate()` returns a new object on every call, and one object
+   * for every node and call.
+   */
+  testDecorators?: boolean;
+  /**
+   * `editor.registerDecoratorListener`, registered after the handlers,
+   * logging `['decorators', [[key, decoration]...]]` (the entries in
+   * `Object.entries` order).
+   */
+  decorators?: boolean;
+  /**
+   * After every step, log `['textFormats', [[key, textFormat, textStyle]...]]`:
+   * `getTextFormat()` and `getTextStyle()` of these elements in the
+   * editor's state, `null`s for a key that isn't an element there. The
+   * JSON leaves them out of an element with text (#7968).
+   */
+  textFormats?: string[];
   /**
    * Mutation listeners (`skipInitialization: true`) for the registered
    * classes of these node types, registered after the handlers, each
@@ -1599,6 +1631,59 @@ function withWarnings<T>(ctx: Context, on: boolean, f: () => T): T {
   } finally {
     console.warn = warn;
   }
+}
+
+/**
+ * `test-decorator`: an inline decorator whose `decorate()` returns a new
+ * object on every call, `{decorator: 'fresh', key}`, as a React decorator
+ * returns a new element.
+ */
+export class TestDecoratorNode extends DecoratorNode<Json> {
+  $config() {
+    return this.config('test-decorator', {extends: DecoratorNode});
+  }
+
+  createDOM(): HTMLElement {
+    return $getDocument().createElement('span');
+  }
+
+  updateDOM(): false {
+    return false;
+  }
+
+  decorate(): Json {
+    return {decorator: 'fresh', key: this.__key};
+  }
+}
+
+/** What every `TestSharedDecoratorNode` decorates to. */
+const SHARED_DECORATION: Json = {decorator: 'shared'};
+
+/**
+ * `test-shared-decorator`: an inline decorator whose `decorate()` returns
+ * one object, `{decorator: 'shared'}`, for every node and call.
+ */
+export class TestSharedDecoratorNode extends DecoratorNode<Json> {
+  $config() {
+    return this.config('test-shared-decorator', {extends: DecoratorNode});
+  }
+
+  createDOM(): HTMLElement {
+    return $getDocument().createElement('span');
+  }
+
+  updateDOM(): false {
+    return false;
+  }
+
+  decorate(): Json {
+    return SHARED_DECORATION;
+  }
+}
+
+/** The entries of a decorator map, in `Object.entries` order. */
+function decoratorEntries(decorators: Record<string, unknown>): Json {
+  return Object.entries(decorators).map(([key, value]) => [key, value as Json]);
 }
 
 /** `flags`: a set NodeState of `TestSchemaNode`, kept in canonical order. */
@@ -3418,6 +3503,12 @@ function $runAction(action: Action, ctx: Context): void {
         ),
       ]);
       return;
+    case 'logDecorators':
+      ctx.log.push([
+        'getDecorators',
+        decoratorEntries(ctx.editor.getDecorators()),
+      ]);
+      return;
     case 'logDecoratorBlock': {
       const n = $node(action.key);
       const block = $isDecoratorBlockNode(n) ? n : null;
@@ -4544,6 +4635,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
         ...(script.decoratorBlock ? [TestDecoratorBlockNode] : []),
         ...(script.testText || script.replaceText ? [TestTextNode] : []),
         ...(script.replaceText ? [textReplacement(false)] : []),
+        ...(script.testDecorators
+          ? [TestDecoratorNode, TestSharedDecoratorNode]
+          : []),
       ],
       onError: e => {
         throw e;
@@ -4631,6 +4725,11 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       },
       {skipInitialization: true},
     );
+  }
+  if (script.decorators) {
+    editor.registerDecoratorListener(decorators => {
+      ctx.log.push(['decorators', decoratorEntries(decorators)]);
+    });
   }
   if (script.listen) {
     editor.registerUpdateListener(({dirtyElements, dirtyLeaves, tags}) => {
@@ -4732,6 +4831,9 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
     if (script.codeHighlight !== undefined) {
       ctx.log.push(codeBlocksEntry(editor));
     }
+    if (script.textFormats !== undefined) {
+      ctx.log.push(textFormatsEntry(editor, script.textFormats));
+    }
     if (ctx.parent !== null) {
       ctx.log.push(nestedEntry(editor, ctx.parent));
     }
@@ -4807,6 +4909,12 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
               ),
         ]);
       });
+    } else if ('setEditorState' in step) {
+      const state = ctx.saved.get(step.setEditorState);
+      if (state === undefined) {
+        throw new Error(`no saved state ${step.setEditorState}`);
+      }
+      target.setEditorState(state);
     } else if ('characterLimit' in step || 'tableOfContents' in step) {
       mountStep(step, ctx);
     } else if ('registerNodeStructure' in step) {
@@ -4852,6 +4960,19 @@ function codeBlocksEntry(editor: LexicalEditor): Json {
         n.getIsSyntaxHighlightSupported(),
         n.getChildrenKeys(),
       ]),
+  ]);
+}
+
+/** `['textFormats', [[key, textFormat, textStyle]...]]` (`textFormats`). */
+function textFormatsEntry(editor: LexicalEditor, keys: string[]): Json {
+  return editor.getEditorState().read(() => [
+    'textFormats',
+    keys.map(key => {
+      const n = $getNodeByKey(key);
+      return $isElementNode(n)
+        ? [key, n.getTextFormat(), n.getTextStyle()]
+        : [key, null, null];
+    }),
   ]);
 }
 
@@ -4915,6 +5036,7 @@ function runExtensionStep(
     | {tableOfContents: true}
     | {unmount: string}
     | {unregisterCodeHighlighting: true}
+    | {setEditorState: string}
     | {registerNodeStructure: string}
     | {disposeNodeStructure: string}
   >,

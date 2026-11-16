@@ -2,11 +2,13 @@
 //! functions read, the update cycle (`editor.update`, transforms, the
 //! commit and its listeners), command dispatch, and `parseEditorState`.
 //!
-//! A headless editor has no DOM, so the reconciler, mutation listeners,
-//! selection-change notifications and the DOM selection never run here, as
-//! in JS's headless editor. Where JS commits a non-discrete update in a
-//! microtask, Rust commits it at the next [`Editor::read`] or discrete
-//! update, which JS also does when one comes first.
+//! Without a root element the reconciler, mutation listeners and decorator
+//! listeners never run, as in JS's headless editor; with one, the
+//! reconciler's model half (`reconciler.rs`) does. Selection-change
+//! notifications and the DOM selection never run here. Where JS commits a
+//! non-discrete update in a microtask, Rust commits it at the next
+//! [`Editor::read`] or discrete update, which JS also does when one comes
+//! first.
 
 use crate::editor::{
     DirtyType, LexicalCommand, MutationListenerPayload, NodeClass, Transform,
@@ -505,10 +507,10 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
     let previously_updating = editor.0.updating.get();
     *editor.0.editor_state.borrow_mut() = pending.clone();
     // The reconciler's model half, with a root element: which nodes it
-    // creates, updates and destroys, for the mutation listeners.
+    // creates, updates and destroys, for the mutation listeners, the
+    // decorators, and the elements' text format and style.
     let mutated_nodes =
         if !editor.is_headless() && editor.get_root_element().is_some() && needs_update {
-            let dirty = editor.0.dirty.borrow();
             let mutated = with_active(
                 Active {
                     editor: Some(editor.clone()),
@@ -518,19 +520,11 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
                 },
                 || {
                     with_updating(editor, || {
-                        let mutated = crate::reconciler::reconcile_root(
-                            &current,
-                            &pending,
-                            editor,
-                            dirty.dirty_type,
-                            &dirty.elements,
-                            &dirty.leaves,
-                        );
+                        let mutated = crate::reconciler::reconcile_root(&current, &pending, editor);
                         (mutated, get_root().get_text_content())
                     })
                 },
             );
-            drop(dirty);
             let (mutated, text) = mutated;
             // The end of `$reconcileNode('root')`: the root caches its text
             // content (`__cachedText`). A stale cache (a root not reconciled
@@ -583,11 +577,20 @@ pub(crate) fn commit_pending_updates(editor: &Editor) -> Result<(), LexicalError
     } else {
         std::mem::take(&mut *editor.0.deferred.borrow_mut())
     };
+    crate::reconciler::garbage_collect_detached_decorators(editor, &pending);
     let previously_dispatching = editor.0.dispatching_commit_listeners.replace(true);
     with_updating(editor, || {
         if let Some(mutated_nodes) = &mutated_nodes {
             let leaves: &Vec<String> = &dirty_leaves;
             trigger_mutation_listeners(editor, mutated_nodes, &tags, leaves, &current);
+        }
+        // The decorators the reconciler and the GC changed.
+        let pending_decorators = editor.0.pending_decorators.borrow_mut().take();
+        if let Some(pending_decorators) = pending_decorators {
+            *editor.0.decorators.borrow_mut() = pending_decorators.clone();
+            for listener in editor.decorator_listeners() {
+                listener(&pending_decorators);
+            }
         }
         let listeners = editor.text_content_listeners();
         if !listeners.is_empty() {

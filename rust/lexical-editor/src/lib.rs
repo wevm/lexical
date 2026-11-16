@@ -226,6 +226,7 @@ pub use node_state::{
 pub use nodes::element::{Direction, ElementData};
 pub use nodes::paragraph::create_paragraph_node;
 pub use nodes::text::{TextData, create_text_node, toggle_text_format_type};
+pub use reconciler::Decorators;
 pub use ref_counted_registry::{RefCountedRegistry, create_ref_counted_registry};
 pub use selection_deletion::{
     SelectionAlter, SelectionGranularity, SelectionMovement, is_block_fully_selected,

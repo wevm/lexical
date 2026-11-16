@@ -9001,3 +9001,197 @@ test('scripts/core-api', () => {
     coreApiScripts(),
   );
 });
+
+test('scripts/reconciler', () => {
+  // What the reconciler (LexicalReconciler.ts) writes back to the model
+  // once the editor has a root element (`setRootElement`): the decorators it
+  // collects from `decorate()` (`editor._decorators`, the decorator
+  // listener, `getDecorators()`, and their GC), the mutations of nodes in
+  // named slots (`$mountSlotChildren`, `$reconcileSlotChildren` and the
+  // destruction of a host's slots), and the `textFormat` and `textStyle` an
+  // element takes from its first text descendant when it is reconciled
+  // (`reconcileTextFormat`, `reconcileTextStyle`). In Node an update of an
+  // editor with a root starts with no selection.
+  const act = (action: Record<string, unknown>): Action => action as Action;
+  const root = (on: boolean): Step => ({setRootElement: on});
+  const dec = (): Node => ({type: 'test-decorator', version: 1}) as Node;
+  const shared = (): Node =>
+    ({type: 'test-shared-decorator', version: 1}) as Node;
+  const hr = (): Node => ({type: 'horizontalrule', version: 1}) as Node;
+  const decorators: Action = act({do: 'logDecorators'});
+  const save = (name: string): Action => act({do: 'saveEditorState', name});
+  const restore = (name: string): Action =>
+    act({do: 'restoreEditorState', name});
+  const setSlot = (key: string, name: string, value: Node | string): Action =>
+    act(
+      typeof value === 'string'
+        ? {do: 'setSlot', key, name, valueKey: value}
+        : {do: 'setSlot', key, name, node: value},
+    );
+  const removeSlot = (key: string, name: string): Action =>
+    act({do: 'removeSlot', key, name});
+  const bold = 1;
+  const italic = 2;
+  emit(
+    'reconciler',
+    "The reconciler's model half with a root element: decorate() and the decorator listener, getDecorators() and the GC of detached decorators; the mutations of nodes in named slots; and the textFormat and textStyle a reconciled element takes from its first text descendant.",
+    [
+      {
+        decorators: true,
+        extension: true,
+        name: 'decorators',
+        steps: [
+          // Keys: the paragraph 1, "a" 2, the decorators 3 and 4, "b" 5,
+          // the rule 6. Without a root element nothing is decorated.
+          doc(p(t('a'), dec(), shared(), t('b')), hr()),
+          update(decorators),
+          // The full reconcile creates every node: each decorator decorates,
+          // the rule to null, which is not kept.
+          root(true),
+          update(decorators),
+          // A dirty decorator decorates again: a new object changes the
+          // map, the same object doesn't.
+          update(node('3', 'markDirty')),
+          update(node('4', 'markDirty')),
+          update(node('3', 'markDirty'), node('4', 'markDirty')),
+          // A clean decorator is not decorated.
+          update(node('2', 'setTextContent', 'x')),
+          // A removed decorator is collected.
+          update(node('3', 'remove'), decorators),
+          update(decorators),
+          // Collected without a root element too, where nothing decorates.
+          root(false),
+          update(
+            node('5', 'insertAfter', dec()),
+            node('4', 'remove'),
+            decorators,
+          ),
+          update(decorators),
+          root(true),
+          update(decorators),
+          // `setEditorState` reconciles every node again; so does
+          // `$restoreEditorState`, through `$fullReconcile`.
+          update(save('s')),
+          {setEditorState: 's'},
+          update(restore('s')),
+          update(decorators),
+        ],
+        testDecorators: true,
+      },
+      {
+        decorators: true,
+        mutatedNodes: true,
+        mutations: ['paragraph', 'text', 'test-decorator'],
+        name: 'mutations in slots',
+        steps: [
+          root(true),
+          // Keys: the hosts 1 and 3, "Body" 2, "Other" 4; then each slot
+          // value and its text in turn.
+          doc(p(t('Body')), p(t('Other'))),
+          // A new slot is mounted: its nodes are created.
+          update(setSlot('1', 'title', p(t('Title')))),
+          // An edit in a slot reconciles it.
+          update(node('6', 'setTextContent', 'Title!')),
+          // A move to another slot of the host, then to another host.
+          update(setSlot('1', 'sub', '5')),
+          update(setSlot('3', 'side', '5')),
+          // Replacing a slot's value destroys the old one.
+          update(setSlot('3', 'side', p(t('New')))),
+          // Nested slots, mounted with their value.
+          update(
+            setSlot('1', 'outer', {
+              ...p(t('Out')),
+              $slots: {inner: p(t('In'))},
+            } as Node),
+          ),
+          update(node('12', 'setTextContent', 'In!')),
+          // A decorator hosts a slot: its value is mounted and reconciled.
+          update(
+            node('2', 'insertAfter', dec()),
+            setSlot('13', 'caption', p(t('Cap'))),
+          ),
+          update(node('15', 'setTextContent', 'Cap!')),
+          // Removing a slot destroys its value.
+          update(removeSlot('1', 'outer')),
+          // A new root element creates every node, slots too.
+          root(false),
+          root(true),
+          // Removing a host destroys its slots.
+          update(node('1', 'remove')),
+          update(node('3', 'remove')),
+        ],
+        testDecorators: true,
+      },
+      {
+        link: true,
+        listen: true,
+        name: 'text format and style from the first text',
+        steps: [
+          root(true),
+          // Keys: 1 ("a" 2, "b" 3), 4 ("c" 5), 6 (line break 7, "d" 8),
+          // 9 (empty), 10 (link 11 with "l" 12, "m" 13), 14 (decorator 15,
+          // "e" 16). Created elements keep what they were given.
+          doc(
+            p(t('a', {format: bold}), t('b')),
+            p(t('c', {style: 'color: red'})),
+            p(br(), t('d', {format: italic})),
+            p(),
+            p(a('https://lexical.dev', t('l', {format: 8})), t('m')),
+            p(dec(), t('e', {format: 16, style: 'color: blue'})),
+          ),
+          // A reconciled element takes its first text's format and style,
+          // however deep, past what isn't text, from a clean prefix too.
+          update(node('3', 'setTextContent', 'B')),
+          update(node('5', 'setTextContent', 'C')),
+          update(node('8', 'setTextContent', 'D')),
+          update(node('13', 'setTextContent', 'M')),
+          update(node('12', 'setTextContent', 'L')),
+          update(node('16', 'setTextContent', 'E')),
+          // It follows the first text's changes.
+          update(node('2', 'toggleFormat', 'bold')),
+          update(node('2', 'toggleFormat', 'italic')),
+          // A first text in a new child.
+          update(node('9', 'append', [t('f', {format: 4})])),
+          // An element whose text is gone keeps what it took, which its
+          // JSON now shows.
+          update(node('5', 'remove')),
+          update(node('9', 'clear')),
+          // An element without text keeps its own.
+          update(
+            node('9', 'setTextFormat', 32),
+            node('9', 'setTextStyle', 'x'),
+          ),
+          // Without a root element nothing is derived, and the full
+          // reconcile of a new root creates every node, deriving nothing.
+          root(false),
+          update(node('2', 'toggleFormat', 'bold')),
+          update(save('s')),
+          root(true),
+          // `setEditorState` reconciles every node, but derives nothing for
+          // the nodes the state shares with the previous one; the restored
+          // state's nodes are all new, so they derive.
+          {setEditorState: 's'},
+          update(restore('s')),
+          update(node('2', 'toggleFormat', 'bold')),
+        ],
+        testDecorators: true,
+        textFormats: ['1', '4', '6', '9', '10', '11', '14'],
+      },
+      {
+        name: 'text format with slots',
+        steps: [
+          root(true),
+          // Keys: the host 1, "body" 2; the slot value 3 and its text 4.
+          doc(p(t('body', {format: italic}))),
+          update(setSlot('1', 's', p(t('S', {format: bold})))),
+          // The host takes its children's first text, not its slot's.
+          update(node('2', 'setTextContent', 'Body')),
+          // The slot value takes its own.
+          update(node('4', 'setTextContent', 'S!')),
+          update(node('4', 'toggleFormat', 'underline')),
+        ],
+        textFormats: ['1', '3'],
+      },
+    ],
+  );
+});

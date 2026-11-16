@@ -82,17 +82,18 @@ use lexical::{
 use lexical::{
     CAN_REDO_COMMAND, CAN_UNDO_COMMAND, CLEAR_EDITOR_COMMAND, CLEAR_HISTORY_COMMAND,
     COMMAND_PRIORITY_EDITOR, CONTROLLED_TEXT_INSERTION_COMMAND, CaretDirection, CreateEditorArgs,
-    DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, DataTransfer, Direction,
-    Editor, EditorState, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND, INDENT_CONTENT_COMMAND,
-    INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND, INSERT_TAB_COMMAND, KEY_ENTER_COMMAND,
-    KeyboardEvent, LexicalCommand, LexicalError, NodeRef, OUTDENT_CONTENT_COMMAND, PointCaret,
-    PointType, REDO_COMMAND, REMOVE_TEXT_COMMAND, RangeSelection, SELECT_ALL_COMMAND,
-    SET_TEXT_FORMAT_COMMAND, SelectionAlter, SelectionGranularity, SelectionRef, SliceMode,
-    StateConfig, StateValueConfig, TextOffset, TextPointCaretSlice, UNDO_COMMAND, Unregister,
-    UpdateOptions, Which, caret_range_from_selection, clone_with_properties, create_command,
-    create_editor, create_node_selection, create_paragraph_node, create_range_selection,
-    create_state, create_state_with, export_node_json, get_caret_range, get_child_caret,
-    get_node_by_key, get_root, get_selection, get_sibling_caret, get_state, get_state_change,
+    DELETE_CHARACTER_COMMAND, DELETE_LINE_COMMAND, DELETE_WORD_COMMAND, DataTransfer, Decorators,
+    Direction, Editor, EditorState, FORMAT_ELEMENT_COMMAND, FORMAT_TEXT_COMMAND,
+    INDENT_CONTENT_COMMAND, INSERT_LINE_BREAK_COMMAND, INSERT_PARAGRAPH_COMMAND,
+    INSERT_TAB_COMMAND, KEY_ENTER_COMMAND, KeyboardEvent, LexicalCommand, LexicalError, NodeRef,
+    OUTDENT_CONTENT_COMMAND, PointCaret, PointType, REDO_COMMAND, REMOVE_TEXT_COMMAND,
+    RangeSelection, SELECT_ALL_COMMAND, SET_TEXT_FORMAT_COMMAND, SelectionAlter,
+    SelectionGranularity, SelectionRef, SliceMode, StateConfig, StateValueConfig, TextOffset,
+    TextPointCaretSlice, UNDO_COMMAND, Unregister, UpdateOptions, Which,
+    caret_range_from_selection, clone_with_properties, create_command, create_editor,
+    create_node_selection, create_paragraph_node, create_range_selection, create_state,
+    create_state_with, export_node_json, get_caret_range, get_child_caret, get_node_by_key,
+    get_root, get_selection, get_sibling_caret, get_state, get_state_change,
     get_style_object_from_css, get_text_point_caret, insert_nodes, is_block_fully_selected,
     normalize_caret, parse_serialized_node, remove_text_from_caret_range, reset_random_key,
     select_all, set_selection, set_selection_from_caret_range, set_state, set_state_with,
@@ -251,6 +252,117 @@ impl LexicalNode for TestDecoratorBlockNode {
 }
 
 pub(crate) use extensions::mark_flavor;
+
+/// `TestDecoratorNode` (ops.ts, `test-decorator`): an inline decorator
+/// whose `decorate()` returns a new value on every call,
+/// `{decorator: 'fresh', key}`.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct TestDecoratorNode {
+    base: NodeBase,
+}
+
+impl LexicalNode for TestDecoratorNode {
+    fn get_type(&self) -> &'static str {
+        "test-decorator"
+    }
+    fn base(&self) -> &NodeBase {
+        &self.base
+    }
+    fn base_mut(&mut self) -> &mut NodeBase {
+        &mut self.base
+    }
+    fn is_decorator(&self) -> bool {
+        true
+    }
+    fn decorate(&self, _editor: &Editor) -> Option<Rc<dyn std::any::Any>> {
+        let mut decoration = Object::new();
+        decoration.insert("decorator", "fresh".into());
+        decoration.insert("key", (self as &dyn LexicalNode).get_key().into());
+        Some(Rc::new(Value::Object(decoration)))
+    }
+}
+
+thread_local! {
+    /// `SHARED_DECORATION` (ops.ts).
+    static SHARED_DECORATION: Rc<Value> = {
+        let mut decoration = Object::new();
+        decoration.insert("decorator", "shared".into());
+        Rc::new(Value::Object(decoration))
+    };
+}
+
+/// `TestSharedDecoratorNode` (ops.ts, `test-shared-decorator`): an inline
+/// decorator whose `decorate()` returns one value, `{decorator: 'shared'}`,
+/// for every node and call.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct TestSharedDecoratorNode {
+    base: NodeBase,
+}
+
+impl LexicalNode for TestSharedDecoratorNode {
+    fn get_type(&self) -> &'static str {
+        "test-shared-decorator"
+    }
+    fn base(&self) -> &NodeBase {
+        &self.base
+    }
+    fn base_mut(&mut self) -> &mut NodeBase {
+        &mut self.base
+    }
+    fn is_decorator(&self) -> bool {
+        true
+    }
+    fn decorate(&self, _editor: &Editor) -> Option<Rc<dyn std::any::Any>> {
+        Some(SHARED_DECORATION.with(|d| d.clone()))
+    }
+}
+
+/// `decoratorEntries(decorators)`: `[[key, decoration]...]`, each
+/// decoration the JSON value the test decorators decorate to.
+fn decorator_entries(decorators: &Decorators) -> Value {
+    Value::Array(
+        decorators
+            .iter()
+            .map(|(key, value)| {
+                let value = value
+                    .downcast_ref::<Value>()
+                    .cloned()
+                    .unwrap_or(Value::Undefined);
+                Value::Array(vec![key.into(), value])
+            })
+            .collect(),
+    )
+}
+
+/// `textFormatsEntry(editor, keys)`: `['textFormats', [[key, textFormat,
+/// textStyle]...]]`, `null`s for a key that isn't an element.
+fn text_formats_entry(editor: &Editor, keys: &[String]) -> Value {
+    editor.get_editor_state().read(|| {
+        Value::Array(vec![
+            "textFormats".into(),
+            Value::Array(
+                keys.iter()
+                    .map(
+                        |key| match get_node_by_key(key).filter(NodeRef::is_element) {
+                            Some(n) => {
+                                let data = n.element_data();
+                                Value::Array(vec![
+                                    key.as_str().into(),
+                                    data.get_text_format().into(),
+                                    data.get_text_style().into(),
+                                ])
+                            }
+                            None => {
+                                Value::Array(vec![key.as_str().into(), Value::Null, Value::Null])
+                            }
+                        },
+                    )
+                    .collect(),
+            ),
+        ])
+    })
+}
+
 pub(crate) use schema_node::test_schema_nodes;
 
 /// `TestDecoratorBlockNode`'s class.
@@ -1194,6 +1306,7 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "selectTypeaheadOption"
             | "logFullMatchOffset"
             | "logDecoratorBlock"
+            | "logDecorators"
             | "logUrlMatcher"
             | "logSingleTokenPaste"
             | "findOffset"
@@ -2297,6 +2410,13 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
             ]);
             Ok(())
         }
+        Some("logDecorators") => {
+            ctx.log(vec![
+                "getDecorators".into(),
+                decorator_entries(&editor.get_decorators()),
+            ]);
+            Ok(())
+        }
         Some("logDecoratorBlock") => {
             let key = action.str("key").map_err(err)?;
             let n = node(key)?;
@@ -2978,6 +3098,8 @@ pub struct Session {
     warnings: bool,
     /// Whether the script has `codeHighlight`.
     code_highlight: bool,
+    /// `script.textFormats`.
+    text_formats: Vec<String>,
     /// What `registerCodeHighlighting` returned, until the step
     /// `unregisterCodeHighlighting` calls it.
     unregister_code_highlighting: RefCell<Option<Unregister>>,
@@ -3146,6 +3268,10 @@ impl Session {
         }
         if flag("replaceText") {
             nodes.push(core_api::text_replacement(false));
+        }
+        if script.get("testDecorators").and_then(Value::as_bool) == Some(true) {
+            nodes.push(lexical::NodeClass::of::<TestDecoratorNode>());
+            nodes.push(lexical::NodeClass::of::<TestSharedDecoratorNode>());
         }
         let args = CreateEditorArgs {
             nodes,
@@ -3318,6 +3444,12 @@ impl Session {
                 )
                 .map_err(|e| e.message().to_owned())?;
         }
+        if script.get("decorators").and_then(Value::as_bool) == Some(true) {
+            let log = ctx.clone();
+            let _unregister = editor.register_decorator_listener(move |decorators| {
+                log.log(vec!["decorators".into(), decorator_entries(decorators)]);
+            });
+        }
         if script.get("listen").and_then(Value::as_bool) == Some(true) {
             let log = ctx.clone();
             let _unregister = editor.register_update_listener(move |payload| {
@@ -3433,6 +3565,13 @@ impl Session {
             live_region: flag("liveRegion"),
             warnings: flag("warnings"),
             code_highlight: code_highlight.is_some(),
+            text_formats: script
+                .get("textFormats")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|k| k.as_str().map(str::to_owned))
+                .collect(),
             unregister_code_highlighting: RefCell::new(unregister_code_highlighting),
         })
     }
@@ -3470,6 +3609,10 @@ impl Session {
         }
         if self.code_highlight {
             let entry = code_highlight::code_blocks_entry(editor)?;
+            ctx.log.borrow_mut().push(entry);
+        }
+        if !self.text_formats.is_empty() {
+            let entry = text_formats_entry(editor, &self.text_formats);
             ctx.log.borrow_mut().push(entry);
         }
         if let Some(parent) = &parent {
@@ -3617,6 +3760,12 @@ impl Session {
                 ]);
                 Ok(())
             })
+        } else if let Some(name) = step.get("setEditorState").and_then(Value::as_str) {
+            let state = ctx.saved.borrow().get(name).cloned();
+            match state {
+                None => Err(err(format!("no saved state {name}"))),
+                Some(state) => editor.set_editor_state(&state, None),
+            }
         } else if step.get("characterLimit").is_some() || step.get("tableOfContents").is_some() {
             mount_step(step, ctx, editor)
         } else if let Some(name) = step.get("registerNodeStructure").and_then(Value::as_str) {

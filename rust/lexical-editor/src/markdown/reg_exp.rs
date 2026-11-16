@@ -236,7 +236,8 @@ impl RegExp {
         self.exec_units(&units, text)
     }
 
-    fn exec_units(&self, units: &[u16], text: &str) -> Option<RegExpMatch> {
+    /// [`exec`](Self::exec) on `text`'s UTF-16 code units, `units`.
+    pub(crate) fn exec_units(&self, units: &[u16], text: &str) -> Option<RegExpMatch> {
         let p = &self.program;
         let uses_last_index = p.global || p.sticky;
         let start = if uses_last_index {

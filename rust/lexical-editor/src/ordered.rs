@@ -6,18 +6,55 @@
 //! which the same pass then visits.
 
 use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
+
+/// A hasher for node keys and other short strings the editor makes itself
+/// (FxHash's mixing, eight bytes at a time). The standard library's
+/// SipHash guards against keys chosen to collide, which these are not, and
+/// costs more than the rest of a lookup: an update looks a node up by its
+/// key many times for each node it touches.
+#[derive(Clone, Copy, Default)]
+pub(crate) struct KeyHasher(u64);
+
+impl Hasher for KeyHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        let mut word = 0u64;
+        let mut i = 0;
+        while i < bytes.len() {
+            word |= u64::from(bytes[i]) << ((i % 8) * 8);
+            i += 1;
+            if i % 8 == 0 || i == bytes.len() {
+                self.0 = (self.0.rotate_left(5) ^ word).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+                word = 0;
+            }
+        }
+    }
+
+    fn write_u8(&mut self, byte: u8) {
+        self.0 = (self.0.rotate_left(5) ^ u64::from(byte)).wrapping_mul(0x51_7c_c1_b7_27_22_0a_95);
+    }
+
+    fn finish(&self) -> u64 {
+        // The multiplication mixes into the high bits, and the table picks
+        // a bucket by the low ones.
+        self.0.rotate_left(26)
+    }
+}
+
+/// A `HashMap` keyed with [`KeyHasher`].
+pub(crate) type KeyMap<K, V> = HashMap<K, V, BuildHasherDefault<KeyHasher>>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct OrderedMap<V> {
     entries: Vec<Option<(String, V)>>,
-    index: HashMap<String, usize>,
+    index: KeyMap<String, usize>,
 }
 
 impl<V> Default for OrderedMap<V> {
     fn default() -> Self {
         Self {
             entries: Vec::new(),
-            index: HashMap::new(),
+            index: KeyMap::default(),
         }
     }
 }

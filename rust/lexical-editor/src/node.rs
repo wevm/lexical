@@ -8,6 +8,7 @@ use crate::caret_tree::{
     detach_node_with_selection, error_on_insert_text_node_on_root, insert_node_between,
     insert_sibling, select_adjacent_node,
 };
+use crate::editor_state::NodeMap;
 use crate::error::invariant;
 use crate::lexical_selection::{
     PointType, SelectionRef, Which, get_selection, maybe_move_children_selection_to_parent,
@@ -739,6 +740,31 @@ pub struct NodeRef {
     key: NodeKey,
 }
 
+/// The sibling after `key` (before it, unless `forward`) in `node_map`,
+/// read without making a handle, as an import splits nodes in long
+/// paragraphs many times and each split walks the siblings.
+fn sibling<'a>(node_map: &'a NodeMap, key: &str, forward: bool) -> Option<&'a str> {
+    let node = node_map.get(key).unwrap_or_else(|| {
+        panic!(
+            "Lexical node does not exist in active editor state. Avoid using the same node references between nested closures from editorState.read/editor.update."
+        )
+    });
+    let base = node.base();
+    if forward { &base.next } else { &base.prev }.as_deref()
+}
+
+/// The key `steps` siblings after `key` (before it, unless `forward`) in
+/// the active editor state.
+pub(crate) fn sibling_key_at(key: &str, steps: usize, forward: bool) -> Option<NodeKey> {
+    let editor_state = get_active_editor_state();
+    let node_map = editor_state.0.node_map.borrow();
+    let mut key = key;
+    for _ in 0..steps {
+        key = sibling(&node_map, key, forward)?;
+    }
+    Some(key.to_owned())
+}
+
 impl NodeRef {
     pub(crate) fn new(key: impl Into<NodeKey>) -> Self {
         Self { key: key.into() }
@@ -895,16 +921,24 @@ impl NodeRef {
     /// `getIndexWithinParent()`; `None` where JS returns -1.
     pub fn get_index_within_parent(&self) -> Option<usize> {
         let parent = self.get_parent()?;
-        let mut node = parent.get_first_child();
-        let mut index = 0;
-        while let Some(n) = node {
-            if &n == self {
-                return Some(index);
+        let size = parent.get_children_size();
+        let editor_state = get_active_editor_state();
+        let node_map = editor_state.0.node_map.borrow();
+        // Out from the node both ways, to whichever end is nearer: the
+        // same index as counting from the first child.
+        let (mut before, mut after) = (self.key.as_str(), self.key.as_str());
+        let mut steps = 0;
+        loop {
+            match sibling(&node_map, before, false) {
+                Some(key) => before = key,
+                None => return Some(steps),
             }
-            index += 1;
-            node = n.get_next_sibling();
+            match sibling(&node_map, after, true) {
+                Some(key) => after = key,
+                None => return size.checked_sub(steps + 1),
+            }
+            steps += 1;
         }
-        None
     }
 
     /// `getTextContentSize()`: the text content's length in UTF-16 code

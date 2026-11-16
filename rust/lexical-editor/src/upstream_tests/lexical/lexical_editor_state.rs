@@ -44,7 +44,7 @@ fn new_editor_state(node_map: NodeMap) -> EditorState {
 }
 
 fn node_map_with_root(root: Rc<dyn LexicalNode>) -> NodeMap {
-    let mut node_map = NodeMap::new();
+    let mut node_map = NodeMap::default();
     node_map.insert("root".to_owned(), root);
     node_map
 }
@@ -56,7 +56,7 @@ fn is_empty() {
     let root: Rc<dyn LexicalNode> = Rc::new(RootNode::new());
     assert!(new_editor_state(node_map_with_root(root)).is_empty());
     // A state with nothing in it at all is emptier still.
-    assert!(new_editor_state(NodeMap::new()).is_empty());
+    assert!(new_editor_state(NodeMap::default()).is_empty());
 }
 
 // upstream: lexical/src/__tests__/unit/LexicalEditorState.test.ts::LexicalEditorState tests > constructor

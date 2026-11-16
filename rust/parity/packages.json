@@ -14,7 +14,7 @@
   "lexical-link": "pending",
   "lexical-code-core": "pending",
   "lexical-code-prism": "pending",
-  "lexical-markdown": "pending",
+  "lexical-markdown": "enforced",
   "lexical-overflow": "enforced",
   "lexical-text": "pending",
   "lexical-hashtag": "enforced",

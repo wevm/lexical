@@ -10,7 +10,7 @@ use crate::lexical_selection::{
     move_selection_point_to_sibling,
 };
 use crate::lexical_utils::{get_writable, mutate, with_writable};
-use crate::node::{LexicalNode, NodeKey, NodeRef};
+use crate::node::{LexicalNode, NodeKey, NodeRef, sibling_key_at};
 use crate::nodes::root::RootNode;
 use crate::schema::{
     NodeSchema, NumberValueOptions, enum_value, node_schema, number_value, string_value,
@@ -216,11 +216,16 @@ impl NodeRef {
 
     /// `getChildAtIndex(index)`.
     pub fn get_child_at_index(&self, index: usize) -> Option<NodeRef> {
-        let mut node = self.get_first_child();
-        for _ in 0..index {
-            node = node?.get_next_sibling();
-        }
-        node
+        // From the nearer end.
+        let size = self.get_children_size();
+        let key = if 2 * index < size {
+            sibling_key_at(self.get_first_child()?.get_key(), index, true)
+        } else if index < size {
+            sibling_key_at(self.get_last_child()?.get_key(), size - 1 - index, false)
+        } else {
+            None
+        };
+        key.map(NodeRef::new)
     }
 
     /// `getFirstDescendant()`.

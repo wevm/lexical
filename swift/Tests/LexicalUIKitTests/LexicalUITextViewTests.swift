@@ -465,6 +465,37 @@
       #expect(try await files.first?.bytes() == pdf)
     }
 
+    /// `sizeThatFits(_:)`, which `UITextView` answers, and the measurement
+    /// `LexicalEditor` sizes with wrap the text as the view would at another
+    /// width, around a leading exclusion path, without resizing the view:
+    /// each is the view's own height once it is that wide, which the text
+    /// measured on its own (`boundingRect`) is not.
+    @Test func measuresTheContentHeightAtAnotherWidth() throws {
+      let (view, window) = try makeView()
+      view.insertText(String(repeating: "Measure the text at a width. ", count: 8))
+      view.textContainer.exclusionPaths = [
+        UIBezierPath(rect: CGRect(x: 0, y: 0, width: 60, height: 400))
+      ]
+      let frame = view.frame
+      let height = view.contentHeight
+      let fits = view.sizeThatFits(CGSize(width: 250, height: CGFloat.greatestFiniteMagnitude))
+      let measured = view.contentHeight(atWidth: 250)
+      #expect(view.frame == frame)
+      #expect(view.contentHeight == height)
+      #expect(measured > height)
+      let insets = view.textContainerInset
+      let textWidth = 250 - insets.left - insets.right - 2 * view.textContainer.lineFragmentPadding
+      let bounding = view.textStorage.boundingRect(
+        with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
+        options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
+      #expect(measured > ceil(bounding.height + insets.top + insets.bottom) + 10)
+      view.frame.size.width = 250
+      #expect(view.contentHeight == measured)
+      // `UITextView` doesn't round up.
+      #expect(ceil(fits.height) == measured)
+      _ = window
+    }
+
     @Test func centersTextInCSSLineBoxes() throws {
       let (view, window) = try makeView()
       // Lines of capitals, whose ink runs from the cap height to the

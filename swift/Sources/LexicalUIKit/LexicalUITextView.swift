@@ -108,7 +108,10 @@
     /// `contentHeight` were the view `width` wide, measured without
     /// changing the view, as SwiftUI's `sizeThatFits` must: the view's own
     /// layout when its text is laid out at that width, or else a copy of
-    /// its text laid out at it.
+    /// its text laid out at it. The same as `LexicalNSTextView`'s, which
+    /// is public because `NSView` has no sizing call for a width; an app
+    /// asks this view `sizeThatFits(_:)`, which `UITextView` answers with
+    /// the same layout.
     package func contentHeight(atWidth width: CGFloat) -> CGFloat {
       let insets = textContainerInset
       let textWidth = width - insets.left - insets.right

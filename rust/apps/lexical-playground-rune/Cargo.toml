@@ -22,6 +22,11 @@ rune = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac297464
 ] }
 rune-kit = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac2974648c6fb95dc498a34937f" }
 
+[features]
+# Headless arguments (--snap, --tree, --script, ...) in a release build; debug
+# builds always have them. CI's release render turns it on.
+tooling = ["rune/tooling"]
+
 [lints.rust]
 unsafe_code = "forbid"
 

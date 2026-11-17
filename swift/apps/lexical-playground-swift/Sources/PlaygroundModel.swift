@@ -260,6 +260,12 @@ final class PlaygroundModel {
   init() {
     // A playground that can't build its editor has nothing to show.
     editor = try! Self.makeEditor(richText: true)
+    // `setupEnv.ts`: a launch argument named after the web's setting
+    // (`-showTreeView NO`) overrides its default, as the web's query
+    // parameter (`?showTreeView=false`) does for the e2e tests.
+    if UserDefaults.standard.object(forKey: "showTreeView") != nil {
+      showsTreeView = UserDefaults.standard.bool(forKey: "showTreeView")
+    }
     try? loadWelcomeDocument(editor)
     attach()
   }

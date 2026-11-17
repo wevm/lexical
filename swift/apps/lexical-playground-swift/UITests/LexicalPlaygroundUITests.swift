@@ -24,9 +24,13 @@ final class LexicalPlaygroundUITests: XCTestCase {
     super.record(issue)
   }
 
+  /// Launches the app with `arguments`, such as a setting's override
+  /// (`-showTreeView NO`), as a web e2e test opens the playground with
+  /// query parameters.
   @MainActor
-  private func launch() {
+  private func launch(_ arguments: [String] = []) {
     app = XCUIApplication()
+    app.launchArguments = arguments
     app.launch()
   }
 
@@ -792,15 +796,14 @@ final class LexicalPlaygroundUITests: XCTestCase {
 
   /// The sample image, selected, on the line after "Hello world". The
   /// debug view is off, so the editor is tall enough for both lines above
-  /// the keyboard.
+  /// the keyboard. It starts off rather than being switched off in
+  /// Settings: a tap on the switch while the sheet was still coming up
+  /// was dropped, and the editor, too short for the image, scrolled the
+  /// first line out of view.
   @MainActor
   private func selectedImageAfterALine() -> (editor: XCUIElement, image: XCUIElement) {
-    launch()
-    app.buttons["Settings"].tap()
-    let toggle = app.switches["Debug View"]
-    XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-    toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-    app.buttons["Done"].tap()
+    launch(["-showTreeView", "NO"])
+    XCTAssertFalse(app.staticTexts["tree-view"].exists)
     let editor = clearedEditor()
     editor.typeText("Hello world\n/imag")
     let option = app.descendants(matching: .any)["typeahead-item-0"]

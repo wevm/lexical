@@ -22,7 +22,7 @@
 //! - [`replay_vectors`]: the conformance report, run in the app.
 
 use lexical::json::{self, Object, Value};
-use lexical::{NodeRef, get_root};
+use lexical::{EditorState, NodeRef, get_root};
 use lexical_conformance::scripts::Session;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -885,7 +885,11 @@ pub struct Playground {
     can_undo: bool,
     can_redo: bool,
     steps: Vec<Value>,
-    results: Vec<Value>,
+    /// Each step's result without its state, and the editor state it left,
+    /// which [`Playground::export_case`] writes into the result. A state
+    /// is immutable and shares its nodes, so keeping it is cheap; writing
+    /// it as JSON at every step cost more than the edit.
+    results: Vec<(Value, EditorState)>,
     document: Document,
     /// The editor's selection, as the last step recorded it.
     model_selection: Value,
@@ -1132,7 +1136,7 @@ impl Playground {
             && self
                 .results
                 .last()
-                .and_then(|result| result.get("log"))
+                .and_then(|(result, _)| result.get("log"))
                 .and_then(Value::as_array)
                 .and_then(|log| {
                     log.iter().rev().filter_map(Value::as_array).find(|entry| {
@@ -1472,7 +1476,7 @@ impl Playground {
         if let Value::Object(o) = &mut step {
             o.insert("now", (self.clock)().into());
         }
-        let result = match self.session.run(&step, true) {
+        let result = match self.session.run(&step, false) {
             Ok(r) => r,
             Err(e) => {
                 self.last_error = Some(e.clone());
@@ -1480,7 +1484,10 @@ impl Playground {
             }
         };
         self.steps.push(step);
-        self.results.push(result.json.clone());
+        self.results.push((
+            result.json.clone(),
+            self.session.editor().get_editor_state(),
+        ));
         self.document = self
             .session
             .editor()
@@ -1530,7 +1537,19 @@ impl Playground {
         let mut case = self.script.clone();
         case.insert("name", name.into());
         case.insert("steps", Value::Array(self.steps.clone()));
-        case.insert("results", Value::Array(self.results.clone()));
+        let results = self.results.iter().map(|(result, state)| {
+            // `snapshotOf`'s key order: the state in both forms after `text`.
+            let mut json = Object::new();
+            for (key, value) in result.as_object().into_iter().flat_map(Object::iter) {
+                json.insert(key, value.clone());
+                if key == "text" {
+                    json.insert("state", state.to_json(false).to_string().into());
+                    json.insert("compact", state.to_json(true).to_string().into());
+                }
+            }
+            Value::Object(json)
+        });
+        case.insert("results", Value::Array(results.collect()));
         Value::Object(case)
     }
 }

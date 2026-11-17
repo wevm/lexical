@@ -514,8 +514,8 @@ touches:
   - `$sliceSelectedTextNodeContent`'s `'self'` mode, which writes a node's
     text without `getWritable`; every ported caller passes `'clone'`.
 - The DOM half of the reconciler (the elements, the text and direction
-  caches, the DOM `editor._keyToDOMMap` holds), selection-change
-  notifications, and `RootNode.__cachedText` itself (only its effect on
+  caches, the DOM `editor._keyToDOMMap` holds) and `RootNode.__cachedText`
+  itself (only its effect on
   the dirty root is ported; `getTextContent` always walks the tree). With a root element an update
   starts with the last selection, as in a headless editor and in Swift:
   JS reads the DOM selection (`$internalCreateSelection`), which an app's
@@ -537,9 +537,22 @@ touches:
   `on_key_down`, `on_before_input`, `on_composition_start` and
   `on_composition_end` with its own events; `$handleInput` (the
   `INPUT_COMMAND` handler, which reads what the browser wrote to the DOM,
-  so it isn't registered), the selection-change, click, focus, blur, drag
-  and drop handlers, and the Android, iOS, Safari and Firefox workarounds,
-  which read the DOM or the browser. `$handleBeforeInput` runs in
+  so it isn't registered), the click, focus, blur, drag and drop
+  handlers, and the Android, iOS, Safari and Firefox workarounds, which
+  read the DOM or the browser. `onSelectionChange` is ported as
+  `on_selection_change`, its model half, as Swift's views run it: the app
+  passes the points its view selected (or none) and whether the editor is
+  the active one; the points become the selection, a caret takes the
+  format and style where it is (`$updateCollapsedSelectionFormatStyle`), a
+  range the format all its text has, and `$dispatchSelectionChangeCommand`
+  announces it. Whether the selection is within the editor, the mouse drag
+  adjustment, `postDeleteSelectionToRestore` and the skip of a selection
+  the reconciler applied (`isSelectionChangeFromDOMUpdate`) read the DOM
+  and are the view's; nothing calls `markCollapsedSelectionFormat`, which
+  runs where JS writes the DOM selection, so a caret always takes the
+  format where it is. The commit's own notification
+  (`$notifyPendingSelectionChange`) was already ported (the update cycle
+  row). `$handleBeforeInput` runs in
   controlled mode: there are no target ranges (`getTargetRanges()`), so an
   app sets the model selection to the input's range before it dispatches,
   and `deleteContentForward` dispatches `DELETE_LINE_COMMAND(false)` as JS

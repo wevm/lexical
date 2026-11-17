@@ -8,7 +8,8 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-readme = "README.md"
+# The workspace README, which is also the mirror's (wevm/lexical-rust).
+readme = "../README.md"
 keywords = ["lexical", "editor", "rich-text"]
 categories = ["text-processing"]
 # Published to crates.io by .github/workflows/rust-release.yml (rust/DESIGN.md,

@@ -1389,6 +1389,35 @@
       _ = window
     }
 
+    /// `contentHeight(atWidth:)` wraps the text as the view would at
+    /// another width, around a leading exclusion path, without resizing the
+    /// view: it is the view's own height once it is that wide, which the
+    /// text measured on its own (`boundingRect`) is not.
+    @Test func measuresTheContentHeightAtAnotherWidth() throws {
+      let (view, window) = try makeView()
+      insert(view, String(repeating: "Measure the text at a width. ", count: 8))
+      let container = try #require(view.textContainer)
+      container.exclusionPaths = [NSBezierPath(rect: NSRect(x: 0, y: 0, width: 60, height: 400))]
+      let frame = view.frame
+      let height = view.contentHeight
+      let measured = view.contentHeight(atWidth: 250)
+      #expect(view.frame == frame)
+      #expect(view.contentHeight == height)
+      #expect(measured > height)
+      let inset = view.textContainerInset
+      let textWidth = 250 - 2 * inset.width - 2 * container.lineFragmentPadding
+      let bounding = try #require(view.textStorage).boundingRect(
+        with: NSSize(width: textWidth, height: .greatestFiniteMagnitude),
+        options: [.usesLineFragmentOrigin, .usesFontLeading])
+      #expect(measured > ceil(bounding.height + 2 * inset.height) + 10)
+      // No room for text, or no finite width: the height as it is.
+      #expect(view.contentHeight(atWidth: 2 * inset.width) == height)
+      #expect(view.contentHeight(atWidth: .infinity) == height)
+      view.setFrameSize(NSSize(width: 250, height: frame.height))
+      #expect(view.contentHeight == measured)
+      _ = window
+    }
+
     /// The app's context menu items come first, and `NSTextView`'s own
     /// (Cut, Copy, Paste and the rest) stay after them.
     @Test func addsContextMenuItemsBeforeTheSystemOnes() throws {

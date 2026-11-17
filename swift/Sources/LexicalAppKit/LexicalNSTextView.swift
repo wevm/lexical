@@ -95,14 +95,33 @@
       return ceil(layoutManager.usageBoundsForTextContainer.height + 2 * textContainerInset.height)
     }
 
-    /// `contentHeight` were the view `width` wide, measured without
-    /// changing the view, as SwiftUI's `sizeThatFits` must: the view's own
-    /// layout when its text is laid out at that width, or else a copy of
-    /// its text laid out at it.
-    package func contentHeight(atWidth width: CGFloat) -> CGFloat {
+    /// The `contentHeight` the view would have if it were `width` wide,
+    /// measured without changing the view, for a `sizeThatFits` that must
+    /// not resize what it measures.
+    ///
+    /// `width` is the text view's own width, its container inset included.
+    /// In a scroll view that is the width the scroll view gives its
+    /// document (`contentSize.width`), not the scroll view's frame, which
+    /// also holds the scroller and the border. The text wraps as the view
+    /// would wrap it at that width: within the container's line fragment
+    /// padding, around its exclusion paths, and with its line break mode
+    /// and line limit. The result includes the inset above and below the
+    /// text, is rounded up to a whole point, and is not clamped by
+    /// `heightRange`. A width that leaves no room for text once the insets
+    /// are taken out, or one that is not finite, gives `contentHeight` at
+    /// the view's current width.
+    ///
+    /// Lexical on the web has no such method: the browser lays out the
+    /// contenteditable, and an app that needs its height asks the DOM
+    /// (`scrollHeight`, a `ResizeObserver`). Here the view answers its
+    /// platform's own sizing question instead. UIKit asks a view
+    /// `sizeThatFits(_:)`, which `UITextView` already answers this way;
+    /// `NSView` has no call that sizes a view for a width, so on AppKit it
+    /// is this method.
+    public func contentHeight(atWidth width: CGFloat) -> CGFloat {
       let inset = textContainerInset
       let textWidth = width - 2 * inset.width
-      guard textWidth > 0, let textContainer, let textStorage,
+      guard textWidth > 0, textWidth.isFinite, let textContainer, let textStorage,
         textWidth != textContainer.size.width
       else { return contentHeight }
       return ceil(textContainer.usageHeight(of: textStorage, atWidth: textWidth) + 2 * inset.height)

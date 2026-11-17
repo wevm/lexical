@@ -560,9 +560,10 @@ touches:
   runs where JS writes the DOM selection, so a caret always takes the
   format where it is. The commit's own notification
   (`$notifyPendingSelectionChange`) was already ported (the update cycle
-  row). `scripts/events` records it (its `selectionChange` action, which
-  JS runs through `onSelectionChange` itself on a DOM selection at the
-  points), and the playgrounds send each selection their views make
+  row). `scripts/selection-change` records it (its `selectionChange`
+  action, which JS runs through `onSelectionChange` itself on a DOM
+  selection at the points; Swift's runner doesn't replay it, since Swift's
+  selection change is TextKitInput's `setSelectedRange` on view offsets), and the playgrounds send each selection their views make
   through it. `$handleBeforeInput` runs in
   controlled mode: there are no target ranges (`getTargetRanges()`), so an
   app sets the model selection to the input's range before it dispatches,

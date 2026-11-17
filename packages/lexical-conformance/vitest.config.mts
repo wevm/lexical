@@ -32,6 +32,14 @@ const INTERNAL_EXPORTS: [string, string][] = [
   ],
   ['/lexical-react/src/shared/useCharacterLimit.ts', 'export {findOffset};'],
   [
+    '/lexical/src/LexicalEvents.ts',
+    'export {onSelectionChange as INTERNAL_onSelectionChange};',
+  ],
+  [
+    '/lexical/src/index.ts',
+    "export {INTERNAL_onSelectionChange} from './LexicalEvents';",
+  ],
+  [
     '/lexical-code-prism/src/FacadePrism.ts',
     'export {$mapTokensToLexicalStructure as INTERNAL_$mapTokensToLexicalStructure};',
   ],

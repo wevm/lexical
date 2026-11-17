@@ -548,7 +548,9 @@ touches:
   read the DOM or the browser. `onSelectionChange` is ported as
   `on_selection_change`, its model half, as Swift's views run it: the app
   passes the points its view selected (or none) and whether the editor is
-  the active one; the points become the selection, a caret takes the
+  the active one; the points become the selection, with the format and
+  style of the editor state's selection (`$internalCreateRangeSelection`'s
+  for a DOM selection), a caret takes the
   format and style where it is (`$updateCollapsedSelectionFormatStyle`), a
   range the format all its text has, and `$dispatchSelectionChangeCommand`
   announces it. Whether the selection is within the editor, the mouse drag
@@ -558,7 +560,10 @@ touches:
   runs where JS writes the DOM selection, so a caret always takes the
   format where it is. The commit's own notification
   (`$notifyPendingSelectionChange`) was already ported (the update cycle
-  row). `$handleBeforeInput` runs in
+  row). `scripts/events` records it (its `selectionChange` action, which
+  JS runs through `onSelectionChange` itself on a DOM selection at the
+  points), and the playgrounds send each selection their views make
+  through it. `$handleBeforeInput` runs in
   controlled mode: there are no target ranges (`getTargetRanges()`), so an
   app sets the model selection to the input's range before it dispatches,
   and `deleteContentForward` dispatches `DELETE_LINE_COMMAND(false)` as JS

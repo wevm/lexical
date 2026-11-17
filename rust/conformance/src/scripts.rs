@@ -167,6 +167,13 @@ impl RootElement for SessionRoot {
         self.computed_styles.borrow().get(key).cloned()
     }
 
+    /// JS's session root is a `div` not in its document
+    /// (`root.isConnected` is false), so a commit announces no range
+    /// selection.
+    fn is_connected(&self) -> bool {
+        false
+    }
+
     fn focus(&self) {
         if let Some(log) = &*self.focus_log.borrow() {
             log.borrow_mut()
@@ -653,6 +660,7 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
         "REDO_COMMAND" => ScriptCommand::Void(REDO_COMMAND),
         "REMOVE_TEXT_COMMAND" => ScriptCommand::Void(REMOVE_TEXT_COMMAND),
         "SELECT_ALL_COMMAND" => ScriptCommand::Keyboard(SELECT_ALL_COMMAND),
+        "SELECTION_CHANGE_COMMAND" => ScriptCommand::Void(lexical::SELECTION_CHANGE_COMMAND),
         "SET_TEXT_FORMAT_COMMAND" => ScriptCommand::Formats(SET_TEXT_FORMAT_COMMAND),
         "UNDO_COMMAND" => ScriptCommand::Void(UNDO_COMMAND),
         "INSERT_CHECK_LIST_COMMAND" => ScriptCommand::Void(list::INSERT_CHECK_LIST_COMMAND),
@@ -1233,6 +1241,7 @@ fn unported_action(action: &Value) -> Option<&'static str> {
         Some(
             "append"
             | "select"
+            | "selectionChange"
             | "clearSelection"
             | "node"
             | "dispatch"
@@ -1763,6 +1772,23 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
         Some("append") => {
             let key = action.get("key").and_then(Value::as_str).unwrap_or("");
             element(node(key)?)?.append(&parse(action.get("nodes").unwrap_or(&Value::Null))?)
+        }
+        Some("selectionChange") => {
+            // `onSelectionChange` for a DOM selection at these points, as
+            // an app's view reports it (`lexical::on_selection_change`).
+            let anchor = action.get("anchor").cloned().unwrap_or(Value::Null);
+            let focus = action
+                .get("focus")
+                .cloned()
+                .unwrap_or_else(|| anchor.clone());
+            let point = |spec: &Value| -> Result<lexical::Point, LexicalError> {
+                Ok(lexical::Point::new(
+                    string(&arg(Some(spec), 0))?,
+                    number(&arg(Some(spec), 1))? as usize,
+                    point_type(&arg(Some(spec), 2))?,
+                ))
+            };
+            lexical::on_selection_change(editor, Some((point(&anchor)?, point(&focus)?)), true)
         }
         Some("select") => {
             let selection = create_range_selection();
@@ -3724,7 +3750,9 @@ impl Session {
             let root = ctx.session_dom();
             // A JS editor with a root element has its jsdom window, which
             // gives no DOM selection: `Selection.modify` stops after the
-            // model step, where a headless editor throws.
+            // model step, where a headless editor throws. `viewSelection`
+            // changes nothing here: an update keeps the editor state's
+            // selection with a root element either way, as JS's does with it.
             editor.set_selection_movement(on.then(|| {
                 Rc::new(crate::suites::property::WindowWithoutSelection)
                     as Rc<dyn lexical::SelectionMovement>

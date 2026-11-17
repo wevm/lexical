@@ -236,6 +236,7 @@ import {
   $wrapNodeInElement,
   registerNestedElementResolver,
 } from '@lexical/utils';
+import * as LexicalEvents from 'lexical';
 import {
   $addUpdateTag,
   $caretRangeFromSelection,
@@ -369,6 +370,7 @@ import {
   resetRandomKey,
   RootNode,
   SELECT_ALL_COMMAND,
+  SELECTION_CHANGE_COMMAND,
   type SerializedEditorState,
   type SerializedLexicalNode,
   SET_TEXT_FORMAT_COMMAND,
@@ -418,6 +420,19 @@ export type Action =
   | {do: 'append'; key: string; nodes: SerializedLexicalNode[]}
   /** A range selection; the focus defaults to the anchor. */
   | {do: 'select'; anchor: PointSpec; focus?: PointSpec}
+  /**
+   * `onSelectionChange(domSelection, editor, true)` (LexicalEvents.ts) for a
+   * DOM selection at these points, as a browser's `selectionchange` runs it:
+   * the selection gets the points (keeping the last one's format and style,
+   * as `$internalCreateRangeSelection` does), a caret the format and style
+   * of where it is, a range the format its text shares, and the change is
+   * announced with SELECTION_CHANGE_COMMAND. Takes a root element
+   * (`setRootElement`), whose DOM the points resolve to. In Node Lexical
+   * reads no DOM selection, so the update's selection is given the points
+   * first, as it would read them; the Rust and Swift ports take the points
+   * from the app's view. The focus defaults to the anchor.
+   */
+  | {do: 'selectionChange'; anchor: PointSpec; focus?: PointSpec}
   | {do: 'selectNodes'; keys: string[]}
   | {do: 'clearSelection'}
   /**
@@ -1011,8 +1026,14 @@ export type Step = (
    * runs and mutation listeners hear from it. In Node, Lexical has no DOM
    * selection (`CAN_USE_DOM` is false), so an update of an editor with a
    * root starts with no selection: the scripts select in each update.
+   * With `viewSelection`, the session's window has a current event that no
+   * handler reads (`window.event`), so an update that no DOM event drives
+   * keeps the editor state's range selection
+   * (`$internalCreateRangeSelection`), as it does in a browser whose DOM
+   * selection is where Lexical put it: a session recorded from an app's
+   * view, whose selection the editor keeps between updates.
    */
-  | {setRootElement: boolean}
+  | {setRootElement: boolean; viewSelection?: true}
   /**
    * Stubs the computed styles of the session's window (`getComputedStyle`,
    * which `@lexical/selection`'s `$getComputedStyleForElement` reads) for
@@ -1532,6 +1553,17 @@ type CharacterLimitInternals = {
 
 const CHARACTER_LIMIT =
   CharacterLimitPlugin as unknown as CharacterLimitInternals;
+
+/** LexicalEvents.ts' `onSelectionChange`, re-exported by vitest.config.mts. */
+type EventsInternals = {
+  INTERNAL_onSelectionChange: (
+    domSelection: Selection,
+    editor: LexicalEditor,
+    isActive: boolean,
+  ) => void;
+};
+
+const EVENTS_INTERNALS = LexicalEvents as unknown as EventsInternals;
 
 /**
  * `DecoratorBlockNode` (@lexical/react) as an app's block embed extends it,
@@ -2832,6 +2864,44 @@ function $runAction(action: Action, ctx: Context): void {
     case 'append':
       element($node(action.key)).append(...$parse(action.nodes));
       return;
+    case 'selectionChange': {
+      const editor = $getEditor();
+      const focusSpec = action.focus ?? action.anchor;
+      // What $internalCreateRangeSelection resolves from the DOM: a new
+      // selection at the points with the format and style of the editor
+      // state's (the last committed) selection.
+      const last = editor.getEditorState()._selection;
+      const selection = $createRangeSelection();
+      if ($isRangeSelection(last)) {
+        selection.format = last.format;
+        selection.style = last.style;
+      }
+      selection.anchor.set(...action.anchor);
+      selection.focus.set(...focusSpec);
+      $setSelection(selection);
+      selection.dirty = false;
+      // The DOM boundary points of the model points: a text point in its
+      // text node, an element point in its element.
+      const domPoint = ([key, offset, type]: PointSpec): [Node, number] => {
+        const dom = editor.getElementByKey(key);
+        if (dom === null) {
+          throw new Error(`no element for ${key}`);
+        }
+        return [type === 'text' ? (dom.firstChild ?? dom) : dom, offset];
+      };
+      const [anchorNode, anchorOffset] = domPoint(action.anchor);
+      const [focusNode, focusOffset] = domPoint(focusSpec);
+      const domSelection = {
+        anchorNode,
+        anchorOffset,
+        focusNode,
+        focusOffset,
+        rangeCount: 0,
+        type: selection.isCollapsed() ? 'Caret' : 'Range',
+      } as unknown as Selection;
+      EVENTS_INTERNALS.INTERNAL_onSelectionChange(domSelection, editor, true);
+      return;
+    }
     case 'select': {
       const selection = $createRangeSelection();
       const focus = action.focus ?? action.anchor;
@@ -3763,6 +3833,7 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['REDO_COMMAND', REDO_COMMAND],
   ['REMOVE_TEXT_COMMAND', REMOVE_TEXT_COMMAND],
   ['SELECT_ALL_COMMAND', SELECT_ALL_COMMAND],
+  ['SELECTION_CHANGE_COMMAND', SELECTION_CHANGE_COMMAND],
   ['SET_TEXT_FORMAT_COMMAND', SET_TEXT_FORMAT_COMMAND],
   ['UNDO_COMMAND', UNDO_COMMAND],
 ]);
@@ -5157,6 +5228,14 @@ export function startSession(script: Omit<Script, 'steps'>): Session {
       dispatchLogged(ctx, step.dispatch, step.payload ?? null, target);
     } else if ('setRootElement' in step) {
       const root = step.setRootElement ? sessionDOM(ctx).root : null;
+      if (step.viewSelection) {
+        const win = sessionDOM(ctx).window;
+        const event = new win.Event('lexical-conformance-view');
+        Object.defineProperty(win, 'event', {
+          configurable: true,
+          get: () => event,
+        });
+      }
       target.setRootElement(root);
     } else if ('computedStyles' in step) {
       stubComputedStyles(sessionDOM(ctx).window, target, step.computedStyles);

@@ -119,6 +119,9 @@ struct LineStyle {
     quote: bool,
     /// A code block's line: monospaced, on a tinted background.
     code: bool,
+    /// A code line's number, from its block's gutter (what
+    /// `registerCodeGutter` gives the block).
+    gutter: Option<String>,
 }
 
 /// One indent step: a list's nesting level, or a block's `indent`.
@@ -126,6 +129,14 @@ const INDENT: f32 = 24.;
 
 /// How far a code block's text is inset in its background.
 const CODE_PADDING: f32 = 12.;
+
+/// A code block's gutter, as the JS playground's theme draws
+/// `data-gutter` (`.PlaygroundEditorTheme__code:before`): 8px of padding on
+/// either side of numbers at least 25px wide, a 1px border on the right,
+/// and a 10px margin before the code, 52px in all.
+const GUTTER_WIDTH: f32 = 42.;
+const GUTTER_PADDING: f32 = 8.;
+const GUTTER_MARGIN: f32 = 10.;
 
 /// A heading's text size and weight, as the JS playground's theme (and the
 /// Rune app) draws `h1` ... `h6` in a 16-point body.
@@ -142,8 +153,14 @@ fn heading_style(tag: &str) -> Option<(f32, FontWeight)> {
 }
 
 /// The style of each line of the display text: a block's lines are its
-/// first and one more per line break.
-fn line_styles(doc: &Document, size: Pixels, height: Pixels) -> Vec<LineStyle> {
+/// first and one more per line break. `gutter` gives a code block's line
+/// numbers by its key.
+fn line_styles(
+    doc: &Document,
+    gutter: impl Fn(&str) -> Option<String>,
+    size: Pixels,
+    height: Pixels,
+) -> Vec<LineStyle> {
     let mut out = Vec::new();
     for (i, block) in doc.blocks.iter().enumerate() {
         let (size, height) = match block.tag.as_deref().and_then(heading_style) {
@@ -159,7 +176,13 @@ fn line_styles(doc: &Document, size: Pixels, height: Pixels) -> Vec<LineStyle> {
             check: false,
             quote: block.kind == "quote",
             code: block.kind == "code",
+            gutter: None,
         };
+        let numbers = style
+            .code
+            .then(|| gutter(&block.key))
+            .flatten()
+            .map(|g| g.split('\n').map(str::to_owned).collect::<Vec<_>>());
         if let Some(list) = &block.list {
             style.left = px(INDENT * (list.depth + 1) as f32);
             style.check = list.list_type == "check";
@@ -171,17 +194,24 @@ fn line_styles(doc: &Document, size: Pixels, height: Pixels) -> Vec<LineStyle> {
         } else if style.quote {
             style.left += px(16.);
         } else if style.code {
-            style.left += px(CODE_PADDING);
+            style.left += px(if numbers.is_some() {
+                GUTTER_WIDTH + GUTTER_MARGIN
+            } else {
+                CODE_PADDING
+            });
         }
         let breaks = block
             .runs
             .iter()
             .filter(|r| r.kind == RunKind::LineBreak)
             .count();
-        out.push(style.clone());
-        // The marker goes on the item's first line only.
-        style.marker = None;
-        out.extend(std::iter::repeat_n(style, breaks));
+        let numbers = numbers.unwrap_or_default();
+        for line in 0..=breaks {
+            style.gutter = numbers.get(line).cloned();
+            out.push(style.clone());
+            // The marker goes on the item's first line only.
+            style.marker = None;
+        }
     }
     out
 }
@@ -935,8 +965,10 @@ impl Element for EditorElement {
         let text = editor.surface.display_text();
         let style = window.text_style();
         let runs = text_runs(&editor.surface, &style, cx.theme());
+        let playground = &editor.surface.playground;
         let styles = line_styles(
-            editor.surface.playground.document(),
+            playground.document(),
+            |key| playground.code_gutter(key),
             style.font_size.to_pixels(window.rem_size()),
             window.line_height(),
         );
@@ -968,8 +1000,10 @@ impl Element for EditorElement {
         let text = editor.surface.display_text();
         let style = window.text_style();
         let runs = text_runs(&editor.surface, &style, cx.theme());
+        let playground = &editor.surface.playground;
         let styles = line_styles(
-            editor.surface.playground.document(),
+            playground.document(),
+            |key| playground.code_gutter(key),
             style.font_size.to_pixels(window.rem_size()),
             window.line_height(),
         );
@@ -1044,16 +1078,56 @@ impl Element for EditorElement {
                 markers.push((point(x, top), line.style.height, shaped));
             }
             if line.style.code {
+                let inset = px(if line.style.gutter.is_some() {
+                    GUTTER_WIDTH + GUTTER_MARGIN
+                } else {
+                    CODE_PADDING
+                });
+                let block_left = bounds.origin.x + line.style.left - inset;
+                let line_height = line.bottom() - line.top;
                 backgrounds.push(fill(
                     Bounds::new(
-                        point(bounds.origin.x + line.style.left - px(CODE_PADDING), top),
-                        size(
-                            bounds.size.width - line.style.left + px(CODE_PADDING),
-                            line.bottom() - line.top,
-                        ),
+                        point(block_left, top),
+                        size(bounds.size.width - line.style.left + inset, line_height),
                     ),
                     muted.opacity(0.12),
                 ));
+                if let Some(number) = &line.style.gutter {
+                    // The gutter's own background and its right border.
+                    backgrounds.push(fill(
+                        Bounds::new(point(block_left, top), size(px(GUTTER_WIDTH), line_height)),
+                        muted.opacity(0.12),
+                    ));
+                    bars.push(fill(
+                        Bounds::new(
+                            point(block_left + px(GUTTER_WIDTH - 1.), top),
+                            size(px(1.), line_height),
+                        ),
+                        muted.opacity(0.35),
+                    ));
+                    // The number, right-aligned in the padding, on the
+                    // line's first row.
+                    let run = TextRun {
+                        len: number.len(),
+                        font: font("Menlo"),
+                        color: muted,
+                        background_color: None,
+                        underline: None,
+                        strikethrough: None,
+                    };
+                    let shaped = window.text_system().shape_line(
+                        SharedString::from(number.clone()),
+                        line.style.size,
+                        &[run],
+                        None,
+                    );
+                    let right = block_left + px(GUTTER_WIDTH - 1. - GUTTER_PADDING);
+                    markers.push((
+                        point(right - shaped.width(), top),
+                        line.style.height,
+                        shaped,
+                    ));
+                }
             }
             if line.style.quote {
                 bars.push(fill(

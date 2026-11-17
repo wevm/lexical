@@ -20,6 +20,9 @@ use std::time::{Duration, Instant};
 
 type Step = Result<(), String>;
 
+/// How long a step's effect may take to show.
+const STEP_TIMEOUT: Duration = Duration::from_secs(60);
+
 pub fn run(window: AnyWindowHandle, app: Entity<PlaygroundApp>, cx: &mut App) {
     let Some(path) = std::env::var_os("LEXICAL_PLAYGROUND_E2E") else {
         return;
@@ -56,7 +59,7 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
     let editor = app.read_with(cx, |app, _| app.editor().clone());
     // Keys move the caret through the last paint's layout.
     let deadline = Instant::now() + Duration::from_secs(30);
-    while !editor.read_with(cx, |e, _| e.is_laid_out()) {
+    while editor.read_with(cx, |e, _| e.paints()) == 0 {
         if Instant::now() > deadline {
             return Err("timed out waiting for the first paint".into());
         }
@@ -69,20 +72,43 @@ async fn drive(window: AnyWindowHandle, app: &Entity<PlaygroundApp>, cx: &mut As
         let text = editor.read_with(cx, |e, _| e.surface.display_text());
         Ok(text.split('\n').nth(n).unwrap_or_default().to_owned())
     };
-    // One step: a key (its action) or input, then the check.
+    // One step: a key (its action) or input, then the check, waited for.
+    // The step is done once the check passes and the window has painted
+    // since the input, so the next key moves through a layout of this
+    // step's document, not an earlier one's: a fixed wait was sometimes
+    // shorter than a frame on a busy runner.
     macro_rules! step {
         ($what:expr, $input:expr, $check:expr) => {{
-            cx.update_window(window, |_, window, cx| $input(window, cx))
-                .map_err(|e| e.to_string())?;
-            // Actions run when the window next handles events.
-            cx.background_executor()
-                .timer(Duration::from_millis(30))
-                .await;
-            if let Some(error) = editor.read_with(cx, |e, _| e.error.clone()) {
-                return Err(format!("{}: the edit failed: {error}", $what));
+            let painted = editor.read_with(cx, |e, _| e.paints());
+            let input = $input;
+            cx.update_window(window, move |_, window, cx| {
+                input(window, cx);
+                // A frame even when the step changes nothing.
+                window.refresh();
+            })
+            .map_err(|e| e.to_string())?;
+            let deadline = Instant::now() + STEP_TIMEOUT;
+            loop {
+                if let Some(error) = editor.read_with(cx, |e, _| e.error.clone()) {
+                    return Err(format!("{}: the edit failed: {error}", $what));
+                }
+                let check: Step = $check(&mut *cx);
+                let drawn = editor.read_with(cx, |e, _| e.paints()) > painted;
+                match check {
+                    Ok(()) if drawn => break,
+                    _ if Instant::now() > deadline => {
+                        let error = check
+                            .err()
+                            .unwrap_or_else(|| "the window didn't paint".into());
+                        return Err(format!("{}: {error} after {STEP_TIMEOUT:?}", $what));
+                    }
+                    _ => {
+                        cx.background_executor()
+                            .timer(Duration::from_millis(5))
+                            .await
+                    }
+                }
             }
-            let check: Step = $check(&mut *cx);
-            check.map_err(|e| format!("{}: {e}", $what))?;
         }};
     }
     let key = |action: Box<dyn Action>| {

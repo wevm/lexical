@@ -369,6 +369,9 @@ pub struct LexicalEditor {
     pub surface: Surface,
     focus_handle: FocusHandle,
     layout: Option<Layout>,
+    /// How many times the element has laid itself out for a paint.
+    #[cfg(feature = "e2e")]
+    paints: usize,
     selecting: bool,
     /// The column a vertical move keeps.
     goal_x: Option<Pixels>,
@@ -411,6 +414,8 @@ impl LexicalEditor {
             surface: Surface::new(playground),
             focus_handle,
             layout: None,
+            #[cfg(feature = "e2e")]
+            paints: 0,
             selecting: false,
             goal_x: None,
             error: None,
@@ -456,10 +461,12 @@ impl LexicalEditor {
         cx.notify();
     }
 
-    /// Whether the element has painted, so keys can move the caret.
+    /// How many times the element has painted. Keys move the caret through
+    /// the last paint's layout, so it's up to date once this has grown
+    /// since the last change.
     #[cfg(feature = "e2e")]
-    pub fn is_laid_out(&self) -> bool {
-        self.layout.is_some()
+    pub fn paints(&self) -> usize {
+        self.paints
     }
 
     /// Runs an edit at the selection, then draws again.
@@ -1186,8 +1193,13 @@ impl Element for EditorElement {
                 ));
             }
         }
-        self.editor
-            .update(cx, |editor, _| editor.layout = Some(layout));
+        self.editor.update(cx, |editor, _| {
+            editor.layout = Some(layout);
+            #[cfg(feature = "e2e")]
+            {
+                editor.paints += 1;
+            }
+        });
         Prepaint {
             lines,
             selection,

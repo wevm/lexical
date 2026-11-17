@@ -514,12 +514,13 @@ fn markdown_shortcuts_turn_typed_markdown_into_rich_text() {
     let code = &p.document().blocks[2];
     assert_eq!(code.kind, "code");
     assert_eq!(code.text, "let x = 1;");
-    // Undo takes the code back to the fence's text.
-    let steps = p.step_count();
-    p.undo();
-    p.undo();
+    // Undo takes the code back to the fence's text (highlighting splits the
+    // code into tokens, so its typing takes several steps to undo).
+    while p.document().blocks[2].kind == "code" {
+        assert!(p.can_undo());
+        p.undo();
+    }
     assert_eq!(p.document().blocks[2].text, "```rust");
-    assert_eq!(p.step_count(), steps + 2);
 }
 
 #[test]
@@ -548,4 +549,22 @@ fn code_blocks_have_line_numbers_that_follow_their_lines() {
         p.undo();
     }
     assert_eq!(p.code_gutter(&code).as_deref(), Some("1\n2"));
+}
+
+#[test]
+fn tab_at_the_start_of_a_code_line_indents_it() {
+    // A code block from its Markdown fence, as typed: its text is
+    // `CodeHighlightNode`s, which the indent handlers need.
+    let mut p = Playground::new(vec![]).expect("an empty document");
+    caret_in(&mut p, 0, 0);
+    type_keys(&mut p, "```test");
+    p.insert_paragraph();
+    type_keys(&mut p, "one");
+    p.insert_paragraph();
+    type_keys(&mut p, "two");
+    caret_in(&mut p, 0, 0);
+    assert_eq!(p.tab(false).error, None);
+    assert_eq!(p.document().blocks[0].text, "\tone\ntwo");
+    assert_eq!(p.tab(true).error, None);
+    assert_eq!(p.document().blocks[0].text, "one\ntwo");
 }

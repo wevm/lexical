@@ -122,6 +122,14 @@ struct LineStyle {
     /// A code line's number, from its block's gutter (what
     /// `registerCodeGutter` gives the block).
     gutter: Option<String>,
+    /// Room above the line that its block's background covers (a code
+    /// block's padding, on its first line), and the room above that which
+    /// it doesn't (the block's margin).
+    pad_above: Pixels,
+    margin_above: Pixels,
+    /// The same below the line, on a code block's last line.
+    pad_below: Pixels,
+    margin_below: Pixels,
 }
 
 /// One indent step: a list's nesting level, or a block's `indent`.
@@ -129,6 +137,13 @@ const INDENT: f32 = 24.;
 
 /// How far a code block's text is inset in its background.
 const CODE_PADDING: f32 = 12.;
+
+/// A code block's room above its first line and below its last, as the JS
+/// playground's theme has it: `padding-top: 8px` (and below, the gutter's
+/// 8px of padding, which the block contains) inside the background, and
+/// `margin-top` and `margin-bottom` of 8px outside it.
+const CODE_PADDING_Y: f32 = 8.;
+const CODE_MARGIN_Y: f32 = 8.;
 
 /// A code block's gutter, as the JS playground's theme draws
 /// `data-gutter` (`.PlaygroundEditorTheme__code:before`): 8px of padding on
@@ -177,6 +192,10 @@ fn line_styles(
             quote: block.kind == "quote",
             code: block.kind == "code",
             gutter: None,
+            pad_above: px(0.),
+            margin_above: px(0.),
+            pad_below: px(0.),
+            margin_below: px(0.),
         };
         let numbers = style
             .code
@@ -206,8 +225,17 @@ fn line_styles(
             .filter(|r| r.kind == RunKind::LineBreak)
             .count();
         let numbers = numbers.unwrap_or_default();
+        let (pad, margin) = if style.code {
+            (px(CODE_PADDING_Y), px(CODE_MARGIN_Y))
+        } else {
+            (px(0.), px(0.))
+        };
         for line in 0..=breaks {
             style.gutter = numbers.get(line).cloned();
+            style.pad_above = if line == 0 { pad } else { px(0.) };
+            style.margin_above = if line == 0 { margin } else { px(0.) };
+            style.pad_below = if line == breaks { pad } else { px(0.) };
+            style.margin_below = if line == breaks { margin } else { px(0.) };
             out.push(style.clone());
             // The marker goes on the item's first line only.
             style.marker = None;
@@ -232,6 +260,15 @@ impl Line {
 
     fn bottom(&self) -> Pixels {
         self.top + self.style.height * self.rows() as f32
+    }
+
+    /// Where the line's block background starts and ends: its text with
+    /// the padding above and below it.
+    fn background(&self) -> (Pixels, Pixels) {
+        (
+            self.top - self.style.pad_above,
+            self.bottom() + self.style.pad_below,
+        )
     }
 }
 
@@ -907,8 +944,8 @@ fn shape(
     styles: &[LineStyle],
     width: Option<Pixels>,
 ) -> Vec<Line> {
-    let mut out = Vec::new();
-    let (mut start, mut top) = (0, px(0.));
+    let mut out: Vec<Line> = Vec::new();
+    let mut start = 0;
     for (i, line_text) in text.split('\n').enumerate() {
         let style = styles
             .get(i)
@@ -929,6 +966,11 @@ fn shape(
             .ok()
             .and_then(|lines| lines.into_iter().next())
             .unwrap_or_default();
+        // Margins between blocks collapse, as CSS's do.
+        let top = match out.last() {
+            Some(prev) => prev.background().1 + prev.style.margin_below.max(style.margin_above),
+            None => style.margin_above,
+        } + style.pad_above;
         let line = Line {
             start,
             top,
@@ -936,7 +978,6 @@ fn shape(
             shape,
         };
         start += line_text.len() + 1;
-        top = line.bottom();
         out.push(line);
     }
     out
@@ -981,7 +1022,9 @@ impl Element for EditorElement {
                     _ => None,
                 });
                 let lines = shape(window, &text, &runs, &styles, width);
-                let height = lines.last().map_or(px(0.), Line::bottom);
+                let height = lines
+                    .last()
+                    .map_or(px(0.), |l| l.background().1 + l.style.margin_below);
                 size(width.unwrap_or(px(0.)), height)
             });
         (id, ())
@@ -1084,10 +1127,11 @@ impl Element for EditorElement {
                     CODE_PADDING
                 });
                 let block_left = bounds.origin.x + line.style.left - inset;
-                let line_height = line.bottom() - line.top;
+                let (from, to) = line.background();
+                let (bg_top, line_height) = (bounds.origin.y + from, to - from);
                 backgrounds.push(fill(
                     Bounds::new(
-                        point(block_left, top),
+                        point(block_left, bg_top),
                         size(bounds.size.width - line.style.left + inset, line_height),
                     ),
                     muted.opacity(0.12),
@@ -1095,12 +1139,15 @@ impl Element for EditorElement {
                 if let Some(number) = &line.style.gutter {
                     // The gutter's own background and its right border.
                     backgrounds.push(fill(
-                        Bounds::new(point(block_left, top), size(px(GUTTER_WIDTH), line_height)),
+                        Bounds::new(
+                            point(block_left, bg_top),
+                            size(px(GUTTER_WIDTH), line_height),
+                        ),
                         muted.opacity(0.12),
                     ));
                     bars.push(fill(
                         Bounds::new(
-                            point(block_left + px(GUTTER_WIDTH - 1.), top),
+                            point(block_left + px(GUTTER_WIDTH - 1.), bg_top),
                             size(px(1.), line_height),
                         ),
                         muted.opacity(0.35),

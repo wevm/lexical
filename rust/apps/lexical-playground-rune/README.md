@@ -38,7 +38,11 @@ macOS first; it also builds and renders on Linux.
 - **Blocks.** List items draw as the field's bullets and numbers at their
   depth (a check item as a bullet, struck through when checked), a quote
   with the field's bar, a code block as the field's, headings larger and
-  bolder, and links as the field's links.
+  bolder, and links as the field's links. Rune's text field draws code
+  blocks itself, with no line numbers and its own spacing: it has no way
+  for an app to draw a gutter beside a block's lines or to set the room
+  around a block, so the web playground's `data-gutter` and its 8px of
+  padding and margin wait on Rune.
 - **Markdown shortcuts.** Typing markdown turns it into rich text, as
   the web playground's `MarkdownShortcutPlugin` does
   (`registerMarkdownShortcuts` with `TRANSFORMERS`): `# ` to `###### `

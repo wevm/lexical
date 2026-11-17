@@ -4,6 +4,14 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.2
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Fixed `LexicalUITextView` and `LexicalNSTextView` committing an update made outside the view (from a toolbar, a sheet's button or a main-queue block) only once the main run loop went idle. While events kept the main thread busy, such as during a sheet's dismissal, the commit waited for all of them; on a loaded iOS Simulator an image inserted from a closing sheet showed seconds late. The views now run queued microtasks after each pass of the run loop, as a browser runs them after each task.
+
 ## 0.2.1
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

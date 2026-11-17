@@ -190,7 +190,7 @@ pub use error::{LexicalError, LexicalWarning};
 pub use events::{
     ClipboardEvent, ClipboardOrKeyboardEvent, CompositionEvent, DataTransfer, DataTransferFile,
     DragEvent, Event, FocusEvent, InputEvent, KeyboardEvent, MouseEvent, PasteCommandType,
-    on_before_input, on_composition_end, on_composition_start, on_key_down,
+    on_before_input, on_composition_end, on_composition_start, on_key_down, on_selection_change,
 };
 #[cfg(feature = "extension")]
 pub use extension_core::{

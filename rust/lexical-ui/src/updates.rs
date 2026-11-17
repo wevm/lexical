@@ -577,6 +577,22 @@ fn has_selection_changed(editor: &Editor, selection: Option<&SelectionRef>) -> b
     }
 }
 
+/// `$dispatchSelectionChangeCommand(editor, selection, force)`: announces
+/// `selection` with `SELECTION_CHANGE_COMMAND` when it differs from the one
+/// last announced, or always with `force`. Runs in the editor's pending
+/// update.
+pub(crate) fn dispatch_selection_change_command(
+    editor: &Editor,
+    selection: Option<&SelectionRef>,
+    force: bool,
+) -> Result<(), LexicalError> {
+    if !force && !has_selection_changed(editor, selection) {
+        return Ok(());
+    }
+    editor.dispatch_command(&crate::commands::SELECTION_CHANGE_COMMAND, ())?;
+    Ok(())
+}
+
 /// `$notifyPendingSelectionChange(editor)`: while the pending selection
 /// differs from the one last announced, dispatches `SELECTION_CHANGE_COMMAND`
 /// in the pending update (its listeners' edits join it), up to 100 times.

@@ -625,6 +625,135 @@ pub fn on_composition_end(
     Ok(())
 }
 
+/// `onSelectionChange(domSelection, editor, isActive)`, its model half: an
+/// app's view selected `anchor` to `focus` (`None` when the selection left
+/// the editor). An editor that isn't active (`is_active` false, another
+/// editor of the view has the selection) gets no selection, as in JS.
+/// Otherwise the points become the selection, keeping the format and style
+/// of the last one as `$internalCreateRangeSelection` does; a caret takes
+/// the format and style of where it is (`$updateCollapsedSelectionFormatStyle`)
+/// and a range the format all its text has; then the change is announced
+/// with `SELECTION_CHANGE_COMMAND` (`$dispatchSelectionChangeCommand`).
+///
+/// What JS reads from the DOM is the view's: whether the selection is
+/// within the editor, the drag adjustment, and the selection the reconciler
+/// applied (`isSelectionChangeFromDOMUpdate`). Nothing marks a collapsed
+/// selection's format (`markCollapsedSelectionFormat` runs when JS writes
+/// the DOM selection), so a caret always takes the format where it is.
+pub fn on_selection_change(
+    editor: &Editor,
+    points: Option<(crate::Point, crate::Point)>,
+    is_active: bool,
+) -> Result<(), LexicalError> {
+    crate::updates::update_editor_sync(
+        editor,
+        || {
+            let Some((anchor, focus)) = points.filter(|_| is_active) else {
+                set_selection(None);
+                return Ok(());
+            };
+            let (format, style) = match get_selection().and_then(|s| s.range()) {
+                Some(last) => (last.format, last.style),
+                None => (0.0, String::new()),
+            };
+            let selection = SelectionRef::new(crate::lexical_selection::Selection::Range(
+                crate::RangeSelection::new(anchor, focus, format, style),
+            ));
+            set_selection(Some(selection.clone()));
+            // A selection read from the DOM isn't dirty until its format
+            // changes below.
+            selection.set_dirty(false);
+            let range = selection.range().expect("a range selection");
+            if range.is_collapsed() {
+                update_collapsed_selection_format_style(editor, &selection, &range)?;
+            } else {
+                update_range_selection_format(&selection, &range)?;
+            }
+            let force = selection.is_dirty();
+            crate::updates::dispatch_selection_change_command(editor, Some(&selection), force)
+        },
+        None,
+    )
+}
+
+/// `$updateSelectionFormatStyle(selection, format, style)`.
+fn update_selection_format_style(selection: &SelectionRef, format: f64, style: &str) {
+    selection.with_range(|r| {
+        if r.format != format || r.style != style {
+            r.format = format;
+            r.style = style.to_owned();
+            r.dirty = true;
+        }
+    });
+}
+
+/// `$updateCollapsedSelectionFormatStyle(editor, selection)`: a caret takes
+/// the format and style of where it is.
+fn update_collapsed_selection_format_style(
+    editor: &Editor,
+    selection: &SelectionRef,
+    range: &crate::RangeSelection,
+) -> Result<(), LexicalError> {
+    let anchor_node = range.anchor.get_node()?;
+    if range.anchor.point_type == crate::PointType::Text {
+        if !anchor_node.is_text() {
+            return Err(LexicalError::new(
+                "Point.getNode() must return TextNode when type is text",
+            ));
+        }
+        let data = anchor_node.text_data();
+        update_selection_format_style(selection, data.get_format(), data.get_style());
+    } else if editor.is_composing() || !crate::get_root().get_text_content().is_empty() {
+        if !anchor_node.is_element() {
+            return Err(LexicalError::new(
+                "Point.getNode() must return ElementNode when type is element",
+            ));
+        }
+        if anchor_node.is_empty() {
+            crate::selection_editing::internal_refresh_selection_format_and_style(selection, "")?;
+        } else {
+            update_selection_format_style(selection, range.format, "");
+        }
+    }
+    Ok(())
+}
+
+/// The format a range takes in `onSelectionChange`: the format every text
+/// node it covers has, leaving out an empty boundary at either end, or none
+/// when it covers no text. Its style is kept.
+fn update_range_selection_format(
+    selection: &SelectionRef,
+    range: &crate::RangeSelection,
+) -> Result<(), LexicalError> {
+    let nodes = selection.get_nodes()?;
+    let (start, end) = if selection.is_backward()? {
+        (&range.focus, &range.anchor)
+    } else {
+        (&range.anchor, &range.focus)
+    };
+    let mut combined = crate::constants::IS_ALL_FORMATTING;
+    let mut has_text_nodes = false;
+    let last = nodes.len().wrapping_sub(1);
+    for (i, node) in nodes.iter().enumerate() {
+        let size = node.get_text_content_size();
+        let key = node.get_key();
+        if node.is_text()
+            && size != 0
+            && !((i == 0 && key == start.key && start.offset == size)
+                || (i == last && key == end.key && end.offset == 0))
+        {
+            has_text_nodes = true;
+            combined &= crate::nodes::text::to_int32(node.text_data().get_format());
+            if combined == 0 {
+                break;
+            }
+        }
+    }
+    let format = if has_text_nodes { combined as f64 } else { 0.0 };
+    selection.with_range(|r| r.format = format);
+    Ok(())
+}
+
 // The default KEY_DOWN_COMMAND handler.
 
 type OnMatch = Rc<dyn Fn(&Rc<KeyboardEvent>, &Editor) -> Result<(), LexicalError>>;
@@ -1335,5 +1464,79 @@ mod tests {
         assert_eq!(data_transfer.types(), ["Files"]);
         assert_eq!(data_transfer.drop_effect(), "none");
         assert_eq!(data_transfer.effect_allowed(), "uninitialized");
+    }
+
+    struct Root;
+    impl crate::RootElement for Root {}
+
+    /// `onSelectionChange` against what JS does with a DOM selection at the
+    /// same points: a caret in bold text takes bold and the text's style, a
+    /// range over bold and plain text takes no format (and keeps the
+    /// style), an empty boundary node is left out, and each change is
+    /// announced once; a selection made where it already was isn't.
+    #[test]
+    fn selection_change_sets_points_format_and_notifies() {
+        use crate::lexical_selection::Selection;
+        // "bold" (bold, red) then "plain", in one paragraph.
+        const STATE: &str = r#"{"root":{"children":[{"children":[{"detail":0,"format":1,"mode":"normal","style":"color: red","text":"bold","type":"text","version":1},{"detail":0,"format":0,"mode":"normal","style":"","text":"plain","type":"text","version":1}],"direction":null,"format":"","indent":0,"textFormat":0,"textStyle":"","type":"paragraph","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}"#;
+        let editor = crate::create_editor(crate::CreateEditorArgs::default());
+        editor
+            .set_root_element(Some(crate::RootElementRef(Rc::new(Root))))
+            .unwrap();
+        let state = editor.parse_editor_state(STATE).unwrap();
+        editor.set_editor_state(&state, None).unwrap();
+        let notified = Rc::new(Cell::new(0));
+        let n = notified.clone();
+        let _unregister = editor.register_command(
+            &crate::commands::SELECTION_CHANGE_COMMAND,
+            move |_, _| {
+                n.set(n.get() + 1);
+                Ok(false)
+            },
+            COMMAND_PRIORITY_EDITOR,
+        );
+        let (bold, plain) = editor
+            .read(|| {
+                let p = crate::get_root().get_first_child().unwrap();
+                let bold = p.get_first_child().unwrap();
+                let plain = bold.get_next_sibling().unwrap();
+                (bold.get_key().to_owned(), plain.get_key().to_owned())
+            })
+            .unwrap();
+        let text = |key: &str, offset| crate::Point::new(key, offset, crate::PointType::Text);
+        let range = |editor: &Editor| {
+            editor
+                .read(|| match get_selection().map(|s| s.get()) {
+                    Some(Selection::Range(r)) => r,
+                    _ => panic!("no range selection"),
+                })
+                .unwrap()
+        };
+
+        on_selection_change(&editor, Some((text(&bold, 2), text(&bold, 2))), true).unwrap();
+        let caret = range(&editor);
+        assert_eq!((caret.format, caret.style.as_str()), (1.0, "color: red"));
+        assert_eq!(caret.anchor, text(&bold, 2));
+        assert_eq!(notified.get(), 1);
+
+        // The same caret again: nothing changed, nothing is announced.
+        on_selection_change(&editor, Some((text(&bold, 2), text(&bold, 2))), true).unwrap();
+        assert_eq!(notified.get(), 1);
+
+        // Bold and plain text: no format they share; the style is kept.
+        on_selection_change(&editor, Some((text(&bold, 1), text(&plain, 2))), true).unwrap();
+        let mixed = range(&editor);
+        assert_eq!((mixed.format, mixed.style.as_str()), (0.0, "color: red"));
+        assert_eq!(notified.get(), 2);
+
+        // Backward, from the start of "plain" (an empty boundary) into
+        // "bold": only bold text is covered.
+        on_selection_change(&editor, Some((text(&plain, 0), text(&bold, 1))), true).unwrap();
+        assert_eq!(range(&editor).format, 1.0);
+        assert_eq!(notified.get(), 3);
+
+        // Another editor took the selection.
+        on_selection_change(&editor, Some((text(&bold, 1), text(&bold, 1))), false).unwrap();
+        assert!(editor.read(get_selection).unwrap().is_none());
     }
 }

@@ -13,16 +13,26 @@ publish = false
 [dependencies]
 lexical-playground-core = { path = "../lexical-playground-core" }
 # Rune is pre-release: pinned to a rev of `dev`, which is never rewritten
-# (the rev wevm/zero's zbugs-rune uses).
-rune = { git = "https://github.com/anomalyco/rune", rev = "0add0d576dfe85712ddbf8b51d2a24221b45e786", default-features = false, features = [
+# (bumped past 0add0d5 for its fix of the caret on an empty paragraph after
+# an indented block).
+rune = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac2974648c6fb95dc498a34937f", default-features = false, features = [
   "accessibility",
   "embedded-fonts",
   "metal-backend",
 ] }
-rune-kit = { git = "https://github.com/anomalyco/rune", rev = "0add0d576dfe85712ddbf8b51d2a24221b45e786" }
+rune-kit = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac2974648c6fb95dc498a34937f" }
 
 [lints.rust]
 unsafe_code = "forbid"
 
 [lints.clippy]
 all = { level = "warn", priority = -1 }
+
+# Rune's own patches of crates.io crates (its `vendor/`), which "apps that
+# build Rune patch too": a dependency's `[patch]` doesn't reach the app.
+[patch.crates-io]
+accesskit_macos = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac2974648c6fb95dc498a34937f" }
+accesskit_windows = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac2974648c6fb95dc498a34937f" }
+parley_engine = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac2974648c6fb95dc498a34937f" }
+wgpu-hal = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac2974648c6fb95dc498a34937f" }
+winit = { git = "https://github.com/anomalyco/rune", rev = "18caec763398cac2974648c6fb95dc498a34937f" }

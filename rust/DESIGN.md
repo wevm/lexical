@@ -347,6 +347,14 @@ later; the crate stays on 1.88), and both depend on
     crate (graphemes, words, the paragraph) before the step runs, so the
     step is what JS runs once the browser's `Selection.modify` has moved.
     `SelectionMovement` lets an app answer that from its own layout instead.
+- The editor has a root element (the core crate's session root), as the
+  JS playground's has its `contenteditable`, so the reconciler's model half
+  runs and mutation listeners hear of each node: code blocks' line numbers
+  come from `register_code_gutter`, which the GPUI app draws in a gutter as
+  the web playground's theme draws `data-gutter`. A selection the app's
+  view makes reaches the editor through `on_selection_change` (the
+  `selectionChange` action), as a browser's `selectionchange` runs
+  `onSelectionChange`, before the edit that follows it.
 - Every edit is a step of the conformance script language, run by the same
   interpreter that replays `scripts/*`. Export session writes the steps
   and their results as a vector file that JS replays and compares

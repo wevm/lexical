@@ -176,7 +176,8 @@ fn deleting_past_the_documents_ends_does_nothing() {
     let end = p.document().end();
     p.set_selection(Some(Sel::caret(end)));
     assert_eq!(p.delete_word(false), Outcome::default());
-    assert_eq!(p.step_count(), 1, "no step ran");
+    // The initial append and `setRootElement`.
+    assert_eq!(p.step_count(), 2, "no step ran");
 }
 
 fn surface() -> Surface {
@@ -519,4 +520,32 @@ fn markdown_shortcuts_turn_typed_markdown_into_rich_text() {
     p.undo();
     assert_eq!(p.document().blocks[2].text, "```rust");
     assert_eq!(p.step_count(), steps + 2);
+}
+
+#[test]
+fn code_blocks_have_line_numbers_that_follow_their_lines() {
+    let mut p = Playground::from_json(
+        r#"{"root":{"children":[{"type":"paragraph","children":[{"type":"text","text":"intro"}]},{"type":"code","language":"js","children":[{"type":"code-highlight","text":"a"},{"type":"linebreak"},{"type":"code-highlight","text":"b"}]}]}}"#,
+    )
+    .unwrap();
+    let paragraph = p.document().blocks[0].key.clone();
+    let code = p.document().blocks[1].key.clone();
+    // Only code blocks have a gutter; the initial document's comes with the
+    // root element.
+    assert_eq!(p.code_gutter(&paragraph), None);
+    assert_eq!(p.code_gutter(&code).as_deref(), Some("1\n2"));
+    // Enter in a code block adds a line (CodeNode's insertNewAfter), and the
+    // gutter follows it.
+    let end = p.document().blocks[1].text.len();
+    caret_in(&mut p, 1, end);
+    assert_eq!(p.insert_paragraph().error, None);
+    type_keys(&mut p, "c");
+    assert_eq!(p.document().blocks[1].text, "a\nb\nc");
+    assert_eq!(p.code_gutter(&code).as_deref(), Some("1\n2\n3"));
+    // Undoing until the line is gone takes its number back.
+    while p.document().blocks[1].text != "a\nb" {
+        assert!(p.can_undo());
+        p.undo();
+    }
+    assert_eq!(p.code_gutter(&code).as_deref(), Some("1\n2"));
 }

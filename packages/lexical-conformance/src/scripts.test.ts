@@ -10,7 +10,7 @@ import type {SerializedLexicalNode} from 'lexical';
 import {expect, test} from 'vitest';
 
 import {coreApiScripts} from './coreApiScripts';
-import {eventScripts} from './eventScripts';
+import {eventScripts, selectionChangeScripts} from './eventScripts';
 import {extensionScripts} from './extensionScripts';
 import {keyHandlerScripts} from './keyHandlerScripts';
 import {
@@ -8793,6 +8793,15 @@ test('scripts/events', () => {
     'events',
     'The core handlers of KEY_DOWN_COMMAND, BEFORE_INPUT_COMMAND and the composition commands, off Apple platforms: which command each event dispatches, with which payload, and what rich text then does.',
     eventScripts(false),
+  );
+});
+
+test('scripts/selection-change', () => {
+  // The core's `onSelectionChange`, on a DOM selection at the points.
+  emit(
+    'selection-change',
+    'The core handler of selectionchange (onSelectionChange): the points become the selection, a caret takes the format and style where it is, a range the format its text shares, and SELECTION_CHANGE_COMMAND announces a change.',
+    selectionChangeScripts(),
   );
 });
 

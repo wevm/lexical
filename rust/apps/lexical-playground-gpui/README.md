@@ -38,12 +38,17 @@ zbugs-gpui is. macOS.
   (`$indentOverTab`; elsewhere Tab inserts a tab). In a check item, a
   button, or a click on its box, checks or unchecks it (`toggleChecked`). The toolbar follows the
   selection the editor shows, so a click shows the format and block there
-  before the next edit, with the format a browser's `selectionchange` gives
-  it.
+  before the next edit. Each selection the editor shows reaches Lexical
+  through `on_selection_change`, as a browser's `selectionchange` runs
+  `onSelectionChange`: a caret takes the format and style of the text it
+  is in, a range the format all its text shares, and
+  `SELECTION_CHANGE_COMMAND` is dispatched.
 - **Blocks.** Headings draw larger and bolder, list items with their
   marker (•, 1., ☐ or ☑) indented by depth, a checked item struck through,
-  a quote with a bar, a code block monospaced on a tinted background, and
-  links in blue, underlined.
+  a quote with a bar, a code block monospaced on a tinted background with
+  its line numbers in a gutter (from `register_code_gutter`, drawn as the
+  web playground's theme draws `data-gutter`), and links in blue,
+  underlined.
 - **Markdown shortcuts.** Typing markdown turns it into rich text, as
   the web playground's `MarkdownShortcutPlugin` does
   (`registerMarkdownShortcuts` with `TRANSFORMERS`): `# ` to `###### `

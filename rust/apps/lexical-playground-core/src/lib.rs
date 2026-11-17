@@ -24,6 +24,8 @@
 use lexical::json::{self, Object, Value};
 use lexical::{NodeRef, get_root};
 use lexical_conformance::scripts::Session;
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Instant;
 
@@ -849,9 +851,13 @@ pub struct Playground {
     /// The editor's selection, as the last step recorded it.
     model_selection: Value,
     /// The selection the app shows; it reaches the editor with the next
-    /// edit (as a `select` action), as Lexical reads the DOM selection.
+    /// edit (as a `selectionChange` action), as Lexical reads the DOM
+    /// selection.
     selection: Option<Sel>,
     last_error: Option<String>,
+    /// Each code block's line numbers, by key, as `registerCodeGutter`
+    /// gives them (`"1\n2\n3"`, what JS writes to `data-gutter`).
+    gutters: Rc<RefCell<HashMap<String, String>>>,
 }
 
 impl Playground {
@@ -908,12 +914,36 @@ impl Playground {
             model_selection: Value::Null,
             selection: None,
             last_error: None,
+            gutters: Rc::default(),
         };
+        // `registerCodeGutter`, which the JS playground's
+        // `CodeHighlightPlugin` registers through `registerCodeHighlighting`.
+        let gutters = playground.gutters.clone();
+        let _ =
+            lexical::code::register_code_gutter(playground.session.editor(), move |key, gutter| {
+                gutters
+                    .borrow_mut()
+                    .insert(key.to_owned(), gutter.to_owned());
+            })
+            .map_err(|e| e.to_string())?;
         let mut append = Object::new();
         append.insert("do", "append".into());
         append.insert("key", "root".into());
         append.insert("nodes", Value::Array(children));
         playground.update(vec![Value::Object(append)]);
+        // Then a root element, as the JS playground's editor has its
+        // `contenteditable`: the reconciler runs (its full reconcile is
+        // tagged `history-merge`, so history starts at the document), and
+        // mutation listeners, the gutter's among them, hear of each node.
+        // `viewSelection`: the editor keeps its selection between updates,
+        // as a browser's whose DOM selection is where Lexical put it, which
+        // JS replaying the session in Node needs told.
+        if playground.last_error.is_none() {
+            let mut root = Object::new();
+            root.insert("setRootElement", true.into());
+            root.insert("viewSelection", true.into());
+            playground.run(Value::Object(root));
+        }
         match playground.last_error.take() {
             Some(e) => Err(e),
             None => Ok(playground),
@@ -935,6 +965,12 @@ impl Playground {
 
     pub fn document(&self) -> &Document {
         &self.document
+    }
+
+    /// The line numbers of the code block `key` (`"1\n2\n3"`), as
+    /// `registerCodeGutter` last gave them; `None` for any other block.
+    pub fn code_gutter(&self, key: &str) -> Option<String> {
+        self.gutters.borrow().get(key).cloned()
     }
 
     pub fn selection(&self) -> Option<Sel> {
@@ -1330,9 +1366,9 @@ impl Playground {
     }
 
     /// Runs `actions` as one update step. When the app's selection isn't
-    /// the editor's, a step with a `select` action runs first, as a
-    /// browser's `selectionchange` reaches Lexical before the key does, so
-    /// history merges typing after a click as it does in a browser.
+    /// the editor's, a `selectionChange` step runs first, as a browser's
+    /// `selectionchange` reaches Lexical before the key does, so history
+    /// merges typing after a click as it does in a browser.
     pub fn update(&mut self, actions: Vec<Value>) -> Outcome {
         if let Some(select) = self.select_action() {
             let outcome = self.run_update(select);
@@ -1349,9 +1385,9 @@ impl Playground {
         self.run(Value::Object(step))
     }
 
-    /// The `select` action that gives the editor the app's selection, or
-    /// `None` when the editor's selection is already at those positions.
-    /// Positions, not points, decide: the edge between two text nodes is
+    /// The `selectionChange` action that gives the editor the app's
+    /// selection, or `None` when the editor's selection is already at those
+    /// positions. Positions, not points, decide: the edge between two text nodes is
     /// one position but two points (the end of one node, the start of the
     /// next), and a browser leaves Lexical's point alone there. Sending the
     /// other point moves the selection, as an extra step: after ⌘B bolds a
@@ -1360,37 +1396,22 @@ impl Playground {
     /// toggles the selection's format (in JS as here), would set bold again
     /// instead of clearing it.
     ///
-    /// The step also gives the selection the format (and a caret the
-    /// style) that a browser's `selectionchange` does
-    /// (`onSelectionChange` in LexicalEvents.ts): a caret in text takes its
-    /// text node's, and a range the format all its text shares, so the
-    /// toolbar shows bold in bold text and typing there stays bold.
+    /// The step is a `selectionChange` action, which runs
+    /// `lexical::on_selection_change` (`onSelectionChange` in
+    /// LexicalEvents.ts) as a browser's `selectionchange` does: a caret in
+    /// text takes its text node's format and style, and a range the format
+    /// all its text shares, so the toolbar shows bold in bold text and
+    /// typing there stays bold.
     fn select_action(&self) -> Option<Vec<Value>> {
         let sel = self.selection?;
         if self.selection_from_model() == Some(sel) {
             return None;
         }
-        let anchor = self.document.point_at(sel.anchor).to_json();
-        let focus = self.document.point_at(sel.focus).to_json();
         let mut action = Object::new();
-        action.insert("do", "select".into());
-        action.insert("anchor", anchor);
-        action.insert("focus", focus);
-        let mut actions = vec![Value::Object(action)];
-        let selection_method = |method: &str, arg: Value| {
-            let mut action = Object::new();
-            action.insert("do", "selection".into());
-            action.insert("method", method.into());
-            action.insert("args", Value::Array(vec![arg]));
-            Value::Object(action)
-        };
-        if let Some((format, style)) = self.document.selection_change_format(sel) {
-            actions.push(selection_method("setFormat", f64::from(format).into()));
-            if let Some(style) = style {
-                actions.push(selection_method("setStyle", style.into()));
-            }
-        }
-        Some(actions)
+        action.insert("do", "selectionChange".into());
+        action.insert("anchor", self.document.point_at(sel.anchor).to_json());
+        action.insert("focus", self.document.point_at(sel.focus).to_json());
+        Some(vec![Value::Object(action)])
     }
 
     fn run(&mut self, step: Value) -> Outcome {

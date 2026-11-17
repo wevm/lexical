@@ -629,8 +629,9 @@ pub fn on_composition_end(
 /// app's view selected `anchor` to `focus` (`None` when the selection left
 /// the editor). An editor that isn't active (`is_active` false, another
 /// editor of the view has the selection) gets no selection, as in JS.
-/// Otherwise the points become the selection, keeping the format and style
-/// of the last one as `$internalCreateRangeSelection` does; a caret takes
+/// Otherwise the points become the selection, with the format and style of
+/// the editor state's (the last committed) selection, as
+/// `$internalCreateRangeSelection` gives a selection read from the DOM; a caret takes
 /// the format and style of where it is (`$updateCollapsedSelectionFormatStyle`)
 /// and a range the format all its text has; then the change is announced
 /// with `SELECTION_CHANGE_COMMAND` (`$dispatchSelectionChangeCommand`).
@@ -652,7 +653,11 @@ pub fn on_selection_change(
                 set_selection(None);
                 return Ok(());
             };
-            let (format, style) = match get_selection().and_then(|s| s.range()) {
+            let (format, style) = match editor
+                .get_editor_state()
+                .selection()
+                .and_then(|s| s.range())
+            {
                 Some(last) => (last.format, last.style),
                 None => (0.0, String::new()),
             };

@@ -48,6 +48,13 @@ function select(
   return {anchor, do: 'select', focus};
 }
 
+function selectionChange(
+  anchor: [string, number, 'text' | 'element'],
+  focus?: [string, number, 'text' | 'element'],
+): Action {
+  return {anchor, do: 'selectionChange', focus};
+}
+
 /** The root gets these blocks, and the selection is set. */
 function doc(selection: Action, ...blocks: Json[]): Step {
   return {
@@ -592,4 +599,51 @@ export function eventScripts(isApple: boolean): Script[] {
     },
   );
   return scripts;
+}
+
+/**
+ * The script of `vectors/scripts/selection-change`: `onSelectionChange`, run
+ * on a DOM selection at the points. It has its own file because Swift's
+ * runner doesn't replay it: Swift's selection change is TextKitInput's
+ * `setSelectedRange`, which takes a view's text offsets.
+ */
+export function selectionChangeScripts(): Script[] {
+  return [
+    {
+      // `onSelectionChange`: the points become the selection, a caret takes
+      // the format and style of where it is, a range the format its text
+      // shares, and a change is announced once.
+      handlers: [
+        {
+          command: 'SELECTION_CHANGE_COMMAND',
+          id: 'SELECTION_CHANGE_COMMAND',
+          priority: 4,
+          result: false,
+        },
+      ],
+      name: 'selectionchange: points, format and style, and the notification',
+      richText: true,
+      steps: [
+        {setRootElement: true},
+        doc(
+          select(['2', 0, 'text']),
+          p(t('bold', {format: 1, style: 'color: red'}), t('plain')),
+          p(t('next')),
+        ),
+        // A caret in bold text.
+        {update: [selectionChange(['2', 2, 'text'])]},
+        // The same caret again: nothing changed.
+        {update: [selectionChange(['2', 2, 'text'])]},
+        // Bold and plain text: no format they share; the style is kept.
+        {update: [selectionChange(['2', 1, 'text'], ['3', 2, 'text'])]},
+        // Backward from the start of "plain", an empty boundary.
+        {update: [selectionChange(['3', 0, 'text'], ['2', 1, 'text'])]},
+        // A caret at an element point of a block with text: the format is
+        // kept and the style cleared.
+        {update: [selectionChange(['4', 0, 'element'])]},
+        // Into the next paragraph's text.
+        {update: [selectionChange(['5', 4, 'text'])]},
+      ],
+    },
+  ];
 }

@@ -11,8 +11,8 @@
 //!
 //! Not ported: the DOM parts (`createDOM`, `updateDOM`, `exportDOM`,
 //! `importDOM`, `CodeImportRules`, the VS Code paste overlay), which come
-//! with `html`; and `registerCodeGutter`, which needs a DOM
-//! (rust/PARITY.md).
+//! with `html`. `registerCodeGutter` ([`register_code_gutter`]) gives the
+//! app the line numbers JS writes to the block's `data-gutter`.
 //!
 //! With the `code-highlight` feature, the highlighting loop of
 //! `@lexical/code-prism` (`CodeHighlighterPrism.ts`, with the lazy languages
@@ -22,6 +22,7 @@
 //! Prism's grammars and Swift's tree-sitter tokenizer aren't ported.
 
 mod code_extension;
+mod code_gutter;
 mod code_highlight_node;
 #[cfg(feature = "code-highlight")]
 mod code_highlighter;
@@ -40,6 +41,7 @@ pub use code_extension::{
     CodeExtensionType, CodeIndentConfig, CodeIndentConfigOverrides, CodeIndentExtensionType,
     CodeIndentOutput, code_extension, code_indent_extension,
 };
+pub use code_gutter::register_code_gutter;
 pub use code_highlight_node::{
     CodeHighlightNode, create_code_highlight_node, is_code_highlight_node,
 };

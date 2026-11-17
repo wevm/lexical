@@ -47,7 +47,8 @@ zbugs-gpui is. macOS.
   marker (•, 1., ☐ or ☑) indented by depth, a checked item struck through,
   a quote with a bar, a code block monospaced on a tinted background with
   its line numbers in a gutter (from `register_code_gutter`, drawn as the
-  web playground's theme draws `data-gutter`), and links in blue,
+  web playground's theme draws `data-gutter`) and the theme's 8px of
+  padding and margin above and below, and links in blue,
   underlined.
 - **Markdown shortcuts.** Typing markdown turns it into rich text, as
   the web playground's `MarkdownShortcutPlugin` does

@@ -4,6 +4,14 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.3
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Added `LexicalNSTextView.contentHeight(atWidth:)` to the public API: the height the view's content would have at another width, measured without resizing the view, for an app that sizes the view itself (`NSView` has no `sizeThatFits` for a width). It wraps the text around the container's exclusion paths, which measuring the text storage on its own misses. On iOS, `LexicalUITextView.sizeThatFits(_:)`, inherited from `UITextView`, already answers this.
+
 ## 0.2.2
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

@@ -240,13 +240,13 @@ jobs:
       run:
         working-directory: rust
     steps:
+      # First, so the steps' working directory (rust/) exists.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
       - name: Wait for the first publish
         if: needs.plan.outputs.first == 'true'
         run: echo "::notice::lexical-ui isn't on crates.io yet. Trusted publishing can't create a crate, so tmm publishes $VERSION by hand and adds this workflow as its trusted publisher (rust/DESIGN.md, Releases)."
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        if: needs.plan.outputs.first == 'false'
-        with:
-          persist-credentials: false
       # rustup is preinstalled; rust-toolchain.toml picks the version.
       - name: Install the toolchain
         if: needs.plan.outputs.first == 'false'

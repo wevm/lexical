@@ -116,7 +116,7 @@ jobs:
         run: cargo test --locked
       - name: Render headless
         run: |
-          cargo build --locked --release
+          cargo build --locked --release --features tooling
           ./target/release/lexical-playground-rune --snap "$RUNNER_TEMP/lexical-playground-rune-macos.png" --size 1100x720 --scene typed
           test -s "$RUNNER_TEMP/lexical-playground-rune-macos.png"
       - name: Run end to end

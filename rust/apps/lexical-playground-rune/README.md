@@ -42,7 +42,9 @@ macOS first; it also builds and renders on Linux.
   blocks itself, with no line numbers and its own spacing: it has no way
   for an app to draw a gutter beside a block's lines or to set the room
   around a block, so the web playground's `data-gutter` and its 8px of
-  padding and margin wait on Rune.
+  padding and margin wait on Rune
+  ([anomalyco/rune#1135](https://github.com/anomalyco/rune/issues/1135);
+  see also [#968](https://github.com/anomalyco/rune/issues/968)).
 - **Markdown shortcuts.** Typing markdown turns it into rich text, as
   the web playground's `MarkdownShortcutPlugin` does
   (`registerMarkdownShortcuts` with `TRANSFORMERS`): `# ` to `###### `
@@ -76,8 +78,7 @@ cd rust/apps/lexical-playground-rune
 cargo run --release
 ```
 
-Rune is pre-release and pinned to a rev of its `dev` branch (the one
-wevm/zero's zbugs-rune uses). It needs Rust 1.90 or later, so the app is a
+Rune is pre-release and pinned to a rev of its `dev` branch. It needs Rust 1.90 or later, so the app is a
 Cargo workspace of its own with Rune's toolchain (`rust-toolchain.toml`),
 apart from `rust/`, which builds on 1.88. rustup installs that toolchain on
 the first build.

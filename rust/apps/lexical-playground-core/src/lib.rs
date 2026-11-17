@@ -831,6 +831,45 @@ pub struct Outcome {
 /// `HistoryExtension`'s default delay.
 pub const HISTORY_DELAY: f64 = 300.0;
 
+/// The languages `@lexical/code-prism` loads into Prism, with their aliases
+/// (`Object.keys(Prism.languages)` without its functions): what its
+/// `isCodeLanguageLoaded` says yes to.
+const PRISM_LANGUAGES: [&str; 33] = [
+    "plain",
+    "plaintext",
+    "text",
+    "txt",
+    "markup",
+    "html",
+    "mathml",
+    "svg",
+    "xml",
+    "ssml",
+    "atom",
+    "rss",
+    "css",
+    "clike",
+    "javascript",
+    "js",
+    "diff",
+    "markdown",
+    "md",
+    "c",
+    "go",
+    "objectivec",
+    "objc",
+    "sql",
+    "powershell",
+    "python",
+    "py",
+    "rust",
+    "swift",
+    "typescript",
+    "ts",
+    "java",
+    "cpp",
+];
+
 /// A clock in milliseconds, for history's merging by time.
 pub type Clock = Rc<dyn Fn() -> f64>;
 
@@ -882,6 +921,19 @@ impl Playground {
         for flag in ["richText", "list", "link", "code", "markdown"] {
             script.insert(flag, true.into());
         }
+        // `CodeHighlightPlugin` (`registerCodeHighlighting`), which makes a
+        // code block's text `CodeHighlightNode`s, the only text the indent
+        // handlers take (Tab at a line's start). The tokenizer is the one
+        // every runner has, over the languages Prism has in the JS replay,
+        // so an exported session replays there; any other language is
+        // plain, as Prism leaves one it lacks.
+        let mut code_highlight = Object::new();
+        code_highlight.insert("tokenizer", "conformance".into());
+        code_highlight.insert(
+            "languages",
+            Value::Array(PRISM_LANGUAGES.iter().map(|&l| l.into()).collect()),
+        );
+        script.insert("codeHighlight", Value::Object(code_highlight));
         let mut history = Object::new();
         history.insert("delay", HISTORY_DELAY.into());
         script.insert("history", Value::Object(history));
@@ -1074,19 +1126,20 @@ impl Playground {
         event.insert("metaKey", modifiers.meta.into());
         event.insert("shiftKey", modifiers.shift.into());
         let outcome = self.dispatch("KEY_DOWN_COMMAND", Some(event.into()));
-        // The dispatch logs `['defaultPrevented', prevented]` after it.
+        // The dispatch logs `['defaultPrevented', prevented]` after it (and
+        // before the step's `codeBlocks` entry).
         let prevented = outcome.error.is_none()
             && self
                 .results
                 .last()
                 .and_then(|result| result.get("log"))
                 .and_then(Value::as_array)
-                .and_then(|log| log.last())
-                .and_then(Value::as_array)
-                .is_some_and(|entry| {
-                    entry.first().and_then(Value::as_str) == Some("defaultPrevented")
-                        && entry.get(1).and_then(Value::as_bool) == Some(true)
-                });
+                .and_then(|log| {
+                    log.iter().rev().filter_map(Value::as_array).find(|entry| {
+                        entry.first().and_then(Value::as_str) == Some("defaultPrevented")
+                    })
+                })
+                .is_some_and(|entry| entry.get(1).and_then(Value::as_bool) == Some(true));
         (outcome, prevented)
     }
 

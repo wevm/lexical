@@ -109,7 +109,7 @@
     /// changing the view, as SwiftUI's `sizeThatFits` must: the view's own
     /// layout when its text is laid out at that width, or else a copy of
     /// its text laid out at it.
-    package func contentHeight(atWidth width: CGFloat) -> CGFloat {
+    public func contentHeight(atWidth width: CGFloat) -> CGFloat {
       let insets = textContainerInset
       let textWidth = width - insets.left - insets.right
       guard textWidth > 0, textWidth != textContainer.size.width else { return contentHeight }

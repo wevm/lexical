@@ -2911,22 +2911,6 @@
     ],
     "note": "Imports a table through TableExtension. Needs @lexical/table, which is out of the Rust port's scope (rust/DESIGN.md, Goals and scope)."
   },
-  "lexical-code-core/src/__tests__/unit/CodeGutter.test.ts::registerCodeGutter > numbers a single line": {
-    "reason": "dom-only",
-    "note": "Reads the data-gutter attribute registerCodeGutter writes on the CodeNode's DOM element (editor.getElementByKey); registerCodeGutter is not ported, and a Rust editor has no DOM element per node (rust/PARITY.md, the extension API)."
-  },
-  "lexical-code-core/src/__tests__/unit/CodeGutter.test.ts::registerCodeGutter > numbers several lines": {
-    "reason": "dom-only",
-    "note": "Reads the data-gutter attribute registerCodeGutter writes on the CodeNode's DOM element (editor.getElementByKey); registerCodeGutter is not ported, and a Rust editor has no DOM element per node (rust/PARITY.md, the extension API)."
-  },
-  "lexical-code-core/src/__tests__/unit/CodeGutter.test.ts::registerCodeGutter > numbers an empty trailing line": {
-    "reason": "dom-only",
-    "note": "Reads the data-gutter attribute registerCodeGutter writes on the CodeNode's DOM element (editor.getElementByKey); registerCodeGutter is not ported, and a Rust editor has no DOM element per node (rust/PARITY.md, the extension API)."
-  },
-  "lexical-code-core/src/__tests__/unit/CodeGutter.test.ts::registerCodeGutter > follows an edit that changes the line count": {
-    "reason": "dom-only",
-    "note": "Reads the data-gutter attribute registerCodeGutter writes on the CodeNode's DOM element (editor.getElementByKey); registerCodeGutter is not ported, and a Rust editor has no DOM element per node (rust/PARITY.md, the extension API)."
-  },
   "lexical-code-core/src/__tests__/unit/CodeImportExtension.test.ts::CodeImportExtension > GitHub raw-file-view table still wins when TableExtension is present": {
     "reason": "out-of-scope-package",
     "packages": [

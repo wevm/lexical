@@ -382,8 +382,8 @@ fn is_equal(node_a: &NodeRef, node_b: &NodeRef) -> bool {
 /// `registerHighlightingOnly(editor, tokenizer)`: the highlighting
 /// transforms of `CodeNode`, `TextNode` and `CodeHighlightNode`, without
 /// the indent handlers of [`register_code_indentation`] and without
-/// `registerCodeGutter`, which writes to the DOM. Returns what unregisters
-/// them.
+/// `registerCodeGutter`, which an app that draws line numbers registers
+/// itself ([`super::register_code_gutter`]). Returns what unregisters them.
 pub fn register_highlighting_only(editor: &Editor, tokenizer: Rc<dyn Tokenizer>) -> Unregister {
     let highlighter = Rc::new(Highlighter {
         editor: editor.weak(),

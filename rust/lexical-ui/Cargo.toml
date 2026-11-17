@@ -2,7 +2,7 @@
 name = "lexical-ui"
 # The released version: rust/scripts/version-packages.sh bumps it from the
 # changesets in rust/.changeset (its README). Don't edit it by hand.
-version = "0.0.0"
+version = "0.1.0"
 description = "A Rust port of Lexical's model and headless packages, at parity with the JS implementation."
 edition.workspace = true
 rust-version.workspace = true

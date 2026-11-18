@@ -385,11 +385,18 @@ Reversible choices made porting `@lexical/extension` under Q18.
 - **`HMRExtension` is not ported.** It carries the editor state and history
   across a bundler's hot module replacement (`import.meta.hot`), which
   Swift has no equivalent of; its tests are `deviation` skips.
-- **Extensions that only touch the DOM wait for the views.**
-  `NodeSelectionDataSelectedExtension` (a host element attribute) has no
-  model part; it ports with the native host views in M3, and its tests are
-  `dom-only` until then. `NormalizeTripleClickSelectionExtension` and
-  `IMEExtension` are ported (see Native surface conventions).
+- **`NodeSelectionDataSelectedExtension` is not ported.** It toggles an
+  attribute on a selected node's DOM element so CSS can outline an
+  `ElementNode`. The views have no element to mark: they draw node
+  selections from `TextKitUpdate.selectedNodes` (a decorator's view, an
+  outlined horizontal rule), and an app that styles another selected node
+  follows it with `NodeSelectionExtension`'s `watchNodeKey`. Its tests are
+  `dom-only`. `NormalizeTripleClickSelectionExtension` and `IMEExtension`
+  are ported (see Native surface conventions).
+- **`OutputComponentExtension` is not ported.** It is a TypeScript type
+  for an extension whose output carries a React component, which
+  `@lexical/react`'s `ExtensionComponent` renders; SwiftUI apps hold their
+  views directly.
 - **`PreventSelectAllExtension` registers nothing.** In JS it stops a
   `keydown` inside a decorator's DOM from reaching Lexical; key events reach
   the views, never a control inside a decorator, so only its config and

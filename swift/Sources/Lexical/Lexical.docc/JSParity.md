@@ -57,12 +57,42 @@ reason (`dom-only`, `react-only`, `out-of-scope-package`,
   There is no DOM; the parts of the DOM reconciler the model depends on
   (mutation listeners, cached text, block text format) run without it.
 
-### The Tier 1 exception: unpaired surrogates
+### Tier 1 exceptions
 
-A JS string can hold half of a surrogate pair, which an offset inside an
-emoji leaves behind. A Swift `String` can't, so each lone half becomes
-U+FFFD. Lengths and offsets still agree with JS, since U+FFFD is one UTF-16
-unit; only the text differs. Native input never splits a pair.
+Each is listed in the repository's `swift/parity/deviations.json` or
+`swift/DESIGN.md`, and no editing produces the input that shows it:
+
+- **Unpaired surrogates.** A JS string can hold half of a surrogate pair,
+  which an offset inside an emoji leaves behind. A Swift `String` can't, so
+  each lone half becomes U+FFFD. Lengths and offsets still agree with JS,
+  since U+FFFD is one UTF-16 unit; only the text differs. Native input
+  never splits a pair.
+- **Integer properties.** `format`, `detail`, `textFormat`, `indent`, a
+  list's `start` and an item's `value` are `Int`s. A fraction or an
+  out-of-range number in imported JSON becomes the integer JS's bitwise
+  operators read (an indent is clamped), and exports as that integer,
+  where JS writes back the number it read.
+- **Invalid CSS values.** HTML import keeps a declaration whose value is
+  invalid for its property, where a browser (and jsdom, which the vectors
+  run in) drops it. The properties themselves are the same as jsdom's.
+
+### Not ported
+
+- **Web-only extensions.** `HMRExtension` (a bundler's hot module
+  replacement), `NodeSelectionDataSelectedExtension` (an attribute on a
+  node's DOM element for CSS to outline; the views draw node selections
+  themselves, and an app can follow one with `NodeSelectionExtension`'s
+  `watchNodeKey`), and `OutputComponentExtension`, a TypeScript type for
+  extensions whose output is a React component (a SwiftUI app holds its
+  views directly).
+- **`registerCodeGutter`** writes line numbers into a code block's DOM;
+  the views draw them.
+- **Prism.** `LexicalCodeTreeSitter` highlights code with tree-sitter
+  grammars, mapped to Prism's token types, so token boundaries can differ
+  from `@lexical/code-prism`'s.
+- **Packages not ported yet:** `@lexical/yjs` and `@lexical/y`
+  (collaboration), `@lexical/table`, `@lexical/code-shiki`,
+  `@lexical/mdast`, and `@lexical/offset`, which upstream is removing.
 
 ### Tier 2 deviations
 

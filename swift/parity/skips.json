@@ -544,27 +544,27 @@
   },
   "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > clears the attribute from still-mounted DOM on teardown": {
     "reason": "dom-only",
-    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection, for CSS; the views have no such element and draw node selections themselves, so it is not ported (DESIGN.md, Extension conventions)."
   },
   "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > matches a registered subclass of the configured node": {
     "reason": "dom-only",
-    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection, for CSS; the views have no such element and draw node selections themselves, so it is not ported (DESIGN.md, Extension conventions)."
   },
   "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > mirrors NodeSelection onto the configured node host": {
     "reason": "dom-only",
-    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection, for CSS; the views have no such element and draw node selections themselves, so it is not ported (DESIGN.md, Extension conventions)."
   },
   "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > mirrors a NodeSelection already committed when register() runs": {
     "reason": "dom-only",
-    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection, for CSS; the views have no such element and draw node selections themselves, so it is not ported (DESIGN.md, Extension conventions)."
   },
   "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > removes the attribute when the node leaves the selection": {
     "reason": "dom-only",
-    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection, for CSS; the views have no such element and draw node selections themselves, so it is not ported (DESIGN.md, Extension conventions)."
   },
   "lexical-extension/src/__tests__/unit/NodeSelectionDataSelected.test.ts::NodeSelectionDataSelectedExtension > throws when a configured class is not registered on the editor": {
     "reason": "dom-only",
-    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection; it ports with the native host views (M3), including its not-registered invariant."
+    "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection, for CSS; the views have no such element and draw node selections themselves, so it is not ported (DESIGN.md, Extension conventions)."
   },
   "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block in a paragraph is lifted out (paragraph split)": {
     "reason": "out-of-scope-package",

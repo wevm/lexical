@@ -50,6 +50,14 @@ public struct StyleObject: Equatable, Sequence, ExpressibleByDictionaryLiteral {
 /// parentheses are not delimiters.
 public func getStyleObjectFromCSS(_ css: String) -> StyleObject {
   var styles = StyleObject()
+  for (property, value) in cssDeclarations(css) { styles[property] = value }
+  return styles
+}
+
+/// The declarations of inline CSS text in order, a repeated property each
+/// time it appears, as `getStyleObjectFromCSS` reads them.
+func cssDeclarations(_ css: String) -> [(String, String)] {
+  var styles: [(String, String)] = []
   let units = Array(css.utf16)
   if units.isEmpty { return styles }
   let colon = UInt16(UInt8(ascii: ":"))
@@ -86,7 +94,7 @@ public func getStyleObjectFromCSS(_ css: String) -> StyleObject {
     let property = String(decoding: jsTrim(currentProperty[...]), as: UTF16.self)
     let value = String(decoding: jsTrim(currentValue[...]), as: UTF16.self)
     if !property.isEmpty && !value.isEmpty {
-      styles[property] = value
+      styles.append((property, value))
     }
   }
 

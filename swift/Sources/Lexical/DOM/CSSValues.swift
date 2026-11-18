@@ -49,10 +49,10 @@ func preprocessCSS(_ css: String) -> String {
   return String(out)
 }
 
-/// The declarations in inline CSS text, in order, a repeated property
-/// keeping the position of its first declaration and its last value.
+/// The declarations in inline CSS text, in order, a repeated property each
+/// time it is declared.
 func parseCSSDeclarations(_ css: String) -> [(String, String)] {
-  getStyleObjectFromCSS(css).map { ($0.key, $0.value) }
+  cssDeclarations(css)
 }
 
 /// The value `name` serializes `value` as, or `nil` when the declaration
@@ -101,12 +101,12 @@ func normalizeCSSValue(_ name: String, _ value: String) -> String? {
 }
 
 /// The keywords every property accepts.
-private let cssWideKeywords: Set<String> = [
+let cssWideKeywords: Set<String> = [
   "initial", "inherit", "unset", "revert", "revert-layer",
 ]
 
 /// `string` with A to Z in lower case, as CSS matches keywords.
-private func asciiLowercased(_ string: String) -> String {
+func asciiLowercased(_ string: String) -> String {
   String(
     String.UnicodeScalarView(
       string.unicodeScalars.map { ("A"..."Z").contains($0) ? Unicode.Scalar($0.value + 32)! : $0 }))
@@ -177,7 +177,7 @@ private func normalizeCSSWord(_ word: String, _ traits: CSSPropertyTraits) -> St
     if traits.contains(.color), let rgba = parseColorFunction(function, arguments) {
       return serializeColor(rgba, hexAlpha: false)
     }
-    if function == "calc", let result = evaluateCalcProduct(arguments) {
+    if function == "calc", let result = evaluateCalc(arguments) {
       return "calc(\(result))"
     }
     return word
@@ -212,7 +212,7 @@ private func requoteCSSString(_ word: String) -> String {
 }
 
 /// A number with an optional unit: `+5px`, `1.50em`, `1e1px`, `.5`.
-private func parseCSSNumber(_ word: String) -> (Double, String)? {
+func parseCSSNumber(_ word: String) -> (Double, String)? {
   let scalars = Array(word.unicodeScalars)
   var i = 0
   func isDigit(_ index: Int) -> Bool {
@@ -255,15 +255,20 @@ private func formatCSSNumber(_ number: Double) -> String {
   number == 0 ? "0" : jsNumberToString(number)
 }
 
-/// `calc(n * length)` and `calc(length * n)` as their product.
-private func evaluateCalcProduct(_ arguments: String) -> String? {
+/// `calc(n * length)` and `calc(length * n)` as their product, and a sum
+/// or difference of two values in the same unit as its result.
+func evaluateCalc(_ arguments: String) -> String? {
   let parts = arguments.split(whereSeparator: { $0 == " " || $0 == "\t" || $0 == "\n" })
-  guard parts.count == 3, parts[1] == "*",
+  guard parts.count == 3, ["*", "+", "-"].contains(parts[1]),
     let (a, unitA) = parseCSSNumber(String(parts[0])),
-    let (b, unitB) = parseCSSNumber(String(parts[2])),
-    unitA.isEmpty || unitB.isEmpty
+    let (b, unitB) = parseCSSNumber(String(parts[2]))
   else { return nil }
-  return formatCSSNumber(a * b) + (unitA + unitB).lowercased()
+  if parts[1] == "*" {
+    guard unitA.isEmpty || unitB.isEmpty else { return nil }
+    return formatCSSNumber(a * b) + (unitA + unitB).lowercased()
+  }
+  guard asciiLowercased(unitA) == asciiLowercased(unitB) else { return nil }
+  return formatCSSNumber(parts[1] == "+" ? a + b : a - b) + unitA.lowercased()
 }
 
 private struct RGBA {

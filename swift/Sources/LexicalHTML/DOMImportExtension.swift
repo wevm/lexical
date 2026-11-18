@@ -135,8 +135,10 @@ nonisolated(unsafe) public let HorizontalRuleImportRules = [HorizontalRuleRule]
 /// rules with `parseStyleSheet` (at-rules are skipped) and matches their
 /// selectors with `querySelectorAll`; a selector it rejects is skipped, as
 /// JS skips one `querySelectorAll` throws on. Selectors outside its subset
-/// (pseudo-classes, namespaces, escapes) are skipped too, and shorthand
-/// properties are copied without the longhands a browser expands them into.
+/// (namespaces, escapes, `:dir()`...) are skipped too, where JS would apply
+/// them. A rule's `font` reaches the element as its longhands and the
+/// shorthand, as jsdom's declaration expands it; other shorthands are
+/// copied without the longhands a browser expands them into.
 public func inlineStylesFromStyleSheets(
   _ dom: DOMNode, _ ctx: DOMPreprocessContext, _ next: () throws -> Void
 ) throws {

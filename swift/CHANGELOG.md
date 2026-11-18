@@ -4,6 +4,19 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.4
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Changed `ClickableLinkExtension` to open clicked links by default, as JS opens them in the global window: `ClickableLinkConfig.getWindow` now defaults to the editor's root element, and `LexicalNSTextView` and `LexicalUITextView` open the link with the system's handler for its URL. Added `LexicalRootElement.open(_:_:_:)`, which does nothing by default. An app that configured `getWindow` is unaffected.
+- Fixed HTML import of formatting that comes through CSS, as in JS: an inline or style sheet `font` shorthand (`font: bold 12px serif`) now expands into its longhands, so it imports as bold or italic, and `<style>` rules whose selectors use pseudo-classes (`a:link`, `:first-child`, `:nth-child()`, `:not()`, `:is()`, `:has()`...) now apply. `CSSStyleDeclaration` keeps an earlier `!important` declaration over a later plain one, and `calc()` of a sum or difference in one unit is evaluated.
+- Added `SelectionAlwaysOnDisplayExtension` and `selectionAlwaysOnDisplay(editor)`, which keep the selection shown while the editor does not have the focus, as in JS. `LexicalUITextView` highlights its selection while it is not the first responder; `LexicalNSTextView` already draws an unfocused selection. Added `LexicalRootElement.selectionAlwaysOnDisplay()`, which does nothing by default. `LexicalExtension` now depends on `LexicalUtils`, as `@lexical/extension` does on `@lexical/utils`.
+- Fixed the text views' selection changes to run JS `onSelectionChange`: `SELECTION_CHANGE_COMMAND` was dispatched for every selection the view reported, even one that had not changed, and is now dispatched only for a change, and a caret placed at an element point now keeps the previous selection's format instead of clearing it.
+- Fixed word, line and character deletion across a slot boundary: when an editor's `SelectionMovement` landed in another slot frame, `deleteWord`, `deleteLine` and `deleteCharacter` threw (`$comparePointCaretNext: … do not have a common ancestor`). They now stop at the boundary in the caret's frame, as JS's `'deletion'` mode of `$setPointAtSlotBoundary` does: beside a host, the deletion stops before the host, and the focus descends toward the caret.
+- Added `WatchEditableExtension`, whose output is a signal of `editor.isEditable()` for effects and computed signals to react to editability changes, as in JS.
+
 ## 0.2.3
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

@@ -1310,6 +1310,10 @@
       guard let url = URL(string: url) else { return }
       DispatchQueue.main.async { NSWorkspace.shared.open(url) }
     }
+
+    // `selectionAlwaysOnDisplay()` keeps its default, which does nothing:
+    // an `NSTextView` that is not the first responder already draws its
+    // selection, in the unemphasized selection color.
   }
 
   extension NSRange {

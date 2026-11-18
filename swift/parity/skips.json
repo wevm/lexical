@@ -868,19 +868,19 @@
   },
   "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > calls onReposition for a range selection": {
     "reason": "dom-only",
-    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
+    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw the mark themselves (LexicalRootElement.selectionAlwaysOnDisplay, which LexicalUITextView draws in its highlights)."
   },
   "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > does not throw for element-type selection points": {
     "reason": "dom-only",
-    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
+    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw the mark themselves (LexicalRootElement.selectionAlwaysOnDisplay, which LexicalUITextView draws in its highlights)."
   },
   "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > does not throw for text-type selection points": {
     "reason": "dom-only",
-    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
+    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw the mark themselves (LexicalRootElement.selectionAlwaysOnDisplay, which LexicalUITextView draws in its highlights)."
   },
   "lexical-utils/src/__tests__/unit/markSelection.test.tsx::markSelection > returns a cleanup function that can be called safely": {
     "reason": "dom-only",
-    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw selection highlights through TextKit (M3)."
+    "note": "markSelection draws DOM overlay elements over the selection rects; the views draw the mark themselves (LexicalRootElement.selectionAlwaysOnDisplay, which LexicalUITextView draws in its highlights)."
   },
   "lexical-utils/src/__tests__/unit/positionNodeOnRange.test.tsx::positionNodeOnRange > does not re-insert its overlay after the root element was detached from the document": {
     "reason": "dom-only",

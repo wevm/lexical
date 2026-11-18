@@ -385,6 +385,15 @@ Reversible choices made porting `@lexical/extension` under Q18.
 - **`HMRExtension` is not ported.** It carries the editor state and history
   across a bundler's hot module replacement (`import.meta.hot`), which
   Swift has no equivalent of; its tests are `deviation` skips.
+- **`SelectionAlwaysOnDisplayExtension` asks the root to show the
+  selection.** JS marks the selection with positioned elements whenever
+  the document's selection leaves the root. A native view keeps its own
+  selection, so `selectionAlwaysOnDisplay` (LexicalUtils) calls each
+  root's `LexicalRootElement.selectionAlwaysOnDisplay()`:
+  `LexicalUITextView` adds the selection to its highlights while it is not
+  the first responder, and `LexicalNSTextView` does nothing, since AppKit
+  already draws an unfocused selection. `onReposition`, which receives the
+  marking elements, is not ported.
 - **`NodeSelectionDataSelectedExtension` is not ported.** It toggles an
   attribute on a selected node's DOM element so CSS can outline an
   `ElementNode`. The views have no element to mark: they draw node

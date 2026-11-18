@@ -5,6 +5,17 @@ from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <version>`, the version in
 `lexical-ui/Cargo.toml`.
 
+## 0.1.2
+
+Conforms to upstream Lexical **0.53.0** (`lexical_ui::UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Added `EmbedConfig::parse_url_async` and `ParseUrlDone`, so an embed config can answer `parseUrl` later, as a JS `parseUrl` that returns a promise does: the auto-embed menu opens when the config resolves, unless a newer paste was checked meanwhile or the link was removed or given another URL, pending edits included. `EmbedConfig::parse_url` now has a default (`None`), so a config implements one of the two; existing configs are unchanged.
+- Fixed HTML import ignoring the `font` shorthand: the inline style declaration now expands `font` into its longhands as jsdom's does, so `<span style="font: bold 12px serif">` and a `<style>` rule's `font: italic 10px a` import as bold and italic. Added pseudo-class selectors to `DomNode::query_selector_all` and `DomNode::matches` (`:first-child` and the other `:nth-` positions, `:not()`, `:is()`, `:where()`, `:has()`, `:link`, `:lang()`, `:empty`, `:root`, `:checked`, `:disabled`, `:enabled`), so `<style>` rules that use them, such as Word's `a:link` lists, now apply on paste; user-action pseudo-classes such as `:hover` and pseudo-elements match nothing.
+- Fixed word and line deletion crossing a slot boundary: when an editor's `SelectionMovement` lands in another slot frame, `delete_word`, `delete_line` and `delete_character` now stop at the boundary in the caret's frame, as JS's `'deletion'` mode of `$setPointAtSlotBoundary` does, instead of deleting into the other frame.
+- Added `watch_editable_extension()`, the port of `WatchEditableExtension`: its output is a signal of `Editor::is_editable` that follows `Editor::set_editable` while something watches it.
+
 ## 0.1.1
 
 Conforms to upstream Lexical **0.53.0** (`lexical_ui::UPSTREAM_VERSION`).

@@ -234,24 +234,32 @@ public final class CSSStyleDeclaration {
   public func setProperty(_ name: String, _ value: String, _ priority: String = "") {
     let name = canonicalName(name)
     let value = preprocessCSS(value)
-    if value.isEmpty {
-      removeProperty(name)
+    if jsTrim(value).isEmpty {
+      // The `font` setter clears its longhands too.
+      var changed = false
+      if name == "font" {
+        for longhand in fontLonghands { changed = remove(longhand) != nil || changed }
+      }
+      if remove(name) != nil || changed { notify() }
       return
     }
     let priority = priority.lowercased()
     guard priority == "" || priority == "important" else { return }
-    guard write(name, value, priority) else { return }
+    guard setPropertyValue(name, value, priority) else { return }
     notify()
   }
 
   /// `removeProperty(name)`: returns the removed value.
   @discardableResult
   public func removeProperty(_ name: String) -> String {
-    let name = canonicalName(name)
-    guard let index = entries.firstIndex(where: { $0.name == name }) else { return "" }
-    let value = entries.remove(at: index).value
+    guard let value = remove(canonicalName(name)) else { return "" }
     notify()
     return value
+  }
+
+  private func remove(_ name: String) -> String? {
+    guard let index = entries.firstIndex(where: { $0.name == name }) else { return nil }
+    return entries.remove(at: index).value
   }
 
   /// Reads or writes a property by its CSS name, as `style.whiteSpace`
@@ -264,8 +272,21 @@ public final class CSSStyleDeclaration {
   /// `cssText`.
   public var cssText: String {
     get {
-      entries.map { "\($0.name): \($0.value)\($0.priority.isEmpty ? "" : " !important");" }
-        .joined(separator: " ")
+      // `font` stands for the longhands set before it, unless one of them
+      // is important and it isn't.
+      var serialized: [(name: String, value: String, priority: String)] = []
+      for entry in entries {
+        if entry.name == "font" {
+          serialized.removeAll {
+            fontLonghands.contains($0.name) && (!entry.priority.isEmpty || $0.priority.isEmpty)
+          }
+        }
+        serialized.append(entry)
+      }
+      return serialized.map {
+        "\($0.name): \($0.value)\($0.priority.isEmpty ? "" : " !important");"
+      }
+      .joined(separator: " ")
     }
     set {
       parse(newValue)
@@ -277,22 +298,85 @@ public final class CSSStyleDeclaration {
   /// `style` attribute (which is where `css` came from). A style rule's
   /// block (`keepCase: false`) matches property names in any case, as
   /// jsdom's CSSOM does; a style attribute's keeps their case.
+  ///
+  /// jsdom's `cssText` setter: each property's last declaration, unless an
+  /// earlier one is important, in the place of its first; then
+  /// `prepareProperties`, which puts the longhands of a `font` before it;
+  /// then each property's setter in that order.
   func parse(_ css: String, keepCase: Bool = true) {
     entries = []
+    var declared: [(name: String, value: String, priority: String)] = []
     for (name, rawValue) in parseCSSDeclarations(preprocessCSS(css)) {
       let (value, important) = splitImportant(rawValue)
-      _ = write(canonicalName(name, fromText: keepCase), value, important ? "important" : "")
+      let name = canonicalName(name, fromText: keepCase)
+      if name != "font" && normalizeCSSValue(name, value) == nil { continue }
+      let priority = important ? "important" : ""
+      if let i = declared.firstIndex(where: { $0.name == name }) {
+        if declared[i].priority.isEmpty { declared[i] = (name, value, priority) }
+      } else {
+        declared.append((name, value, priority))
+      }
     }
+    var prepared: [(name: String, value: String, priority: String)] = []
+    func prepare(_ name: String, _ value: String, _ priority: String) {
+      if let i = prepared.firstIndex(where: { $0.name == name }) {
+        prepared[i] = (name, value, priority)
+      } else {
+        prepared.append((name, value, priority))
+      }
+    }
+    for entry in declared {
+      if entry.name == "font" && !hasVarFunc(entry.value) {
+        for (longhand, value) in parseFont(entry.value) ?? [] {
+          prepare(longhand, value, entry.priority)
+        }
+      }
+      prepare(entry.name, entry.value, entry.priority)
+    }
+    for entry in prepared { _ = setPropertyValue(entry.name, entry.value, entry.priority) }
   }
 
-  private func write(_ name: String, _ value: String, _ priority: String) -> Bool {
-    guard let value = normalizeCSSValue(name, value) else { return false }
+  /// jsdom's `_setPropertyValue`: the property's setter, which for `font`
+  /// writes its longhands, and for a longhand of it set to a `var()`
+  /// clears the shorthand.
+  private func setPropertyValue(_ name: String, _ value: String, _ priority: String) -> Bool {
+    if name == "font" { return setFont(jsTrim(value), priority) }
+    var changed = false
+    if fontLonghands.contains(name) && hasVarFunc(value) { changed = remove("font") != nil }
+    return write(name, value, priority) || changed
+  }
+
+  /// The `font` setter (`properties/font.js`' `descriptor.set`): the
+  /// longhands `value` expands into, then the shorthand, as the longhands
+  /// that aren't `normal`; a `var()` is kept whole, without longhands.
+  private func setFont(_ value: String, _ priority: String) -> Bool {
+    if hasVarFunc(value) {
+      for longhand in fontLonghands { _ = remove(longhand) }
+      writeRaw("font", value, priority)
+      return true
+    }
+    guard let longhands = parseFont(value) else { return false }
+    for key in fontLonghands {
+      if let value = longhands.first(where: { $0.0 == key })?.1 { writeRaw(key, value, priority) }
+    }
+    writeRaw("font", serializeFont(longhands), priority)
+    return true
+  }
+
+  /// jsdom's `_setProperty`: stores the value as it is, in place when the
+  /// property is set already.
+  private func writeRaw(_ name: String, _ value: String, _ priority: String) {
     if let index = entries.firstIndex(where: { $0.name == name }) {
       entries[index].value = value
       entries[index].priority = priority
     } else {
       entries.append((name, value, priority))
     }
+  }
+
+  private func write(_ name: String, _ value: String, _ priority: String) -> Bool {
+    guard let value = normalizeCSSValue(name, value) else { return false }
+    writeRaw(name, value, priority)
     return true
   }
 

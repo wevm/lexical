@@ -16,6 +16,13 @@ struct CSSTests {
     let cssText: String
   }
 
+  struct DeclarationCase: Decodable {
+    let css: String
+    let set: [[String]]
+    let properties: [[String]]
+    let cssText: String
+  }
+
   /// `CSSProperties.swift` is generated from the vectors; regenerate it
   /// with `pnpm --filter lexical-conformance run css-properties`.
   @Test func propertyTableMatchesVectors() throws {
@@ -68,6 +75,22 @@ struct CSSTests {
       element.style.cssText = c.css
       #expect(element.style.cssText == c.cssText, "\(c.css)")
       #expect(element.getAttribute("style") == c.cssText)
+    }
+  }
+
+  /// `css/declarations`: `cssText` then each `setProperty` leaves the
+  /// properties, the `font` shorthand's longhands among them, and the
+  /// `cssText` jsdom's declaration has.
+  @Test func declarationsAsJSDOM() throws {
+    for c in try Vectors.load("css/declarations", as: DeclarationCase.self) {
+      let style = CSSStyleDeclaration()
+      style.cssText = c.css
+      for set in c.set { style.setProperty(set[0], set[1], set[2]) }
+      let properties = style.propertyNames.map {
+        [$0, style.getPropertyValue($0), style.getPropertyPriority($0)]
+      }
+      #expect(properties == c.properties, "\(c.css) \(c.set)")
+      #expect(style.cssText == c.cssText, "\(c.css) \(c.set)")
     }
   }
 }

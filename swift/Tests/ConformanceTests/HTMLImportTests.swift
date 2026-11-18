@@ -17,7 +17,10 @@ import Testing
 /// in an editor built from `CoreImportExtension` and `HorizontalRuleNode`,
 /// makes the nodes it made in a jsdom document. And
 /// `vectors/html/import-packages.json`: the same with the packages' import
-/// rules, in an editor built from their extensions.
+/// rules, in an editor built from their extensions. And
+/// `vectors/html/import-style.json`: formatting from the CSSOM (the `font`
+/// shorthand, and style sheet rules with pseudo-classes) through
+/// `DOMImportExtension`, as `import-extension` is replayed.
 @Suite(.enabled(if: Vectors.available))
 struct HTMLImportTests {
   struct Case: Decodable, CustomTestStringConvertible, Sendable {
@@ -32,6 +35,7 @@ struct HTMLImportTests {
   static let nodesCases: [Case] = (try? Vectors.load("html/import-nodes")) ?? []
   static let extensionCases: [Case] = (try? Vectors.load("html/import-extension")) ?? []
   static let packageCases: [Case] = (try? Vectors.load("html/import-packages")) ?? []
+  static let styleCases: [Case] = (try? Vectors.load("html/import-style")) ?? []
 
   @Test func vectorsLoad() throws {
     #expect(try Vectors.load("html/import", as: Case.self).count == Self.cases.count)
@@ -44,6 +48,8 @@ struct HTMLImportTests {
     #expect(
       try Vectors.load("html/import-packages", as: Case.self).count == Self.packageCases.count)
     #expect(!Self.packageCases.isEmpty)
+    #expect(try Vectors.load("html/import-style", as: Case.self).count == Self.styleCases.count)
+    #expect(!Self.styleCases.isEmpty)
   }
 
   /// A node and its subtree, as `exportJSON` writes each node.
@@ -73,7 +79,7 @@ struct HTMLImportTests {
         CreateEditorArgs(namespace: "", nodes: nodes.map { .klass($0) }, headless: true)))
   }
 
-  @Test(arguments: extensionCases)
+  @Test(arguments: extensionCases + styleCases)
   func importViaExtension(_ vector: Case) throws {
     let editor = try buildEditorFromExtensions(
       defineExtension(

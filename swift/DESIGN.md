@@ -509,9 +509,12 @@ Reversible choices made porting `@lexical/extension` under Q18.
   has no CSSOM to read: it parses each `<style>` sheet's style rules
   (`parseStyleSheet`, skipping at-rules, as jsdom's CSSOM parses them) and
   matches their selectors with `querySelectorAll` (compound selectors,
-  combinators and attribute operators), skipping any selector outside
-  that, as JS skips one `querySelectorAll` rejects; `html/import-extension`
-  pins it against jsdom. `HorizontalRuleNode` is in
+  combinators, attribute operators, and the pseudo-classes of a static
+  document as jsdom's selector engine matches them), skipping any selector
+  outside that, as JS skips one `querySelectorAll` rejects;
+  `html/import-extension` and `html/import-style` pin it against jsdom.
+  The declaration expands the `font` shorthand into its longhands as
+  jsdom's does, quirks included (`css/declarations`). `HorizontalRuleNode` is in
   `LexicalExtension`, with `HorizontalRuleExtension` (insert command and
   click selection).
 

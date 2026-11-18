@@ -262,66 +262,7 @@ public final class TextKitInputController {
     // (and copied) while the commit edits it.
     let anchor = document.point(at: isBackward ? end : location)
     let focus = document.point(at: isBackward ? location : end)
-    try run { [self] in
-      try selectPoints(anchor, focus)
-      guard let selection = try getSelection() as? RangeSelection else { return }
-      if selection.isCollapsed() {
-        try updateCollapsedSelectionFormatStyle(selection)
-      } else {
-        try updateRangeSelectionFormat(selection)
-      }
-      try dispatchSelectionChangeCommand(editor, selection, force: selection.dirty)
-    }
-  }
-
-  /// `$updateCollapsedSelectionFormatStyle`: a caret takes the format and
-  /// style of where it is.
-  private func updateCollapsedSelectionFormatStyle(_ selection: RangeSelection) throws {
-    let anchor = selection.anchor
-    let anchorNode = try anchor.getNode()
-    if let text = anchorNode as? TextNode {
-      try updateSelectionFormatStyle(selection, text.getFormat(), text.getStyle())
-    } else if let element = anchorNode as? ElementNode,
-      try editor.isComposing() || getRoot().getTextContent() != ""
-    {
-      if try element.isEmpty() {
-        try internalRefreshSelectionFormatAndStyle(selection, "")
-      } else {
-        updateSelectionFormatStyle(selection, selection.format, "")
-      }
-    }
-  }
-
-  private func updateSelectionFormatStyle(
-    _ selection: RangeSelection, _ format: Int, _ style: String
-  ) {
-    if selection.format != format || selection.style != style {
-      selection.format = format
-      selection.style = style
-      selection.dirty = true
-    }
-  }
-
-  /// The formats every selected text node has, as JS `onSelectionChange`
-  /// computes for a range.
-  private func updateRangeSelectionFormat(_ selection: RangeSelection) throws {
-    let nodes = try selection.getNodes()
-    let isBackward = try selection.isBackward()
-    let start = isBackward ? selection.focus : selection.anchor
-    let end = isBackward ? selection.anchor : selection.focus
-    var combinedFormat = IS_ALL_FORMATTING
-    var hasTextNodes = false
-    for (i, node) in nodes.enumerated() {
-      let size = try node.getTextContentSize()
-      guard let text = node as? TextNode, size != 0,
-        !(i == 0 && text.getKey() == start.key && start.offset == size),
-        !(i == nodes.count - 1 && text.getKey() == end.key && end.offset == 0)
-      else { continue }
-      hasTextNodes = true
-      combinedFormat &= try text.getFormat()
-      if combinedFormat == 0 { break }
-    }
-    selection.format = hasTextNodes ? combinedFormat : 0
+    try run { [editor] in try applySelectionChange(editor, anchor, focus) }
   }
 
   // MARK: Keys and input

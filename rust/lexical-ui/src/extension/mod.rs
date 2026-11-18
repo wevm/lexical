@@ -13,7 +13,8 @@
 //! `watchedSignal` and the signals it is built on (`signals`, a port of
 //! `@preact/signals-core`), `getKnownTypesAndNodes`, and the model-level
 //! extensions `InitialStateExtension`, `ClearEditorExtension`,
-//! `EditorStateExtension`, `RootElementExtension`, `DecoratorTextExtension`,
+//! `EditorStateExtension`, `RootElementExtension`, `WatchEditableExtension`,
+//! `DecoratorTextExtension`,
 //! `NormalizeInlineElementsExtension` (which `RichTextExtension` and
 //! `PlainTextExtension` depend on), `TabIndentationExtension`,
 //! `SelectBlockExtension`, `BlockIdExtension` (block ids, positional ids and
@@ -36,8 +37,8 @@
 //! a CSS style declaration; `HorizontalRuleExtension`'s selected class,
 //! which it sets on a rule's DOM; `PreventSelectAllExtension`'s root element
 //! listener; and the package's other extensions
-//! (`NodeSelectionDataSelected`, `SelectionAlwaysOnDisplay`,
-//! `WatchEditable`, `HMR`; rust/PARITY.md).
+//! (`NodeSelectionDataSelected`, `SelectionAlwaysOnDisplay`, `HMR`;
+//! rust/PARITY.md).
 
 mod auto_focus_extension;
 pub(crate) mod block_handles;
@@ -67,6 +68,7 @@ mod root_element_extension;
 mod select_block_extension;
 pub mod signals;
 mod tab_indentation_extension;
+mod watch_editable_extension;
 mod watched_signal;
 
 pub use auto_focus_extension::{
@@ -164,6 +166,7 @@ pub use tab_indentation_extension::{
     TabIndentationExtensionType, TabIndentationOutput, default_can_indent,
     register_tab_indentation, tab_indentation_extension,
 };
+pub use watch_editable_extension::{WatchEditableExtensionType, watch_editable_extension};
 pub use watched_signal::watched_signal;
 
 use crate::NodeClass;

@@ -4,6 +4,14 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.5
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Added `TextKitStyle.tracking`, the points added after each character (SwiftUI's `tracking(_:)`), which text and the placeholder inherit like CSS `letter-spacing` and which the views draw as the `.tracking` attribute. `TextKitStyle(css:)` reads `letter-spacing` in `px` or `pt`, or `normal`.
+
 ## 0.2.4
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

@@ -10,6 +10,10 @@ you port.
 - **JS is the reference.** A difference from upstream is a Rust bug, unless
   it is an exception in PARITY.md. Scope is Tier 1 (model and headless
   packages); no editing UI.
+- **Platform standards first, then an API close to the web's.** Where an
+  API meets a platform, do what that platform does and recommends, then
+  shape the API as close to the web's as that allows (DESIGN.md, Goals and
+  scope).
 - **Port, don't invent.** Modules mirror upstream files and functions keep
   their JS names in snake case without the `$`; doc comments name the JS
   function in backticks.

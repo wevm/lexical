@@ -32,6 +32,16 @@ means updating this file in the same commit.
   Tier 2 case listed in `parity/deviations.json` with a category:
   `platform-input`, `platform-selection`, `platform-clipboard`,
   `native-only`, or `webkit-bug` (Q45), or the Tier 1 exception below.
+- **Platform standards first, then an API close to the web's.** Where the
+  port meets the platform (fonts, text attributes, colors, input,
+  accessibility), it does what Apple's frameworks do and recommend, and
+  only then shapes the public API as close to the web's as that allows.
+  Names and units follow the platform, and the CSS a document carries
+  maps onto them: CSS `letter-spacing` is a theme's `tracking`, in points,
+  as SwiftUI's `tracking(_:)`. A mechanism the platform doesn't use is not
+  invented to mirror the web: a theme names fonts by family, and an app
+  brings its own fonts by registering them, not through a per-view font
+  resolver (see Theme). JS stays the reference for the model's behavior.
 
 ### The Tier 1 exception: unpaired surrogates
 
@@ -200,6 +210,13 @@ integral and within 32 bits.
   in the DOM's cascade order (root, ancestors outside in, `text.*` keys as one
   element's classes, then the inline `style`) into platform-neutral
   descriptors that the views map to fonts.
+  A theme's `fontFamily` names families, as CSS `font-family` does, and
+  the views find them through the platform's font manager. An app's own
+  fonts are found once it registers them the platform's way, the native
+  counterpart of `@font-face`: `UIAppFonts` (iOS) or
+  `ATSApplicationFontsPath` (macOS) in its Info.plist, or
+  `CTFontManagerRegisterFontURLs` with the `.process` scope at launch
+  (WOFF2 files register too). There is no per-view font resolver (#237).
   A theme color can carry a dark variant (`TextKitColor.withDark`), which
   the views turn into a dynamic system color. The playground is light only,
   so the default theme's dark values are the port's own: light text,

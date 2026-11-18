@@ -489,11 +489,26 @@ private func getSlotHostInFrame(
   return nil
 }
 
-/// `$setPointAtSlotBoundary` in `'selection'` mode; deletion mode follows
-/// with the deletion port.
-private func setPointAtSlotBoundary(
+/// `$setPointAtSlotBoundary`'s `mode`.
+package enum SlotBoundaryMode {
+  /// `'selection'`: beside a host, past it (the host stays whole).
+  case selection
+  /// `'deletion'`: beside a host, before it (the deletion stops at it), and
+  /// the focus descends toward the anchor.
+  case deletion
+}
+
+/// `$setPointAtSlotBoundary`: sets `point`, the focus of a selection or
+/// deletion whose anchor is in `anchorFrame` and whose focus is in
+/// `focusFrame`, to the slot boundary in the anchor's frame: the edge of the
+/// anchor's slot when the focus is outside it, the edge of the children of
+/// the host that owns `focusFrame` when that host is the frame's root or
+/// contains the anchor, and otherwise beside the host. Returns false when
+/// there is no boundary.
+package func setPointAtSlotBoundary(
   _ point: Point, _ anchorNode: LexicalNode?, _ anchorFrame: LexicalNode?,
-  _ focusFrame: LexicalNode?, _ resolveFocusAfterAnchor: () throws -> Bool
+  _ focusFrame: LexicalNode?, _ mode: SlotBoundaryMode,
+  _ resolveFocusAfterAnchor: () throws -> Bool
 ) throws -> Bool {
   let host = try focusFrame.flatMap { try getSlotHostInFrame($0, anchorFrame) }
   if host == nil && anchorFrame == nil {
@@ -507,7 +522,7 @@ private func setPointAtSlotBoundary(
     try anchorNode == nil || !(host.is(anchorNode!) || host.isParentOf(anchorNode!))
   {
     parent = hostParent
-    offset = try host.getIndexWithinParent() + (focusAfterAnchor ? 1 : 0)
+    offset = try host.getIndexWithinParent() + (focusAfterAnchor == (mode == .selection) ? 1 : 0)
   } else {
     let edge = host ?? anchorFrame
     guard let element = edge as? ElementNode else {
@@ -519,8 +534,35 @@ private func setPointAtSlotBoundary(
     parent = element
     offset = try focusAfterAnchor ? element.getChildrenSize() : 0
   }
-  try point.set(parent.getKey(), offset, .element)
+  if mode == .deletion {
+    try setDeletionFocus(point, parent, offset, !focusAfterAnchor)
+  } else {
+    try point.set(parent.getKey(), offset, .element)
+  }
   return true
+}
+
+/// `$setDeletionFocus`: `focus` at `offset` in `parent`, descending into
+/// the child on the anchor's side (before it for a forward deletion) down to
+/// text, but not into a shadow root or a non-element.
+private func setDeletionFocus(
+  _ focus: Point, _ parent: ElementNode, _ offset: Int, _ isBackward: Bool
+) throws {
+  var parent = parent
+  var offset = offset
+  while true {
+    let child = try parent.getChildAtIndex(isBackward ? offset : offset - 1)
+    if let text = child as? TextNode {
+      try focus.set(text.getKey(), isBackward ? 0 : text.getTextContentSize(), .text)
+      return
+    }
+    guard let element = child as? ElementNode, try !isRootOrShadowRoot(element) else {
+      break
+    }
+    parent = element
+    offset = try isBackward ? 0 : element.getChildrenSize()
+  }
+  try focus.set(parent.getKey(), offset, .element)
 }
 
 /// `$getCommonAncestorAcrossSlots` result, as in JS.
@@ -608,7 +650,7 @@ package func clampRangeSelectionToSlotFrame(_ selection: RangeSelection) throws 
   let clamped =
     try !isSameFrame(anchorFrame, focusFrame)
     && setPointAtSlotBoundary(
-      focusPoint, getNodeByKey(anchorPoint.key), anchorFrame, focusFrame,
+      focusPoint, getNodeByKey(anchorPoint.key), anchorFrame, focusFrame, .selection,
       {
         try comparePointCaretNextAcrossSlots(
           caretFromPoint(selection.anchor, .next), caretFromPoint(selection.focus, .next)) != 1

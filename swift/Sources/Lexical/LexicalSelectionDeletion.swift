@@ -189,6 +189,21 @@ private func extendSelectionForDeletion(
       return false
     }
   }
+  // A slot boundary lives only in the model, so the movement can cross it.
+  // Deletion never does: stop the focus at the boundary instead. Resolving
+  // the range would clamp it into the landed point's frame and move the
+  // caret out of its slot.
+  if try getActiveEditor()._slotsUsed, let landedNode = try getNodeByKey(landed.0) {
+    let anchorFrame = try getSlotFrame(anchorNode)
+    let landedFrame = try getSlotFrame(landedNode)
+    if try !isSameFrame(landedFrame, anchorFrame)
+      && setPointAtSlotBoundary(
+        selection.focus, anchorNode, anchorFrame, landedFrame, .deletion, { !isBackward })
+    {
+      selection.dirty = true
+      return true
+    }
+  }
   // The general path: the range from the anchor to where the caret landed.
   try selection.focus.set(landed.0, landed.1, landed.2)
   selection.dirty = true

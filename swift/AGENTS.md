@@ -9,6 +9,10 @@ port. Read [DESIGN.md](DESIGN.md) before changing architecture.
 - **JS is the reference.** A difference from upstream is a Swift bug. Only UI
   behavior (Tier 2) may deviate, and only with an entry in
   `parity/deviations.json`.
+- **Platform standards first, then an API close to the web's.** Where the
+  port meets the platform, do what Apple's frameworks do and recommend,
+  then shape the API as close to the web's as that allows (DESIGN.md,
+  Parity).
 - **Port, don't invent.** Internal code mirrors the upstream source file by
   file and function by function (`$getRoot()`, `getWritable()`, ...), so a
   diff against JS is reviewable. Idiomatic API lives in a thin facade.

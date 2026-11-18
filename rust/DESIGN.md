@@ -19,6 +19,15 @@ pull request.
   half, the WebKit scenarios) is out of scope.
 - **JS is the reference.** A difference from upstream is a Rust bug, except
   the documented exceptions in [PARITY.md](PARITY.md).
+- **Platform standards first, then an API close to the web's.** Where an
+  API meets a platform (a UI toolkit such as the playgrounds' GPUI and
+  Rune, the operating system's fonts, text or input), it does what that
+  platform does and recommends, and only then is it shaped as close to
+  the web's as that allows. Names and units follow the platform, the CSS a
+  document carries maps onto them, and a mechanism the platform doesn't
+  use is not invented to mirror the web. The Swift port follows the same
+  rule (`swift/DESIGN.md`, Parity). JS stays the reference for the model's
+  behavior.
 - Conforms to the upstream release in `lexical_ui::UPSTREAM_VERSION`,
   which must match the vectors' `meta.json` (checked by the conformance
   runner).

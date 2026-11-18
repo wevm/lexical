@@ -145,6 +145,7 @@ private let coreCommands: [String: CoreCommand] = [
   "PASTE_COMMAND": .paste(PASTE_COMMAND),
   "REDO_COMMAND": .void(REDO_COMMAND),
   "REMOVE_TEXT_COMMAND": .void(REMOVE_TEXT_COMMAND),
+  "SELECTION_CHANGE_COMMAND": .void(SELECTION_CHANGE_COMMAND),
   "SELECT_ALL_COMMAND": .keyboard(SELECT_ALL_COMMAND),
   "SET_TEXT_FORMAT_COMMAND": .formats(SET_TEXT_FORMAT_COMMAND),
   "UNDO_COMMAND": .void(UNDO_COMMAND),
@@ -1366,6 +1367,12 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     try selection.anchor.set(anchor.0, anchor.1, anchor.2)
     try selection.focus.set(focus.0, focus.1, focus.2)
     try setSelection(selection)
+  case "selectionChange":
+    // `onSelectionChange` for a native selection at these points, as the
+    // text views report one.
+    let anchor = try point(action["anchor"] ?? .null)
+    let focus = try point(action["focus"] ?? action["anchor"] ?? .null)
+    try applySelectionChange(try getEditor(), anchor, focus)
   case "selectNodes":
     let selection = createNodeSelection()
     for key in action["keys"]?.arrayValue ?? [] {

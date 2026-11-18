@@ -921,6 +921,86 @@ func handleBeforeInput(_ event: InputEvent, _: Editor) throws -> Bool {
   return true
 }
 
+/// The update `onSelectionChange` runs for a native selection at these
+/// points (call it in an update): the points become a range selection with
+/// the format and style of the committed one (as
+/// `$internalCreateRangeSelection` gives it), a caret takes the format and
+/// style of where it is, a range the format its text shares, and
+/// `SELECTION_CHANGE_COMMAND` announces a change. The views map their
+/// native selection to the points.
+package func applySelectionChange(
+  _ editor: Editor, _ anchor: (NodeKey, Int, PointType), _ focus: (NodeKey, Int, PointType)
+) throws {
+  let selection = createRangeSelection()
+  if let last = editor.getEditorState()._selection as? RangeSelection {
+    selection.format = last.format
+    selection.style = last.style
+  }
+  try selection.anchor.set(anchor.0, anchor.1, anchor.2)
+  try selection.focus.set(focus.0, focus.1, focus.2)
+  try setSelection(selection)
+  selection.dirty = false
+  if selection.isCollapsed() {
+    try updateCollapsedSelectionFormatStyle(editor, selection)
+  } else {
+    try updateRangeSelectionFormat(selection)
+  }
+  try dispatchSelectionChangeCommand(editor, selection, force: selection.dirty)
+}
+
+/// `$updateCollapsedSelectionFormatStyle`: a caret takes the format and
+/// style of where it is.
+private func updateCollapsedSelectionFormatStyle(
+  _ editor: Editor, _ selection: RangeSelection
+)
+  throws
+{
+  let anchorNode = try selection.anchor.getNode()
+  if let text = anchorNode as? TextNode {
+    updateSelectionFormatStyle(selection, try text.getFormat(), try text.getStyle())
+  } else if let element = anchorNode as? ElementNode,
+    try editor.isComposing() || getRoot().getTextContent() != ""
+  {
+    if try element.isEmpty() {
+      try internalRefreshSelectionFormatAndStyle(selection, "")
+    } else {
+      updateSelectionFormatStyle(selection, selection.format, "")
+    }
+  }
+}
+
+private func updateSelectionFormatStyle(
+  _ selection: RangeSelection, _ format: Int, _ style: String
+) {
+  if selection.format != format || selection.style != style {
+    selection.format = format
+    selection.style = style
+    selection.dirty = true
+  }
+}
+
+/// The formats every selected text node has, as `onSelectionChange`
+/// computes for a range.
+private func updateRangeSelectionFormat(_ selection: RangeSelection) throws {
+  let nodes = try selection.getNodes()
+  let isBackward = try selection.isBackward()
+  let start = isBackward ? selection.focus : selection.anchor
+  let end = isBackward ? selection.anchor : selection.focus
+  var combinedFormat = IS_ALL_FORMATTING
+  var hasTextNodes = false
+  for (i, node) in nodes.enumerated() {
+    let size = try node.getTextContentSize()
+    guard let text = node as? TextNode, size != 0,
+      !(i == 0 && text.getKey() == start.key && start.offset == size),
+      !(i == nodes.count - 1 && text.getKey() == end.key && end.offset == 0)
+    else { continue }
+    hasTextNodes = true
+    combinedFormat &= try text.getFormat()
+    if combinedFormat == 0 { break }
+  }
+  selection.format = hasTextNodes ? combinedFormat : 0
+}
+
 /// `$handleCompositionStart`: marks the anchor's node as the one being
 /// composed. JS also prepares a text node for the browser to compose into
 /// (the empty space heuristic); the views insert the marked text through

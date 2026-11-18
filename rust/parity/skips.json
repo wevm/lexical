@@ -7072,18 +7072,6 @@
     "reason": "dom-only",
     "note": "Asserts the data-order the $decorateDOM overrides write into the DOM the reconciler renders into a root element; a Rust root element is the app's, the reconciler renders no DOM and $decorateDOM isn't ported (rust/PARITY.md, @lexical/html's DOM side)."
   },
-  "lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not let an older paste that resolves late replace the menu": {
-    "reason": "deviation",
-    "note": "Makes parseUrl return a promise that resolves after a later paste; the Rust EmbedConfig::parse_url is synchronous (rust/PARITY.md, auto-embed), so a paste's check cannot resolve late."
-  },
-  "lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not offer to embed a link whose URL changed while parsing": {
-    "reason": "deviation",
-    "note": "Changes the link's URL while a promise returned by parseUrl is pending; the Rust EmbedConfig::parse_url is synchronous (rust/PARITY.md, auto-embed), so there is no time while parsing."
-  },
-  "lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not offer to embed a link with a pending URL change when parsing resolves": {
-    "reason": "deviation",
-    "note": "Resolves a pending parseUrl promise in the same act as an uncommitted URL change; the Rust EmbedConfig::parse_url is synchronous (rust/PARITY.md, auto-embed), so parsing never resolves after the paste's commit."
-  },
   "lexical-text/src/__tests__/unit/registerLexicalTextEntityEquivalence.test.ts::the edge cases where a change of the calls would differ > strict setter, not recording": {
     "reason": "deviation",
     "note": "Its TagNode overrides setTextContent to throw when the helper would clear it, and checks no error is reported. In Rust set_text_content is a NodeRef method, not a LexicalNode hook a node class can override (as MarkGeneratedJSON's setIDs skip), so the guard this case exists for can't be written; the range, node selection and shortened cases are ported."

@@ -542,8 +542,11 @@ touches:
   visually hidden style. Of the menus: the React rendering, the anchor element, its scroll
   and resize handling. An `onClose` that returns a promise is
   `on_close_async`, given a `MenuCloseDone` that the app finishes (or
-  drops, as a rejected promise) where JS awaits it. Auto-embed's `parseUrl` is synchronous, so the menu
-  opens in the paste's mutation listener where JS awaits it.
+  drops, as a rejected promise) where JS awaits it. Auto-embed's `parseUrl` that returns a promise is
+  `EmbedConfig::parse_url_async`, given a `ParseUrlDone` that the config
+  resolves (or drops, as a rejected promise); a synchronous `parse_url`
+  opens the menu in the paste's mutation listener, where JS's
+  `await Promise.resolve(result)` opens it a microtask later.
   `BlockWithAlignableContents` (`@lexical/react`) is a React component:
   its commands are an extension, as in Swift (see its row), which aligns
   every selected block where React's one handler per block aligns the

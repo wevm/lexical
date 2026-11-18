@@ -3,8 +3,9 @@
 //! renders the menu with a `menuRenderFn` and clicks its button; here the
 //! node menu's options stand for what it draws (`getMenu()` is an open menu
 //! with options), and choosing one with `select_option_and_clean_up` is the
-//! click. `parseUrl` is synchronous here (rust/PARITY.md), so the tests of
-//! a parse that resolves late are skipped.
+//! click. A `parseUrl` that returns a promise is a config whose
+//! `parse_url_async` keeps its `ParseUrlDone` (`deferParseUrl()`), and
+//! resolving it is the promise resolving.
 
 #![cfg(all(
     feature = "auto-embed",
@@ -16,7 +17,7 @@
 
 use super::super::support::set_test_root_element;
 use crate::auto_embed::{
-    AutoEmbedConfig, AutoEmbedOption, DisableMenuFor, EmbedConfig, EmbedMatchResult,
+    AutoEmbedConfig, AutoEmbedOption, DisableMenuFor, EmbedConfig, EmbedMatchResult, ParseUrlDone,
     register_auto_embed,
 };
 use crate::extension::{LexicalEditorWithDispose, build_editor_from_extensions};
@@ -41,6 +42,11 @@ const URL_MATCHER: &str = r"((https?://(www\.)?)|(www\.))[-a-zA-Z0-9@:%._+~#=]{1
 struct TestEmbedConfig {
     parsed: RefCell<Vec<String>>,
     inserted: RefCell<Vec<(String, String)>>,
+    /// `parseUrl.mockReturnValueOnce(new Promise(...))`: the next parse
+    /// waits.
+    defer_next: Cell<bool>,
+    /// The parses that wait, to resolve.
+    deferred: RefCell<Vec<ParseUrlDone>>,
 }
 
 impl EmbedConfig for TestEmbedConfig {
@@ -48,9 +54,17 @@ impl EmbedConfig for TestEmbedConfig {
         "youtube-video"
     }
 
+    fn parse_url_async(&self, url: &str, done: ParseUrlDone) {
+        self.parsed.borrow_mut().push(url.to_owned());
+        if self.defer_next.replace(false) {
+            self.deferred.borrow_mut().push(done);
+        } else {
+            done.resolve(self.parse_url(url));
+        }
+    }
+
     /// `/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/.exec(url)`.
     fn parse_url(&self, url: &str) -> Option<EmbedMatchResult> {
-        self.parsed.borrow_mut().push(url.to_owned());
         let re = regex::Regex::new(r"(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]+)").unwrap();
         let id = re.captures(url)?.get(1)?.as_str().to_owned();
         Some(EmbedMatchResult {
@@ -198,6 +212,21 @@ impl Fixture {
         self.editor.read(|| get_root().get_text_content()).unwrap()
     }
 
+    /// `deferParseUrl()`: the next parse waits until [`Self::resolve`].
+    fn defer_parse_url(&self) {
+        self.config.defer_next.set(true);
+    }
+
+    /// Resolves the oldest parse that waits.
+    fn resolve(&self, id: &str, url: &str) {
+        let done = self.config.deferred.borrow_mut().remove(0);
+        done.resolve(Some(EmbedMatchResult {
+            url: url.to_owned(),
+            id: id.to_owned(),
+            data: None,
+        }));
+    }
+
     fn parsed(&self) -> Vec<String> {
         self.config.parsed.borrow().clone()
     }
@@ -293,6 +322,64 @@ fn does_not_embed_a_link_whose_url_changed_in_a_pending_update() {
             .as_deref(),
         Some("https://example.com/")
     );
+}
+
+// upstream: lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not let an older paste that resolves late replace the menu
+#[test]
+fn does_not_let_an_older_paste_that_resolves_late_replace_the_menu() {
+    const OTHER_URL: &str = "https://www.youtube.com/watch?v=OTHERvid123";
+    let f = Fixture::new(None);
+    f.defer_parse_url();
+    f.paste(&plain(YOUTUBE_URL));
+    assert!(!f.is_menu_shown());
+    f.paste_with(&plain(OTHER_URL), || {
+        let paragraph = create_paragraph_node();
+        get_root().append(std::slice::from_ref(&paragraph))?;
+        paragraph.select(None, None).map(|_| ())
+    });
+    assert!(f.is_menu_shown());
+    f.resolve("jNQXAC9IVRw", YOUTUBE_URL);
+    f.select_embed_option();
+    assert_eq!(
+        f.inserted(),
+        [("OTHERvid123".to_owned(), OTHER_URL.to_owned())]
+    );
+}
+
+// upstream: lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not offer to embed a link whose URL changed while parsing
+#[test]
+fn does_not_offer_to_embed_a_link_whose_url_changed_while_parsing() {
+    let f = Fixture::new(None);
+    f.defer_parse_url();
+    f.paste(&plain(YOUTUBE_URL));
+    assert!(!f.is_menu_shown());
+    f.pending_update(|| {
+        pasted_link().set_url("https://example.com/");
+        Ok(())
+    });
+    crate::updates::commit_pending_updates(&f.editor).unwrap();
+    f.resolve("jNQXAC9IVRw", YOUTUBE_URL);
+    assert!(!f.is_menu_shown());
+}
+
+// upstream: lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > does not offer to embed a link with a pending URL change when parsing resolves
+#[test]
+fn does_not_offer_to_embed_a_link_with_a_pending_url_change_when_parsing_resolves() {
+    let f = Fixture::new(None);
+    f.defer_parse_url();
+    f.paste(&plain(YOUTUBE_URL));
+    assert!(!f.is_menu_shown());
+    // Resolved while the URL change is pending, before it commits.
+    f.pending_update(|| {
+        pasted_link().set_url("https://example.com/");
+        Ok(())
+    });
+    f.resolve("jNQXAC9IVRw", YOUTUBE_URL);
+    // The check reads the pending state, so the menu doesn't open even
+    // before the change commits.
+    assert!(!f.is_menu_shown());
+    crate::updates::commit_pending_updates(&f.editor).unwrap();
+    assert!(!f.is_menu_shown());
 }
 
 // upstream: lexical-react/src/__tests__/unit/LexicalAutoEmbedPlugin.test.tsx::LexicalAutoEmbedPlugin > offers to embed a bare URL pasted as plain text

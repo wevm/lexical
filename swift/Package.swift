@@ -74,7 +74,7 @@ let package = Package(
         .product(name: "SwiftSyntaxMacrosGenericTestSupport", package: "swift-syntax"),
       ]),
     // @lexical/extension: the builder, signals and the core extensions.
-    .target(name: "LexicalExtension", dependencies: ["Lexical"]),
+    .target(name: "LexicalExtension", dependencies: ["Lexical", "LexicalUtils"]),
     .testTarget(
       name: "LexicalExtensionTests",
       dependencies: [

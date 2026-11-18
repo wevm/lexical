@@ -53,6 +53,9 @@
     private let history = HistoryUndoManager()
     public override var undoManager: UndoManager? { history }
     private let blockBarsView = BlockBarsView()
+    /// How many `selectionAlwaysOnDisplay()` marks are in effect: while
+    /// one is, the selection stays highlighted when the view resigns.
+    private var selectionMarks = 0
     /// The text and paragraph look of the last block.
     private var lastBlockAttributes: [NSAttributedString.Key: Any]?
     /// Whether the selection is text, which shows the caret, the highlight
@@ -472,6 +475,26 @@
       return rects
     }
 
+    /// The selection's rects, as `highlightRects` gives them, while a
+    /// `selectionAlwaysOnDisplay()` mark is in effect and the view is not
+    /// the first responder, which hides `UITextView`'s own highlight. A
+    /// caret is not marked, as JS's mark of a collapsed range has no width.
+    private func selectionMarkRects(_ layoutManager: NSTextLayoutManager) -> [(CGRect, UIColor)] {
+      guard selectionMarks > 0, !isFirstResponder, showsTextSelection, selectedRange.length > 0,
+        let textRange = textRange(selectedRange)
+      else { return [] }
+      let color = tintColor.withAlphaComponent(0.25)
+      var rects: [(CGRect, UIColor)] = []
+      layoutManager.enumerateTextSegments(in: textRange, type: .highlight, options: []) {
+        _, segment, _, _ in
+        guard let frame = layoutManager.selectionSegment(trimming: segment) else { return true }
+        rects.append(
+          (frame.offsetBy(dx: textContainerInset.left, dy: textContainerInset.top), color))
+        return true
+      }
+      return rects
+    }
+
     /// Puts a `CheckboxControl` over each check box in `markers`, and
     /// removes those of items that no longer have one.
     private func layoutCheckboxes(_ markers: [(NodeKey, CGRect, TextKitListMarkerLayout)]) {
@@ -576,7 +599,7 @@
             x: textContainerInset.left + padding, y: textContainerInset.top + frame.minY,
             width: textContainer.size.width - 2 * padding, height: frame.height))
       }
-      blockBarsView.highlights = highlightRects(layoutManager)
+      blockBarsView.highlights = highlightRects(layoutManager) + selectionMarkRects(layoutManager)
       sendSubviewToBack(blockBarsView)
       layoutPlaceholder(layoutManager)
     }
@@ -1001,6 +1024,7 @@
     public override func becomeFirstResponder() -> Bool {
       guard super.becomeFirstResponder() else { return false }
       showSelectionDisplay()
+      if selectionMarks > 0 { setNeedsLayout() }
       perform {
         if try editor.read(.latest, { try getSelection() }) == nil {
           let range = selectedRange
@@ -1013,6 +1037,7 @@
 
     public override func resignFirstResponder() -> Bool {
       guard super.resignFirstResponder() else { return false }
+      if selectionMarks > 0 { setNeedsLayout() }
       perform {
         if controller.markedRange != nil { try controller.unmarkText() }
         try controller.focusChanged(false)
@@ -1082,6 +1107,20 @@
       guard let url = URL(string: url) else { return }
       DispatchQueue.main.async { [weak self] in
         self?.window?.windowScene?.open(url, options: nil, completionHandler: nil)
+      }
+    }
+
+    /// Keeps the selection highlighted while the view is not the first
+    /// responder, in the tint color, until the returned function runs.
+    public func selectionAlwaysOnDisplay() -> () -> Void {
+      selectionMarks += 1
+      setNeedsLayout()
+      var isMarked = true
+      return { [weak self] in
+        guard isMarked, let self else { return }
+        isMarked = false
+        selectionMarks -= 1
+        setNeedsLayout()
       }
     }
   }

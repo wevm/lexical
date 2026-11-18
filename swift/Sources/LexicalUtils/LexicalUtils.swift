@@ -581,3 +581,16 @@ public func isAtStartOfNode(_ point: Point, _ node: ElementNode) throws -> Bool 
 public func isAtEndOfNode(_ point: Point, _ node: ElementNode) throws -> Bool {
   try isAtEdgeOfElement(point, node, .next)
 }
+
+/// `selectionAlwaysOnDisplay(editor)`: keeps the editor's selection shown
+/// while its root does not have the focus, through each root's
+/// `LexicalRootElement.selectionAlwaysOnDisplay()`. JS marks the selection
+/// with positioned elements when the document's selection leaves the root;
+/// a native view keeps its own selection, so the view shows it while it is
+/// not the first responder. JS's `onReposition`, which receives the marking
+/// elements, has no counterpart.
+public func selectionAlwaysOnDisplay(_ editor: Editor) -> () -> Void {
+  editor.registerRootListener { rootElement, _ in
+    (rootElement as? LexicalRootElement)?.selectionAlwaysOnDisplay()
+  }
+}

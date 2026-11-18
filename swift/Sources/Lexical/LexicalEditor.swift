@@ -200,6 +200,11 @@ public protocol LexicalRootElement: AnyObject {
   /// Opens `url`, as `window.open(url, target, features)` does in the DOM
   /// root's window. Does nothing by default.
   func open(_ url: String, _ target: String, _ features: String?)
+  /// Shows the editor's selection while the root does not have the focus,
+  /// as `selectionAlwaysOnDisplay` from `@lexical/utils` marks it, until
+  /// the returned function runs. Returns one that does nothing by default,
+  /// for a root that already shows its selection without the focus.
+  func selectionAlwaysOnDisplay() -> () -> Void
 }
 
 extension LexicalRootElement {
@@ -208,6 +213,7 @@ extension LexicalRootElement {
   public func focus() {}
   public func caretFromPoint(_ x: Double, _ y: Double) throws -> PointCaret? { nil }
   public func open(_ url: String, _ target: String, _ features: String?) {}
+  public func selectionAlwaysOnDisplay() -> () -> Void { {} }
 }
 
 /// `EditorFocusOptions`.

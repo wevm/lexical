@@ -22,8 +22,8 @@
 //!
 //! Shadow roots other than the root are not ported, so the branches for
 //! them are no-ops (each is noted where JS has it), as are the parts that
-//! read a decorator's DOM. Slot boundaries are kept, but for the stop where
-//! `Selection.modify` lands in another slot frame (as in Swift).
+//! read a decorator's DOM. Slot boundaries are kept, the stop where the
+//! movement lands in another slot frame included.
 
 use crate::LexicalError;
 use crate::caret::{
@@ -623,9 +623,10 @@ impl SelectionRef {
 
 /// `$extendSelectionForDeletion(selection, isBackward, granularity)`:
 /// extends the collapsed selection over what the deletion removes. Returns
-/// true when the focus stopped at a slot boundary (never here: the stop
-/// where `Selection.modify` lands in another slot frame, the `'deletion'`
-/// mode of `$setPointAtSlotBoundary`, isn't ported, as in Swift).
+/// true when the focus stopped at a slot boundary: a movement that lands in
+/// another slot frame is pulled back to the boundary in the anchor's frame,
+/// as JS's `'deletion'` mode of `$setPointAtSlotBoundary` pulls back a
+/// `Selection.modify` that crossed one.
 ///
 /// The moves across blocks are resolved in the model; every other move is
 /// measured by the editor's [`SelectionMovement`] where JS uses the DOM
@@ -725,8 +726,28 @@ fn extend_selection_for_deletion(
             return Ok(false);
         }
     }
-    // JS stops the focus at a slot boundary here when the landed point is
-    // in another slot frame; not ported (see above).
+    // A slot boundary lives only in the model, so the movement can cross it.
+    // Deletion never does: stop the focus at the boundary instead. Resolving
+    // the range would clamp it into the landed point's frame and move the
+    // caret out of its slot.
+    if crate::slot::slots_used() {
+        let landed_node = landed.get_node()?;
+        let anchor_frame = crate::slot::get_slot_frame(&anchor_node);
+        let landed_frame = crate::slot::get_slot_frame(&landed_node);
+        if !crate::lexical_selection::is_same_frame(landed_frame.as_ref(), anchor_frame.as_ref())
+            && crate::lexical_selection::set_point_at_slot_boundary(
+                selection,
+                Which::Focus,
+                Some(&anchor_node),
+                anchor_frame.as_ref(),
+                landed_frame.as_ref(),
+                crate::lexical_selection::SlotBoundaryMode::Deletion,
+                || Ok(!is_backward),
+            )?
+        {
+            return Ok(true);
+        }
+    }
 
     // General path: the [original .. landed] range a native extend would
     // have produced, in document order.

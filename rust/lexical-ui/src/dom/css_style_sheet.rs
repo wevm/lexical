@@ -176,8 +176,8 @@ mod tests {
     }
 
     /// The rules jsdom 30's `sheet.cssRules` gives for the same sheets
-    /// (`selectorText`, and the declarations without shorthands, which the
-    /// port's declaration doesn't expand).
+    /// (`selectorText`, and the declarations; `css/declarations` pins the
+    /// shorthands).
     #[test]
     fn rules_as_jsdom_parses_them() {
         assert_eq!(

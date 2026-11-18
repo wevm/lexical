@@ -7,10 +7,9 @@
 //! ([`parse_style_sheet`]) and their selectors matched with
 //! [`DomNode::query_selector_all`]. A selector it rejects is skipped, as
 //! JS skips one `querySelectorAll` throws on; a valid selector outside its
-//! subset (pseudo-classes, namespaces, escapes) is skipped too, where JS
-//! would apply it. Shorthand properties (`font`, `margin`...) are copied
-//! as they are, without the longhands a browser's declaration expands them
-//! into (rust/PARITY.md).
+//! subset (namespaces, escapes, `:dir()`...) is skipped too, where JS would
+//! apply it. A rule's `font` reaches the element as its longhands and the
+//! shorthand, as jsdom's declaration expands it (rust/PARITY.md).
 
 #[cfg(feature = "extension")]
 use super::dom_import_extension::{DomPreprocessContext, PreprocessNext};

@@ -76,3 +76,45 @@ pub fn check_value(case: &Value, _file: &Value) -> Result<Outcome, String> {
     )?;
     Ok(Outcome::Pass)
 }
+
+/// `css/declarations`: after `cssText` and each `setProperty` of `set`,
+/// the declaration lists the properties jsdom's does (the `font` shorthand
+/// with its longhands), with their values and priorities, and serializes
+/// as its `cssText`.
+pub fn check_declaration(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    let element = get_document().create_element("span");
+    let style = element.style();
+    style.set_css_text(case.str("css")?);
+    for call in case.arr("set")? {
+        let arg = |i: usize| {
+            call.as_array()
+                .and_then(|a| a.get(i))
+                .and_then(Value::as_str)
+                .ok_or_else(|| "`set` holds a call that is not three strings".to_owned())
+        };
+        style.set_property(arg(0)?, arg(1)?, arg(2)?);
+    }
+    let properties: Vec<Value> = style
+        .property_names()
+        .into_iter()
+        .map(|name| {
+            Value::Array(vec![
+                Value::from(name.as_str()),
+                Value::from(style.get_property_value(&name)),
+                Value::from(style.get_property_priority(&name)),
+            ])
+        })
+        .collect();
+    same(
+        "properties",
+        Value::Array(properties).to_string(),
+        case.field("properties")?.to_string(),
+    )?;
+    same("cssText", style.css_text().as_str(), case.str("cssText")?)?;
+    same(
+        "style attribute",
+        element.get_attribute("style").unwrap_or_default().as_str(),
+        case.str("cssText")?,
+    )?;
+    Ok(Outcome::Pass)
+}

@@ -3,6 +3,7 @@
 //! the way the declaration of the upstream tests (jsdom) normalizes the
 //! values Lexical writes ([`normalize_css_value`]).
 
+use super::css_font::{FONT_LONGHANDS, has_var_func, parse_font, serialize_font};
 use super::css_values::{normalize_css_value, parse_css_declarations, preprocess_css};
 use super::node::DomNode;
 use crate::set_dom_style::js_trim;
@@ -74,14 +75,74 @@ impl CssStyleDeclaration {
     pub fn set_property(&mut self, name: &str, value: &str, priority: &str) -> bool {
         let name = canonical_name(name, false);
         let value = preprocess_css(value);
-        if value.is_empty() {
-            return self.remove_property(&name).is_some();
+        if js_trim(&value).is_empty() {
+            // The `font` setter clears its longhands too.
+            let mut changed = false;
+            if name == "font" {
+                for longhand in FONT_LONGHANDS {
+                    changed |= self.remove_property(longhand).is_some();
+                }
+            }
+            return self.remove_property(&name).is_some() || changed;
         }
         let priority = priority.to_lowercase();
         if !(priority.is_empty() || priority == "important") {
             return false;
         }
-        self.write(name, &value, priority)
+        self.set_property_value(name, &value, priority)
+    }
+
+    /// jsdom's `_setPropertyValue`: the property's setter, which for `font`
+    /// writes its longhands, and for a longhand of it set to a `var()`
+    /// clears the shorthand.
+    fn set_property_value(&mut self, name: String, value: &str, priority: String) -> bool {
+        if name == "font" {
+            return self.set_font(js_trim(value), &priority);
+        }
+        let mut changed = false;
+        if FONT_LONGHANDS.contains(&name.as_str()) && has_var_func(value) {
+            changed = self.remove_property("font").is_some();
+        }
+        self.write(name, value, priority) || changed
+    }
+
+    /// The `font` setter (`properties/font.js`' `descriptor.set`): the
+    /// longhands `value` expands into, then the shorthand, as the longhands
+    /// that aren't `normal`; a `var()` is kept whole, without longhands.
+    fn set_font(&mut self, value: &str, priority: &str) -> bool {
+        if has_var_func(value) {
+            for longhand in FONT_LONGHANDS {
+                self.remove_property(longhand);
+            }
+            self.write_raw("font", value, priority);
+            return true;
+        }
+        let Some(longhands) = parse_font(value) else {
+            return false;
+        };
+        for key in FONT_LONGHANDS {
+            if let Some((_, value)) = longhands.iter().find(|(k, _)| *k == key) {
+                self.write_raw(key, value, priority);
+            }
+        }
+        self.write_raw("font", &serialize_font(&longhands), priority);
+        true
+    }
+
+    /// jsdom's `_setProperty`: stores the value as it is, in place when the
+    /// property is set already.
+    fn write_raw(&mut self, name: &str, value: &str, priority: &str) {
+        match self.entries.iter_mut().find(|e| e.name == name) {
+            Some(entry) => {
+                entry.value = value.to_owned();
+                entry.priority = priority.to_owned();
+            }
+            None => self.entries.push(Entry {
+                name: name.to_owned(),
+                value: value.to_owned(),
+                priority: priority.to_owned(),
+            }),
+        }
     }
 
     /// `removeProperty(name)`: the removed value, or `None` when the
@@ -94,8 +155,20 @@ impl CssStyleDeclaration {
 
     /// `cssText`.
     pub fn css_text(&self) -> String {
-        self.entries
-            .iter()
+        // `font` stands for the longhands set before it, unless one of them
+        // is important and it isn't.
+        let mut serialized: Vec<&Entry> = Vec::new();
+        for entry in &self.entries {
+            if entry.name == "font" {
+                serialized.retain(|e| {
+                    !(FONT_LONGHANDS.contains(&e.name.as_str())
+                        && (!entry.priority.is_empty() || e.priority.is_empty()))
+                });
+            }
+            serialized.push(entry);
+        }
+        serialized
+            .into_iter()
             .map(|e| {
                 let important = if e.priority.is_empty() {
                     ""
@@ -124,15 +197,58 @@ impl CssStyleDeclaration {
         self.parse_declarations(css, true);
     }
 
+    /// jsdom's `cssText` setter: each property's last declaration, unless
+    /// an earlier one is important, in the place of its first; then
+    /// `prepareProperties`, which puts the longhands of a `font` before it;
+    /// then each property's setter in that order.
     fn parse_declarations(&mut self, css: &str, keep_case: bool) {
         self.entries.clear();
+        let mut declared: Vec<Entry> = Vec::new();
         for (name, raw_value) in parse_css_declarations(&preprocess_css(css)) {
             let (value, important) = split_important(&raw_value);
-            self.write(
-                canonical_name(&name, keep_case),
-                &value,
-                if important { "important" } else { "" }.to_owned(),
-            );
+            let name = canonical_name(&name, keep_case);
+            if name != "font" && normalize_css_value(&name, &value).is_none() {
+                continue;
+            }
+            let priority = if important { "important" } else { "" }.to_owned();
+            match declared.iter_mut().find(|e| e.name == name) {
+                Some(entry) if entry.priority.is_empty() => {
+                    entry.value = value;
+                    entry.priority = priority;
+                }
+                Some(_) => {}
+                None => declared.push(Entry {
+                    name,
+                    value,
+                    priority,
+                }),
+            }
+        }
+        let mut prepared: Vec<Entry> = Vec::new();
+        let mut prepare = |name: &str, value: String, priority: &str| match prepared
+            .iter_mut()
+            .find(|e| e.name == name)
+        {
+            Some(entry) => {
+                entry.value = value;
+                entry.priority = priority.to_owned();
+            }
+            None => prepared.push(Entry {
+                name: name.to_owned(),
+                value,
+                priority: priority.to_owned(),
+            }),
+        };
+        for entry in declared {
+            if entry.name == "font" && !has_var_func(&entry.value) {
+                for (longhand, value) in parse_font(&entry.value).unwrap_or_default() {
+                    prepare(longhand, value, &entry.priority);
+                }
+            }
+            prepare(&entry.name, entry.value, &entry.priority);
+        }
+        for entry in prepared {
+            self.set_property_value(entry.name, &entry.value, entry.priority);
         }
     }
 

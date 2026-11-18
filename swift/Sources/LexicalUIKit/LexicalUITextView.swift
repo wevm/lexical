@@ -70,7 +70,6 @@
     /// `ContentEditable`'s `placeholder` and `aria-placeholder`.
     public var placeholder: String? {
       didSet {
-        placeholderLabel.text = placeholder
         setNeedsLayout()
       }
     }
@@ -321,7 +320,7 @@
           NSRange(location: 0, length: length))
         for key: NSAttributedString.Key in [
           .font, .foregroundColor, .backgroundColor, .underlineStyle, .strikethroughStyle,
-          .baselineOffset,
+          .baselineOffset, .tracking,
         ] {
           textStorage.removeAttribute(key, range: range)
         }
@@ -629,8 +628,15 @@
       let lineHeight = max(
         line.height, (controller.theme["root"]?.lineHeightMultiple ?? 0) * font.pointSize)
       let padding = textContainer.lineFragmentPadding
-      placeholderLabel.font = font
-      placeholderLabel.textColor = attributes.foregroundColor.uiColor
+      var label: [NSAttributedString.Key: Any] = [
+        .font: font, .foregroundColor: attributes.foregroundColor.uiColor,
+      ]
+      if attributes.tracking != 0 {
+        let scale = traitCollection.preferredContentSizeCategory.themeScale
+        label[.tracking] = attributes.tracking * scale
+      }
+      placeholderLabel.attributedText = NSAttributedString(
+        string: placeholder ?? "", attributes: label)
       placeholderLabel.frame = CGRect(
         x: textContainerInset.left + padding,
         y: textContainerInset.top + line.minY + (lineHeight - height) / 2,

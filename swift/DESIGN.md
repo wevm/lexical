@@ -811,9 +811,14 @@ Reversible choices made porting `@lexical/extension` under Q18.
   and one line number per line, as the web theme's `::before` draws
   `data-gutter`. A theme `tabSize` sets the paragraph's
   `defaultTabInterval` to that many spaces of its font, as CSS
-  `tab-size`. A theme `cursor` of `.pointer` (the default theme's `link`,
-  after `__link:hover { cursor: pointer }`) shows the pointing hand over
-  the text on macOS, as the AppKit `.cursor` attribute; iOS has no text
+  `tab-size`. A theme `tracking` is CSS `letter-spacing`, in points, drawn
+  as the `.tracking` attribute rather than `.kern`: tracking adds the space
+  after every character cluster and turns off the font's optional
+  ligatures, as `letter-spacing` does, where kerning keeps them. A CSS
+  `em` value has no TextKit unit and is not read yet. A theme `cursor` of
+  `.pointer` (the default theme's `link`, after
+  `__link:hover { cursor: pointer }`) shows the pointing hand over the
+  text on macOS, as the AppKit `.cursor` attribute; iOS has no text
   cursor to change. `textTransform` is not drawn yet,
   so the default theme's `h2` and `h3` show their case as typed.
 - **Decorators** (Q12). A decorator's U+FFFC carries an `NSTextAttachment`

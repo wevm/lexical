@@ -159,6 +159,7 @@
       if baselineOffset != 0 {
         attributes[.baselineOffset] = baselineOffset * contentSize.themeScale
       }
+      if tracking != 0 { attributes[.tracking] = tracking * contentSize.themeScale }
       return attributes
     }
   }

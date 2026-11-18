@@ -126,3 +126,43 @@ private func withEditor(
     }
   }
 }
+
+/// A root element that records what it is asked to open, as a native view
+/// opens it with the system.
+private final class OpeningRoot: LexicalRootElement {
+  var isConnected: Bool { true }
+  var calls: [[String]] = []
+  func open(_ url: String, _ target: String, _ features: String?) {
+    calls.append([url, target] + (features.map { [$0] } ?? []))
+  }
+}
+
+@Suite struct ClickableLinkDefaultWindowTests {
+  /// JS opens links in the global window by default; Swift in the root
+  /// element's, so a view opens them without the app configuring one.
+  @Test func defaultOpensWithTheRootElement() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        name: "[root]", dependencies: [ClickableLinkExtension, RichTextExtension],
+        editorConfig: InitialEditorConfig(
+          initialEditorState: .update { _ in
+            let link = try createLinkNode(URL).append(createTextNode("Hello"))
+            try getRoot().append(createParagraphNode().append(link))
+          })))
+    defer { editor.dispose() }
+    let textKey = try editor.read { try getRoot().getLastDescendant()!.getKey() }
+    let click = { (button: Int) in
+      _ = try editor.dispatchCommand(
+        CLICK_COMMAND,
+        MouseEvent(button == 0 ? "click" : "auxclick", button: button, targetKey: textKey))
+    }
+    // A root that is not a LexicalRootElement has no window: nothing opens.
+    try editor.setRootElement(TestRootElement())
+    try click(0)
+    let root = OpeningRoot()
+    try editor.setRootElement(root)
+    try click(0)
+    try click(1)
+    #expect(root.calls == [[URL, "_self"], [URL, "_blank", "noopener"]])
+  }
+}

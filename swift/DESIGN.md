@@ -910,8 +910,11 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   native views send with the node under the pointer, in place of JS's root
   `click`/`auxclick` listeners. It opens links through
   `ClickableLinkConfig.getWindow`, which returns a `LinkWindow` (JS
-  `window.open`) and defaults to none, because there is no global window. The
-  views do not supply one yet. JS's fallback for a plain `<a>` that is not a
+  `window.open`). JS defaults to the global window; Swift defaults to the
+  root element's (`LexicalRootElement.open`), which `LexicalNSTextView`
+  opens with `NSWorkspace` and `LexicalUITextView` with its window scene,
+  the system's handler for the URL. An app has no tab of its own, so
+  `_self` and `_blank` open the same way. JS's fallback for a plain `<a>` that is not a
   LinkNode has nothing to act on natively, so it is not ported. The
   generated JSON functions (`LexicalLinkGeneratedJSON.ts`) are a JS speed-up
   of the schema walk, which serializes the same bytes, so they are not

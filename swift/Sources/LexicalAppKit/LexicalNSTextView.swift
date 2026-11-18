@@ -1302,6 +1302,14 @@
     public func caretFromPoint(_ x: Double, _ y: Double) throws -> PointCaret? {
       try controller.caret(at: characterIndexForInsertion(at: NSPoint(x: x, y: y)))
     }
+
+    /// Opens `url` with the system's handler for it (a browser for a web
+    /// link), after the update that asked: an app has no tab of its own to
+    /// open it in, so every `target` opens the same way.
+    public func open(_ url: String, _ target: String, _ features: String?) {
+      guard let url = URL(string: url) else { return }
+      DispatchQueue.main.async { NSWorkspace.shared.open(url) }
+    }
   }
 
   extension NSRange {

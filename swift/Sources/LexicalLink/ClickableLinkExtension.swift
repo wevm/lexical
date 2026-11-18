@@ -7,7 +7,9 @@ import LexicalExtension
 // link with `window.open`. The native views report a click as
 // `CLICK_COMMAND`, with the node under the pointer as `targetKey`, so the
 // extension handles that command, and `LinkWindow` stands in for the
-// window. JS also opens a plain `<a>` that is not a LinkNode; a native view
+// window. JS's default, the global window, becomes the root element's
+// (`LexicalRootElement.open`), with which the native views open a link
+// through the system. JS also opens a plain `<a>` that is not a LinkNode; a native view
 // has no such element, so that branch is not ported.
 
 /// What `ClickableLinkExtension` opens a link with: JS `Window.open`.
@@ -23,17 +25,32 @@ public struct ClickableLinkConfig {
   public var newTab: Bool
   public var disabled: Bool
   /// The window to open links in, or `nil` to not open them. JS defaults to
-  /// the global `window`; the native views have none, so the app supplies
-  /// it.
+  /// the global `window`; Swift to the root element's
+  /// (`LexicalRootElement.open`), which the native views implement with the
+  /// system's handler for the URL.
   public var getWindow: (Editor) -> LinkWindow?
 
   public init(
     newTab: Bool = false, disabled: Bool = false,
-    getWindow: @escaping (Editor) -> LinkWindow? = { _ in nil }
+    getWindow: @escaping (Editor) -> LinkWindow? = defaultGetWindow
   ) {
     self.newTab = newTab
     self.disabled = disabled
     self.getWindow = getWindow
+  }
+}
+
+/// `defaultGetWindow`: the window of the editor's root element.
+@usableFromInline func defaultGetWindow(_ editor: Editor) -> LinkWindow? {
+  (editor.getRootElement() as? LexicalRootElement).map(RootElementWindow.init)
+}
+
+/// Opens links with `LexicalRootElement.open`.
+private final class RootElementWindow: LinkWindow {
+  let root: LexicalRootElement
+  init(_ root: LexicalRootElement) { self.root = root }
+  func open(_ url: String, _ target: String, _ features: String?) {
+    root.open(url, target, features)
   }
 }
 

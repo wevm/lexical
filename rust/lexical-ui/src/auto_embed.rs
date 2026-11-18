@@ -8,9 +8,13 @@
 //! `LexicalNodeMenuPlugin`; here [`register_auto_embed`] keeps it and
 //! drives a [`NodeMenu`], which the app's view draws.
 //!
-//! `parseUrl` is synchronous: JS awaits what it returns, which may be a
-//! promise, so the menu opens after the paste's commit; here it opens in
-//! the commit's mutation listener (rust/PARITY.md).
+//! `parseUrl` may return a promise in JS, which the plugin awaits; here an
+//! [`EmbedConfig`] answers synchronously ([`EmbedConfig::parse_url`]) or
+//! later, through the [`ParseUrlDone`] that
+//! [`EmbedConfig::parse_url_async`] is given. A synchronous answer opens
+//! the menu in the paste's mutation listener, where JS's
+//! `await Promise.resolve(result)` opens it a microtask later
+//! (rust/PARITY.md).
 
 use crate::lexical_selection::get_selection;
 use crate::link::is_link_node;
@@ -18,9 +22,9 @@ use crate::menu::{MenuOption, MenuSelectOption, NodeMenu};
 use crate::merge_register::merge_register;
 use crate::updates::on_update;
 use crate::{
-    COMMAND_PRIORITY_BEFORE_EDITOR, COMMAND_PRIORITY_EDITOR, Editor, LexicalCommand, LexicalError,
-    MutationListenerOptions, NodeKey, NodeMutation, NodeRef, PASTE_COMMAND, PASTE_TAG,
-    PasteCommandType, Unregister, UpdateOptions, get_node_by_key,
+    COMMAND_PRIORITY_BEFORE_EDITOR, COMMAND_PRIORITY_EDITOR, Editor, EditorReadMode,
+    LexicalCommand, LexicalError, MutationListenerOptions, NodeKey, NodeMutation, NodeRef,
+    PASTE_COMMAND, PASTE_TAG, PasteCommandType, Unregister, UpdateOptions, get_node_by_key,
 };
 use std::any::Any;
 use std::cell::{Cell, RefCell};
@@ -37,14 +41,41 @@ pub struct EmbedMatchResult {
 
 /// `EmbedConfig`: a kind of embed, with its `type`, `parseUrl`, which
 /// decides whether a URL is one and extracts its data, and `insertNode`,
-/// which inserts its node.
+/// which inserts its node. A config implements `parse_url`, or
+/// `parse_url_async` when it answers later (JS's `parseUrl` returning a
+/// promise).
 pub trait EmbedConfig {
     /// `type`.
     fn embed_type(&self) -> &str;
-    /// `parseUrl(text)`.
-    fn parse_url(&self, text: &str) -> Option<EmbedMatchResult>;
+    /// `parseUrl(text)`, answered now. `None` unless implemented.
+    fn parse_url(&self, _text: &str) -> Option<EmbedMatchResult> {
+        None
+    }
+    /// `parseUrl(text)` returning a promise: the config resolves `done`
+    /// with the result when it has one, now or later; dropping it is a
+    /// rejected promise, which ends the check. By default, resolves it
+    /// with [`parse_url`](Self::parse_url).
+    fn parse_url_async(&self, text: &str, done: ParseUrlDone) {
+        done.resolve(self.parse_url(text));
+    }
     /// `insertNode(editor, result)`, in an update.
     fn insert_node(&self, editor: &Editor, result: &EmbedMatchResult) -> Result<(), LexicalError>;
+}
+
+/// What settles a [`EmbedConfig::parse_url_async`], as the promise JS's
+/// `parseUrl` returns does: [`resolve`](Self::resolve) it with the result,
+/// or drop it to reject. Only the latest paste's check opens the menu, so
+/// a parse that resolves after a newer paste is ignored, as is one whose
+/// link was removed or given another URL meanwhile.
+pub struct ParseUrlDone(Option<Box<dyn FnOnce(Option<EmbedMatchResult>)>>);
+
+impl ParseUrlDone {
+    /// The promise resolved with `result`.
+    pub fn resolve(mut self, result: Option<EmbedMatchResult>) {
+        if let Some(resolve) = self.0.take() {
+            resolve(result);
+        }
+    }
 }
 
 /// `INSERT_EMBED_COMMAND`: starts inserting the embed whose config has the
@@ -285,29 +316,50 @@ impl AutoEmbedState {
             link.get_url()
         });
         let Some(url) = url else { return };
-        // The last config that matches wins.
-        for embed_config in self.config.embed_configs.iter().rev() {
-            let result = embed_config.parse_url(&url);
-            if check != self.latest_check.get() {
-                return;
-            }
-            if let Some(result) = result {
-                let embeddable = self.editor.get_editor_state().read(|| {
-                    get_current_link(key, &url)
-                        .is_some_and(|link| !self.is_menu_disabled_for_node(&link))
-                });
-                if embeddable {
-                    *self.embed_match.borrow_mut() = Some(EmbedMatch {
-                        embed_config: embed_config.clone(),
-                        key: key.to_owned(),
-                        result,
-                        url,
-                    });
-                    self.render();
+        // The last config that matches wins, so they are tried from the end.
+        self.try_embed_config(self.config.embed_configs.len(), check, key.to_owned(), url);
+    }
+
+    /// The loop of `checkIfLinkNodeIsEmbeddable` from the config before
+    /// `index`, each `parseUrl` awaited before the next.
+    fn try_embed_config(self: &Rc<Self>, index: usize, check: u64, key: NodeKey, url: String) {
+        let Some(index) = index.checked_sub(1) else {
+            return;
+        };
+        let embed_config = self.config.embed_configs[index].clone();
+        let state = Rc::downgrade(self);
+        let (parsed_config, parsed_url) = (embed_config.clone(), url.clone());
+        embed_config.parse_url_async(
+            &url,
+            ParseUrlDone(Some(Box::new(move |result| {
+                let Some(state) = state.upgrade() else { return };
+                if check != state.latest_check.get() {
+                    return;
                 }
-                return;
-            }
-        }
+                let Some(result) = result else {
+                    state.try_embed_config(index, check, key, parsed_url);
+                    return;
+                };
+                // Edits made while parseUrl was pending may not be committed
+                // yet, and the link may have moved into a disabled location.
+                let embeddable = state
+                    .editor
+                    .read_with_mode(EditorReadMode::Pending, || {
+                        get_current_link(&key, &parsed_url)
+                            .is_some_and(|link| !state.is_menu_disabled_for_node(&link))
+                    })
+                    .unwrap_or(false);
+                if embeddable {
+                    *state.embed_match.borrow_mut() = Some(EmbedMatch {
+                        embed_config: parsed_config,
+                        key,
+                        result,
+                        url: parsed_url,
+                    });
+                    state.render();
+                }
+            }))),
+        );
     }
 
     /// `embedLinkViaActiveEmbedConfig()`: in an update, the config inserts

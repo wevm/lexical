@@ -19,6 +19,7 @@
 //! - [`get_document`]: the one `document` of the thread, as JS has one
 //!   global `document`.
 
+mod css_font;
 mod css_properties;
 mod css_style_declaration;
 mod css_style_sheet;

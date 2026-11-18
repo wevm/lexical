@@ -506,6 +506,65 @@ test('html/import-extension', () => {
   );
 });
 
+/**
+ * HTML whose formatting the import reads through the CSSOM rather than from
+ * the longhands written inline: the `font` shorthand, inline and in `<style>`
+ * rules, and style sheet selectors with pseudo-classes (Word's `a:link` and
+ * `a:visited` lists among them), which `$inlineStylesFromStyleSheets`
+ * matches with `querySelectorAll`.
+ */
+const IMPORT_STYLE_CORPUS = [
+  '<span style="font: bold 12px serif">bold</span><span style="font: italic 12px a">italic</span>',
+  '<b><span style="font: 12px a">reset</span></b><i><span style="font: bold 12px a">bold, upright</span></i>',
+  '<span style="font: bold 12px serif; font-weight: normal">later longhand</span><span style="font-weight: normal; font: 700 12px a">later font</span>',
+  '<p style="font: italic bold 12px/30px Georgia, serif">paragraph</p>',
+  '<span style="font: small-caps bold 12px a">refused</span><span style="font: bold">invalid</span><span style="font: inherit">inherit</span>',
+  '<style>.x { font: bold 12px serif } p span.y { font: italic 10px a }</style><p><span class="x">b</span><span class="y">i</span></p>',
+  '<style>span { font: italic 10px a }</style><p><span style="font-style: normal">own wins</span><span style="font-weight: bold">mixed</span></p>',
+  '<style>a:link, span.MsoHyperlink { text-decoration: underline } a:visited, span.MsoHyperlinkFollowed { font-style: italic }</style><p><span class="MsoHyperlink">link</span><span class="MsoHyperlinkFollowed">followed</span></p>',
+  '<style>span:first-child { font-weight: bold } span:last-child { font-style: italic } span:only-child { text-decoration: underline }</style><p><span>a</span><span>b</span><span>c</span></p><p><span>only</span></p>',
+  '<style>span:nth-child(2n+1) { font-weight: bold } span:nth-last-child(2) { font-style: italic } span:nth-child(odd of .k) { vertical-align: sub }</style><p><span class="k">1</span><span>2</span><span class="k">3</span><span class="k">4</span></p>',
+  '<style>b:first-of-type { font-style: italic } i:last-of-type { vertical-align: super } u:only-of-type { text-transform: uppercase } span:nth-of-type(2) { font-weight: bold }</style><p><b>b1</b><span>s1</span><i>i1</i><b>b2</b><span>s2</span><i>i2</i><u>u</u></p>',
+  '<style>span:not(.x) { font-weight: bold } span:not(.x, .y) { font-style: italic } :is(b, i) > span { text-decoration: underline } :where(p) span.x { vertical-align: sub }</style><p><span class="x">x</span><span class="y">y</span><span>z</span><b><span>bz</span></b></p>',
+  '<style>p:has(> b) span { font-style: italic } p:has(+ div) span { font-weight: bold } p:has(u, s) span { text-transform: uppercase }</style><p><b>has b</b><span>s1</span></p><p><span>before div</span></p><div>div</div><p><s>strike</s><span>s3</span></p>',
+  '<style>:root span { font-style: italic } span:empty + span { font-weight: bold } span:lang(en) { text-decoration: underline }</style><p lang="en-GB"><span></span><span>after empty</span></p><p lang="fr"><span>fr</span></p>',
+  '<style>p::first-line { font-weight: bold } p:before { font-weight: bold } p:hover, p:focus { font-style: italic } p:foo { font-weight: bold } P:FIRST-CHILD { font-weight: bold } p:not() { font-weight: bold }</style><p>none apply</p>',
+  '<style>:is(p:foo, span) { font-weight: bold } :not(span):first-child span { font-style: italic }</style><div><span>forgiving</span></div>',
+];
+
+test('html/import-style', () => {
+  const cases: ImportCase[] = IMPORT_STYLE_CORPUS.map(html => {
+    const editor = buildEditorFromExtensions(
+      defineExtension({
+        dependencies: [CoreImportExtension],
+        name: '[conformance]',
+      }),
+    );
+    let nodes = '';
+    withJSDOM(() => {
+      // A document of its own, not DOMParser's: jsdom gives those no
+      // styleSheets, where a browser does.
+      const dom = new JSDOM(html).window.document;
+      editor.update(
+        () => {
+          nodes = JSON.stringify(
+            $generateNodesFromDOMViaExtension(dom).map($nodeToJSON),
+          );
+        },
+        {discrete: true},
+      );
+    });
+    editor.dispose();
+    return {html, nodes};
+  });
+  emitVectors(
+    'html/import-style',
+    'html-import',
+    "HTML whose formatting comes through the CSSOM (the font shorthand inline and in <style> rules, and style sheet selectors with pseudo-classes) and the nodes DOMImportExtension's $generateNodesFromDOM makes from it in a jsdom document, in an editor built from CoreImportExtension, each as exportJSON with its children.",
+    cases,
+  );
+});
+
 /** A render state the `editor-gate` scenarios gate an override on. */
 const RENDER_FLAG = createRenderState('flag', () => false);
 /** A render state the `context` scenario writes into the HTML. */

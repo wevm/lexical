@@ -32,6 +32,11 @@ pub fn all() -> Vec<Suite> {
             check: css::check_value,
         },
         Suite {
+            file: "css/declarations",
+            variant: None,
+            check: css::check_declaration,
+        },
+        Suite {
             file: "html/block-id",
             variant: None,
             check: html::check_block_id,
@@ -83,6 +88,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "html/import-extension",
+            variant: None,
+            check: html::check_import_extension,
+        },
+        Suite {
+            file: "html/import-style",
             variant: None,
             check: html::check_import_extension,
         },

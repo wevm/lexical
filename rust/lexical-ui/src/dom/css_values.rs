@@ -12,7 +12,7 @@
 
 use super::css_properties::CSS_PROPERTY_TRAITS;
 use crate::json::number_to_string;
-use crate::set_dom_style::{get_style_object_from_css, js_trim};
+use crate::set_dom_style::{css_declarations, js_trim};
 
 /// How a property an inline style accepts normalizes its values (the
 /// generated `css_properties.rs` table holds them).
@@ -78,10 +78,10 @@ pub(crate) fn preprocess_css(css: &str) -> String {
     out
 }
 
-/// The declarations in inline CSS text, in order, a repeated property
-/// keeping the position of its first declaration and its last value.
+/// The declarations in inline CSS text, in order, a repeated property each
+/// time it is declared.
 pub(crate) fn parse_css_declarations(css: &str) -> Vec<(String, String)> {
-    get_style_object_from_css(css).into_iter().collect()
+    css_declarations(css)
 }
 
 /// The value `name` serializes `value` as, or `None` when the declaration
@@ -146,7 +146,8 @@ pub(crate) fn normalize_css_value(name: &str, value: &str) -> Option<String> {
 }
 
 /// The keywords every property accepts.
-const CSS_WIDE_KEYWORDS: &[&str] = &["initial", "inherit", "unset", "revert", "revert-layer"];
+pub(crate) const CSS_WIDE_KEYWORDS: &[&str] =
+    &["initial", "inherit", "unset", "revert", "revert-layer"];
 
 enum Token {
     Word(String),
@@ -236,7 +237,7 @@ fn normalize_css_word(word: &str, traits: CssPropertyTraits) -> String {
             return serialize_color(rgba, false);
         }
         if function == "calc"
-            && let Some(result) = evaluate_calc_product(arguments)
+            && let Some(result) = evaluate_calc(arguments)
         {
             return format!("calc({result})");
         }
@@ -283,7 +284,7 @@ fn requote_css_string(word: &str) -> String {
 }
 
 /// A number with an optional unit: `+5px`, `1.50em`, `1e1px`, `.5`.
-fn parse_css_number(word: &str) -> Option<(f64, &str)> {
+pub(crate) fn parse_css_number(word: &str) -> Option<(f64, &str)> {
     let bytes = word.as_bytes();
     let digit = |i: usize| bytes.get(i).is_some_and(u8::is_ascii_digit);
     let mut i = 0;
@@ -333,21 +334,30 @@ fn format_css_number(number: f64) -> String {
     }
 }
 
-/// `calc(n * length)` and `calc(length * n)` as their product.
-fn evaluate_calc_product(arguments: &str) -> Option<String> {
+/// `calc(n * length)` and `calc(length * n)` as their product, and a sum
+/// or difference of two values in the same unit as its result.
+pub(crate) fn evaluate_calc(arguments: &str) -> Option<String> {
     let parts: Vec<&str> = arguments
         .split([' ', '\t', '\n'])
         .filter(|p| !p.is_empty())
         .collect();
-    let [a, "*", b] = parts.as_slice() else {
+    let [a, op @ ("*" | "+" | "-"), b] = parts.as_slice() else {
         return None;
     };
     let (a, unit_a) = parse_css_number(a)?;
     let (b, unit_b) = parse_css_number(b)?;
-    if !(unit_a.is_empty() || unit_b.is_empty()) {
-        return None;
-    }
-    Some(format_css_number(a * b) + &format!("{unit_a}{unit_b}").to_lowercase())
+    let (number, unit) = if *op == "*" {
+        if !(unit_a.is_empty() || unit_b.is_empty()) {
+            return None;
+        }
+        (a * b, format!("{unit_a}{unit_b}"))
+    } else {
+        if !unit_a.eq_ignore_ascii_case(unit_b) {
+            return None;
+        }
+        (if *op == "+" { a + b } else { a - b }, unit_a.to_owned())
+    };
+    Some(format_css_number(number) + &unit.to_lowercase())
 }
 
 #[derive(Clone, Copy)]

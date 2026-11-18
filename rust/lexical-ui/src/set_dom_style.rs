@@ -102,7 +102,13 @@ impl<K: Into<String>, V: Into<String>> FromIterator<(K, V)> for StyleObject {
 /// is compatible with `CSSStyleDeclaration.setProperty()`. Comments are
 /// dropped; `:` and `;` inside quotes or parentheses are not delimiters.
 pub fn get_style_object_from_css(css: &str) -> StyleObject {
-    let mut styles = StyleObject::new();
+    css_declarations(css).into_iter().collect()
+}
+
+/// The declarations of inline CSS text in order, a repeated property each
+/// time it appears, as [`get_style_object_from_css`] reads them.
+pub(crate) fn css_declarations(css: &str) -> Vec<(String, String)> {
+    let mut styles = Vec::new();
     if css.is_empty() {
         return styles;
     }
@@ -120,11 +126,11 @@ pub fn get_style_object_from_css(css: &str) -> StyleObject {
     // The start of the pending run of kept characters, if any.
     let mut chunk_start: Option<usize> = None;
 
-    let commit = |property: &str, value: &str, styles: &mut StyleObject| {
+    let commit = |property: &str, value: &str, styles: &mut Vec<(String, String)>| {
         let property = js_trim(property);
         let value = js_trim(value);
         if !property.is_empty() && !value.is_empty() {
-            styles.insert(property, value);
+            styles.push((property.to_owned(), value.to_owned()));
         }
     };
 

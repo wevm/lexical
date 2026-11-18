@@ -470,13 +470,24 @@ touches:
 - Of `@lexical/html` and the core's DOM side (the `html` feature):
   `$inlineStylesFromStyleSheets` parses each `<style>`
   sheet itself (`dom::parse_style_sheet`) and matches its selectors with
-  `DomNode::query_selector_all`, which takes compound selectors, combinators
-  and attribute operators; a rule whose selector needs more (pseudo-classes,
-  namespaces, escapes) is skipped where a browser would apply it, and a
-  shorthand property (`font`, `margin`) is copied without the longhands a
-  browser expands it into, so its parts don't reach the import rules (JS
-  imports `font: bold 12px` as bold). `html/import-extension` has a case of
-  every other kind of rule.
+  `DomNode::query_selector_all`, which takes compound selectors, combinators,
+  attribute operators and the pseudo-classes of a document nobody interacts
+  with, as jsdom's selector engine matches them (the tree-structural ones
+  with `:nth-child(An+B of S)`, `:not()`, forgiving `:is()` and `:where()`,
+  `:has()`, `:link`, `:lang()`, `:checked`, `:disabled`, `:enabled`; user
+  action ones and pseudo-elements match nothing). A rule whose selector
+  needs more (namespaces, escapes, `:dir()`, the form-validity
+  pseudo-classes, a `:disabled` inherited from a `<fieldset>`) is skipped
+  where JS would apply it. The inline style declaration expands the `font`
+  shorthand into its longhands as jsdom's does (`dom::css_font`, its
+  quirks included: a numeric weight is also read as the line height, and
+  `small-caps` makes the value invalid), so `font: bold 12px serif`, inline
+  or in a sheet, imports as bold (`css/declarations`, `html/import-style`).
+  The other shorthands jsdom expands (`margin`, `padding`, `border`,
+  `background`, `flex`) are kept whole: no import rule reads their
+  longhands, and the `cssText` they serialize to is jsdom's
+  (`css/values`). `html/import-extension` has a case of every other kind
+  of rule.
   Also `updateDOM`, `getDOMSlot` and the
   rest of what only the reconciler calls. `$setTextContent`'s composition
   suffix in `TextNode.createDOM` is `COMPOSITION_SUFFIX` outside Safari and

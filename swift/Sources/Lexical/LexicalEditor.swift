@@ -197,6 +197,9 @@ public protocol LexicalRootElement: AnyObject {
   /// the DOM; read inside an update. `nil` (the default) when no caret
   /// resolves there.
   func caretFromPoint(_ x: Double, _ y: Double) throws -> PointCaret?
+  /// Opens `url`, as `window.open(url, target, features)` does in the DOM
+  /// root's window. Does nothing by default.
+  func open(_ url: String, _ target: String, _ features: String?)
 }
 
 extension LexicalRootElement {
@@ -204,6 +207,7 @@ extension LexicalRootElement {
   public var hasFocus: Bool { false }
   public func focus() {}
   public func caretFromPoint(_ x: Double, _ y: Double) throws -> PointCaret? { nil }
+  public func open(_ url: String, _ target: String, _ features: String?) {}
 }
 
 /// `EditorFocusOptions`.

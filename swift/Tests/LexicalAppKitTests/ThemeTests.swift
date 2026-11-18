@@ -89,5 +89,27 @@
       #expect(try font(view).pointSize == 16)
       _ = window
     }
+
+    /// A theme's tracking is the text's `.tracking`, which narrows it, and
+    /// goes away with a theme that has none.
+    @Test func tracksTheText() throws {
+      let (view, window) = try makeView()
+      func tracking() -> Double? {
+        (view.textStorage?.attribute(.tracking, at: 0, effectiveRange: nil) as? NSNumber)?
+          .doubleValue
+      }
+      let wide = try #require(view.textStorage).size().width
+      #expect(tracking() == nil)
+      var theme = TextKitTheme.default
+      theme["root"]?.tracking = -1
+      view.theme = theme
+      #expect(tracking() == -1)
+      let narrow = try #require(view.textStorage).size().width
+      // "Body text" is 9 characters.
+      #expect(abs(wide - narrow - 9) < 0.5)
+      view.theme = .default
+      #expect(tracking() == nil)
+      _ = window
+    }
   }
 #endif

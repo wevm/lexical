@@ -310,6 +310,11 @@ public struct TextKitStyle: Hashable, Sendable {
   /// Raises (positive) or lowers the baseline, in ems of the surrounding
   /// font, as `vertical-align: super` and `sub` do.
   public var baselineShift: Double?
+  /// Points added after each character, as SwiftUI's `tracking(_:)` and
+  /// CSS `letter-spacing`: negative draws the text tighter. Nonzero
+  /// tracking turns off the font's optional ligatures, as
+  /// `letter-spacing` does.
+  public var tracking: Double?
   public var textTransform: TextKitTextTransform?
   /// Points the block's content starts after its own start (margin, border
   /// and padding at the inline start).
@@ -363,7 +368,8 @@ public struct TextKitStyle: Hashable, Sendable {
   /// The character properties of an inline `style` string, parsed with
   /// `getStyleObjectFromCSS`: `font-size`, `font-family`, `color`,
   /// `background-color` (or a color `background`), `font-weight`,
-  /// `font-style`, `text-decoration` and `text-transform`. Unknown
+  /// `font-style`, `text-decoration`, `text-transform` and
+  /// `letter-spacing` (`normal`, `px` or `pt`, as `tracking`). Unknown
   /// properties and values are ignored.
   public init(css: String) {
     self.init()
@@ -399,6 +405,15 @@ public struct TextKitStyle: Hashable, Sendable {
         }
       case "text-transform":
         textTransform = TextKitTextTransform(rawValue: lowered) ?? textTransform
+      case "letter-spacing":
+        if lowered == "normal" {
+          tracking = 0
+        } else if let unit = ["px", "pt"].first(where: lowered.hasSuffix),
+          case let number = String(lowered.dropLast(unit.count)),
+          !number.contains(where: \.isWhitespace), let n = cssNumber(number, percentOf: 1)
+        {
+          tracking = unit == "pt" ? n * 4 / 3 : n
+        }
       default: break
       }
     }
@@ -427,6 +442,7 @@ public struct TextKitStyle: Hashable, Sendable {
       $0.tabSize = other.tabSize ?? tabSize
       $0.cursor = other.cursor ?? cursor
       $0.hoverUnderline = other.hoverUnderline ?? hoverUnderline
+      $0.tracking = other.tracking ?? tracking
     }
   }
 
@@ -661,6 +677,8 @@ public struct TextKitTextAttributes: Hashable, Sendable {
   public var strikethrough = false
   /// Points the baseline is raised (negative: lowered).
   public var baselineOffset: Double = 0
+  /// Points added after each character (`TextKitStyle.tracking`).
+  public var tracking: Double = 0
   /// The text has the `highlight` format.
   public var highlight = false
   public var textTransform = TextKitTextTransform.none
@@ -685,6 +703,7 @@ public struct TextKitTextAttributes: Hashable, Sendable {
     if let v = style.underline { underline = v }
     if let v = style.strikethrough { strikethrough = v }
     if let v = style.baselineShift { baselineOffset += v * size }
+    if let v = style.tracking { tracking = v }
     if let v = style.textTransform { textTransform = v }
     if let v = style.cursor { cursor = v }
     if let v = style.hoverUnderline { hoverUnderline = v }

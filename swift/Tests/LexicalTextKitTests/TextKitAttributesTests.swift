@@ -386,6 +386,26 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     #expect(text(0, "color: nope; color: navy").foregroundColor == TextKitColor(0, 0, 128))
   }
 
+  /// Tracking is inherited like `letter-spacing`, a nearer key or an inline
+  /// `letter-spacing` replaces it, and the placeholder takes the root's.
+  @Test func trackingInheritsAndReadsLetterSpacing() {
+    var custom = TextKitTheme.default
+    custom["root"]?.tracking = -0.09
+    custom["quote"]?.tracking = 0.5
+    let quote = TextKitElement(type: "quote")
+    #expect(text(theme: custom).tracking == -0.09)
+    #expect(text(IS_BOLD, in: [quote], theme: custom).tracking == 0.5)
+    #expect(custom.placeholderAttributes.tracking == -0.09)
+    #expect(text(0, "letter-spacing: 2px", theme: custom).tracking == 2)
+    #expect(text(0, "letter-spacing: -1.5PX").tracking == -1.5)
+    #expect(text(0, "letter-spacing: 3pt").tracking == 4)
+    #expect(text(0, "letter-spacing: normal", in: [quote], theme: custom).tracking == 0)
+    for ignored in ["2em", "2", "wide", "2 px", "px"] {
+      #expect(text(0, "letter-spacing: \(ignored)", theme: custom).tracking == -0.09)
+    }
+    #expect(text().tracking == 0)
+  }
+
   @Test func underlineStrikethroughReplacesItsParts() {
     var custom = TextKitTheme.default
     custom["text.underlineStrikethrough"] = TextKitStyle(underline: true)

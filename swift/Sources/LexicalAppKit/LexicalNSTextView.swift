@@ -247,7 +247,7 @@
           NSRange(location: 0, length: length))
         for key: NSAttributedString.Key in [
           .font, .foregroundColor, .backgroundColor, .underlineStyle, .strikethroughStyle,
-          .baselineOffset, .lexicalHoverUnderline,
+          .baselineOffset, .tracking, .lexicalHoverUnderline,
         ] {
           textStorage.removeAttribute(key, range: range)
         }

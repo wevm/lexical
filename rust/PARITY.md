@@ -105,6 +105,15 @@ updated with each milestone.
 Everything else; [DESIGN.md](DESIGN.md) has the order. Within what M0
 touches:
 
+- Subclassing a built-in node class (`class MyText extends TextNode`): a
+  Rust node has no base class to inherit methods from. It takes a base
+  class's behavior by composition, as DESIGN.md's "Nodes" describes: the
+  base's data (`ElementData`, `TextData`), the free functions in the base's
+  module that stand for `super` calls, and `LexicalNode::super_types` for
+  `instanceof`, so node replacements (`withKlass`) and the overrides of a
+  class reach such a node. A method a JS subclass inherits comes from the
+  trait's defaults over that data where the base's behavior is a default,
+  and is otherwise forwarded to the base's free function by hand.
 - Of the schema facility: `SchemaFieldBase.method` and
   `resolveSchemaField`, the prototype lookup that abandons a field access
   for an accessor a subclass overrides (a Rust class has no methods to look
@@ -187,7 +196,9 @@ touches:
   element point inserts JS's placeholder for the browser (the empty
   space heuristic, see the events rows), which the port leaves out. The
   rest of `@lexical/extension`'s extensions (`NodeSelectionDataSelected`,
-  `SelectionAlwaysOnDisplay`) read the DOM or a selection's DOM. Of the model-level
+  `SelectionAlwaysOnDisplay`) read the DOM or a selection's DOM, and
+  `@lexical/react`'s `ExtensionComponent` and an output's `Component`
+  (`OutputComponent`) render React components. Of the model-level
   ones: `NestedEditorExtension` is ported (see the nested
   editors row); `createEditor()` called without a config, which JS nests
   in the active editor, has no counterpart, as `create_editor` always

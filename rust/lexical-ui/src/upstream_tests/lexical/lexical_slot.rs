@@ -2350,3 +2350,232 @@ fn an_inline_element_host_that_ends_a_paragraph_of_four_children() {
         "ab\ncd ",
     );
 }
+
+/// A [`SelectionMovement`] over text nodes laid out in a given order, as a
+/// browser renders them: `Selection.modify` by word walks the concatenated
+/// text (a new line counts as a space) and can cross a slot boundary, which
+/// lives only in the model.
+struct LaidOutMovement(Rc<std::cell::RefCell<Vec<(String, bool)>>>);
+
+impl crate::SelectionMovement for LaidOutMovement {
+    fn landed_point(
+        &self,
+        from: &crate::Point,
+        is_backward: bool,
+        granularity: crate::SelectionGranularity,
+    ) -> Result<Option<crate::Point>, LexicalError> {
+        assert!(granularity == crate::SelectionGranularity::Word);
+        // Each text node's start in the concatenated text.
+        let mut text: Vec<char> = Vec::new();
+        let mut segments = Vec::new();
+        for (key, new_line) in self.0.borrow().iter() {
+            if *new_line && !text.is_empty() {
+                text.push(' ');
+            }
+            let content: Vec<char> = node(key).get_text_content().chars().collect();
+            segments.push((key.clone(), text.len(), content.len()));
+            text.extend(content);
+        }
+        let (_, start, _) = segments.iter().find(|(k, ..)| *k == from.key).unwrap();
+        let mut o = start + from.offset;
+        let from_offset = o;
+        if is_backward {
+            while o > 0 && text[o - 1] == ' ' {
+                o -= 1;
+            }
+            while o > 0 && text[o - 1] != ' ' {
+                o -= 1;
+            }
+        } else {
+            while o < text.len() && text[o] == ' ' {
+                o += 1;
+            }
+            while o < text.len() && text[o] != ' ' {
+                o += 1;
+            }
+        }
+        Ok((o != from_offset).then(|| {
+            // At the edge of two texts, the one it moved into.
+            let mut at = segments
+                .iter()
+                .filter(|(_, s, len)| *s <= o && o <= s + len);
+            let (key, start, _) = if is_backward {
+                at.next_back()
+            } else {
+                at.next()
+            }
+            .unwrap();
+            crate::Point::new(key.clone(), o - start, PointType::Text)
+        }))
+    }
+}
+
+/// `SlotWordDeletion.test.ts` (a browser test) `deletion at a slot
+/// boundary`: word deletion where the browser's movement lands in another
+/// slot frame stops at the boundary in the anchor's frame. Each case gives
+/// the layout, the text deleted from, the offset, the direction, and the
+/// text of `note` and `sibling` after it.
+#[test]
+fn word_deletion_stops_at_a_slot_boundary() {
+    type Case = (
+        &'static str,
+        &'static str,
+        usize,
+        bool,
+        &'static str,
+        &'static str,
+    );
+    let cases: &[Case] = &[
+        // word Backspace at the start of the sibling deletes nothing
+        // across the slot (the root's slots render before its children).
+        (
+            "root slot",
+            "sibling",
+            0,
+            true,
+            "Footnote words",
+            "Body words",
+        ),
+        // word Backspace in a word that starts in an inline slot deletes up
+        // to the slot.
+        ("inline slot", "sibling", 2, true, "foo", "r"),
+        // word Delete in an inline slot word that continues past the slot
+        // deletes to the slot end.
+        ("inline slot", "note", 1, false, "f", "bar"),
+        // word Delete in a body word that runs into an inline root slot
+        // deletes to the slot.
+        ("inline root slot", "sibling", 1, false, "foo", "b"),
+        // word Delete at the end of the paragraph before the host deletes
+        // nothing (and moves no text into another block).
+        (
+            "element host",
+            "before",
+            12,
+            false,
+            "Footnote words",
+            "After words",
+        ),
+        // Not in the browser test, from JS's code path: word Backspace in a
+        // word that starts in an inline host's slot stops beside the host,
+        // after it (selection mode would stop before it and delete the
+        // host's text too).
+        ("inline host", "sibling", 1, true, "cd", "f"),
+    ];
+    for &(layout, region, offset, is_backward, want_note, want_sibling) in cases {
+        let editor = create_slot_editor();
+        let order = Rc::new(std::cell::RefCell::new(Vec::new()));
+        editor.set_selection_movement(Some(Rc::new(LaidOutMovement(order.clone()))));
+        let keys = Rc::new(std::cell::RefCell::new((
+            String::new(),
+            String::new(),
+            String::new(),
+        )));
+        let k = keys.clone();
+        update(&editor, move || {
+            let root = get_root();
+            let note_text = create_text_node(match layout {
+                "root slot" | "element host" => "Footnote words",
+                "inline host" => "cd",
+                _ => "foo",
+            });
+            let sibling_text = create_text_node(match layout {
+                "root slot" => "Body words",
+                "inline host" => "ef",
+                "element host" => "After words",
+                _ => "bar",
+            });
+            let before_text = create_text_node("Before words");
+            let before_key = before_text.get_key().to_owned();
+            let (note, sibling) = (
+                note_text.get_key().to_owned(),
+                sibling_text.get_key().to_owned(),
+            );
+            match layout {
+                "root slot" => {
+                    root.append(&[para(&[sibling_text])])?;
+                    let container = create_test_shadow_root_node();
+                    container.append(&[para(&[note_text])])?;
+                    set_slot(&root, "footnotes", &container)?;
+                    *order.borrow_mut() = vec![(note.clone(), true), (sibling.clone(), true)];
+                }
+                "inline root slot" => {
+                    root.append(&[para(&[sibling_text])])?;
+                    set_slot(&root, "inline", &para(&[note_text]))?;
+                    // Mounted after the body, on the same line.
+                    *order.borrow_mut() = vec![(sibling.clone(), true), (note.clone(), false)];
+                }
+                "element host" => {
+                    let host = para(&[sibling_text]);
+                    let before = before_text.get_key().to_owned();
+                    root.append(&[para(&[before_text]), host.clone()])?;
+                    let container = create_test_shadow_root_node();
+                    container.append(&[para(&[note_text])])?;
+                    set_slot(&host, "note", &container)?;
+                    *order.borrow_mut() = vec![
+                        (before, true),
+                        (note.clone(), true),
+                        (sibling.clone(), true),
+                    ];
+                }
+                "inline host" => {
+                    let host = create_test_inline_element_node();
+                    host.append(&[create_text_node("x")])?;
+                    let before = before_text.get_key().to_owned();
+                    before_text.set_text_content("ab ");
+                    root.append(&[para(&[before_text, host.clone(), sibling_text])])?;
+                    set_slot(&host, "note", &para(&[note_text]))?;
+                    // On one line: the host's slot, then its children.
+                    *order.borrow_mut() = vec![
+                        (before, true),
+                        (note.clone(), false),
+                        (host.get_first_child_or_throw()?.get_key().to_owned(), false),
+                        (sibling.clone(), false),
+                    ];
+                }
+                _ => {
+                    let host = para(&[sibling_text]);
+                    root.append(std::slice::from_ref(&host))?;
+                    set_slot(&host, "inline", &para(&[note_text]))?;
+                    // An element's slots render before its children.
+                    *order.borrow_mut() = vec![(note.clone(), true), (sibling.clone(), false)];
+                }
+            }
+            *k.borrow_mut() = (note, sibling, before_key);
+            Ok(())
+        });
+        let (note, sibling, before) = keys.borrow().clone();
+        let at = match region {
+            "note" => note.clone(),
+            "before" => before,
+            _ => sibling.clone(),
+        };
+        update(&editor, move || {
+            node(&at)
+                .select(Some(offset), Some(offset))?
+                .delete_word(is_backward)
+        });
+        let label = format!("{layout}: {region}:{offset} backward={is_backward}");
+        assert_eq!(
+            read(&editor, || (
+                node(&note).get_text_content(),
+                node(&sibling).get_text_content()
+            )),
+            (want_note.to_owned(), want_sibling.to_owned()),
+            "{label}"
+        );
+        if layout == "inline host" {
+            assert_eq!(
+                read(&editor, || get_root().get_text_content()),
+                "ab cdxf",
+                "{label}"
+            );
+        }
+        if layout == "element host" {
+            assert_eq!(
+                read(&editor, || get_root().get_children_size()),
+                2,
+                "{label}"
+            );
+        }
+    }
+}

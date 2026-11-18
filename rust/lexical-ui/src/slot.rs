@@ -289,6 +289,11 @@ pub(crate) fn mark_slots_used() {
     get_active_editor_state().0.slots_used.set(true);
 }
 
+/// `editor._slotsUsed`: whether the active editor has used slots.
+pub(crate) fn slots_used() -> bool {
+    get_registry_editor().is_some_and(|e| e.0.slots_used.get())
+}
+
 /// `$setSlot(host, name, node)` (`@experimental`): puts `node` in the named
 /// slot of `host`, replacing (and removing) the node the slot held. The
 /// node moves, from a parent or another slot. It must be an element or a

@@ -643,17 +643,31 @@ fn get_slot_host_in_frame(frame: &NodeRef, target: Option<&NodeRef>) -> Option<N
     None
 }
 
+/// `$setPointAtSlotBoundary`'s `mode`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SlotBoundaryMode {
+    /// `'selection'`: beside a host, past it (the host stays whole).
+    Selection,
+    /// `'deletion'`: beside a host, before it (the deletion stops at it),
+    /// and the focus descends toward the anchor.
+    Deletion,
+}
+
 /// `$setPointAtSlotBoundary(point, anchorNode, anchorFrame, focusFrame,
-/// 'selection', resolveFocusAfterAnchor)`: sets the focus of a selection
-/// whose anchor is in `anchor_frame` and whose focus is in `focus_frame` to
-/// the slot boundary in the anchor's frame. Its `'deletion'` mode isn't
-/// ported (see `selection_deletion`).
-fn set_point_at_slot_boundary(
+/// mode, resolveFocusAfterAnchor)`: sets the focus of a selection or
+/// deletion whose anchor is in `anchor_frame` and whose focus is in
+/// `focus_frame` to the slot boundary in the anchor's frame: the edge of the
+/// anchor's slot when the focus is outside it, the edge of the children of
+/// the host that owns `focus_frame` when that host is the frame's root or
+/// contains the anchor, and otherwise beside the host. Returns false when
+/// there is no boundary.
+pub(crate) fn set_point_at_slot_boundary(
     selection: &SelectionRef,
     which: Which,
     anchor_node: Option<&NodeRef>,
     anchor_frame: Option<&NodeRef>,
     focus_frame: Option<&NodeRef>,
+    mode: SlotBoundaryMode,
     resolve_focus_after_anchor: impl FnOnce() -> Result<bool, LexicalError>,
 ) -> Result<bool, LexicalError> {
     let host = focus_frame.and_then(|f| get_slot_host_in_frame(f, anchor_frame));
@@ -667,7 +681,8 @@ fn set_point_at_slot_boundary(
             if !anchor_node.is_some_and(|a| host == a || host.is_parent_of(a)) =>
         {
             let index = host.get_index_within_parent().unwrap_or(0);
-            (host_parent.clone(), index + usize::from(focus_after_anchor))
+            let past = focus_after_anchor == (mode == SlotBoundaryMode::Selection);
+            (host_parent.clone(), index + usize::from(past))
         }
         _ => {
             let edge = host.clone().or_else(|| anchor_frame.cloned());
@@ -685,8 +700,53 @@ fn set_point_at_slot_boundary(
             (edge, offset)
         }
     };
-    selection.point_set(which, parent.get_key(), offset, PointType::Element)?;
+    if mode == SlotBoundaryMode::Deletion {
+        set_deletion_focus(selection, which, parent, offset, !focus_after_anchor)?;
+    } else {
+        selection.point_set(which, parent.get_key(), offset, PointType::Element)?;
+    }
     Ok(true)
+}
+
+/// `$setDeletionFocus(focus, parent, offset, isBackward)`: the focus at
+/// `offset` in `parent`, descending into the child on the anchor's side
+/// (before it for a forward deletion) down to text, but not into a shadow
+/// root or a non-element.
+fn set_deletion_focus(
+    selection: &SelectionRef,
+    which: Which,
+    mut parent: NodeRef,
+    mut offset: usize,
+    is_backward: bool,
+) -> Result<(), LexicalError> {
+    loop {
+        let child = if is_backward {
+            parent.get_child_at_index(offset)
+        } else {
+            offset
+                .checked_sub(1)
+                .and_then(|i| parent.get_child_at_index(i))
+        };
+        let Some(child) = child else { break };
+        if child.is_text() {
+            let at = if is_backward {
+                0
+            } else {
+                child.get_text_content_size()
+            };
+            return selection.point_set(which, child.get_key(), at, PointType::Text);
+        }
+        if !child.is_element() || crate::lexical_utils::is_root_or_shadow_root(&child) {
+            break;
+        }
+        offset = if is_backward {
+            0
+        } else {
+            child.get_children_size()
+        };
+        parent = child;
+    }
+    selection.point_set(which, parent.get_key(), offset, PointType::Element)
 }
 
 /// `$clampRangeSelectionToSlotFrame(selection)` (`@experimental`): keeps the
@@ -710,6 +770,7 @@ pub fn clamp_range_selection_to_slot_frame(selection: &SelectionRef) -> Result<b
         anchor_node.as_ref(),
         anchor_frame.as_ref(),
         focus_frame.as_ref(),
+        SlotBoundaryMode::Selection,
         || {
             // Points are not normalized: that would move a point just
             // before an element host into its children, past its slots.

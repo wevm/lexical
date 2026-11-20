@@ -20,5 +20,6 @@
   "lexical-hashtag": "enforced",
   "lexical-react": "enforced",
   "lexical-mark": "enforced",
-  "lexical-file": "enforced"
+  "lexical-file": "enforced",
+  "lexical-table": "pending"
 }

@@ -59,6 +59,14 @@ import {
   RichTextExtension,
   ShadowRootQuoteRule,
 } from '@lexical/rich-text';
+import {
+  $createTableCellNode,
+  $createTableNode,
+  $createTableNodeWithDimensions,
+  $createTableRowNode,
+  TableCellHeaderStates,
+  TableExtension,
+} from '@lexical/table';
 import {JSDOM} from 'jsdom';
 import {
   $createLineBreakNode,
@@ -1728,6 +1736,201 @@ test('html/mark-state', () => {
     'html/mark-state',
     'html-mark-state',
     "MarkStateExtension's HTML export (exportIDsToHTML) and the import rule of its ids attribute, in an editor built from RichTextExtension and LinkExtension with the scenario's mark flavors (`default`: MarkStateExtension; `export`: with exportIDsToHTML; `flavors`: that, ops.ts's CommentMarks with exportIDsToHTML and SuggestionMarks): the HTML $generateHtmlFromNodes writes in jsdom for documents with ids on text, a line break, a link's text and a tab, and the nodes DOMImportExtension's $generateNodesFromDOM makes of HTML carrying ids (curated, and each export; in `default` and `flavors`), each as exportJSON with its children.",
+    cases,
+  );
+});
+
+/** HTML for TableImportRules: sections, header cells, spans, widths, styles and pasted tables. */
+const TABLE_IMPORT_CORPUS = [
+  '<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>',
+  '<table><tr><th scope="col">H</th></tr></table>',
+  '<table><tr><th scope="row">R</th><td>v</td></tr></table>',
+  '<table><thead><tr><th>H</th></tr></thead><tbody><tr><td>B</td></tr></tbody></table>',
+  '<table><tr><td colspan="2" rowspan="2">wide</td><td>c</td></tr><tr><td>f</td></tr></table>',
+  '<table><colgroup><col style="width: 120px"><col style="width: 80px"></colgroup><tr><td>a</td><td>b</td></tr></table>',
+  '<table><tr style="height: 40px"><td style="width: 75px; background-color: rgb(240, 240, 240); vertical-align: middle">s</td></tr></table>',
+  '<table><tr><td><b>bold</b> and <i>italic</i></td><td><p>one</p><p>two</p></td></tr></table>',
+  '<table><tr><td><ul><li>item</li></ul></td><td></td></tr></table>',
+  '<table><tr><td>a</td></tr><tr><td>b</td><td>c</td></tr></table>',
+  '<table dir="rtl"><caption>cap</caption><tr><td>x</td></tr></table>',
+  '<p>before</p><table><tr><td>in</td></tr></table><p>after</p>',
+  '<table><tr><td><table><tr><td>nested</td></tr></table></td></tr></table>',
+  '<table style="border:none;border-collapse:collapse;table-layout:fixed"><colgroup><col style="width:100px"/><col style="width:200px"/></colgroup><tbody><tr style="height:22.015pt"><td style="vertical-align:top;padding:5pt 5pt 5pt 5pt;"><p dir="ltr"><span style="font-weight:400;">Hello there</span></p></td><td><p dir="ltr"><span style="font-weight:700;">General Kenobi!</span></p></td></tr></tbody></table>',
+  '<google-sheets-html-origin><table data-sheets-root="1"><colgroup><col width="100"/><col width="189"/></colgroup><tbody><tr style="height:21px;"><td style="font-weight:bold;">Surface</td><td style="text-decoration:underline;text-align:right;">77349</td></tr></tbody></table>',
+];
+
+function tableDocuments(): {build: () => void; name: string}[] {
+  const $cell = (text: string, headerState = TableCellHeaderStates.NO_STATUS) =>
+    $createTableCellNode(headerState).append(
+      $createParagraphNode().append($createTextNode(text)),
+    );
+  return [
+    {
+      build: () =>
+        $getRoot().append(
+          $createTableNodeWithDimensions(2, 3),
+          $createParagraphNode(),
+        ),
+      name: 'table with dimensions',
+    },
+    {
+      build: () =>
+        $getRoot().append(
+          $createTableNodeWithDimensions(2, 2, false),
+          $createParagraphNode(),
+        ),
+      name: 'table without headers',
+    },
+    {
+      build: () =>
+        $getRoot().append(
+          $createTableNode().append(
+            $createTableRowNode().append(
+              $cell('wide').setColSpan(2).setRowSpan(2),
+              $cell('c'),
+            ),
+            $createTableRowNode().append($cell('f')),
+          ),
+        ),
+      name: 'merged cells',
+    },
+    {
+      build: () => {
+        const table = $createTableNode()
+          .setColWidths([120, 80.5])
+          .setRowStriping(true)
+          .setFrozenColumns(1)
+          .setFrozenRows(1);
+        table.append(
+          $createTableRowNode(40).append(
+            $cell('a', TableCellHeaderStates.BOTH).setBackgroundColor('#eee'),
+            $cell('b', TableCellHeaderStates.ROW)
+              .setVerticalAlign('middle')
+              .setWidth(80.5),
+          ),
+          $createTableRowNode().append(
+            $cell('c', TableCellHeaderStates.COLUMN),
+            $createTableCellNode(),
+          ),
+        );
+        $getRoot().append(table, $createParagraphNode());
+      },
+      name: 'styled table',
+    },
+    {
+      build: () => {
+        const table = $createTableNode().setFormat('center');
+        table.append(
+          $createTableRowNode().append(
+            $createTableCellNode().append(
+              $createParagraphNode().append(
+                $createTextNode('bold').toggleFormat('bold'),
+              ),
+            ),
+          ),
+        );
+        $getRoot().append(table);
+      },
+      name: 'aligned table, formatted text',
+    },
+  ];
+}
+
+const TABLE_THEME: EditorThemeClasses = {
+  table: 'my-table',
+  tableCell: 'my-cell',
+  tableCellHeader: 'my-cell-header',
+  tableRow: 'my-row',
+  tableRowStriping: 'my-striping',
+};
+
+test('html/table', () => {
+  type TableCase = {
+    name: string;
+    theme?: EditorThemeClasses;
+    /** TableConfig's hasHorizontalScroll. */
+    horizontalScroll: boolean;
+    editorState: string;
+    html: string;
+  };
+  const cases: TableCase[] = [];
+  for (const horizontalScroll of [true, false]) {
+    for (const theme of [undefined, TABLE_THEME]) {
+      for (const {name, build} of tableDocuments()) {
+        const editor = buildEditorFromExtensions(
+          defineExtension({
+            dependencies: [
+              RichTextExtension,
+              configExtension(TableExtension, {
+                hasHorizontalScroll: horizontalScroll,
+              }),
+            ],
+            name: '[conformance]',
+            // A copy: the editor caches class names on the theme it is given.
+            theme: theme && JSON.parse(JSON.stringify(theme)),
+          }),
+        );
+        editor.update(build, {discrete: true});
+        const html = withJSDOM(() =>
+          editor.read(() => $generateHtmlFromNodes(editor)),
+        );
+        cases.push({
+          editorState: JSON.stringify(editor.getEditorState().toJSON()),
+          horizontalScroll,
+          html,
+          name,
+          ...(theme ? {theme} : {}),
+        });
+        editor.dispose();
+      }
+    }
+  }
+  emitVectors(
+    'html/table',
+    'html-export',
+    'Documents with @lexical/table nodes and the HTML $generateHtmlFromNodes writes for them in jsdom, in an editor built from RichTextExtension and TableExtension (with and without hasHorizontalScroll, with and without a table theme).',
+    cases,
+  );
+});
+
+test('html/import-table', () => {
+  const exported: string[] = JSON.parse(
+    readFileSync(
+      new URL('../vectors/html/table.json', import.meta.url),
+      'utf8',
+    ),
+  ).cases.map((c: Case) => c.html);
+  const htmls = [...TABLE_IMPORT_CORPUS, ...new Set(exported)];
+  const cases: (ImportCase & {legacy: string})[] = htmls.map(html => {
+    const editor = buildEditorFromExtensions(
+      defineExtension({
+        dependencies: [RichTextExtension, CheckListExtension, TableExtension],
+        name: '[conformance]',
+      }),
+    );
+    let nodes = '';
+    let legacy = '';
+    withJSDOM(() => {
+      const dom = new JSDOM(html).window.document;
+      editor.update(
+        () => {
+          nodes = JSON.stringify(
+            $generateNodesFromDOMViaExtension(dom).map($nodeToJSON),
+          );
+          legacy = JSON.stringify(
+            $generateNodesFromDOM(editor, dom).map($nodeToJSON),
+          );
+        },
+        {discrete: true},
+      );
+    });
+    editor.dispose();
+    return {html, legacy, nodes};
+  });
+  emitVectors(
+    'html/import-table',
+    'html-import',
+    "HTML with tables (curated cases for TableImportRules, Google Docs and Sheets pastes, and every html/table export) and the nodes it imports to in a jsdom document, in an editor built from RichTextExtension, CheckListExtension and TableExtension: `nodes` from DOMImportExtension's $generateNodesFromDOM (TableImportRules), `legacy` from the importDOM-based $generateNodesFromDOM, each as exportJSON with its children.",
     cases,
   );
 });

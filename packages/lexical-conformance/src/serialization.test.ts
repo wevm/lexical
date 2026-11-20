@@ -27,6 +27,16 @@ import {
 import {$addMarkID, $createMarkNode, MarkNode} from '@lexical/mark';
 import {$createOverflowNode, OverflowNode} from '@lexical/overflow';
 import {
+  $createTableCellNode,
+  $createTableNode,
+  $createTableNodeWithDimensions,
+  $createTableRowNode,
+  TableCellHeaderStates,
+  TableCellNode,
+  TableNode,
+  TableRowNode,
+} from '@lexical/table';
+import {
   $createLineBreakNode,
   $createParagraphNode,
   $createRangeSelection,
@@ -213,6 +223,81 @@ test('serialization/list', () => {
     'serialization/list',
     'serialization',
     'Documents with @lexical/list nodes and the exact JSON text JS writes for them.',
+    cases,
+  );
+});
+
+// Documents with @lexical/table nodes: header states, spans, widths, row
+// heights, background colors, vertical alignment, striping and frozen rows
+// and columns.
+test('serialization/table', () => {
+  const $cell = (text: string, headerState = TableCellHeaderStates.NO_STATUS) =>
+    $createTableCellNode(headerState).append(
+      $createParagraphNode().append($createTextNode(text)),
+    );
+  const documents: Record<string, () => void> = {
+    'merged cells': () => {
+      const merged = $cell('wide').setColSpan(2).setRowSpan(2);
+      $getRoot().append(
+        $createTableNode().append(
+          $createTableRowNode().append(merged, $cell('c')),
+          $createTableRowNode().append($cell('f')),
+        ),
+        $createParagraphNode(),
+      );
+    },
+    'styled table': () => {
+      const table = $createTableNode()
+        .setColWidths([120, 80.5])
+        .setRowStriping(true)
+        .setFrozenColumns(1)
+        .setFrozenRows(1);
+      table.append(
+        $createTableRowNode(40).append(
+          $cell('a', TableCellHeaderStates.BOTH).setBackgroundColor('#eee'),
+          $cell('b', TableCellHeaderStates.ROW)
+            .setVerticalAlign('middle')
+            .setWidth(80.5),
+        ),
+        $createTableRowNode().append(
+          $cell('c', TableCellHeaderStates.COLUMN),
+          $createTableCellNode(),
+        ),
+      );
+      $getRoot().append(table, $createParagraphNode());
+    },
+    'table with dimensions': () => {
+      $getRoot().append(
+        $createTableNodeWithDimensions(2, 3),
+        $createParagraphNode(),
+      );
+    },
+    'table without headers': () => {
+      $getRoot().append(
+        $createTableNodeWithDimensions(2, 2, false),
+        $createParagraphNode(),
+      );
+    },
+  };
+  const cases: Case[] = Object.entries(documents).map(([name, build]) => {
+    const editor = createHeadlessEditor({
+      nodes: [TableNode, TableRowNode, TableCellNode],
+      onError: e => {
+        throw e;
+      },
+    });
+    editor.update(build, {discrete: true});
+    const state = editor.getEditorState();
+    return {
+      compact: JSON.stringify(state.toJSON(true)),
+      legacy: JSON.stringify(state.toJSON()),
+      name,
+    };
+  });
+  emitVectors(
+    'serialization/table',
+    'serialization',
+    'Documents with @lexical/table nodes and the exact JSON text JS writes for them.',
     cases,
   );
 });

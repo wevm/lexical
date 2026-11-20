@@ -1075,6 +1075,21 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   ported, 38 skips (37 that need `lexical-code-prism`'s highlighting, and
   one type-level check Swift has no string literal types for).
 
+- **`LexicalTable`** ports `@lexical/table` (#244), in its own library
+  product: `TableNode`, `TableRowNode`, `TableCellNode`, `TableSelection`,
+  the commands and utilities (`$createTableNodeWithDimensions`,
+  `$insertTableRowAtSelection`, `$deleteTableColumnAtSelection`, ...),
+  `TableExtension` and `TableImportExtension` (HTML import and export), and
+  the model half of `LexicalTableSelectionHelpers` (Tab, the arrow keys,
+  deletion, formatting and text insertion over a `TableSelection`). Cell
+  merging (`colSpan`/`rowSpan` editing, `$mergeCells`, `$unmergeCell`) and
+  cell background colors wait until an app needs them; documents that carry
+  spans or a `backgroundColor` still parse and export byte for byte. The
+  GitHub-style markdown `TABLE` transformer stays out of `LexicalMarkdown`,
+  as upstream keeps it in the playground. `TableObserver`'s pointer
+  listeners and `getBoundingClientRect` reads belong to the views (below);
+  the module itself builds and tests on Linux.
+
 - **`LexicalMenu`** ports the parts of `@lexical/react`'s
   `LexicalTypeaheadMenuPlugin`, `LexicalNodeMenuPlugin` and
   `shared/LexicalMenu` that are not React: `MenuOption`,
@@ -1096,6 +1111,87 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   entry: its tests render React, so the contract is tested in
   `LexicalMenuTests` (trigger matching against upstream's regex, run in
   Node, and the commands).
+
+### The table view (decided for #244, for tmm to review)
+
+Platform standards first: Apple has no table layout for TextKit 2.
+`NSTextTable` is macOS-only and TextKit 1-only, doesn't scroll sideways, and
+UIKit has nothing like it. Apple's own TextKit 2 editor with tables, Notes,
+shows a table as an attachment that holds a grid of cell text views and
+scrolls sideways on its own. The views do the same.
+
+- **A table is one block attachment.** In the outer view's
+  `TextKitDocument` a `TableNode` renders as one U+FFFC between "\n"
+  separators, laid out at the line's width as a block decorator is (see
+  Decorators). Its subtree is not in the outer storage. TextKit recognizes the
+  nodes by their config types (`table`, `tablerow`, `tablecell`) and reads
+  `colWidths`, `headerState`, `rowStriping`, `frozenColumnCount`,
+  `frozenRowCount` and `format` from the nodes' JSON, as it reads list
+  markers. That way `LexicalTextKit`, `LexicalAppKit` and `LexicalUIKit` don't
+  depend on `LexicalTable`.
+- **Each cell is a nested Lexical text view over the same editor.** The
+  attachment's view is a `TableGridView` holding one cell text view per
+  `TableCellNode`. A cell text view is the platform's `LexicalNSTextView`
+  or `LexicalUITextView` in subtree mode. It renders a `TextKitDocument`
+  rooted at the cell and reconciles from the same commit's dirty sets, so a
+  keystroke in one cell touches only that cell's storage. It sends its
+  input through the shared input path (key presses, `beforeinput`, IME,
+  pasteboard, Writing Tools), which maps its locations to model points
+  through its own document. There is one `Editor`, one `EditorState`, one
+  history and one root element (the outer view), as on the web, where cells
+  are shadow roots in one `contenteditable`. A grid of nested editors was
+  rejected because it would break a `TableSelection`, undo and the model
+  parity.
+- **Layout follows the playground's CSS** (`table-layout: fixed`,
+  `width: fit-content`). A column is its `colWidths` entry in points (CSS
+  px), or `COLUMN_WIDTH` (75) plus the cell's padding (6 × 8) and 1-point
+  borders when there is none. A row is as tall as its tallest cell at its
+  column's width. When the grid is wider than the text container, it
+  scrolls sideways inside the attachment, like `tableScrollableWrapper`'s
+  `overflow-x: auto` (an `NSScrollView` with only a horizontal scroller, or
+  a `UIScrollView`). The outer view keeps all vertical scrolling. A change
+  in a cell's height invalidates only the attachment's layout. The theme
+  gets the keys `table`, `tableCell`, `tableCellHeader`,
+  `tableCellSelected`, `tableSelected`, `tableRowStriping` and
+  `tableAlignment.center`/`.right`, defaulting to the playground's CSS.
+- **Selection shows where it is.** A `RangeSelection` inside one cell is
+  that cell view's caret or highlight. That view is first responder while
+  the editor is focused, and the view that holds the anchor takes over after
+  each commit, as the DOM focus follows the selection. A `TableSelection`
+  hides every cell's own highlight (`tableSelection *::selection`) and fills
+  the selected cells with the highlight color (`tableCellSelected`). A
+  range that crosses the table's edge selects the attachment's character in
+  the outer view and fills every cell. A `NodeSelection` of the table
+  outlines the grid (`tableSelected`).
+- **Keys are the model's.** Tab, Shift-Tab and the arrows reach
+  `TableExtension`'s `KEY_TAB_COMMAND` and `KEY_ARROW_*` handlers through
+  `KEY_DOWN_COMMAND`, as other keys do. Where JS lets the browser move the
+  caret and only steps in at a cell's edge, the cell view moves the caret
+  inside the cell, and at the first or last line (up and down) or the start
+  or end (left and right) the handler moves it to the neighbor cell. The
+  rectangles `$handleArrowKey` reads from `getBoundingClientRect` come
+  from the cell view's line fragments, through the root element's rect
+  query the menus use (`rect(from:to:)`).
+- **Pointer selection.** On macOS, a drag that leaves its cell for another
+  sets a `TableSelection` from the anchor cell to the cell under the
+  pointer, as `TableObserver` does on `pointermove`. Shift-click extends it.
+  On iOS, a text view's selection handles can't leave the view, so the grid
+  draws its own handles at the corners of a `TableSelection`, as Notes
+  does. A drag of the selection handle past a cell's edge starts one.
+- **Accessibility.** The grid is the platform's table: an
+  `NSAccessibility` table with rows, columns and cells on macOS, and
+  `UIAccessibilityContainerDataTable` on iOS. Each cell is its text view, so
+  VoiceOver reads and edits cells as it does the rest of the text, and
+  announces row and column headers from `headerState`.
+- **Performance.** Cell views are created when the attachment's view
+  provider loads, which TextKit 2 does for attachments near the viewport,
+  and kept per cell key across commits, as decorator views are. The
+  benchmark adds typing in a cell of a 20 × 10 table under a 5,000-paragraph
+  document, with the same keystroke budget.
+- **Left for later:** cell resizing by drag (the playground's
+  `tableCellResizer`), frozen rows and columns kept on screen while
+  scrolling (they render as normal rows and columns), the
+  sticky horizontal scrollbar, and the iOS row and column grab handles.
 
 ## Follow-ups: chat composer gaps
 

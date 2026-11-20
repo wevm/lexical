@@ -674,6 +674,7 @@ pub(crate) fn known_command(name: &str) -> Option<ScriptCommand> {
             ScriptCommand::Void(ext::INSERT_HORIZONTAL_RULE_COMMAND)
         }
         "DRAG_DROP_PASTE" => ScriptCommand::Files(lexical::rich_text::DRAG_DROP_PASTE),
+        "INSERT_TABLE_COMMAND" => ScriptCommand::Table(lexical::table::INSERT_TABLE_COMMAND),
         _ => return None,
     })
 }
@@ -722,6 +723,8 @@ pub(crate) enum ScriptCommand {
     ListStart(LexicalCommand<list::UpdateListStartPayload>),
     /// `TOGGLE_LINK_COMMAND`: `null`, a URL, or `{url, target, rel, title}`.
     Link(LexicalCommand<Option<link::ToggleLinkPayload>>),
+    /// `INSERT_TABLE_COMMAND`: `{columns, rows, includeHeaders}`.
+    Table(LexicalCommand<lexical::table::InsertTableCommandPayload>),
     Json(LexicalCommand<Value>),
 }
 
@@ -1106,6 +1109,15 @@ impl ScriptCommand {
                     "{payload} is not a payload this command takes"
                 ))),
             },
+            ScriptCommand::Table(command) => match payload.as_object() {
+                Some(object) => editor.dispatch_command(
+                    command,
+                    lexical::table::InsertTableCommandPayload::from_json(object),
+                ),
+                None => Err(err(format!(
+                    "{payload} is not a payload this command takes"
+                ))),
+            },
             ScriptCommand::Json(command) => editor.dispatch_command(command, payload),
             _ => Err(err(format!(
                 "{payload} is not a payload this command takes"
@@ -1230,6 +1242,16 @@ impl ScriptCommand {
                 move |payload, editor| listener(&toggle_link_json(payload), editor),
                 priority,
             ),
+            ScriptCommand::Table(command) => editor.register_command(
+                command,
+                move |payload, editor| {
+                    let mut json = Object::new();
+                    json.insert("columns", payload.columns.as_str().into());
+                    json.insert("rows", payload.rows.as_str().into());
+                    listener(&json.into(), editor)
+                },
+                priority,
+            ),
             ScriptCommand::Json(command) => editor.register_command(command, listener, priority),
         }
     }
@@ -1345,6 +1367,7 @@ fn unported_action(action: &Value) -> Option<&'static str> {
             | "fixFocusOverselection",
         ) => None,
         Some("selection" | "selectAll" | "selectNodes" | "insertNodes") => None,
+        Some("selectTable" | "table") => None,
         _ => Some("unknown"),
     }
 }
@@ -2117,6 +2140,27 @@ fn run_action(action: &Value, ctx: &Ctx, editor: &Editor) -> Result<(), LexicalE
         ),
         Some("clearSelection") => {
             set_selection(None);
+            Ok(())
+        }
+        Some("selectTable") => {
+            let key = |field: &str| node(action.get(field).and_then(Value::as_str).unwrap_or(""));
+            set_selection(Some(lexical::table::create_table_selection_from(
+                &key("table")?,
+                &key("anchor")?,
+                &key("focus")?,
+            )?));
+            Ok(())
+        }
+        Some("table") => {
+            let name = action.get("fn").and_then(Value::as_str).unwrap_or("");
+            let args = action
+                .get("args")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            if let Some(result) = table_function(name, &args)? {
+                ctx.log(vec!["table".into(), name.into(), result]);
+            }
             Ok(())
         }
         Some("node") => {
@@ -2968,11 +3012,146 @@ fn run_selection_utils_action(
     Ok(true)
 }
 
+/// ops.ts's `TABLE_FUNCTIONS`: @lexical/table's `$` functions, with node
+/// keys for their nodes, and what each logs (`None` for nothing).
+fn table_function(name: &str, args: &[Value]) -> Result<Option<Value>, LexicalError> {
+    use lexical::table as t;
+    let arg_node = |i: usize| node(args.get(i).and_then(Value::as_str).unwrap_or(""));
+    let arg_bool = |i: usize| args.get(i).and_then(Value::as_bool).unwrap_or(false);
+    let arg_index = |i: usize| args.get(i).and_then(Value::as_f64).unwrap_or(0.0) as usize;
+    let key_of = |n: Option<NodeRef>| n.map_or(Value::Null, |n| n.get_key().into());
+    let rect = |r: t::TableCellNodeRect| {
+        let mut o = Object::new();
+        // The vector's keys are sorted.
+        o.insert("colSpan", (r.col_span as f64).into());
+        o.insert("columnIndex", (r.column_index as f64).into());
+        o.insert("rowIndex", (r.row_index as f64).into());
+        o.insert("rowSpan", (r.row_span as f64).into());
+        Value::Object(o)
+    };
+    Ok(match name {
+        "computeTableMap" => {
+            let (map, _, _) = t::compute_table_map_skip_cell_check(&arg_node(0)?, None, None)?;
+            Some(Value::Array(
+                map.into_iter()
+                    .map(|row| {
+                        Value::Array(
+                            row.into_iter()
+                                .map(|v| match v {
+                                    None => Value::Null,
+                                    Some(v) => Value::Array(vec![
+                                        v.cell.get_key().into(),
+                                        (v.start_row as f64).into(),
+                                        (v.start_column as f64).into(),
+                                    ]),
+                                })
+                                .collect(),
+                        )
+                    })
+                    .collect(),
+            ))
+        }
+        "deleteTableColumnAtSelection" => {
+            t::delete_table_column_at_selection()?;
+            None
+        }
+        "deleteTableRowAtSelection" => {
+            t::delete_table_row_at_selection()?;
+            None
+        }
+        "findCellNode" => Some(key_of(t::find_cell_node(&arg_node(0)?))),
+        "findTableNode" => Some(key_of(t::find_table_node(&arg_node(0)?))),
+        "getTableCellNodeRect" => {
+            Some(t::get_table_cell_node_rect(&arg_node(0)?)?.map_or(Value::Null, rect))
+        }
+        "getTableColumnIndexFromTableCellNode" => {
+            Some((t::get_table_column_index_from_table_cell_node(&arg_node(0)?)? as f64).into())
+        }
+        "getTableRowIndexFromTableCellNode" => {
+            Some((t::get_table_row_index_from_table_cell_node(&arg_node(0)?)? as f64).into())
+        }
+        "insertTableColumnAtNode" => Some(key_of(t::insert_table_column_at_node(
+            &arg_node(0)?,
+            arg_bool(1),
+            true,
+        )?)),
+        "insertTableColumnAtSelection" => {
+            Some(key_of(t::insert_table_column_at_selection(arg_bool(0))?))
+        }
+        "insertTableRowAtNode" => Some(key_of(t::insert_table_row_at_node(
+            &arg_node(0)?,
+            arg_bool(1),
+        )?)),
+        "insertTableRowAtSelection" => Some(key_of(t::insert_table_row_at_selection(arg_bool(0))?)),
+        "isSimpleTable" => Some(t::is_simple_table(&arg_node(0)?).into()),
+        "mergeCells" => {
+            let cells = args
+                .first()
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .map(|k| node(k.as_str().unwrap_or("")))
+                .collect::<Result<Vec<_>, _>>()?;
+            Some(key_of(t::merge_cells(&cells)?))
+        }
+        "moveTableColumn" => {
+            t::move_table_column(&arg_node(0)?, arg_index(1), arg_index(2))?;
+            None
+        }
+        "moveTableRow" => {
+            t::move_table_row(&arg_node(0)?, arg_index(1), arg_index(2))?;
+            None
+        }
+        "padTableRows" => Some(t::pad_table_rows(&arg_node(0)?, |_| true)?.into()),
+        "selectionShape" => {
+            let shape = get_selection()
+                .map(|s| s.get_table_shape())
+                .transpose()?
+                .flatten()
+                .ok_or_else(|| err("not a table selection".to_owned()))?;
+            let mut o = Object::new();
+            o.insert("fromX", (shape.from_x as f64).into());
+            o.insert("fromY", (shape.from_y as f64).into());
+            o.insert("toX", (shape.to_x as f64).into());
+            o.insert("toY", (shape.to_y as f64).into());
+            Some(Value::Object(o))
+        }
+        "setTableColumnIsHeader" => {
+            t::set_table_column_is_header(&arg_node(0)?, arg_index(1), arg_bool(2))?;
+            None
+        }
+        "setTableRowIsHeader" => {
+            t::set_table_row_is_header(&arg_node(0)?, arg_index(1), arg_bool(2))?;
+            None
+        }
+        "unmergeCell" => {
+            t::unmerge_cell()?;
+            None
+        }
+        _ => return Err(err(format!("unknown table function {name}"))),
+    })
+}
+
 /// `$selectionSnapshot()`.
 pub(crate) fn selection_snapshot() -> Value {
     let Some(selection) = get_selection() else {
         return Value::Null;
     };
+    if let Some(table) = selection.table() {
+        let point = |p: &lexical::Point| {
+            Value::Array(vec![
+                p.key.as_str().into(),
+                (p.offset as f64).into(),
+                p.point_type.as_str().into(),
+            ])
+        };
+        return Value::Array(vec![
+            "table".into(),
+            table.table_key.as_str().into(),
+            point(&table.anchor),
+            point(&table.focus),
+        ]);
+    }
     let point = |which| {
         let p = selection.point(which).expect("a range selection");
         Value::Array(vec![

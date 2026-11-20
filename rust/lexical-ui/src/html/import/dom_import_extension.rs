@@ -300,7 +300,8 @@ pub fn generate_nodes_from_dom_via_extension(
     feature = "rich-text",
     feature = "list",
     feature = "link",
-    feature = "code"
+    feature = "code",
+    feature = "table"
 ))]
 pub(crate) fn package_import_dependencies(
     rules: Vec<DomImportRule>,

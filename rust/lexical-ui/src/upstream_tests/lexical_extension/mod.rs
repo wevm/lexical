@@ -3,6 +3,7 @@
 mod block_containers;
 mod block_id_dom;
 mod block_id_extension;
+mod block_id_extension_property;
 mod block_id_format;
 mod block_id_handles;
 mod block_id_handles_cache;
@@ -17,6 +18,7 @@ mod indentation_limits;
 mod keyboard_shortcuts_extension;
 mod lexical_builder;
 mod node_structure_extension;
+mod node_structure_property;
 mod normalize_triple_click_selection;
 mod select_block_extension;
 mod select_block_slots;

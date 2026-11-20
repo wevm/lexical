@@ -2,9 +2,9 @@
 //!
 //! Upstream's `initializeUnitTest` editor registers the packages' nodes and
 //! the test nodes of `__tests__/utils`; here that is [`test_editor`], with
-//! [`TestDecoratorNode`] and [`TestElementNode`] ported. The table cases need
-//! `@lexical/table` and are skipped (`rust/parity/skips.json`). A JS
-//! `beforeEach` update is an update of its own before the test's.
+//! [`TestDecoratorNode`] and [`TestElementNode`] ported, and the table nodes
+//! with the `table` feature. A JS `beforeEach` update is an update of its
+//! own before the test's.
 #![cfg(all(
     feature = "rich-text",
     feature = "list",
@@ -121,18 +121,22 @@ fn create_test_element_node() -> NodeRef {
 
 /// `initializeUnitTest`'s editor, with the nodes these tests use.
 fn test_editor() -> Editor {
+    #[allow(unused_mut)]
+    let mut nodes = vec![
+        NodeClass::of::<HeadingNode>(),
+        NodeClass::of::<QuoteNode>(),
+        NodeClass::of::<ListNode>(),
+        NodeClass::of::<ListItemNode>(),
+        NodeClass::of::<LinkNode>(),
+        NodeClass::of::<MarkNode>(),
+        NodeClass::of::<TestDecoratorNode>(),
+        NodeClass::of::<TestElementNode>(),
+    ];
+    #[cfg(feature = "table")]
+    nodes.extend(crate::table::table_nodes());
     create_editor(CreateEditorArgs {
         namespace: "test".into(),
-        nodes: vec![
-            NodeClass::of::<HeadingNode>(),
-            NodeClass::of::<QuoteNode>(),
-            NodeClass::of::<ListNode>(),
-            NodeClass::of::<ListItemNode>(),
-            NodeClass::of::<LinkNode>(),
-            NodeClass::of::<MarkNode>(),
-            NodeClass::of::<TestDecoratorNode>(),
-            NodeClass::of::<TestElementNode>(),
-        ],
+        nodes,
         ..CreateEditorArgs::default()
     })
 }
@@ -887,6 +891,50 @@ fn select_all_with_nesting_and_a_trailing_decorator() {
         assert_caret(
             &result_range.anchor,
             Some(NEXT),
+            None,
+            Some(&paragraph_node),
+            Some("child"),
+        );
+        Ok(())
+    });
+}
+
+// upstream: lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported Table e2e tests > Can delete all with range selection anchored in table
+#[cfg(feature = "table")]
+#[test]
+fn can_delete_all_with_range_selection_anchored_in_table() {
+    use crate::table::{create_table_cell_node, create_table_node, create_table_row_node};
+    run(|| {
+        let cell = |text: &str| {
+            append(
+                create_table_cell_node(0, 1.0, None),
+                &[paragraph_of(&[create_text_node(text)])?],
+            )
+        };
+        let table_node = append(
+            create_table_node(),
+            &[append(
+                create_table_row_node(None),
+                &[cell("cell 1")?, cell("cell 2")?],
+            )?],
+        )?;
+        let paragraph_node = paragraph_of(&[create_text_node("paragraph 2")])?;
+        let root = get_root();
+        root.clear()?;
+        root.append(&[table_node, paragraph_node.clone()])?;
+        let selection = select_all()?;
+        // The table plug-in would normally do this normalization
+        selection.point_set(Which::Anchor, "root", 0, PointType::Element)?;
+        let range = range_of(&selection)?;
+        let result_range = remove_text(&range)?;
+        assert!(get_root().get_all_text_nodes().is_empty());
+        assert_eq!(
+            get_root().get_children(),
+            std::slice::from_ref(&paragraph_node)
+        );
+        assert_caret(
+            &result_range.anchor,
+            Some(CaretDirection::Next),
             None,
             Some(&paragraph_node),
             Some("child"),
@@ -2452,6 +2500,54 @@ fn an_inline_insert_after_the_list_deletion_does_not_throw() {
     editor
         .read(|| {
             let paragraph = get_root().get_first_child();
+            assert!(is_paragraph(paragraph.as_ref()), "Expected a ParagraphNode");
+            assert!(is_line_break(paragraph.unwrap().get_first_child().as_ref()));
+        })
+        .unwrap();
+}
+
+/// A table of one row of one cell holding a paragraph of "cell".
+#[cfg(feature = "table")]
+fn one_cell_table() -> Result<NodeRef, LexicalError> {
+    use crate::table::{create_table_cell_node, create_table_node, create_table_row_node};
+    let cell = append(
+        create_table_cell_node(0, 1.0, None),
+        &[paragraph_of(&[create_text_node("cell")])?],
+    )?;
+    append(
+        create_table_node(),
+        &[append(create_table_row_node(None), &[cell])?],
+    )
+}
+
+// upstream: lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a table is replaced with an empty paragraph
+#[cfg(feature = "table")]
+#[test]
+fn a_table_is_replaced_with_an_empty_paragraph() {
+    let editor = select_all_delete_after_block_decorator(one_cell_table);
+    assert_root_is_one_empty_paragraph(&editor);
+}
+
+// A leftover table does not throw on the next insert, because an element
+// point on a shadow root takes an earlier branch of insertNodes. It
+// silently takes the inline content as a child instead, which a table that
+// holds only rows cannot render.
+// upstream: lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > an inline insert after the table deletion does not land in a table
+#[cfg(feature = "table")]
+#[test]
+fn an_inline_insert_after_the_table_deletion_does_not_land_in_a_table() {
+    let editor = select_all_delete_after_block_decorator(one_cell_table);
+    update(&editor, || {
+        get_selection()
+            .filter(SelectionRef::is_range)
+            .expect("a range selection")
+            .insert_nodes(vec![create_line_break_node()])
+    });
+    editor
+        .read(|| {
+            let root = get_root();
+            assert_eq!(root.get_children_size(), 1);
+            let paragraph = root.get_first_child();
             assert!(is_paragraph(paragraph.as_ref()), "Expected a ParagraphNode");
             assert!(is_line_break(paragraph.unwrap().get_first_child().as_ref()));
         })

@@ -1,9 +1,8 @@
 //! Ports of `packages/lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts`.
 //!
-//! Upstream's `build` also lists `TableExtension`; `@lexical/table` is not
-//! ported, so the editors here have no table nodes. The tests ported here
-//! make no table, so its absence changes nothing they check; those that
-//! make one are skipped (rust/parity/skips.json).
+//! Upstream's `build` also lists `TableExtension`; the editors here have it
+//! with the `table` feature, which the tests that make a table (in
+//! [`tables`]) need.
 
 #![cfg(all(
     feature = "rich-text",
@@ -67,8 +66,10 @@ fn build(options: BuildOptions) -> LexicalEditorWithDispose {
     let mut dependencies = vec![
         crate::rich_text::rich_text_extension().into(),
         crate::list::list_extension().into(),
-        horizontal_rule_extension().into(),
     ];
+    #[cfg(feature = "table")]
+    dependencies.push(crate::table::table_extension().into());
+    dependencies.push(horizontal_rule_extension().into());
     if options.history {
         dependencies.push(config_extension(
             &crate::history::history_extension(),
@@ -2597,4 +2598,613 @@ fn copy_and_paste_of_nested_list_items_through_the_lexical_clipboard() {
 #[test]
 fn cut_and_paste_of_nested_list_items_through_the_lexical_clipboard() {
     copy_or_cut_nested_list_items(true);
+}
+
+/// The tests that make a table.
+#[cfg(feature = "table")]
+mod tables {
+    use super::*;
+    use crate::code::create_code_node;
+    use crate::link::{LinkAttributes, create_link_node};
+    use crate::nodes::element::ElementData;
+    use crate::table::{
+        InsertTableCommandPayloadHeaders, create_table_cell_node, create_table_node,
+        create_table_node_with_dimensions, create_table_row_node, is_table_cell_node,
+        table_extension,
+    };
+    use crate::{AnyLexicalExtensionArgument, LexicalNode, NodeBase, NodeClass, create};
+
+    /// `$createTableNodeWithDimensions(rows, columns, false)`.
+    fn table(rows: usize, columns: usize) -> NodeRef {
+        create_table_node_with_dimensions(
+            rows,
+            columns,
+            InsertTableCommandPayloadHeaders::Both(false),
+        )
+        .unwrap()
+    }
+
+    /// `$createTableCellNode().append(...children)`.
+    fn cell(children: &[NodeRef]) -> NodeRef {
+        let cell = create_table_cell_node(0, 1.0, None);
+        cell.append(children).unwrap();
+        cell
+    }
+
+    /// `$createTableNode().append($createTableRowNode().append(...cells))`.
+    fn one_row_table(cells: &[NodeRef]) -> NodeRef {
+        let row = create_table_row_node(None);
+        row.append(cells).unwrap();
+        let table = create_table_node();
+        table.append(&[row]).unwrap();
+        table
+    }
+
+    fn element_of(node: NodeRef, children: &[NodeRef]) -> NodeRef {
+        node.append(children).unwrap();
+        node
+    }
+
+    fn id_of(node: &NodeRef) -> Option<String> {
+        get_block_id(node).unwrap()
+    }
+
+    fn type_of_block(id: &str) -> String {
+        get_block_by_id(id).unwrap().unwrap().get_type().to_owned()
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: index > nested blocks in lists and tables, with table cells added
+    #[test]
+    fn nested_blocks_in_lists_and_tables_with_table_cells_added() {
+        let editor = build(BuildOptions {
+            is_identified_block: Some(IsIdentifiedBlock(Rc::new(|node: &NodeRef| {
+                default_is_identified_block(node) || is_table_cell_node(node)
+            }))),
+            ..Default::default()
+        });
+        update(&editor, || {
+            get_root().append(&[table(2, 2), paragraph("a"), paragraph("b")])?;
+            Ok(())
+        });
+        let e = (*editor).clone();
+        update(&editor, move || {
+            select_blocks(1, 2)?;
+            e.dispatch_command(&INSERT_UNORDERED_LIST_COMMAND, ())?;
+            Ok(())
+        });
+        assert_eq!(
+            outline(&editor),
+            strings(&[
+                "table:b1",
+                "  tablerow",
+                "    tablecell:b2",
+                "      paragraph:b3",
+                "    tablecell:b4",
+                "      paragraph:b5",
+                "  tablerow",
+                "    tablecell:b6",
+                "      paragraph:b7",
+                "    tablecell:b8",
+                "      paragraph:b9",
+                "list:b12",
+                "  listitem:b10",
+                "  listitem:b11",
+            ])
+        );
+        editor
+            .read(|| {
+                assert_eq!(type_of_block("b4"), "tablecell");
+                assert_eq!(
+                    get_block_by_id("b11").unwrap().unwrap().get_text_content(),
+                    "b"
+                );
+                assert_eq!(type_of_block("b12"), "list");
+            })
+            .unwrap();
+        editor.dispose();
+    }
+
+    /// `BoxNode`: an element that declares no structure, like most app
+    /// classes.
+    #[derive(Clone, Debug, Default)]
+    struct BoxNode {
+        base: NodeBase,
+        element: ElementData,
+    }
+
+    impl LexicalNode for BoxNode {
+        fn get_type(&self) -> &'static str {
+            "block-id-box"
+        }
+        fn base(&self) -> &NodeBase {
+            &self.base
+        }
+        fn base_mut(&mut self) -> &mut NodeBase {
+            &mut self.base
+        }
+        fn element(&self) -> Option<&ElementData> {
+            Some(&self.element)
+        }
+        fn element_mut(&mut self) -> Option<&mut ElementData> {
+            Some(&mut self.element)
+        }
+    }
+
+    /// `buildWithBox()`.
+    fn build_with_box() -> LexicalEditorWithDispose {
+        as_edited(
+            build_editor_from_extensions([define_extension(LexicalExtension {
+                initial_editor_state: Some(InitialEditorStateType::Null),
+                dependencies: vec![
+                    crate::rich_text::rich_text_extension().into(),
+                    crate::list::list_extension().into(),
+                    table_extension().into(),
+                    horizontal_rule_extension().into(),
+                    crate::code::code_extension().into(),
+                    crate::link::link_extension().into(),
+                    config_extension(
+                        &block_id_extension(),
+                        [BlockIdConfigOverrides {
+                            generate_id: Some(counter("b")),
+                            ..Default::default()
+                        }],
+                    ),
+                ],
+                nodes: vec![NodeClass::of::<BoxNode>()],
+                ..LexicalExtension::<(), (), ()>::new("[block-id-default]", ())
+            })
+            .into()])
+            .unwrap(),
+        )
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the default predicate > root children, nested blocks that hold text, nested block decorators
+    #[test]
+    fn root_children_nested_blocks_that_hold_text_nested_block_decorators() {
+        let editor = build_with_box();
+        update(&editor, || {
+            // The nodes are created in the order upstream's expression
+            // creates them (the table and its row before the cells'
+            // content), which orders the ids of one update.
+            let table = create_table_node();
+            let row = create_table_row_node(None);
+            let first_cell = cell(&[
+                heading(HeadingTagType::H2, "h"),
+                element_of(create_quote_node(false), &[create_text_node("q")]),
+                element_of(create_code_node(None, None), &[create_text_node("c")]),
+            ]);
+            let second_cell = cell(&[
+                create_horizontal_rule_node(),
+                element_of(create::<BoxNode>(), &[paragraph("in a box")]),
+                element_of(create_quote_node(true), &[paragraph("sq")]),
+                element_of(
+                    create_paragraph_node(),
+                    &[element_of(
+                        create_link_node("https://lexical.dev", &LinkAttributes::default()),
+                        &[create_text_node("link")],
+                    )],
+                ),
+            ]);
+            get_root().append(&[
+                element_of(table, &[element_of(row, &[first_cell, second_cell])]),
+                element_of(
+                    create_list_node(ListType::Bullet, 1.0),
+                    &[
+                        element_of(create_list_item_node(None), &[create_text_node("one")]),
+                        element_of(create_list_item_node(None), &[bullet_list(&["two"])]),
+                    ],
+                ),
+                element_of(create::<BoxNode>(), &[paragraph("in a box")]),
+                element_of(create_quote_node(true), &[paragraph("sq")]),
+            ])?;
+            Ok(())
+        });
+        // A list item that only holds a nested list is still a list item:
+        // its class declares inline children.
+        assert_eq!(
+            outline(&editor),
+            strings(&[
+                "table:b1",
+                "  tablerow",
+                "    tablecell",
+                "      heading:b2",
+                "      quote:b3",
+                "      code:b4",
+                "    tablecell",
+                "      horizontalrule:b5",
+                "      block-id-box",
+                "        paragraph:b6",
+                "      quote",
+                "        paragraph:b7",
+                "      paragraph:b8",
+                "        link",
+                "list:b9",
+                "  listitem:b10",
+                "  listitem:b11",
+                "    list",
+                "      listitem:b12",
+                "block-id-box:b13",
+                "  paragraph:b14",
+                "quote:b15",
+                "  paragraph:b16",
+            ])
+        );
+        editor
+            .read(|| {
+                fn visit(node: &NodeRef) {
+                    if !node.is_text() {
+                        // Exactly the nodes the predicate identifies have ids.
+                        assert_eq!(
+                            id_of(node).is_some(),
+                            default_is_identified_block(node),
+                            "{}",
+                            node.get_type()
+                        );
+                    }
+                    if node.is_element() {
+                        node.get_children().iter().for_each(visit);
+                    }
+                }
+                get_root().get_children().iter().for_each(visit);
+            })
+            .unwrap();
+        expect_unique(&editor);
+        editor.dispose();
+    }
+
+    /// Ids on the root's children only, as `$isRootChildBlock` writes them
+    /// (`rootOnlyDocument()`).
+    fn root_only_document() -> String {
+        let writer = build(BuildOptions {
+            is_identified_block: Some(IsIdentifiedBlock(Rc::new(is_root_child_block))),
+            generate_id: Some(counter("r")),
+            ..Default::default()
+        });
+        update(&writer, || {
+            get_root().append(&[
+                paragraph("Title"),
+                bullet_list(&["one", "two"]),
+                table(1, 2),
+            ])?;
+            Ok(())
+        });
+        let json = state_json(&writer).to_string();
+        writer.dispose();
+        json
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the default predicate > ids stored on the root children are kept; nested blocks get positional ids
+    #[test]
+    fn ids_stored_on_the_root_children_are_kept_nested_blocks_get_positional_ids() {
+        // Written with the previous default: ids on the root's children only.
+        let stored = root_only_document();
+        let read = || {
+            let editor = reader(None);
+            load(&editor, &stored);
+            editor
+        };
+        let first = read();
+        let second = read();
+        assert_eq!(
+            outline(&first),
+            strings(&[
+                "paragraph:r1",
+                "list:r2",
+                "  listitem:@1.0",
+                "  listitem:@1.1",
+                "table:r3",
+                "  tablerow",
+                "    tablecell",
+                "      paragraph:@2.0",
+                "    tablecell",
+                "      paragraph:@2.1",
+            ])
+        );
+        assert_eq!(state_json(&first), state_json(&second));
+        // Stored once, they are ordinary ids: loading again changes nothing.
+        let saved = state_json(&first).to_string();
+        let again = reader(None);
+        load(&again, &saved);
+        assert_eq!(state_json(&again).to_string(), saved);
+        for editor in [first, second, again] {
+            editor.dispose();
+        }
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a document with ids on the root children only, via setEditorState
+    #[test]
+    fn a_document_with_ids_on_the_root_children_only_via_set_editor_state() {
+        let editor = build(BuildOptions {
+            fresh: true,
+            ..Default::default()
+        });
+        load(&editor, &root_only_document());
+        assert_eq!(ids(&editor), some(&["r1", "r2", "r3"]));
+        expect_all_indexed(&editor);
+        // Typing in an item keeps it that way.
+        update(&editor, || set_first_item_text("one!"));
+        expect_all_indexed(&editor);
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a document with ids on the root children only, as the initial state
+    #[test]
+    fn a_document_with_ids_on_the_root_children_only_as_the_initial_state() {
+        let stored = root_only_document();
+        let dependencies: Vec<AnyLexicalExtensionArgument> = vec![
+            crate::rich_text::rich_text_extension().into(),
+            crate::list::list_extension().into(),
+            table_extension().into(),
+            block_id_extension().into(),
+        ];
+        let editor = build_editor_from_extensions([define_extension(LexicalExtension {
+            initial_editor_state: Some(InitialEditorStateType::Json(stored)),
+            dependencies,
+            ..LexicalExtension::<(), (), ()>::new("[block-id-initial]", ())
+        })
+        .into()])
+        .unwrap();
+        assert_eq!(ids(&editor), some(&["r1", "r2", "r3"]));
+        expect_all_indexed(&editor);
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a table given an id with $setState before it is inserted
+    #[test]
+    fn a_table_given_an_id_with_set_state_before_it_is_inserted() {
+        let editor = build_default();
+        seed(&editor, &["p"]);
+        update(&editor, || {
+            let block = table(1, 1);
+            set_state(&block, &block_id_state(), Some("my-block".to_owned()))?;
+            get_root().append(&[block])?;
+            Ok(())
+        });
+        assert_eq!(ids(&editor), some(&["b1", "my-block"]));
+        expect_all_indexed(&editor);
+        editor
+            .read(|| {
+                assert_eq!(
+                    get_block_by_id("my-block")
+                        .unwrap()
+                        .map(|n| n.get_key().to_owned()),
+                    Some(nth(1).get_key().to_owned())
+                );
+            })
+            .unwrap();
+        editor.dispose();
+    }
+
+    /// `nestTable(editor)`: a root table moved into a cell of another
+    /// table is not identified; returns its id.
+    fn nest_table(editor: &Editor) -> String {
+        update(editor, || {
+            get_root().append(&[table(1, 1), paragraph("mid"), table(1, 1)])?;
+            Ok(())
+        });
+        let id = editor.read(|| id_of(&nth(2)).unwrap()).unwrap();
+        update(editor, || {
+            let row = nth(0).get_first_child_or_throw()?;
+            assert!(row.is_element());
+            let cell = row.get_first_child_or_throw()?;
+            assert!(is_table_cell_node(&cell));
+            cell.append(&[nth(2)])?;
+            Ok(())
+        });
+        id
+    }
+
+    /// `$nestedTable()`.
+    fn nested_table() -> NodeRef {
+        let row = nth(0).get_first_child_or_throw().unwrap();
+        assert!(row.is_element());
+        let cell = row.get_first_child_or_throw().unwrap();
+        assert!(is_table_cell_node(&cell));
+        let table = cell.get_last_child_or_throw().unwrap();
+        assert!(table.is_element());
+        table
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > the id stays in NodeState but is not indexed, and comes back with the block
+    #[test]
+    fn the_id_stays_in_node_state_but_is_not_indexed_and_comes_back_with_the_block() {
+        let editor = build_default();
+        let id = nest_table(&editor);
+        let i = id.clone();
+        editor
+            .read(move || {
+                assert_eq!(id_of(&nested_table()), Some(i.clone()));
+                assert!(get_block_by_id(&i).unwrap().is_none());
+            })
+            .unwrap();
+        update(&editor, || {
+            get_root().append(&[nested_table()])?;
+            Ok(())
+        });
+        assert_eq!(ids(&editor)[2], Some(id));
+        expect_all_indexed(&editor);
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > a block that took the id meanwhile keeps it, wherever the original returns
+    #[test]
+    fn a_block_that_took_the_id_meanwhile_keeps_it_wherever_the_original_returns() {
+        for above in [true, false] {
+            let editor = build_default();
+            let id = nest_table(&editor);
+            // A copy of the nested table at the root: nothing identified
+            // holds the id, so the copy keeps it.
+            update(&editor, || {
+                nth(1).insert_after(&deep_copy(&nested_table()), true)?;
+                Ok(())
+            });
+            let copy_key = editor.read(|| nth(2).get_key().to_owned()).unwrap();
+            assert_eq!(ids(&editor)[2], Some(id.clone()));
+            update(&editor, move || {
+                let original = nested_table();
+                if above {
+                    nth(0).insert_before(&original, true)?;
+                } else {
+                    get_root().append(&[original])?;
+                }
+                Ok(())
+            });
+            expect_unique(&editor);
+            expect_all_indexed(&editor);
+            editor
+                .read(|| {
+                    assert_eq!(
+                        get_block_by_id(&id).unwrap().unwrap().get_key(),
+                        copy_key,
+                        "above: {above}"
+                    );
+                })
+                .unwrap();
+            editor.dispose();
+        }
+    }
+
+    macro_rules! decorator_node {
+        ($(#[$doc:meta])* $name:ident, $type:literal, inline: $inline:expr) => {
+            $(#[$doc])*
+            #[derive(Clone, Debug, Default)]
+            struct $name {
+                base: NodeBase,
+            }
+
+            impl LexicalNode for $name {
+                fn get_type(&self) -> &'static str {
+                    $type
+                }
+                fn base(&self) -> &NodeBase {
+                    &self.base
+                }
+                fn base_mut(&mut self) -> &mut NodeBase {
+                    &mut self.base
+                }
+                fn is_decorator(&self) -> bool {
+                    true
+                }
+                fn is_inline(&self) -> bool {
+                    $inline
+                }
+            }
+        };
+    }
+
+    decorator_node!(
+        /// `InlineDecorator`.
+        InlineDecorator,
+        "block-id-inline-decorator",
+        inline: true
+    );
+    decorator_node!(
+        /// `BlockDecorator`.
+        BlockDecorator,
+        "block-id-block-decorator",
+        inline: false
+    );
+
+    /// `buildWith($isIdentifiedBlock)`.
+    fn build_with_decorators(predicate: Option<IsIdentifiedBlock>) -> LexicalEditorWithDispose {
+        as_edited(
+            build_editor_from_extensions([define_extension(LexicalExtension {
+                initial_editor_state: Some(InitialEditorStateType::Null),
+                dependencies: vec![
+                    crate::rich_text::rich_text_extension().into(),
+                    crate::list::list_extension().into(),
+                    table_extension().into(),
+                    config_extension(
+                        &block_id_extension(),
+                        [BlockIdConfigOverrides {
+                            generate_id: Some(counter("b")),
+                            is_identified_block: predicate,
+                            ..Default::default()
+                        }],
+                    ),
+                ],
+                nodes: vec![
+                    NodeClass::of::<InlineDecorator>(),
+                    NodeClass::of::<BlockDecorator>(),
+                ],
+                ..LexicalExtension::<(), (), ()>::new("[block-id-predicates]", ())
+            })
+            .into()])
+            .unwrap(),
+        )
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > nested inline decorators get no id; a block decorator in a cell does
+    #[test]
+    fn nested_inline_decorators_get_no_id_a_block_decorator_in_a_cell_does() {
+        let editor = build_with_decorators(None);
+        update(&editor, || {
+            get_root().append(&[
+                element_of(
+                    create_paragraph_node(),
+                    &[create_text_node("a"), create::<InlineDecorator>()],
+                ),
+                element_of(
+                    create_list_node(ListType::Bullet, 1.0),
+                    &[element_of(
+                        create_list_item_node(None),
+                        &[create_text_node("i"), create::<InlineDecorator>()],
+                    )],
+                ),
+                one_row_table(&[cell(&[create::<BlockDecorator>()])]),
+            ])?;
+            Ok(())
+        });
+        let lines: Vec<String> = outline(&editor).iter().map(|l| generic_id(l)).collect();
+        assert_eq!(
+            lines,
+            strings(&[
+                "paragraph:id",
+                "  block-id-inline-decorator",
+                "list:id",
+                "  listitem:id",
+                "    block-id-inline-decorator",
+                "table:id",
+                "  tablerow",
+                "    tablecell",
+                "      block-id-block-decorator:id",
+            ])
+        );
+        expect_all_indexed(&editor);
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > a custom predicate that is not composed from the default: headings at any depth
+    #[test]
+    fn a_custom_predicate_that_is_not_composed_from_the_default_headings_at_any_depth() {
+        let editor = build_with_decorators(Some(IsIdentifiedBlock(Rc::new(is_heading_node))));
+        update(&editor, || {
+            get_root().append(&[
+                paragraph("p"),
+                heading(HeadingTagType::H1, "h"),
+                one_row_table(&[cell(&[heading(HeadingTagType::H2, "nested")])]),
+            ])?;
+            Ok(())
+        });
+        assert_eq!(
+            outline(&editor),
+            strings(&[
+                "paragraph",
+                "heading:b1",
+                "table",
+                "  tablerow",
+                "    tablecell",
+                "      heading:b2",
+            ])
+        );
+        editor
+            .read(|| {
+                assert_eq!(
+                    get_block_by_id("b2").unwrap().unwrap().get_text_content(),
+                    "nested"
+                );
+            })
+            .unwrap();
+        editor.dispose();
+    }
 }

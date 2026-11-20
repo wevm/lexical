@@ -1,7 +1,6 @@
 //! Ports of `packages/lexical-list/src/__tests__/unit/LexicalListItemNode.test.ts`,
 //! less `ListItemNode.updateDOM() > nested list` (the DOM writes of
-//! `updateDOM`) and the shadow-root table cell case (`@lexical/table`); see
-//! rust/parity/skips.json.
+//! `updateDOM`); see rust/parity/skips.json.
 //!
 //! Where upstream reads the mounted editor's HTML, these render the committed
 //! document with each node's `createDOM` ([`list_html`]), as Swift's ports
@@ -1101,6 +1100,54 @@ fn wraps_adjacent_orphan_list_item_nodes_in_a_single_list_node() {
         </ul>
         "#,
     );
+}
+
+// upstream: lexical-list/src/__tests__/unit/LexicalListItemNode.test.ts::LexicalListItemNode tests > ListItemNode $transform wraps orphan ListItemNodes > wraps orphan ListItemNode inside a shadow-root table cell
+#[cfg(feature = "table")]
+#[test]
+fn wraps_orphan_list_item_node_inside_a_shadow_root_table_cell() {
+    use crate::table::{
+        create_table_cell_node, create_table_node, create_table_row_node, table_nodes,
+    };
+    let editor = initialize_unit_test(CreateEditorArgs {
+        nodes: table_nodes(),
+        ..CreateEditorArgs::default()
+    });
+    update_discrete(&editor, || {
+        let cell = create_table_cell_node(0, 1.0, None);
+        cell.append(&[text_item("orphan")])?;
+        let row = create_table_row_node(None);
+        row.append(&[cell])?;
+        let table = create_table_node();
+        table.append(&[row])?;
+        let root = get_root();
+        root.clear()?;
+        root.append(&[table])
+    });
+    editor
+        .read(|| {
+            let table = get_root().get_first_child().unwrap();
+            assert!(table.is_element(), "root first child is an element");
+            let row = table.get_first_child().unwrap();
+            assert!(row.is_element(), "table first child is an element");
+            let cell = row.get_first_child().unwrap();
+            assert!(cell.is_element(), "row first child is an element");
+            assert_eq!(cell.get_children_size(), 1);
+            let wrapper = cell.get_first_child().unwrap();
+            assert!(
+                is_list_node(&wrapper),
+                "orphan <li> should be wrapped inside the table cell"
+            );
+            assert_eq!(wrapper.get_children_size(), 1);
+            assert_eq!(
+                wrapper
+                    .get_first_child_or_throw()
+                    .unwrap()
+                    .get_text_content(),
+                "orphan"
+            );
+        })
+        .unwrap();
 }
 
 // upstream: lexical-list/src/__tests__/unit/LexicalListItemNode.test.ts::LexicalListItemNode tests > ListItemNode $transform wraps orphan ListItemNodes > does not merge orphan ListItemNodes separated by a ParagraphNode

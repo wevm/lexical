@@ -34,6 +34,13 @@ mod lexical_react;
 mod lexical_rich_text;
 #[cfg(feature = "selection")]
 mod lexical_selection;
+#[cfg(all(
+    feature = "table",
+    feature = "extension",
+    feature = "html",
+    feature = "rich-text"
+))]
+mod lexical_table;
 #[cfg(all(feature = "text", feature = "extension", feature = "markdown"))]
 mod lexical_text;
 #[cfg(feature = "utils")]

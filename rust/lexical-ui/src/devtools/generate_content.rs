@@ -114,6 +114,8 @@ pub fn generate_content(
         Ok::<_, LexicalError>(match &selection {
             None => ": null".to_owned(),
             Some(selection) if selection.is_range() => print_range_selection(selection)?,
+            #[cfg(feature = "table")]
+            Some(selection) if selection.is_table() => print_table_selection(selection),
             Some(selection) => print_node_selection(selection),
         })
     })?;
@@ -208,6 +210,16 @@ fn slot_value_meta_suffix(node: &NodeRef, slot_name: Option<&str>) -> &'static s
         return " [atomic decorator]";
     }
     ""
+}
+
+/// `printTableSelection(selection)`.
+#[cfg(feature = "table")]
+fn print_table_selection(selection: &SelectionRef) -> String {
+    let table = selection.table().expect("a table selection");
+    format!(
+        ": table\n  └ {{ table: {}, anchorCell: {}, focusCell: {} }}",
+        table.table_key, table.anchor.key, table.focus.key
+    )
 }
 
 /// `printNodeSelection(selection)`.

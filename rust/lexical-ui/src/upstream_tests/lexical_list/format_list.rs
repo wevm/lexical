@@ -1,7 +1,6 @@
 //! Ports of `packages/lexical-list/src/__tests__/unit/formatList.test.ts`,
 //! less the tests of `ExtendedTestListNode` and `ExtendedTestListItemNode`,
-//! subclasses of `ListNode` and `ListItemNode` (rust/parity/skips.json), and
-//! the one that needs `@lexical/table`.
+//! subclasses of `ListNode` and `ListItemNode` (rust/parity/skips.json).
 
 use super::support::{build, discrete, item, list, text_item};
 use crate::extension::LexicalEditorWithDispose;
@@ -79,6 +78,39 @@ fn inserting_in_root_selection_with_existing_child() {
         let root = get_root();
         assert_eq!(root.get_children_size(), 1);
         assert!(is_list_node(&root.get_first_child_or_throw().unwrap()));
+    });
+}
+
+// upstream: lexical-list/src/__tests__/unit/formatList.test.ts::insertList > inserting with empty shadow root selection
+#[cfg(feature = "table")]
+#[test]
+fn inserting_with_empty_shadow_root_selection() {
+    use crate::table::{
+        create_table_cell_node, create_table_node, create_table_row_node, is_table_cell_node,
+        is_table_node, is_table_row_node, table_nodes,
+    };
+    let editor = initialize_unit_test(CreateEditorArgs {
+        nodes: table_nodes(),
+        ..CreateEditorArgs::default()
+    });
+    update(&editor, || {
+        let table = create_table_node();
+        let row = create_table_row_node(None);
+        let cell = create_table_cell_node(0, 1.0, None);
+        row.append(std::slice::from_ref(&cell))?;
+        table.append(&[row])?;
+        get_root().append(&[table])?;
+        cell.select(None, None)?;
+        Ok(())
+    });
+    update(&editor, || insert_list(ListType::Number));
+    read(&editor, || {
+        let table = get_root().get_first_child().filter(is_table_node).unwrap();
+        let row = table.get_first_child().filter(is_table_row_node).unwrap();
+        let cell = row.get_first_child().filter(is_table_cell_node).unwrap();
+        assert_eq!(cell.get_children_size(), 1);
+        let first_child = cell.get_first_child_or_throw().unwrap();
+        assert!(is_list_node(&first_child));
     });
 }
 

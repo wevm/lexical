@@ -326,6 +326,44 @@ fn headless() {
     pipeline.dispose();
 }
 
+// upstream: lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Which blocks get ids
+#[cfg(feature = "table")]
+#[test]
+fn which_blocks_get_ids() {
+    use crate::extension::{IsIdentifiedBlock, default_is_identified_block, is_root_child_block};
+    use crate::table::{is_table_cell_node, table_extension};
+    let predicates: [IsIdentifiedBlock; 2] = [
+        // Top-level blocks only.
+        IsIdentifiedBlock(Rc::new(is_root_child_block)),
+        // The default, plus table cells.
+        IsIdentifiedBlock(Rc::new(|node: &NodeRef| {
+            default_is_identified_block(node) || is_table_cell_node(node)
+        })),
+    ];
+    for predicate in predicates {
+        let extension = config_extension(
+            &block_id_extension(),
+            [BlockIdConfigOverrides {
+                is_identified_block: Some(predicate),
+                ..Default::default()
+            }],
+        );
+        let editor = editor(
+            "predicates",
+            None,
+            vec![rich_text(), table_extension().into(), extension],
+            vec![],
+        );
+        editor
+            .read(|| {
+                let first = get_root().get_first_child_or_throw().unwrap();
+                assert!(get_block_id(&first).unwrap().is_some());
+            })
+            .unwrap();
+        editor.dispose();
+    }
+}
+
 // upstream: lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > HTML and Configuration
 #[test]
 fn html_and_configuration() {

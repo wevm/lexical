@@ -1,7 +1,4 @@
 //! Ports of `packages/lexical-code-core/src/__tests__/unit/CodeImportExtension.test.ts`.
-//!
-//! "GitHub raw-file-view table still wins when TableExtension is present"
-//! is skipped: it needs `@lexical/table` (rust/parity/skips.json).
 
 #![cfg(all(feature = "html", feature = "extension"))]
 
@@ -169,6 +166,43 @@ fn github_raw_file_view_table_imports_as_code_node() {
         let text = root_code().get_text_content();
         assert!(text.contains("line 1"));
         assert!(text.contains("line 2"));
+    });
+}
+
+// upstream: lexical-code-core/src/__tests__/unit/CodeImportExtension.test.ts::CodeImportExtension > GitHub raw-file-view table still wins when TableExtension is present
+#[cfg(feature = "table")]
+#[test]
+fn github_raw_file_view_table_still_wins_when_table_extension_is_present() {
+    use crate::table::{is_table_node, table_extension};
+    let editor = build_editor_from_extensions([define_extension(LexicalExtension {
+        // Table listed before Code, like a typical app config: rules merge
+        // in dependency order, so CodeExtension's class-restricted <table>
+        // rule out-prioritizes TableExtension's generic one.
+        dependencies: vec![table_extension().into(), code_extension().into()],
+        ..LexicalExtension::<(), (), ()>::new("table-code-host", ())
+    })
+    .into()])
+    .unwrap();
+    import_into(
+        &editor,
+        &[
+            r#"<table class="js-file-line-container">"#,
+            r#"<tr><td class="js-file-line">line 1</td></tr>"#,
+            "</table>",
+            "<table><tr><td>plain</td></tr></table>",
+        ]
+        .concat(),
+    );
+    read(&editor, || {
+        let children = get_root().get_children();
+        let (code, table) = (&children[0], &children[1]);
+        assert!(is_code_node(code), "expected CodeNode for the GitHub table");
+        assert!(code.get_text_content().contains("line 1"));
+        assert!(
+            is_table_node(table),
+            "expected TableNode for the plain table"
+        );
+        assert!(table.get_text_content().contains("plain"));
     });
 }
 

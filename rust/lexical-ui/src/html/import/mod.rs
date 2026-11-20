@@ -42,7 +42,8 @@ pub use define_import_rule::{DomImportFn, DomImportRule, ImportNext, define_impo
         feature = "rich-text",
         feature = "list",
         feature = "link",
-        feature = "code"
+        feature = "code",
+        feature = "table"
     )
 ))]
 pub(crate) use dom_import_extension::package_import_dependencies;

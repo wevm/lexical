@@ -93,10 +93,11 @@ extension TextKitTheme {
     // others, so a full render computes each look once.
     var chains: [NodeKey: (chain: [TextKitElement], id: Int)] = [:]
     var chainIDs: [[TextKitElement]: Int] = [:]
+    let overrides = try textKitOverrides(editor)
     func chain(_ element: ElementNode) throws -> (chain: [TextKitElement], id: Int) {
       if let chain = chains[element.getKey()] { return chain }
       var chain = try element.getParent().map { try chain($0).chain } ?? []
-      chain.append(try TextKitElement(element))
+      chain.append(try TextKitElement(element, overrides: overrides, editor: editor))
       let id = chainIDs[chain] ?? chainIDs.count
       chainIDs[chain] = id
       chains[element.getKey()] = (chain, id)
@@ -182,7 +183,12 @@ extension TextKitTheme {
     }
     if let dirtyElements {
       for (key, intentionallyMarkedAsDirty) in dirtyElements {
-        if let element = try getNodeByKey(key) as? ElementNode, try element.isAttached() {
+        if var element = try getNodeByKey(key) as? ElementNode, try element.isAttached() {
+          // An inline element (a link) changes the look of its text, which
+          // is restyled with its block's.
+          while try TextKitDocument.isInline(element), let parent = try element.getParent() {
+            element = parent
+          }
           // An element marked dirty itself may have changed what its blocks
           // inherit (format, indent, direction); one marked as an ancestor
           // of a change only needs its own paragraph. The root, which most

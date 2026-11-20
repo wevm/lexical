@@ -636,7 +636,7 @@ public struct TextKitElement: Hashable, Sendable {
   public var checked: Bool?
   /// The theme keys other than `themeKey` that its `createDOM` adds the
   /// classes of, such as a mark's `markOverlap` while it has more than one
-  /// id.
+  /// id, and then those `TextKitRenderExtension`'s overrides add.
   public var classes: [String]
 
   public init(
@@ -672,8 +672,13 @@ public struct TextKitElement: Hashable, Sendable {
   /// element's own `__indent`, which the JS reconciler pads by: a list item
   /// derives `getIndent()` from its nesting, which the list's own margins
   /// already show. A mark's ids are read the same way, so marks need no
-  /// dependency on LexicalMark.
+  /// dependency on LexicalMark. The active editor's
+  /// `TextKitRenderExtension` overrides add their classes.
   public init(_ element: ElementNode) throws {
+    try self.init(element, overrides: textKitOverrides(try? getEditor()), editor: try? getEditor())
+  }
+
+  init(_ element: ElementNode, overrides: [TextKitRenderMatch], editor: Editor?) throws {
     let type = element.getType()
     let json =
       type == "heading" || type == "list" || type == "listitem" || type == "mark"
@@ -687,6 +692,15 @@ public struct TextKitElement: Hashable, Sendable {
       value: type == "listitem" ? json?["value"]?.numberValue.map { Int($0) } : nil,
       checked: type == "listitem" ? json?["checked"]?.boolValue : nil,
       classes: type == "mark" && (json?["ids"]?.arrayValue?.count ?? 0) > 1 ? ["markOverlap"] : [])
+    if let editor {
+      // Each override wraps the classes before it, as `domOverride`'s
+      // hooks wrap `$next`.
+      var classes: () throws -> [String] = { [base = self.classes] in base }
+      for override in overrides where override.matches(element) {
+        classes = { [next = classes] in try override.classes(element, next, editor) }
+      }
+      self.classes = try classes()
+    }
   }
 
   /// The `EditorThemeClasses` key the JS node reads in `createDOM`.

@@ -830,6 +830,54 @@ Reversible choices made porting `@lexical/extension` under Q18.
   text on macOS, as the AppKit `.cursor` attribute; iOS has no text
   cursor to change. `textTransform` is not drawn yet,
   so the default theme's `h2` and `h3` show their case as typed.
+- **Theme classes from the app** (#247). On the web an app styles one node
+  apart from others of its type by changing its DOM: a `domOverride`
+  (`DOMRenderExtension`) whose `createDOM` adds a class, or a mutation
+  listener that sets an attribute the CSS selects. The views draw no DOM,
+  so `LexicalTextKit` has the counterpart for the part TextKit can draw:
+  `TextKitRenderExtension`, whose config holds `textKitOverride`s, each
+  a list of node classes (and their subclasses) or `all` nodes, and a
+  `classes` closure. The closure gets the element, `$next` (the classes
+  the elements' own rendering adds, and those of the overrides before it)
+  and the editor, and returns the theme keys it adds, which the
+  `TextKitTheme` cascade applies after the element's `themeKey`, as CSS
+  applies a class:
+
+  ```swift
+  configExtension(TextKitRenderExtension) {
+    $0.overrides = [
+      textKitOverride([LinkNode.self]) { node, next, _ in
+        guard let link = node as? LinkNode, try !pages.exists(link.getURL()) else {
+          return try next()
+        }
+        return try next() + ["linkMissing"]
+      }
+    ]
+  }
+  ```
+
+  `TextKitElement(_:)` calls the overrides inside the render's read, so
+  they read the node as it is in the state drawn. The base of the chain is
+  the classes a node's own `createDOM` adds besides its theme key, which
+  for now is a mark's `markOverlap` while it has more than one id, so an
+  override can also take a class away. Overrides apply to elements, the
+  `TextKitElement`s of the cascade (a link, a paragraph, a list item); a
+  text node's look comes from its format, style and type. A closure, not a
+  `TextKitTheme` key, because the theme is a `Hashable`, `Sendable` value
+  and the classes are the app's state. TextKit's own route for app styling,
+  rendering attributes (`renderingAttributesValidator`, the layout
+  manager's temporary attributes), was not taken: it works by range rather
+  than node, draws only colors and underlines over the laid-out text, and
+  is not kept in step with commits, where the theme cascade sets fonts,
+  strikethrough and paragraph styles and is restyled with each commit.
+  To restyle a node when what its classes depend on changes (the page
+  list), the app marks it dirty, as the views already restyle dirty
+  elements: `editor.update(tag: HISTORY_MERGE_TAG) { try
+  node.markDirty() }`. The tag keeps the
+  update out of undo history: without it `HistoryExtension` pushes the
+  dirty element as a step of its own (`OTHER`), which undoes to the same
+  document. An inline element marked dirty itself restyles the text of
+  its block, as a block marked dirty does.
 - **Decorators** (Q12). A decorator's U+FFFC carries an `NSTextAttachment`
   whose view provider hosts the SwiftUI view its `decorate(_:)` returned
   (`any View`; anything else renders nothing), in an `NSHostingView` or a

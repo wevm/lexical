@@ -680,7 +680,7 @@
     }
 
     /// `layout`'s box behind the block's lines, `lines` (starting where line
-    /// fragments do), and its gutter with a number on the first line of each
+    /// fragments do), with its corners and border, and its gutter with a number on the first line of each
     /// of the block's lines (the text after each line break).
     private func blockBox(
       _ layout: TextKitBlockBoxLayout, span: TextKitSpan, _ layoutManager: NSTextLayoutManager,
@@ -692,6 +692,9 @@
         x: isRTL ? lines.minX : lines.minX + box.offset, y: lines.minY - box.paddingTop,
         width: lines.width - box.offset, height: lines.height + box.paddingTop + box.paddingBottom)
       var drawing = BlockBarsView.Box(frame: frame, color: box.color.uiColor)
+      drawing.outline = box.border.map {
+        ($0, ($0.color ?? layout.text.foregroundColor).uiColor)
+      }
       guard let gutter = box.gutter else { return drawing }
       let gutterFrame = CGRect(
         x: isRTL ? frame.maxX - gutter.width : frame.minX, y: frame.minY, width: gutter.width,
@@ -1239,13 +1242,15 @@
 
   /// Draws quote bars and list markers behind the text.
   final class BlockBarsView: UIView {
-    /// A block's box, with its gutter, its border and the gutter's numbers.
+    /// A block's box, with its gutter, the gutter's border and numbers,
+    /// and the box's own border and corners in the border's color.
     struct Box {
       var frame: CGRect
       var color: UIColor
       var gutter: (CGRect, UIColor)?
       var border: (CGRect, UIColor)?
       var numbers: [(NSAttributedString, CGPoint)] = []
+      var outline: (TextKitBorder, UIColor)?
     }
 
     var boxes: [Box] = [] {
@@ -1265,13 +1270,23 @@
     var contentSizeCategory = UIContentSizeCategory.large
 
     override func draw(_ rect: CGRect) {
+      let context = UIGraphicsGetCurrentContext()
       for box in boxes where box.frame.intersects(rect) {
+        // A box without a border is a plain rectangle, as before borders.
+        let outline = box.outline.map { UIBezierPath(roundedRect: box.frame, border: $0.0) }
         box.color.setFill()
-        UIRectFill(box.frame)
-        for (frame, color) in [box.gutter, box.border].compactMap({ $0 }) {
-          color.setFill()
-          UIRectFill(frame)
+        if let outline { outline.fill() } else { UIRectFill(box.frame) }
+        if box.gutter != nil {
+          // The gutter is inside the box's rounded corners.
+          context?.saveGState()
+          outline?.addClip()
+          for (frame, color) in [box.gutter, box.border].compactMap({ $0 }) {
+            color.setFill()
+            UIRectFill(frame)
+          }
+          context?.restoreGState()
         }
+        if let border = box.outline { strokeBorder(border.0, of: box.frame, color: border.1) }
         for (string, point) in box.numbers { string.draw(at: point) }
       }
       for (frame, color) in bars where frame.intersects(rect) {
@@ -1316,9 +1331,16 @@
         let box = CGRect(
           x: isRTL ? line.maxX - start - side : line.minX + start,
           y: glyphBox(font, line).midY - side / 2, width: side, height: side)
+        let style = layout.checkbox ?? TextKitCheckbox()
+        if let fill = style.backgroundColor {
+          fill.uiColor.setFill()
+          UIBezierPath(roundedRect: box, border: style.border ?? TextKitBorder()).fill()
+        }
+        if let border = style.border {
+          strokeBorder(
+            border, of: box, color: (border.color ?? layout.text.foregroundColor).uiColor)
+        }
         if checked {
-          ListMarkerColors.checked.setFill()
-          UIBezierPath(roundedRect: box, cornerRadius: 2).fill()
           let mark = UIBezierPath()
           mark.move(to: CGPoint(x: box.minX + 0.27 * box.width, y: box.minY + 0.52 * box.height))
           mark.addLine(to: CGPoint(x: box.minX + 0.43 * box.width, y: box.minY + 0.68 * box.height))
@@ -1326,15 +1348,23 @@
           mark.lineWidth = max(1.5, 0.12 * box.width)
           mark.lineCapStyle = .round
           mark.lineJoinStyle = .round
-          UIColor.white.setStroke()
+          style.checkmarkColor.uiColor.setStroke()
           mark.stroke()
-        } else {
-          ListMarkerColors.unchecked.setStroke()
-          let border = UIBezierPath(roundedRect: box.insetBy(dx: 0.5, dy: 0.5), cornerRadius: 2)
-          border.lineWidth = 1
-          border.stroke()
         }
       }
+    }
+
+    /// Strokes `border` inside the edge of `frame`, around its rounded
+    /// corners.
+    private func strokeBorder(_ border: TextKitBorder, of frame: CGRect, color: UIColor) {
+      guard border.width > 0 else { return }
+      let inset = border.width / 2
+      let path = UIBezierPath(
+        roundedRect: frame.insetBy(dx: inset, dy: inset),
+        border: TextKitBorder(cornerRadius: border.cornerRadius - inset))
+      path.lineWidth = border.width
+      color.setStroke()
+      path.stroke()
     }
   }
 

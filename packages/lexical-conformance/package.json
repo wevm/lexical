@@ -37,6 +37,7 @@
     "@lexical/react": "workspace:*",
     "@lexical/rich-text": "workspace:*",
     "@lexical/selection": "workspace:*",
+    "@lexical/table": "workspace:*",
     "@lexical/text": "workspace:*",
     "@lexical/utils": "workspace:*",
     "entities": "2.2.0",

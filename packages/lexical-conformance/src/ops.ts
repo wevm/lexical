@@ -203,6 +203,36 @@ import {
   getCSSFromStyleObject,
 } from '@lexical/selection';
 import {
+  $computeTableMapSkipCellCheck,
+  $createTableSelectionFrom,
+  $deleteTableColumnAtSelection,
+  $deleteTableRowAtSelection,
+  $findCellNode,
+  $findTableNode,
+  $getTableCellNodeRect,
+  $getTableColumnIndexFromTableCellNode,
+  $getTableRowIndexFromTableCellNode,
+  $insertTableColumnAtNode,
+  $insertTableColumnAtSelection,
+  $insertTableRowAtNode,
+  $insertTableRowAtSelection,
+  $isSimpleTable,
+  $isTableCellNode,
+  $isTableNode,
+  $isTableSelection,
+  $mergeCells,
+  $moveTableColumn,
+  $moveTableRow,
+  $padTableRows,
+  $setTableColumnIsHeader,
+  $setTableRowIsHeader,
+  $unmergeCell,
+  INSERT_TABLE_COMMAND,
+  type TableCellNode,
+  TableExtension,
+  type TableNode,
+} from '@lexical/table';
+import {
   $canShowPlaceholder,
   $canShowPlaceholderCurry,
   $findTextIntersectionFromCharacters,
@@ -452,6 +482,16 @@ export type Action =
   | {do: 'selectAll'; scoped?: boolean}
   /** `$insertNodes` with the parsed nodes. */
   | {do: 'insertNodes'; nodes: SerializedLexicalNode[]}
+  /**
+   * `$createTableSelectionFrom(table, anchorCell, focusCell)`
+   * (@lexical/table), set as the selection.
+   */
+  | {do: 'selectTable'; table: string; anchor: string; focus: string}
+  /**
+   * A function of @lexical/table, see TABLE_FUNCTIONS; logs
+   * `['table', fn, result]` when it returns something.
+   */
+  | {do: 'table'; fn: string; args?: Json[]}
   /** A method of the current selection; see SELECTION_METHODS. */
   | {do: 'selection'; method: string; args?: Json[]}
   /** A method of the node `key`; see NODE_METHODS. */
@@ -2026,6 +2066,10 @@ function sessionDOM(ctx: Context): NonNullable<Context['dom']> {
   if (ctx.dom === null) {
     const win = browserWindow();
     ctx.dom = {root: win.document.createElement('div'), window: win};
+    // As in a browser, the listeners the packages add to the session's DOM
+    // (TableObserver's, with an abort signal) take the window's own
+    // AbortSignal; runScript puts Node's back.
+    globalThis.AbortController = win.AbortController;
   }
   return ctx.dom;
 }
@@ -2274,6 +2318,15 @@ export function $selectionSnapshot(): Json {
   }
   if ($isNodeSelection(selection)) {
     return ['node', [...selection._nodes]];
+  }
+  if ($isTableSelection(selection)) {
+    const {anchor, focus} = selection;
+    return [
+      'table',
+      selection.tableKey,
+      [anchor.key, anchor.offset, anchor.type],
+      [focus.key, focus.offset, focus.type],
+    ];
   }
   return selection === null ? null : ['other'];
 }
@@ -2844,6 +2897,109 @@ function stateConfig(name: string): AnyStateConfig {
   return config;
 }
 
+function tableNode(node: LexicalNode): TableNode {
+  if (!$isTableNode(node)) {
+    throw new Error(`${node.getKey()} is not a table`);
+  }
+  return node;
+}
+
+function tableCell(node: LexicalNode): TableCellNode {
+  if (!$isTableCellNode(node)) {
+    throw new Error(`${node.getKey()} is not a table cell`);
+  }
+  return node;
+}
+
+const keyOf = (node: LexicalNode | null): Json =>
+  node === null ? null : node.getKey();
+
+/**
+ * @lexical/table's `$` functions, by name without the `$`, with node keys
+ * for their nodes. Each returns what is logged: a node as its key, a table
+ * map as rows of `[cellKey, startRow, startColumn]`.
+ */
+const TABLE_FUNCTIONS: Record<string, (args: Json[]) => Json | void> = {
+  computeTableMap: ([table]) =>
+    $computeTableMapSkipCellCheck(
+      tableNode($node(table as string)),
+      null,
+      null,
+    )[0].map(row =>
+      row.map(value =>
+        value === undefined || value === null
+          ? null
+          : [value.cell.getKey(), value.startRow, value.startColumn],
+      ),
+    ),
+  deleteTableColumnAtSelection: () => $deleteTableColumnAtSelection(),
+  deleteTableRowAtSelection: () => $deleteTableRowAtSelection(),
+  findCellNode: ([key]) => keyOf($findCellNode($node(key as string))),
+  findTableNode: ([key]) => keyOf($findTableNode($node(key as string))),
+  getTableCellNodeRect: ([key]) => {
+    const rect = $getTableCellNodeRect(tableCell($node(key as string)));
+    return rect && {...rect};
+  },
+  getTableColumnIndexFromTableCellNode: ([key]) =>
+    $getTableColumnIndexFromTableCellNode(tableCell($node(key as string))),
+  getTableRowIndexFromTableCellNode: ([key]) =>
+    $getTableRowIndexFromTableCellNode(tableCell($node(key as string))),
+  insertTableColumnAtNode: ([key, insertAfter]) =>
+    keyOf(
+      $insertTableColumnAtNode(
+        tableCell($node(key as string)),
+        insertAfter as boolean,
+      ),
+    ),
+  insertTableColumnAtSelection: ([insertAfter]) =>
+    keyOf($insertTableColumnAtSelection(insertAfter as boolean)),
+  insertTableRowAtNode: ([key, insertAfter]) =>
+    keyOf(
+      $insertTableRowAtNode(
+        tableCell($node(key as string)),
+        insertAfter as boolean,
+      ),
+    ),
+  insertTableRowAtSelection: ([insertAfter]) =>
+    keyOf($insertTableRowAtSelection(insertAfter as boolean)),
+  isSimpleTable: ([key]) => $isSimpleTable(tableNode($node(key as string))),
+  mergeCells: ([keys]) =>
+    keyOf($mergeCells((keys as string[]).map(k => tableCell($node(k))))),
+  moveTableColumn: ([key, from, to]) =>
+    $moveTableColumn(
+      tableNode($node(key as string)),
+      from as number,
+      to as number,
+    ),
+  moveTableRow: ([key, from, to]) =>
+    $moveTableRow(
+      tableNode($node(key as string)),
+      from as number,
+      to as number,
+    ),
+  padTableRows: ([key]) => $padTableRows(tableNode($node(key as string))),
+  selectionShape: () => {
+    const selection = $getSelection();
+    if (!$isTableSelection(selection)) {
+      throw new Error('not a table selection');
+    }
+    return {...selection.getShape()};
+  },
+  setTableColumnIsHeader: ([key, index, isHeader]) =>
+    $setTableColumnIsHeader(
+      tableNode($node(key as string)),
+      index as number,
+      isHeader as boolean,
+    ),
+  setTableRowIsHeader: ([key, index, isHeader]) =>
+    $setTableRowIsHeader(
+      tableNode($node(key as string)),
+      index as number,
+      isHeader as boolean,
+    ),
+  unmergeCell: () => $unmergeCell(),
+};
+
 function $runAction(action: Action, ctx: Context): void {
   switch (action.do) {
     case 'formatKeyboardShortcut':
@@ -2921,6 +3077,26 @@ function $runAction(action: Action, ctx: Context): void {
     case 'clearSelection':
       $setSelection(null);
       return;
+    case 'selectTable':
+      $setSelection(
+        $createTableSelectionFrom(
+          tableNode($node(action.table)),
+          tableCell($node(action.anchor)),
+          tableCell($node(action.focus)),
+        ),
+      );
+      return;
+    case 'table': {
+      const fn = TABLE_FUNCTIONS[action.fn];
+      if (fn === undefined) {
+        throw new Error(`unknown table function ${action.fn}`);
+      }
+      const result = fn(action.args ?? []);
+      if (result !== undefined) {
+        ctx.log.push(['table', action.fn, result]);
+      }
+      return;
+    }
     case 'selectAll':
       if (action.scoped) {
         $selectAll($sel());
@@ -3839,7 +4015,7 @@ const CORE_COMMANDS = new Map<string, AnyLexicalCommand>([
 ]);
 
 /**
- * The commands of the packages a script registers (`list`, `link`,
+ * The commands of the packages a script registers (`list`, `link`, TableExtension,
  * `richText` and `HorizontalRuleExtension`'s), named as their package
  * exports them. `DRAG_DROP_PASTE`'s payload, the dropped or pasted files, is
  * logged as `[{name, type}...]`.
@@ -3853,6 +4029,7 @@ const PACKAGE_COMMANDS = new Map<string, AnyLexicalCommand>([
   ['TOGGLE_LINK_COMMAND', TOGGLE_LINK_COMMAND],
   ['INSERT_EMBED_COMMAND', INSERT_EMBED_COMMAND],
   ['INSERT_HORIZONTAL_RULE_COMMAND', INSERT_HORIZONTAL_RULE_COMMAND],
+  ['INSERT_TABLE_COMMAND', INSERT_TABLE_COMMAND],
   ['DRAG_DROP_PASTE', DRAG_DROP_PASTE],
 ]);
 
@@ -4471,6 +4648,7 @@ const REAL_EXTENSIONS = new Map<string, AnyLexicalExtension>([
   ['IMEExtension', IMEExtension],
   ['AutoFocusExtension', AutoFocusExtension],
   ['ClickableLinkExtension', ClickableLinkExtension],
+  ['TableExtension', TableExtension],
   ...MARK_FLAVORS,
 ]);
 
@@ -5374,13 +5552,19 @@ function nestedEntry(editor: LexicalEditor, parent: LexicalEditor): Json {
 
 /** Runs `script` on a new headless editor and records every step. */
 export function runScript(script: Script): ScriptResult {
+  const {AbortController} = globalThis;
   const session = startSession(script);
-  const results = script.steps.map((step, i) =>
-    session.run(
-      step,
-      script.snapshot !== 'final' || i === script.steps.length - 1,
-    ),
-  );
+  let results: StepResult[];
+  try {
+    results = script.steps.map((step, i) =>
+      session.run(
+        step,
+        script.snapshot !== 'final' || i === script.steps.length - 1,
+      ),
+    );
+  } finally {
+    globalThis.AbortController = AbortController;
+  }
   return session.build === undefined
     ? {...script, results}
     : {...script, build: session.build, results};

@@ -8992,6 +8992,222 @@ test('scripts/horizontal-rule', () => {
   );
 });
 
+test('scripts/table', () => {
+  // @lexical/table's TableExtension in an editor with rich text: inserting
+  // tables, the $ utilities over rows, columns, headers and merged cells,
+  // TableSelection, and the Tab and arrow handlers, which attach to tables
+  // the reconciler rendered (so the sessions take a root element).
+  const extensions = ['RichTextExtension', 'TableExtension'];
+  const root = {setRootElement: true, viewSelection: true} as Step;
+  // An editor built from extensions starts with a paragraph, so each
+  // session clears the root first and its nodes' keys start at 2.
+  const start = (...blocks: Node[]): Step =>
+    update(node('root', 'clear'), {do: 'append', key: 'root', nodes: blocks});
+  const run = (dispatch: string, payload?: Json): Step =>
+    payload === undefined ? {dispatch} : {dispatch, payload};
+  const keyEvent = (
+    command: string,
+    k: string,
+    modifiers: Record<string, boolean> = {},
+  ): Step => run(command, {code: k, key: k, ...modifiers});
+  const table = (...rows: Node[]): Node =>
+    ({
+      children: rows,
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'table',
+      version: 1,
+    }) as Node;
+  const tr = (...cells: Node[]): Node =>
+    ({
+      children: cells,
+      direction: null,
+      format: '',
+      indent: 0,
+      type: 'tablerow',
+      version: 1,
+    }) as Node;
+  const td = (text: string, extra: Record<string, unknown> = {}): Node =>
+    ({
+      backgroundColor: null,
+      children: [text === '' ? p() : p(t(text))],
+      colSpan: 1,
+      direction: null,
+      format: '',
+      headerState: 0,
+      indent: 0,
+      rowSpan: 1,
+      type: 'tablecell',
+      version: 1,
+      ...extra,
+    }) as Node;
+  const fn = (name: string, ...args: Json[]): Action => ({
+    args,
+    do: 'table',
+    fn: name,
+  });
+  // A 3x3 table of a..i after a paragraph. Keys: the paragraph 2 ("x" 3),
+  // the table 4, rows 5, 15, 25; each cell, its paragraph and its text
+  // take three keys (a: 6, 7, 8; b: 9, 10, 11; c: 12, 13, 14; d: 16...).
+  const grid = start(
+    p(t('x')),
+    table(
+      tr(td('a'), td('b'), td('c')),
+      tr(td('d'), td('e'), td('f')),
+      tr(td('g'), td('h'), td('i')),
+    ),
+    p(),
+  );
+  emit(
+    'table',
+    "@lexical/table's TableExtension with RichTextExtension: INSERT_TABLE_COMMAND, the $ utilities (the table map, inserting, deleting and moving rows and columns, headers, merging and unmerging cells, padding ragged rows), $createTableSelectionFrom and its shape, text and formatting, and the Tab and arrow key handlers.",
+    [
+      {
+        extensions,
+        name: 'INSERT_TABLE_COMMAND at a caret and in a cell',
+        steps: [
+          root,
+          start(p(t('ab'))),
+          update(select(['3', 1, 'text'])),
+          run('INSERT_TABLE_COMMAND', {columns: '2', rows: '2'}),
+          run('INSERT_TABLE_COMMAND', {
+            columns: '3',
+            includeHeaders: {columns: false, rows: true},
+            rows: '1',
+          }),
+          update(select(['root', 0, 'element'])),
+          run('INSERT_TABLE_COMMAND', {
+            columns: '1',
+            includeHeaders: false,
+            rows: '1',
+          }),
+        ],
+      },
+      {
+        extensions,
+        name: 'the table map, finding cells and rows and columns',
+        steps: [
+          grid,
+          update(
+            fn('computeTableMap', '4'),
+            fn('findCellNode', '18'),
+            fn('findTableNode', '18'),
+            fn('getTableCellNodeRect', '19'),
+            fn('getTableRowIndexFromTableCellNode', '19'),
+            fn('getTableColumnIndexFromTableCellNode', '19'),
+            fn('isSimpleTable', '4'),
+          ),
+        ],
+      },
+      {
+        extensions,
+        name: 'inserting and deleting rows and columns at the selection',
+        steps: [
+          grid,
+          update(
+            select(['21', 1, 'text']),
+            fn('insertTableRowAtSelection', true),
+          ),
+          update(
+            select(['21', 1, 'text']),
+            fn('insertTableColumnAtSelection', false),
+          ),
+          update(select(['8', 0, 'text']), fn('deleteTableRowAtSelection')),
+          update(select(['24', 0, 'text']), fn('deleteTableColumnAtSelection')),
+        ],
+      },
+      {
+        extensions,
+        name: 'inserting at a node, moving rows and columns, headers',
+        steps: [
+          grid,
+          update(fn('insertTableRowAtNode', '6', false)),
+          update(fn('insertTableColumnAtNode', '29', true)),
+          update(fn('moveTableRow', '4', 0, 2)),
+          update(fn('moveTableColumn', '4', 2, 0)),
+          update(fn('setTableRowIsHeader', '4', 0, true)),
+          update(fn('setTableColumnIsHeader', '4', 1, true)),
+          update(fn('setTableRowIsHeader', '4', 0, false)),
+        ],
+      },
+      {
+        extensions,
+        name: 'merging and unmerging cells',
+        steps: [
+          grid,
+          update(fn('mergeCells', ['6', '9', '16', '19'])),
+          update(fn('computeTableMap', '4'), fn('isSimpleTable', '4')),
+          update(select(['8', 0, 'text']), fn('unmergeCell')),
+          update(fn('computeTableMap', '4')),
+        ],
+      },
+      {
+        extensions,
+        name: 'a ragged table is padded',
+        steps: [
+          start(table(tr(td('a'), td('b')), tr(td('c'))), p()),
+          update(fn('padTableRows', '2')),
+        ],
+      },
+      {
+        extensions,
+        name: 'a table selection: shape, text, formatting, deleting',
+        steps: [
+          root,
+          grid,
+          update(
+            {anchor: '6', do: 'selectTable', focus: '19', table: '4'},
+            fn('selectionShape'),
+            {do: 'logSelectionText'},
+          ),
+          run('FORMAT_TEXT_COMMAND', 'bold'),
+          run('FORMAT_ELEMENT_COMMAND', 'center'),
+          update({anchor: '29', do: 'selectTable', focus: '19', table: '4'}),
+          run('DELETE_CHARACTER_COMMAND', true),
+          update({anchor: '6', do: 'selectTable', focus: '32', table: '4'}),
+          run('SELECT_ALL_COMMAND'),
+        ],
+      },
+      {
+        extensions,
+        name: 'Tab and Shift+Tab move between cells',
+        steps: [
+          root,
+          grid,
+          update(select(['8', 1, 'text'])),
+          keyEvent('KEY_TAB_COMMAND', 'Tab'),
+          keyEvent('KEY_TAB_COMMAND', 'Tab'),
+          keyEvent('KEY_TAB_COMMAND', 'Tab'),
+          keyEvent('KEY_TAB_COMMAND', 'Tab', {shiftKey: true}),
+          update(select(['34', 1, 'text'])),
+          keyEvent('KEY_TAB_COMMAND', 'Tab'),
+          update(select(['8', 0, 'text'])),
+          keyEvent('KEY_TAB_COMMAND', 'Tab', {shiftKey: true}),
+        ],
+      },
+      {
+        extensions,
+        name: 'the arrows at the edges of cells',
+        steps: [
+          root,
+          grid,
+          update(select(['8', 1, 'text'])),
+          keyEvent('KEY_ARROW_RIGHT_COMMAND', 'ArrowRight'),
+          update(select(['11', 0, 'text'])),
+          keyEvent('KEY_ARROW_LEFT_COMMAND', 'ArrowLeft'),
+          update(select(['14', 1, 'text'])),
+          keyEvent('KEY_ARROW_RIGHT_COMMAND', 'ArrowRight', {shiftKey: true}),
+          // Up and down read the cells' layout (getBoundingClientRect),
+          // which jsdom has none of, so they are left to the ports' tests.
+          update(select(['34', 0, 'text'])),
+          keyEvent('KEY_ARROW_LEFT_COMMAND', 'ArrowLeft', {shiftKey: true}),
+        ],
+      },
+    ],
+  );
+});
+
 test('scripts/key-handlers', () => {
   // The packages' handlers of the commands the core's keydown handler
   // dispatches, and of a click, a paste and drag and drop (see

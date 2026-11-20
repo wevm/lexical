@@ -252,6 +252,58 @@ public struct TextKitGutter: Hashable, Sendable {
   }
 }
 
+/// A box's border and rounded corners, as CSS `border` and
+/// `border-radius` (or a layer's `borderWidth`, `borderColor` and
+/// `cornerRadius`). The border is drawn inside the box's edge, over its
+/// padding, so it doesn't move the content; the box's fill is clipped to
+/// the rounded corners.
+public struct TextKitBorder: Hashable, Sendable {
+  /// The border's width in points; 0 draws none, for corners alone.
+  public var width: Double
+  /// `nil` is the color of the text inside, as CSS `currentColor`.
+  public var color: TextKitColor?
+  /// The radius of the box's corners, in points.
+  public var cornerRadius: Double
+
+  public init(width: Double = 0, color: TextKitColor? = nil, cornerRadius: Double = 0) {
+    self.width = width
+    self.color = color
+    self.cornerRadius = cornerRadius
+  }
+}
+
+/// A check list item's box, as the web theme's `listitemChecked` and
+/// `listitemUnchecked` `::before` (the box) and `::after` (the check mark)
+/// draw it. Set it on those keys, one for each state.
+public struct TextKitCheckbox: Hashable, Sendable {
+  /// The box's side, its border included: points, or ems of the item's
+  /// font.
+  public var size: TextKitFontSize
+  public var backgroundColor: TextKitColor?
+  public var border: TextKitBorder?
+  /// The check mark's color, drawn while the item is checked.
+  public var checkmarkColor: TextKitColor
+
+  public init(
+    size: TextKitFontSize = .scale(0.9), backgroundColor: TextKitColor? = nil,
+    border: TextKitBorder? = nil, checkmarkColor: TextKitColor = TextKitColor(255, 255, 255)
+  ) {
+    self.size = size
+    self.backgroundColor = backgroundColor
+    self.border = border
+    self.checkmarkColor = checkmarkColor
+  }
+
+  /// The playground theme's checked box: `0.9em`, filled `#3d87f5` with a
+  /// 2-point radius, and a white check mark.
+  static let playgroundChecked = TextKitCheckbox(
+    backgroundColor: TextKitColor(61, 135, 245), border: TextKitBorder(cornerRadius: 2))
+  /// The playground theme's unchecked box: `0.9em`, a 1-point `#999`
+  /// border with a 2-point radius.
+  static let playgroundUnchecked = TextKitCheckbox(
+    border: TextKitBorder(width: 1, color: TextKitColor(153, 153, 153), cornerRadius: 2))
+}
+
 /// A block's box, which a block's `backgroundColor` fills: from `offset`
 /// points after the inline start to the line's end, and from `paddingTop`
 /// points above its first line to `paddingBottom` below its last, as CSS
@@ -263,6 +315,8 @@ public struct TextKitBlockBox: Hashable, Sendable {
   public var color: TextKitColor
   /// Line numbers at the box's start, for a code block.
   public var gutter: TextKitGutter?
+  /// The box's border and corners.
+  public var border: TextKitBorder?
 
   public init(
     offset: Double, paddingTop: Double, paddingBottom: Double, color: TextKitColor,
@@ -331,6 +385,12 @@ public struct TextKitStyle: Hashable, Sendable {
   public var paddingBottom: Double?
   /// A block's line-number gutter, at the start of its box.
   public var gutter: TextKitGutter?
+  /// A block's border and corners, around the box its `backgroundColor`
+  /// fills (a block with a border and no background has a clear box).
+  public var border: TextKitBorder?
+  /// A check list item's box, on `listitemChecked` and
+  /// `listitemUnchecked`; `nil` is the playground theme's.
+  public var checkbox: TextKitCheckbox?
   /// CSS `tab-size`: a tab advances to the next multiple of this many
   /// spaces of the block's font.
   public var tabSize: Double?
@@ -369,10 +429,19 @@ public struct TextKitStyle: Hashable, Sendable {
   /// `getStyleObjectFromCSS`: `font-size`, `font-family`, `color`,
   /// `background-color` (or a color `background`), `font-weight`,
   /// `font-style`, `text-decoration`, `text-transform` and
-  /// `letter-spacing` (`normal`, `px` or `pt`, as `tracking`). Unknown
+  /// `letter-spacing` (`normal`, `px` or `pt`, as `tracking`), and for a
+  /// block, `border`, `border-width`, `border-style`, `border-color` and
+  /// `border-radius` (one width, color and radius for all four sides, in
+  /// `px` or `pt`; any style but `none` and `hidden` draws solid). Unknown
   /// properties and values are ignored.
   public init(css: String) {
     self.init()
+    // The border's longhands, as the declarations leave them: CSS's
+    // initial style is `none`, which draws no border.
+    var borderWidth: Double?
+    var borderStyle: String?
+    var borderColor: TextKitColor?
+    var cornerRadius: Double?
     for (property, value) in getStyleObjectFromCSS(css) {
       let lowered = cssTrim(value).lowercased()
       switch property.lowercased() {
@@ -414,8 +483,30 @@ public struct TextKitStyle: Hashable, Sendable {
         {
           tracking = unit == "pt" ? n * 4 / 3 : n
         }
+      case "border":
+        // Width, style and color in any order; the shorthand resets the
+        // ones it leaves out.
+        (borderWidth, borderStyle, borderColor) = (nil, nil, nil)
+        for word in cssWords(lowered) {
+          if let width = cssBorderWidth(word) {
+            borderWidth = width
+          } else if borderStyles.contains(word) {
+            borderStyle = word
+          } else if let color = TextKitColor(css: word) {
+            borderColor = color
+          }
+        }
+      case "border-width": borderWidth = cssBorderWidth(lowered) ?? borderWidth
+      case "border-style": borderStyle = borderStyles.contains(lowered) ? lowered : borderStyle
+      case "border-color": borderColor = TextKitColor(css: value) ?? borderColor
+      case "border-radius": cornerRadius = cssPoints(lowered) ?? cornerRadius
       default: break
       }
+    }
+    let width = borderStyle.map { $0 == "none" || $0 == "hidden" ? 0 : borderWidth ?? 3 } ?? 0
+    if width > 0 || cornerRadius != nil {
+      border = TextKitBorder(
+        width: width, color: width > 0 ? borderColor : nil, cornerRadius: cornerRadius ?? 0)
     }
   }
 
@@ -439,6 +530,8 @@ public struct TextKitStyle: Hashable, Sendable {
       $0.paddingTop = other.paddingTop ?? paddingTop
       $0.paddingBottom = other.paddingBottom ?? paddingBottom
       $0.gutter = other.gutter ?? gutter
+      $0.border = other.border ?? border
+      $0.checkbox = other.checkbox ?? checkbox
       $0.tabSize = other.tabSize ?? tabSize
       $0.cursor = other.cursor ?? cursor
       $0.hoverUnderline = other.hoverUnderline ?? hoverUnderline
@@ -451,6 +544,51 @@ public struct TextKitStyle: Hashable, Sendable {
     var style = self
     body(&style)
     return style
+  }
+}
+
+/// The CSS `border-style` keywords.
+private let borderStyles: Set<String> = [
+  "none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset",
+]
+
+/// A CSS length of `Npx` or `Npt`, in points (`px`), not negative.
+private func cssPoints(_ value: String) -> Double? {
+  guard let unit = ["px", "pt"].first(where: value.hasSuffix) else {
+    return value == "0" ? 0 : nil
+  }
+  let number = String(value.dropLast(unit.count))
+  guard !number.contains(where: \.isWhitespace), let n = cssNumber(number, percentOf: 1), n >= 0
+  else { return nil }
+  return unit == "pt" ? n * 4 / 3 : n
+}
+
+/// A CSS value's space-separated components, a function such as `rgb()`
+/// one component with its spaces.
+private func cssWords(_ value: String) -> [String] {
+  var words: [String] = []
+  var current = ""
+  var depth = 0
+  for c in value {
+    if c == "(" { depth += 1 } else if c == ")" { depth = max(depth - 1, 0) }
+    if depth == 0, c.isWhitespace {
+      if !current.isEmpty { words.append(current) }
+      current = ""
+    } else {
+      current.append(c)
+    }
+  }
+  if !current.isEmpty { words.append(current) }
+  return words
+}
+
+/// A CSS `border-width`: a length or `thin`, `medium` or `thick`.
+private func cssBorderWidth(_ value: String) -> Double? {
+  switch value {
+  case "thin": 1
+  case "medium": 3
+  case "thick": 5
+  default: cssPoints(value)
   }
 }
 
@@ -576,13 +714,15 @@ public struct TextKitListMarkerLayout: Hashable, Sendable {
   public var text: TextKitTextAttributes
   /// The inline start is the right edge.
   public var isRightToLeft: Bool
+  /// How a `.checkbox` marker's box looks.
+  public var checkbox: TextKitCheckbox?
 
   /// The check box's frame in the line, as points from the inline start and
   /// a side length, for a font of `fontSize`: the playground theme's
-  /// `::before` box, `0.9em` square at the start of the item's `1.5em`
-  /// padding.
+  /// `::before` box, `checkbox`'s size (`0.9em`) square at the start of
+  /// the item's `1.5em` padding.
   public func checkboxOffset(fontSize: Double) -> (start: Double, side: Double) {
-    (headIndent - 1.5 * fontSize, 0.9 * fontSize)
+    (headIndent - 1.5 * fontSize, (checkbox?.size ?? .scale(0.9)).resolve(in: fontSize))
   }
 }
 
@@ -779,6 +919,9 @@ public struct TextKitParagraphAttributes: Hashable, Sendable {
   public var blockBars: [TextKitBlockBar] = []
   /// A list item's marker, drawn before `headIndent`.
   public var listMarker: TextKitListMarker?
+  /// A check list item's box: its `listitemChecked` or
+  /// `listitemUnchecked` style's.
+  public var checkbox: TextKitCheckbox?
 
   public init() {}
 }
@@ -886,7 +1029,10 @@ public struct TextKitTheme: Hashable, Sendable {
     // `__listItem { margin: 0 32px }`; a check list item's `margin-left:
     // 0.5em; padding-left: 1.5em` comes to the same 32 points at 16.
     "listitem": TextKitStyle(headIndent: 32),
-    "listitemChecked": TextKitStyle(strikethrough: true),
+    "listitemChecked": TextKitStyle(strikethrough: true).with {
+      $0.checkbox = .playgroundChecked
+    },
+    "listitemUnchecked": TextKitStyle().with { $0.checkbox = .playgroundUnchecked },
     // `__link:hover { text-decoration: underline; cursor: pointer }`.
     "link": TextKitStyle(
       foregroundColor: TextKitColor(33, 111, 219).withDark(TextKitColor(88, 166, 255)),
@@ -1041,6 +1187,11 @@ public struct TextKitTheme: Hashable, Sendable {
       attributes.listMarker = .marker(
         listType: list.listType ?? "bullet", depth: lists.count - 1, value: item.value ?? 1,
         checked: item.checked)
+      if case .checkbox(let checked) = attributes.listMarker {
+        attributes.checkbox =
+          chain.last?.compactMap(\.checkbox).last
+          ?? (checked ? .playgroundChecked : .playgroundUnchecked)
+      }
     }
     for (element, layer) in zip(elements, chain) {
       for style in layer {
@@ -1050,14 +1201,19 @@ public struct TextKitTheme: Hashable, Sendable {
               offset: attributes.headIndent + bar.offset, width: bar.width, color: bar.color))
         }
       }
-      // A block with a background has a box, from its own start (before
-      // its indent) and over its padding.
-      if element != nil, let color = layer.compactMap(\.backgroundColor).last {
-        attributes.blockBox = TextKitBlockBox(
+      // A block with a background or a border has a box, from its own
+      // start (before its indent) and over its padding.
+      let color = layer.compactMap(\.backgroundColor).last
+      let border = layer.compactMap(\.border).last
+      if element != nil, color != nil || border != nil {
+        var box = TextKitBlockBox(
           offset: attributes.headIndent,
           paddingTop: layer.compactMap(\.paddingTop).last ?? 0,
-          paddingBottom: layer.compactMap(\.paddingBottom).last ?? 0, color: color,
+          paddingBottom: layer.compactMap(\.paddingBottom).last ?? 0,
+          color: color ?? TextKitColor(red: 0, green: 0, blue: 0, alpha: 0),
           gutter: layer.compactMap(\.gutter).last)
+        box.border = border
+        attributes.blockBox = box
       }
       for style in layer {
         attributes.headIndent += style.headIndent ?? 0

@@ -406,6 +406,105 @@ private let codeFamily = ["Menlo", "Consolas", "Monaco", "monospace"]
     #expect(text().tracking == 0)
   }
 
+  /// A block's border and radius join its box, a border alone makes a
+  /// clear one, and a nearer block's style replaces the whole border.
+  @Test func aBlocksBorderJoinsItsBox() {
+    var custom = TextKitTheme.default
+    let border = TextKitBorder(width: 1, color: TextKitColor(1, 2, 3), cornerRadius: 6)
+    custom["code"]?.border = border
+    custom["quote"]?.border = TextKitBorder(cornerRadius: 4)
+    let code = TextKitElement(type: "code")
+    let quote = TextKitElement(type: "quote")
+    let box = custom.paragraphAttributes(blocks: [code]).blockBox
+    #expect(box?.border == border)
+    #expect(box?.color == theme.paragraphAttributes(blocks: [code]).blockBox?.color)
+    #expect(box?.gutter != nil)
+    // The quote has no background: its box is clear, without padding.
+    let quoteBox = custom.paragraphAttributes(blocks: [quote]).blockBox
+    #expect(quoteBox?.border == TextKitBorder(cornerRadius: 4))
+    #expect(quoteBox?.color.alpha == 0)
+    #expect(custom.paragraphAttributes(blocks: [quote]).spacingAfter == 10)
+    // A code block in the quote has its own box, with its own border.
+    #expect(custom.paragraphAttributes(blocks: [quote, code]).blockBox?.border == border)
+    // The default theme draws none, and inline text ignores a border.
+    #expect(theme.paragraphAttributes(blocks: [code]).blockBox?.border == nil)
+    #expect(theme.paragraphAttributes(blocks: [quote]).blockBox == nil)
+    #expect(text(in: [code], theme: custom) == text(in: [code]))
+  }
+
+  /// A check list item's box comes from its `listitemChecked` or
+  /// `listitemUnchecked` style, and is the playground's without one.
+  @Test func checkBoxesTakeTheirStatesStyle() {
+    let checks = TextKitElement(type: "list", listType: "check")
+    let done = TextKitElement(type: "listitem", value: 1, checked: true)
+    let open = TextKitElement(type: "listitem", value: 2, checked: false)
+    let playgroundChecked = TextKitCheckbox(
+      backgroundColor: TextKitColor(61, 135, 245), border: TextKitBorder(cornerRadius: 2))
+    let playgroundUnchecked = TextKitCheckbox(
+      border: TextKitBorder(width: 1, color: TextKitColor(153, 153, 153), cornerRadius: 2))
+    #expect(theme.paragraphAttributes(blocks: [checks, done]).checkbox == playgroundChecked)
+    #expect(theme.paragraphAttributes(blocks: [checks, open]).checkbox == playgroundUnchecked)
+    // A theme without the keys draws the playground's boxes all the same.
+    let bare = TextKitTheme(styles: [:])
+    #expect(bare.paragraphAttributes(blocks: [checks, done]).checkbox == playgroundChecked)
+    #expect(bare.paragraphAttributes(blocks: [checks, open]).checkbox == playgroundUnchecked)
+
+    var custom = TextKitTheme.default
+    let checked = TextKitCheckbox(
+      size: .points(16), backgroundColor: TextKitColor(0, 0, 255),
+      border: TextKitBorder(cornerRadius: 3), checkmarkColor: TextKitColor(1, 1, 1))
+    let unchecked = TextKitCheckbox(
+      size: .points(16), border: TextKitBorder(width: 1.5, color: TextKitColor(9, 9, 9)))
+    custom["listitemChecked"]?.checkbox = checked
+    custom["listitemUnchecked"]?.checkbox = unchecked
+    #expect(custom.paragraphAttributes(blocks: [checks, done]).checkbox == checked)
+    #expect(custom.paragraphAttributes(blocks: [checks, open]).checkbox == unchecked)
+    // A box set on `listitem` is both states' unless a state's replaces it.
+    custom["listitemUnchecked"]?.checkbox = nil
+    custom["listitem"]?.checkbox = unchecked
+    #expect(custom.paragraphAttributes(blocks: [checks, done]).checkbox == checked)
+    #expect(custom.paragraphAttributes(blocks: [checks, open]).checkbox == unchecked)
+    // The item's own box: the list's item that only wraps a nested list
+    // doesn't lend its box to the nested item.
+    let bullets = TextKitElement(type: "list", listType: "bullet")
+    let item = TextKitElement(type: "listitem", value: 1)
+    #expect(custom.paragraphAttributes(blocks: [bullets, item]).checkbox == nil)
+    #expect(
+      custom.paragraphAttributes(blocks: [checks, done, bullets, item]).checkbox == nil)
+  }
+
+  /// `border`, its longhands and `border-radius`, as a block's style.
+  @Test func readsBorderCSS() {
+    func border(_ css: String) -> TextKitBorder? { TextKitStyle(css: css).border }
+    #expect(
+      border("border: 1px solid rgb(10, 20, 30); border-radius: 8px")
+        == TextKitBorder(width: 1, color: TextKitColor(10, 20, 30), cornerRadius: 8))
+    #expect(
+      border("border: #ccc dashed 2pt")
+        == TextKitBorder(width: 8.0 / 3, color: TextKitColor(204, 204, 204)))
+    // Without a color the border is the text's; `medium` is 3 points.
+    #expect(border("border: solid") == TextKitBorder(width: 3))
+    #expect(border("border: thin solid") == TextKitBorder(width: 1))
+    // No style is `none`: no border, though a radius still rounds the box.
+    #expect(border("border: 1px #ccc") == nil)
+    #expect(border("border: 1px none #ccc; border-radius: 4px") == TextKitBorder(cornerRadius: 4))
+    #expect(border("border: 2px hidden red") == nil)
+    // Longhands after the shorthand change it; the shorthand resets them.
+    #expect(
+      border("border: 1px solid red; border-color: blue; border-width: 4px")
+        == TextKitBorder(width: 4, color: TextKitColor(0, 0, 255)))
+    #expect(border("border-color: blue; border: 2px solid") == TextKitBorder(width: 2))
+    #expect(
+      border("border-style: solid; border-width: 2px; border-color: #000")
+        == TextKitBorder(width: 2, color: TextKitColor(0, 0, 0)))
+    #expect(border("border-radius: 0") == TextKitBorder())
+    for ignored in [
+      "border-radius: 50%", "border-radius: 1em", "border-radius: -2px", "border: 1px",
+    ] {
+      #expect(border(ignored) == nil, "\(ignored)")
+    }
+  }
+
   @Test func underlineStrikethroughReplacesItsParts() {
     var custom = TextKitTheme.default
     custom["text.underlineStrikethrough"] = TextKitStyle(underline: true)

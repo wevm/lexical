@@ -466,10 +466,13 @@ private func key(
 }
 
 @Suite struct TextKitCheckboxTests {
-  private func makeListController(_ listType: ListType) throws -> TextKitInputController {
+  private func makeListController(
+    _ listType: ListType, theme: TextKitTheme = .default
+  ) throws -> TextKitInputController {
     let editor = try buildEditorFromExtensions(
       defineExtension(name: "test", dependencies: [RichTextExtension, CheckListExtension]))
     let controller = TextKitInputController(editor: editor)
+    controller.theme = theme
     try controller.setSelectedRange(location: 0, length: 0)
     try controller.insertText("a")
     try editor.update(discrete: true) { try insertList(listType) }
@@ -515,6 +518,18 @@ private func key(
     let checked = c.listMarkers.values.map(\.marker).filter { $0 == .checkbox(checked: true) }
     #expect(checked.count == 1)
     #expect(c.listMarkers[nested]?.marker == .checkbox(checked: true))
+  }
+
+  /// A theme's larger box, 1.25em of the item's 16 points, takes clicks
+  /// over all of it.
+  @Test func aClickInAThemedBoxTogglesTheItem() throws {
+    var theme = TextKitTheme.default
+    theme["listitemUnchecked"]?.checkbox = TextKitCheckbox(size: .scale(1.25))
+    let c = try makeListController("check", theme: theme)
+    let item = try #require(c.listMarkers.first?.key)
+    // From 8 to 28, past the default 14.4pt box's end at 22.4.
+    #expect(c.checkboxItem(at: 27, location: 0, lineWidth: 600) == item)
+    #expect(c.checkboxItem(at: 29, location: 0, lineWidth: 600) == nil)
   }
 
   @Test func aBulletHasNoBox() throws {

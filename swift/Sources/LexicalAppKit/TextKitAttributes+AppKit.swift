@@ -43,12 +43,13 @@
     }
   }
 
-  /// The playground theme's check box colors (`#3d87f5` filled when
-  /// checked, a `#999` border when not).
-  enum ListMarkerColors {
-    static let checked = NSColor(srgbRed: 0x3d / 255, green: 0x87 / 255, blue: 0xf5 / 255, alpha: 1)
-    static let unchecked = NSColor(
-      srgbRed: 0x99 / 255, green: 0x99 / 255, blue: 0x99 / 255, alpha: 1)
+  extension NSBezierPath {
+    /// `rect` with `border`'s rounded corners, a radius no more than half
+    /// its shorter side, as CSS draws a radius too large for its box.
+    convenience init(roundedRect rect: NSRect, border: TextKitBorder) {
+      let radius = max(0, min(border.cornerRadius, rect.width / 2, rect.height / 2))
+      self.init(roundedRect: rect, xRadius: radius, yRadius: radius)
+    }
   }
 
   /// CSS weights as `NSFont.Weight`.

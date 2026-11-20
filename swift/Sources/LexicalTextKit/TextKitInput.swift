@@ -185,7 +185,8 @@ public final class TextKitInputController {
       listMarkers[paragraph.key] = paragraph.attributes.listMarker.map {
         TextKitListMarkerLayout(
           marker: $0, headIndent: paragraph.attributes.headIndent, text: paragraph.text,
-          isRightToLeft: paragraph.attributes.writingDirection == .rightToLeft)
+          isRightToLeft: paragraph.attributes.writingDirection == .rightToLeft,
+          checkbox: paragraph.attributes.checkbox)
       }
       blockBoxes[paragraph.key] = paragraph.attributes.blockBox.map {
         TextKitBlockBoxLayout(

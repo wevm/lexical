@@ -809,7 +809,16 @@ Reversible choices made porting `@lexical/extension` under Q18.
   (added to the paragraph spacing and head indent) and an optional
   `gutter` with its own background, right border
   and one line number per line, as the web theme's `::before` draws
-  `data-gutter`. A theme `tabSize` sets the paragraph's
+  `data-gutter`. A block style's `border` (`TextKitBorder`: CSS `border`
+  and `border-radius`, one width, color and radius for all sides) rounds
+  the box, clipping its fill and gutter, and strokes the border inside
+  its edge, over the padding, so the text stays where it was; TextKit 2
+  has no paragraph border attribute, so it is drawn in the same pass as
+  the fill. A border without a background gives the block a clear box.
+  A check list item's box is its `listitemChecked` or `listitemUnchecked`
+  style's `checkbox` (`TextKitCheckbox`: the web theme's `::before` box
+  and `::after` check mark), the playground's when neither sets one; its
+  size moves the click target with it. A theme `tabSize` sets the paragraph's
   `defaultTabInterval` to that many spaces of its font, as CSS
   `tab-size`. A theme `tracking` is CSS `letter-spacing`, in points, drawn
   as the `.tracking` attribute rather than `.kern`: tracking adds the space

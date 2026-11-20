@@ -41,11 +41,13 @@
     }
   }
 
-  /// The playground theme's check box colors (`#3d87f5` filled when
-  /// checked, a `#999` border when not).
-  enum ListMarkerColors {
-    static let checked = UIColor(red: 0x3d / 255, green: 0x87 / 255, blue: 0xf5 / 255, alpha: 1)
-    static let unchecked = UIColor(red: 0x99 / 255, green: 0x99 / 255, blue: 0x99 / 255, alpha: 1)
+  extension UIBezierPath {
+    /// `rect` with `border`'s rounded corners, a radius no more than half
+    /// its shorter side, as CSS draws a radius too large for its box.
+    convenience init(roundedRect rect: CGRect, border: TextKitBorder) {
+      let radius = max(0, min(border.cornerRadius, rect.width / 2, rect.height / 2))
+      self.init(roundedRect: rect, cornerRadius: radius)
+    }
   }
 
   /// CSS weights as `UIFont.Weight`.
@@ -182,6 +184,11 @@
     func scaled(by scale: CGFloat) -> Self {
       var layout = self
       layout.headIndent *= scale
+      if case .points(let side) = layout.checkbox?.size {
+        layout.checkbox?.size = .points(side * scale)
+      }
+      layout.checkbox?.border?.width *= scale
+      layout.checkbox?.border?.cornerRadius *= scale
       return layout
     }
   }
@@ -204,6 +211,8 @@
       layout.box.gutter?.width *= scale
       layout.box.gutter?.padding *= scale
       layout.box.gutter?.borderWidth *= scale
+      layout.box.border?.width *= scale
+      layout.box.border?.cornerRadius *= scale
       return layout
     }
   }

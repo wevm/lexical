@@ -1164,10 +1164,14 @@
 
     // MARK: Drag and drop
 
+    /// The Lexical types first, then what `NSTextView` reads: AppKit
+    /// enables Paste and Match Style only for the types in `super`'s list.
     public override var readablePasteboardTypes: [NSPasteboard.PasteboardType] {
-      TextKitPasteboard.types.map { NSPasteboard.PasteboardType($0.type) } + [
-        .rtf, .rtfd, .fileURL, .png, .tiff,
-      ]
+      let types =
+        TextKitPasteboard.types.map { NSPasteboard.PasteboardType($0.type) } + [
+          .rtf, .rtfd, .fileURL, .png, .tiff,
+        ]
+      return types + super.readablePasteboardTypes.filter { !types.contains($0) }
     }
 
     /// What `NSTextView` takes, and the Lexical types, so that a drag that

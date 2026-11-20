@@ -798,6 +798,18 @@
       _ = window
     }
 
+    @Test func enablesPasteAndMatchStyle() throws {
+      let (view, window) = try makeView()
+      // `NSTextView` validates the menu item against the general pasteboard.
+      NSPasteboard.general.clearContents()
+      NSPasteboard.general.setString("Hello", forType: .string)
+      let item = NSMenuItem(
+        title: "Paste and Match Style", action: #selector(NSTextView.pasteAsPlainText(_:)),
+        keyEquivalent: "")
+      #expect(view.validateUserInterfaceItem(item))
+      _ = window
+    }
+
     @Test func pastesRichTextFromNativeApps() throws {
       let (view, window) = try makeView()
       let rich = NSAttributedString(

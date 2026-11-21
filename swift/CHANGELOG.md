@@ -4,6 +4,15 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.6
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Fixed Paste and Match Style (⌥⇧⌘V) staying disabled in `LexicalNSTextView`: its readable pasteboard types now include `NSTextView`'s own, which AppKit checks to enable the menu item.
+- Added `TextKitStyle.border` (`TextKitBorder`: a width, a color and a corner radius), which `LexicalNSTextView` and `LexicalUITextView` draw around a block's box with its fill and gutter clipped to the rounded corners, and `TextKitStyle.checkbox` (`TextKitCheckbox`: size, fill, border and check mark color), which they read from the theme's `listitemChecked` and `listitemUnchecked` styles to draw check list boxes. `TextKitStyle(css:)` reads `border`, `border-width`, `border-style`, `border-color` and `border-radius`. Themes without them draw as before, except that the default unchecked box's 1-point border now has the 2-point outer radius the playground's CSS gives it.
+
 ## 0.2.5
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

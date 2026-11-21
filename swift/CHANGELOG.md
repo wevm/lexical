@@ -4,6 +4,15 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.7
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Added the `LexicalTable` library product, a port of `@lexical/table`: `TableNode`, `TableRowNode` and `TableCellNode` (including spans, background colors, column widths, row striping and frozen rows and columns), `TableSelection`, the table utilities and commands (inserting, deleting, moving and merging rows, columns and cells), `TableExtension` with Tab and arrow-key navigation, deletion, formatting and paste over a table selection, and `TableImportExtension` for HTML import and export. Where upstream measures the DOM, `TableConfig.layout` takes a `TableLayout` that a view supplies.
+- Added `TextKitRenderExtension` and `textKitOverride`, the TextKit counterpart of `domOverride`'s classes: an app adds theme keys to the elements of the node classes it names, from its own state (a link to a missing page), and the views apply them after the element's theme key. To restyle a node when that state changes, mark it dirty in an update tagged `HISTORY_MERGE_TAG`, which keeps it out of undo history. An inline element marked dirty now restyles the text of its block, as a block marked dirty does.
+
 ## 0.2.6
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

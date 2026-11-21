@@ -61,6 +61,7 @@ mod lexical_selection;
 mod lexical_selection_caret_slices;
 mod lexical_selection_caret_text;
 mod lexical_selection_change_command;
+mod lexical_serialization;
 mod lexical_serialization_context;
 mod lexical_slot;
 mod lexical_slot_selection;

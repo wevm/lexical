@@ -1447,6 +1447,116 @@ fn set_blocks_type_two_elements_same_top_element_2() {
     two_elements_same_top_element();
 }
 
+/// [`in_test_editor`] on an editor that also has the table nodes, with the
+/// editor passed to `f`.
+#[cfg(feature = "table")]
+fn in_table_test_editor(f: impl FnOnce(&Editor) -> Result<(), LexicalError> + 'static) {
+    let editor = create_test_editor(CreateEditorArgs {
+        nodes: crate::table::table_nodes(),
+        ..CreateEditorArgs::default()
+    });
+    set_test_root_element(&editor);
+    let e = editor.clone();
+    update(&editor, move || f(&e));
+}
+
+/// `$createTableNodeWithDimensions(rows, columns)`, with its default
+/// `includeHeaders = true`.
+#[cfg(feature = "table")]
+fn table_with_dimensions(rows: usize, columns: usize) -> Result<NodeRef, LexicalError> {
+    crate::table::create_table_node_with_dimensions(
+        rows,
+        columns,
+        crate::table::InsertTableCommandPayloadHeaders::Both(true),
+    )
+}
+
+// upstream: lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Collapsed in element inside top-element
+#[cfg(feature = "table")]
+#[test]
+fn set_blocks_type_collapsed_in_element_inside_top_element() {
+    in_table_test_editor(|_| {
+        let table = table_with_dimensions(1, 1)?;
+        let row = table.get_first_child().filter(NodeRef::is_element).unwrap();
+        let column = row.get_first_child().filter(NodeRef::is_element).unwrap();
+        let paragraph = column
+            .get_first_child()
+            .filter(NodeRef::is_element)
+            .unwrap();
+        if let Some(child) = paragraph.get_first_child() {
+            child.remove(false)?;
+        }
+        get_root().append(&[table])?;
+        let selection = select_points((&paragraph, 0, E), (&paragraph, 0, E))?;
+        assert_eq!(column.get_children()[0].get_type(), "paragraph");
+        to_h1(&selection)?;
+        let after = column.get_children();
+        assert_eq!(after[0].get_type(), "heading");
+        assert_eq!(after.len(), 1);
+        Ok(())
+    });
+}
+
+// upstream: lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Collapsed in text inside top-element
+#[cfg(feature = "table")]
+#[test]
+fn set_blocks_type_collapsed_in_text_inside_top_element() {
+    in_table_test_editor(|_| {
+        let table = table_with_dimensions(1, 1)?;
+        let row = table.get_first_child().filter(NodeRef::is_element).unwrap();
+        let column = row.get_first_child().filter(NodeRef::is_element).unwrap();
+        let paragraph = column
+            .get_first_child()
+            .filter(NodeRef::is_element)
+            .unwrap();
+        let text = create_text_node("foo");
+        get_root().append(&[table])?;
+        paragraph.append(std::slice::from_ref(&text))?;
+        select_points((&text, 3, T), (&text, 3, T))?;
+        let selection = get_selection().filter(SelectionRef::is_range).unwrap();
+        assert_eq!(column.get_children()[0].get_type(), "paragraph");
+        to_h1(&selection)?;
+        let after = column.get_children();
+        assert_eq!(after[0].get_type(), "heading");
+        assert_eq!(after.len(), 1);
+        Ok(())
+    });
+}
+
+// upstream: lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Full editor selection with a mix of top-elements
+#[cfg(feature = "table")]
+#[test]
+fn set_blocks_type_full_editor_selection_with_a_mix_of_top_elements() {
+    in_table_test_editor(|editor| {
+        let root = get_root();
+        let paragraph1 = create_paragraph_node();
+        let paragraph2 = create_paragraph_node();
+        paragraph1.append(&[create_text_node("")])?;
+        paragraph2.append(&[create_text_node("")])?;
+        root.append(&[paragraph1.clone(), paragraph2.clone()])?;
+        let table = table_with_dimensions(1, 2)?;
+        let row = table.get_first_child().filter(NodeRef::is_element).unwrap();
+        let columns = row.get_children();
+        root.append(&[table])?;
+        // Upstream appends text3 and text4 to paragraph1 and paragraph2.
+        paragraph1.append(&[create_text_node("")])?;
+        paragraph2.append(&[create_text_node("")])?;
+        columns[0].append(&[create_paragraph_node(), create_paragraph_node()])?;
+        columns[1].append(&[create_paragraph_node(), create_paragraph_node()])?;
+        let paragraph7 = create_paragraph_node();
+        root.append(std::slice::from_ref(&paragraph7))?;
+        select_points((&paragraph1, 0, E), (&paragraph7, 0, E))?;
+        let selection = get_selection().filter(SelectionRef::is_range).unwrap();
+        to_h1(&selection)?;
+        let pending = editor.pending().expect("a pending editor state");
+        assert_eq!(
+            pending.to_json(false).to_string(),
+            r#"{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1},{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1},{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1},{"children":[{"children":[{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1},{"children":[],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1},{"children":[],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1}],"backgroundColor":null,"colSpan":1,"headerState":3,"rowSpan":1,"direction":null,"format":"","indent":0,"type":"tablecell","version":1},{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"","type":"text","version":1}],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1},{"children":[],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1},{"children":[],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1}],"backgroundColor":null,"colSpan":1,"headerState":1,"rowSpan":1,"direction":null,"format":"","indent":0,"type":"tablecell","version":1}],"direction":null,"format":"","indent":0,"type":"tablerow","version":1}],"direction":null,"format":"","indent":0,"type":"table","version":1},{"children":[],"tag":"h1","direction":null,"format":"","indent":0,"type":"heading","version":1}],"direction":null,"format":"","indent":0,"type":"root","version":1}}"#
+        );
+        Ok(())
+    });
+}
+
 // upstream: lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Two empty elements, same top-element
 #[test]
 fn set_blocks_type_two_empty_elements_same_top_element() {

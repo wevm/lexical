@@ -1,11 +1,11 @@
 //! Ports of `packages/lexical-code-core/src/__tests__/unit/CodeContentImport.test.ts`.
 //!
 //! Upstream's editor also has `TableExtension` (and a theme for its
-//! wrapper); `@lexical/table` isn't ported, so the editor here leaves it
-//! out, as Swift's does, and the case that imports a table inside a
-//! `<pre>` is skipped (rust/parity/skips.json). The GitHub code tables are
-//! `CodeExtension`'s own rules, which win over `TableExtension`'s upstream.
-//! The `test.each` table is generated from the upstream `CASES`.
+//! wrapper, which only HTML export reads); here it has it with the `table`
+//! feature, and the case that imports a table inside a `<pre>` needs it.
+//! The GitHub code tables are `CodeExtension`'s own rules, which win over
+//! `TableExtension`'s. The `test.each` table is generated from the upstream
+//! `CASES`.
 
 #![cfg(all(
     feature = "html",
@@ -161,20 +161,28 @@ fn build_editor(rules: Vec<DomImportRule>, replace_paragraphs: bool) -> LexicalE
             .into(),
         );
     }
+    #[allow(unused_mut)]
+    let mut dependencies: Vec<crate::AnyLexicalExtensionArgument> =
+        vec![crate::rich_text::rich_text_extension().into()];
+    #[cfg(feature = "table")]
+    dependencies.push(crate::table::table_extension().into());
     build_editor_from_extensions([define_extension(LexicalExtension {
-        dependencies: vec![
-            crate::rich_text::rich_text_extension().into(),
-            crate::list::list_extension().into(),
-            crate::link::link_extension().into(),
-            code_extension().into(),
-            config_extension(
-                &dom_import_extension(),
-                [DomImportConfigOverrides {
-                    rules: Some(rules.into_iter().map(Into::into).collect()),
-                    ..Default::default()
-                }],
-            ),
-        ],
+        dependencies: [
+            dependencies,
+            vec![
+                crate::list::list_extension().into(),
+                crate::link::link_extension().into(),
+                code_extension().into(),
+                config_extension(
+                    &dom_import_extension(),
+                    [DomImportConfigOverrides {
+                        rules: Some(rules.into_iter().map(Into::into).collect()),
+                        ..Default::default()
+                    }],
+                ),
+            ],
+        ]
+        .concat(),
         nodes,
         ..LexicalExtension::<(), (), ()>::new("[code-content-import]", ())
     })
@@ -324,6 +332,20 @@ fn code_import_normalizes_content_to_supported_code_children() {
             Ok(())
         });
     }
+}
+
+// upstream: lexical-code-core/src/__tests__/unit/CodeContentImport.test.ts::code import normalizes content to supported code children > table text preserves its own cell separ…
+#[cfg(feature = "table")]
+#[test]
+fn table_text_preserves_its_own_cell_separators() {
+    let editor = build_editor(vec![], false);
+    update(&editor, || {
+        let nodes =
+            generate("<pre><table><tr><td>alpha</td><td>beta</td></tr></table><p>after</p></pre>")?;
+        assert_eq!(nodes.len(), 1);
+        expect_code_content(&nodes[0], "alpha\n\nbeta\nafter");
+        Ok(())
+    });
 }
 
 /// `test.each(['quote', 'semantic-paragraph', 'inline-semantic-paragraph'])`.

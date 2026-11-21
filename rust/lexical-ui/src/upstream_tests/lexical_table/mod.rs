@@ -1,0 +1,33 @@
+//! Ports of `packages/lexical-table`'s unit tests.
+
+mod clear_text_keeps_paragraph_state;
+mod delete_all_rows_selection;
+mod format_element_table_rect;
+mod lexical_table_cell_node;
+mod lexical_table_extension;
+mod lexical_table_mobile_selection;
+mod lexical_table_node;
+mod lexical_table_observer;
+mod lexical_table_plugin;
+mod lexical_table_row_node;
+mod lexical_table_selection;
+mod lexical_table_selection_helpers;
+mod lexical_table_utils;
+mod nested_editor_table_click;
+mod paste_across_cells_pads_rows;
+mod ragged_table_commands;
+mod shift_arrow_off_corner_anchor;
+mod slot_table_selection_export;
+mod support;
+mod support_a;
+mod support_b;
+mod support_c;
+mod support_d;
+mod table_export_attributes;
+mod table_field_accessors;
+mod table_field_leaves_ragged_rows;
+mod table_import_extension;
+mod table_row_pad_later;
+mod table_selection_observer_before_dom;
+mod toggle_header_style;
+mod unmerge_cell_styles;

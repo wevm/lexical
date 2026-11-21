@@ -12,9 +12,11 @@ pull request.
   in both the legacy and compact forms, the same HTML and the same Markdown.
 - **Swift's feature set first.** tmm's target is parity with what the
   Swift port supports; Swift and Rust move toward the rest of JS later, as
-  apps need it. So `@lexical/yjs`, `@lexical/y`, `@lexical/table`,
-  `@lexical/code-shiki`, `@lexical/mdast` and `@lexical/offset` are not
-  planned: Swift has none of them either.
+  apps need it. So `@lexical/yjs`, `@lexical/y`, `@lexical/code-shiki`,
+  `@lexical/mdast` and `@lexical/offset` are not planned: Swift has none of
+  them either. `@lexical/table` was on that list until an app needed tables
+  (wevm/lexical#244); its model is ported now, with Swift's port alongside
+  it on the same vectors.
 - The editing UI (Swift's Tier 2: views, input, the reconciler's rendering
   half, the WebKit scenarios) is out of scope.
 - **JS is the reference.** A difference from upstream is a Rust bug, except
@@ -92,7 +94,8 @@ depends on as the upstream package depends on them:
 | `decorator-block` | `@lexical/react`'s `DecoratorBlockNode` | (upstream `@lexical/react` lists most packages, for its other modules; the node needs none) |
 | `menu`      | `@lexical/react`'s typeahead and node menus without their views (`LexicalTypeaheadMenuPluginUtils.ts`, `shared/LexicalMenu.tsx`) | |
 | `auto-embed`| `@lexical/react`'s auto-embed (`LexicalAutoEmbedPluginUtils.ts`, the logic of `LexicalAutoEmbedPlugin.tsx`) | `link`, `menu`, `utils` |
-| `devtools`  | `@lexical/devtools-core`'s `generateContent` | (upstream lists `html`, `link`, `mark` and `table`; its HTML form is built with `html`, its link branch with `link` and its mark branch with `mark`, and its table branch isn't ported) |
+| `table`     | `@lexical/table`'s model: the nodes, `TableSelection`, `LexicalTableUtils.ts`, `INSERT_TABLE_COMMAND`, `registerTablePlugin`, the model parts of the table handlers (Tab and the arrows on the table map) | `utils` (upstream also lists `clipboard`, `extension` and `html`; `TableExtension` comes with `extension`, the DOM parts and `TableImportRules` with `html`) |
+| `devtools`  | `@lexical/devtools-core`'s `generateContent` | (upstream lists `html`, `link`, `mark` and `table`; its HTML form is built with `html`, and its link, mark and table branches with `link`, `mark` and `table`) |
 
 Each module is `lexical_ui::<package>` (`lexical_ui::rich_text`).
 Names may change as packages land; this table is updated with them.

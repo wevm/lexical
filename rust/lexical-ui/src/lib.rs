@@ -125,6 +125,8 @@ mod serialized_export;
 mod set_dom_style;
 mod slot;
 mod structure;
+#[cfg(feature = "table")]
+pub mod table;
 #[cfg(feature = "text")]
 pub mod text;
 mod updates;

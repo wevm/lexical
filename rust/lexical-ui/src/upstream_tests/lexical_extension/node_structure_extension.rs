@@ -1,8 +1,8 @@
 //! Ports of `packages/lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts`.
 //!
-//! Upstream's editors also list `TableExtension`; `@lexical/table` is not
-//! ported, so the editors here have no table nodes. The tests ported here
-//! make no table; those that do are skipped (rust/parity/skips.json).
+//! Upstream's editors also list `TableExtension`; the editors here have it
+//! with the `table` feature, which the tests that make a table (in
+//! [`tables`]) need.
 //! JS's test classes become structs whose
 //! [`LexicalNode::static_node_config_chain`] is their `$config()` chain (a
 //! subclass lists its own link, then its parent's), and
@@ -261,8 +261,10 @@ fn build(
         crate::rich_text::rich_text_extension().into(),
         crate::list::list_extension().into(),
         crate::link::link_extension().into(),
-        horizontal_rule_extension().into(),
     ];
+    #[cfg(feature = "table")]
+    deps.push(crate::table::table_extension().into());
+    deps.push(horizontal_rule_extension().into());
     if with_structure {
         deps.push(node_structure_extension().into());
     }
@@ -2070,8 +2072,17 @@ fn caret_editor(with_structure: bool) -> LexicalEditorWithDispose {
         crate::rich_text::rich_text_extension().into(),
         crate::list::list_extension().into(),
         crate::link::link_extension().into(),
-        horizontal_rule_extension().into(),
     ];
+    // `configExtension(TableExtension, {hasHorizontalScroll: false})`.
+    #[cfg(feature = "table")]
+    deps.push(config_extension(
+        &crate::table::table_extension(),
+        [crate::table::TableConfigOverrides {
+            has_horizontal_scroll: Some(false),
+            ..Default::default()
+        }],
+    ));
+    deps.push(horizontal_rule_extension().into());
     if with_structure {
         deps.push(node_structure_extension().into());
     }
@@ -2660,4 +2671,393 @@ fn inline_content_at_the_root_is_wrapped_whenever_core_would_wrap_it() {
         run(true, edits[0]),
         j(r#"[["paragraph","pp"],["paragraph","stray"]]"#)
     );
+}
+
+/// The tests that make a table.
+#[cfg(feature = "table")]
+mod tables {
+    use super::*;
+    use crate::table::{
+        TableCellNode, TableNode, TableRowNode, create_table_cell_node, create_table_node,
+        create_table_row_node,
+    };
+
+    fn table_of(cell_children: Vec<NodeRef>) -> NodeRef {
+        with(
+            create_table_node(),
+            vec![with(
+                create_table_row_node(None),
+                vec![with(create_table_cell_node(0, 1.0, None), cell_children)],
+            )],
+        )
+    }
+
+    fn children_of(node: &dyn LexicalNode) -> Option<NodeChildrenConfig> {
+        get_declared_node_structure(node).children
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::declarations > Lexical's own nodes
+    #[test]
+    fn lexical_s_own_nodes() {
+        use crate::code::CodeNode;
+        use crate::link::{AutoLinkNode, LinkNode};
+        use crate::list::{ListItemNode, ListNode};
+        use crate::rich_text::{HeadingNode, QuoteNode};
+        let inline = Some(NodeChildrenConfig::Inline);
+        assert_eq!(
+            children_of(&crate::nodes::paragraph::ParagraphNode::default()),
+            inline
+        );
+        assert_eq!(children_of(&HeadingNode::default()), inline);
+        assert_eq!(children_of(&QuoteNode::default()), inline);
+        assert_eq!(children_of(&CodeNode::default()), inline);
+        assert_eq!(
+            children_of(&TableCellNode::default()),
+            Some(NodeChildrenConfig::Block)
+        );
+        assert_eq!(
+            children_of(&ListNode::default()),
+            Some(NodeChildrenConfig::List(vec![NodeChildEntry::Class(
+                NodeClassRef::of::<ListItemNode>()
+            )]))
+        );
+        let fields = |merge: Option<crate::MergeAdjacentConfig>| -> Vec<&'static str> {
+            merge
+                .expect("a mergeAdjacent")
+                .by
+                .iter()
+                .map(|entry| match entry {
+                    MergeAdjacentEntry::Field(name) => *name,
+                    MergeAdjacentEntry::State(_) => panic!("a state"),
+                })
+                .collect()
+        };
+        assert_eq!(
+            fields(get_declared_node_structure(&ListNode::default()).merge_adjacent),
+            ["listType"]
+        );
+        assert_eq!(
+            children_of(&ListItemNode::default()),
+            Some(NodeChildrenConfig::List(vec![
+                NodeChildEntry::Inline,
+                NodeChildEntry::Class(NodeClassRef::of::<ListNode>()),
+            ]))
+        );
+        let link = get_declared_node_structure(&LinkNode::default());
+        assert_eq!(link.inline, Some(true));
+        assert_eq!(
+            fields(link.merge_adjacent),
+            ["url", "target", "rel", "title"]
+        );
+        // AutoLinkNode inherits inline/children but turns the merge off.
+        let auto = get_declared_node_structure(&AutoLinkNode::default());
+        assert_eq!(auto.inline, Some(true));
+        assert_eq!(auto.children, inline);
+        assert!(auto.merge_adjacent.is_none());
+        assert_eq!(
+            get_declared_node_structure(&crate::mark::MarkNode::default()).inline,
+            Some(true)
+        );
+        // OverflowNode declares nothing (the normalization knows it, see
+        // below).
+        let overflow = get_declared_node_structure(&crate::overflow::OverflowNode::default());
+        assert!(overflow.inline.is_none());
+        assert!(overflow.children.is_none());
+        assert!(overflow.merge_adjacent.is_none());
+        assert!(overflow.derived.is_empty());
+        assert_eq!(overflow.declared_by, crate::DeclaredBy::default());
+    }
+
+    /// `$paraWithTable()`.
+    fn para_with_table() -> Result<(), LexicalError> {
+        let table = table_of(vec![p(vec![t("cell")])]);
+        get_root().append(&[p(vec![t("before"), table, t("after")])])?;
+        Ok(())
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > off by default: a block in a paragraph stays
+    #[test]
+    fn off_by_default_a_block_in_a_paragraph_stays() {
+        let editor = build(para_with_table, false);
+        assert_eq!(
+            root_shape(&editor),
+            j(
+                r#"[["paragraph","before",["table",["tablerow",["tablecell",["paragraph","cell"]]]],"after"]]"#
+            )
+        );
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block in a paragraph is lifted out (paragraph split)
+    #[test]
+    fn a_block_in_a_paragraph_is_lifted_out_paragraph_split() {
+        let editor = build(para_with_table, true);
+        assert_eq!(
+            root_shape(&editor),
+            j(
+                r#"[["paragraph","before"],["table",["tablerow",["tablecell",["paragraph","cell"]]]],["paragraph","after"]]"#
+            )
+        );
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > inline content in a table cell is wrapped in a paragraph
+    #[test]
+    fn inline_content_in_a_table_cell_is_wrapped_in_a_paragraph() {
+        let editor = build(
+            || {
+                get_root().append(&[table_of(vec![t("a"), p(vec![t("b")]), t("c")])])?;
+                Ok(())
+            },
+            true,
+        );
+        assert_eq!(
+            root_shape(&editor),
+            j(
+                r#"[["table",["tablerow",["tablecell",["paragraph","a"],["paragraph","b"],["paragraph","c"]]]]]"#
+            )
+        );
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a table in a list item is lifted out of the list
+    #[test]
+    fn a_table_in_a_list_item_is_lifted_out_of_the_list() {
+        let editor = build(
+            || {
+                get_root().append(&[with(
+                    create_list_node(ListType::Bullet, 1.0),
+                    vec![
+                        li(vec![t("x")]),
+                        li(vec![table_of(vec![p(vec![t("c")])])]),
+                        li(vec![t("y")]),
+                    ],
+                )])?;
+                Ok(())
+            },
+            true,
+        );
+        let shapes = root_shape(&editor);
+        // No text lost or duplicated, and the table is no longer in the list.
+        let json = shapes.to_string();
+        let texts: Vec<&str> = ["\"x\"", "\"y\"", "\"c\""]
+            .iter()
+            .flat_map(|needle| json.match_indices(needle))
+            .collect::<std::collections::BTreeMap<_, _>>()
+            .into_values()
+            .collect();
+        assert_eq!(texts, ["\"x\"", "\"c\"", "\"y\""]);
+        let Value::Array(blocks) = &shapes else {
+            panic!("an array")
+        };
+        assert!(blocks.iter().any(|b| match b {
+            Value::Array(items) => items.first() == Some(&Value::from("table")),
+            _ => false,
+        }));
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > no table, row or text is lost when blocks are lifted out of a list
+    #[test]
+    fn no_table_row_or_text_is_lost_when_blocks_are_lifted_out_of_a_list() {
+        let table = |text: &str| table_of(vec![p(vec![t(text)])]);
+        let editor = build(
+            move || {
+                get_root().append(&[with(
+                    create_list_node(ListType::Bullet, 1.0),
+                    vec![
+                        li(vec![hr(), t("x")]),
+                        li(vec![table("t1"), table("t2"), t("y")]),
+                    ],
+                )])?;
+                Ok(())
+            },
+            true,
+        );
+        assert_eq!(
+            root_shape(&editor),
+            j(
+                r#"["horizontalrule",["list",["listitem","x"]],["table",["tablerow",["tablecell",["paragraph","t1"]]]],["table",["tablerow",["tablecell",["paragraph","t2"]]]],["list",["listitem","y"]]]"#
+            )
+        );
+        editor.dispose();
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > normalization is a pure function of the document
+    #[test]
+    fn normalization_is_a_pure_function_of_the_document() {
+        let run = || {
+            let editor = build(para_with_table, true);
+            let json = editor.get_editor_state().to_json(false).to_string();
+            editor.dispose();
+            json
+        };
+        assert_eq!(run(), run());
+    }
+
+    /// `ChipNode`: a decorator that turns inline while its cell is not
+    /// written.
+    #[derive(Clone, Debug, Default)]
+    struct ChipNode {
+        base: NodeBase,
+        inline: bool,
+    }
+
+    impl LexicalNode for ChipNode {
+        fn get_type(&self) -> &'static str {
+            "test-chip-decorator"
+        }
+        fn base(&self) -> &NodeBase {
+            &self.base
+        }
+        fn base_mut(&mut self) -> &mut NodeBase {
+            &mut self.base
+        }
+        fn is_decorator(&self) -> bool {
+            true
+        }
+        fn is_inline(&self) -> bool {
+            self.inline
+        }
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::registration > a table cell's declared children: inline content is wrapped in a paragraph
+    #[test]
+    fn a_table_cell_s_declared_children_inline_content_is_wrapped_in_a_paragraph() {
+        // A decorator that turns inline while its cell is not written:
+        // core's shadow root transform never sees it, the extension does.
+        let run = |with_structure: bool| {
+            let mut deps = vec![crate::rich_text::rich_text_extension().into()];
+            if with_structure {
+                deps.push(node_structure_extension().into());
+            }
+            // The table nodes alone: TableExtension's own transforms write
+            // the cell, so core's transform would see it too.
+            let editor = build_with(
+                "cell",
+                deps,
+                vec![
+                    NodeClass::of::<ChipNode>(),
+                    NodeClass::of::<TableNode>(),
+                    NodeClass::of::<TableRowNode>(),
+                    NodeClass::of::<TableCellNode>(),
+                ],
+                Some(Rc::new(|| {
+                    get_root().append(&[table_of(vec![create::<ChipNode>()])])?;
+                    Ok(())
+                })),
+            );
+            // Commit the initial state, in which every node is dirty.
+            editor.read(|| {}).unwrap();
+            upd(&editor, || {
+                let table = get_root().get_first_child_or_throw()?;
+                let row = table.get_first_child_or_throw()?;
+                let cell = row.get_first_child_or_throw()?;
+                let chip = cell.get_first_child_or_throw()?;
+                assert!(chip.get_latest().is::<ChipNode>());
+                crate::lexical_utils::with_writable(chip.get_key(), |n| {
+                    n.downcast_mut::<ChipNode>().unwrap().inline = true;
+                });
+                Ok(())
+            });
+            let shape = root_shape(&editor);
+            editor.dispose();
+            shape
+        };
+        assert_eq!(
+            run(false),
+            j(r#"[["table",["tablerow",["tablecell","test-chip-decorator"]]]]"#)
+        );
+        assert_eq!(
+            run(true),
+            j(r#"[["table",["tablerow",["tablecell",["paragraph","test-chip-decorator"]]]]]"#)
+        );
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty mark before a quote in a table cell is removed before its holder is repaired, whatever the dirty order
+    #[test]
+    fn an_empty_mark_before_a_quote_in_a_table_cell_is_removed_before_its_holder_is_repaired() {
+        removed_before_holder_case(
+            || {
+                vec![with(
+                    create_table_node(),
+                    vec![with(
+                        create_table_row_node(None),
+                        vec![put(
+                            create_table_cell_node(0, 1.0, None),
+                            vec![mark("m"), put(create_quote_node(false), vec![t("x")])],
+                        )],
+                    )],
+                )]
+            },
+            r#"[["table",["tablerow",["tablecell",["quote","x"]]]]]"#,
+        );
+    }
+
+    // upstream: lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > a list, table or shadow root lifted out of a link or mark keeps them on all its text
+    #[test]
+    fn a_list_table_or_shadow_root_lifted_out_of_a_link_or_mark_keeps_them_on_all_its_text() {
+        let cases: [(Children, &str); 6] = [
+            (
+                || vec![p(vec![put(mark("c1"), vec![ul(vec![pli(vec![t("x")])])])])],
+                r#"[["list",["listitem",["mark:c1","x"]]]]"#,
+            ),
+            (
+                || {
+                    vec![p(vec![put(
+                        mark("c1"),
+                        vec![ul(vec![pli(vec![t("x"), ul(vec![pli(vec![t("y")])])])])],
+                    )])]
+                },
+                r#"[["list",["listitem",["mark:c1","x"]],["listitem",["list",["listitem",["mark:c1","y"]]]]]]"#,
+            ),
+            (
+                || {
+                    vec![p(vec![put(
+                        a_link("https://a"),
+                        vec![put(mark("c1"), vec![ul(vec![pli(vec![t("x")])])])],
+                    )])]
+                },
+                r#"[["list",["listitem",["link:https://a",["mark:c1","x"]]]]]"#,
+            ),
+            (
+                || {
+                    vec![p(vec![put(
+                        mark("c1"),
+                        vec![t("l"), table_of(vec![p(vec![t("cell")])])],
+                    )])]
+                },
+                r#"[["paragraph",["mark:c1","l"]],["table",["tablerow",["tablecell",["paragraph",["mark:c1","cell"]]]]]]"#,
+            ),
+            (
+                || {
+                    vec![p(vec![put(
+                        mark("c1"),
+                        vec![put(create_quote_node(true), vec![p(vec![t("s")])])],
+                    )])]
+                },
+                r#"[["quote",["paragraph",["mark:c1","s"]]]]"#,
+            ),
+            // An OverflowNode is wrapped inside, as LinkNode's own transform
+            // leaves it.
+            (
+                || {
+                    vec![p(vec![put(
+                        mark("c1"),
+                        vec![ul(vec![pli(vec![
+                            t("x"),
+                            put(crate::overflow::create_overflow_node(), vec![t("y")]),
+                        ])])],
+                    )])]
+                },
+                r#"[["list",["listitem",["mark:c1","x"],["overflow",["mark:c1","y"]]]]]"#,
+            ),
+        ];
+        for (build, expected) in cases {
+            let editor = caret_editor(true);
+            load(&editor, build);
+            assert_eq!(annotated(&editor), j(expected));
+            editor.dispose();
+        }
+    }
 }

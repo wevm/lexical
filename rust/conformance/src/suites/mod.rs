@@ -77,6 +77,16 @@ pub fn all() -> Vec<Suite> {
             check: html::check_import,
         },
         Suite {
+            file: "html/table",
+            variant: None,
+            check: html::check_table_export,
+        },
+        Suite {
+            file: "html/import-table",
+            variant: None,
+            check: html::check_table_import,
+        },
+        Suite {
             file: "html/import-packages",
             variant: None,
             check: html::check_import_packages,
@@ -163,6 +173,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "serialization/mark",
+            variant: None,
+            check: serialization::check,
+        },
+        Suite {
+            file: "serialization/table",
             variant: None,
             check: serialization::check,
         },
@@ -288,6 +303,11 @@ pub fn all() -> Vec<Suite> {
         },
         Suite {
             file: "scripts/plain-text",
+            variant: None,
+            check: crate::scripts::check,
+        },
+        Suite {
+            file: "scripts/table",
             variant: None,
             check: crate::scripts::check,
         },

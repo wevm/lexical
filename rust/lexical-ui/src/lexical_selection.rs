@@ -171,6 +171,9 @@ impl NodeSelection {
 pub enum Selection {
     Range(RangeSelection),
     Node(NodeSelection),
+    /// `TableSelection` (`@lexical/table`, the `table` feature).
+    #[cfg(feature = "table")]
+    Table(crate::table::TableSelection),
 }
 
 impl Selection {
@@ -178,6 +181,8 @@ impl Selection {
         match self {
             Selection::Range(s) => &mut s.dirty,
             Selection::Node(s) => &mut s.dirty,
+            #[cfg(feature = "table")]
+            Selection::Table(s) => &mut s.dirty,
         }
     }
 
@@ -188,6 +193,8 @@ impl Selection {
             (Selection::Node(a), Selection::Node(b)) => {
                 a.nodes.len() == b.nodes.len() && a.nodes.iter().all(|k| b.nodes.contains(k))
             }
+            #[cfg(feature = "table")]
+            (Selection::Table(a), Selection::Table(b)) => a.is(b),
             _ => false,
         }
     }
@@ -218,25 +225,62 @@ impl SelectionRef {
         matches!(*self.0.borrow(), Selection::Node(_))
     }
 
+    /// `$isTableSelection(selection)`.
+    #[cfg(feature = "table")]
+    pub fn is_table(&self) -> bool {
+        matches!(*self.0.borrow(), Selection::Table(_))
+    }
+
+    /// The table selection's value, `None` for any other selection.
+    #[cfg(feature = "table")]
+    pub fn table(&self) -> Option<crate::table::TableSelection> {
+        match &*self.0.borrow() {
+            Selection::Table(t) => Some(t.clone()),
+            _ => None,
+        }
+    }
+
+    #[cfg(feature = "table")]
+    pub(crate) fn with_table<R>(
+        &self,
+        f: impl FnOnce(&mut crate::table::TableSelection) -> R,
+    ) -> Option<R> {
+        match &mut *self.0.borrow_mut() {
+            Selection::Table(t) => Some(f(t)),
+            _ => None,
+        }
+    }
+
+    /// `selection.getStartEndPoints()`: the anchor and focus of a range or
+    /// table selection, `None` for a node selection.
+    pub fn get_start_end_points(&self) -> Option<(Point, Point)> {
+        match &*self.0.borrow() {
+            Selection::Range(r) => Some((r.anchor.clone(), r.focus.clone())),
+            Selection::Node(_) => None,
+            #[cfg(feature = "table")]
+            Selection::Table(t) => Some((t.anchor.clone(), t.focus.clone())),
+        }
+    }
+
     /// The range selection's value, `None` for a node selection.
     pub fn range(&self) -> Option<RangeSelection> {
         match &*self.0.borrow() {
             Selection::Range(r) => Some(r.clone()),
-            Selection::Node(_) => None,
+            _ => None,
         }
     }
 
     pub(crate) fn with_range<R>(&self, f: impl FnOnce(&mut RangeSelection) -> R) -> Option<R> {
         match &mut *self.0.borrow_mut() {
             Selection::Range(r) => Some(f(r)),
-            Selection::Node(_) => None,
+            _ => None,
         }
     }
 
     pub(crate) fn with_node<R>(&self, f: impl FnOnce(&mut NodeSelection) -> R) -> Option<R> {
         match &mut *self.0.borrow_mut() {
             Selection::Node(n) => Some(f(n)),
-            Selection::Range(_) => None,
+            _ => None,
         }
     }
 
@@ -280,6 +324,8 @@ impl SelectionRef {
         match &mut *self.0.borrow_mut() {
             Selection::Range(r) => r.cached_nodes = nodes,
             Selection::Node(n) => n.cached_nodes = nodes,
+            #[cfg(feature = "table")]
+            Selection::Table(t) => t.cached_nodes = nodes,
         }
     }
 
@@ -287,6 +333,8 @@ impl SelectionRef {
         match &*self.0.borrow() {
             Selection::Range(r) => r.cached_nodes.clone(),
             Selection::Node(n) => n.cached_nodes.clone(),
+            #[cfg(feature = "table")]
+            Selection::Table(t) => t.cached_nodes.clone(),
         }
     }
 
@@ -296,6 +344,10 @@ impl SelectionRef {
     /// that exist, in the order added. Cached until the selection or a node
     /// changes.
     pub fn get_nodes(&self) -> Result<Vec<NodeRef>, LexicalError> {
+        #[cfg(feature = "table")]
+        if self.is_table() {
+            return crate::table::table_selection::get_nodes(self);
+        }
         if let Some(cached) = self.get_cached_nodes() {
             return Ok(cached);
         }
@@ -330,6 +382,10 @@ impl SelectionRef {
     /// covers, with a line break between blocks; for a node selection, the
     /// text of its nodes.
     pub fn get_text_content(&self) -> Result<String, LexicalError> {
+        #[cfg(feature = "table")]
+        if self.is_table() {
+            return crate::table::table_selection::get_text_content(self);
+        }
         let Some(range) = self.range() else {
             return Ok(self
                 .get_nodes()?
@@ -391,6 +447,11 @@ impl SelectionRef {
             Selection::Node(n) => {
                 n.dirty = false;
                 n.cached_nodes = None;
+            }
+            #[cfg(feature = "table")]
+            Selection::Table(t) => {
+                t.dirty = false;
+                t.cached_nodes = None;
             }
         }
         SelectionRef::new(value)
@@ -458,6 +519,10 @@ impl SelectionRef {
 
     /// `isBackward()`: whether the focus comes before the anchor.
     pub fn is_backward(&self) -> Result<bool, LexicalError> {
+        #[cfg(feature = "table")]
+        if let Some(table) = self.table() {
+            return is_before(&table.focus, &table.anchor);
+        }
         let range = self.range().expect("a range selection");
         if let Some(cached) = range.cached_is_backward {
             return Ok(cached);
@@ -471,7 +536,7 @@ impl SelectionRef {
 }
 
 /// `a.isBefore(b)`.
-fn is_before(a: &Point, b: &Point) -> Result<bool, LexicalError> {
+pub(crate) fn is_before(a: &Point, b: &Point) -> Result<bool, LexicalError> {
     if a.key == b.key {
         return Ok(a.offset < b.offset);
     }

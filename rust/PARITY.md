@@ -96,6 +96,7 @@ updated with each milestone.
 | `DecoratorBlockNode` (the `decorator-block` feature) | `packages/lexical-react/src/LexicalDecoratorBlockNode.ts`: `DecoratorBlockNode` as data a node returns from `LexicalNode::decorator_block` (a block decorator, `isInline` and `canIndent` false), `getFormat`, `setFormat`, `decoratorBlockNodeSchema`'s `format` (`enumValue`, left out of the compact form when `''`), `$isDecoratorBlockNode` | `decorator_block`, `node` | `scripts/decorator-block`, `serialization/decorator-block` |
 | The typeahead menu's text matching (the `menu` feature) | `packages/lexical-react/src/LexicalTypeaheadMenuPluginUtils.ts` (`PUNCTUATION`, `useBasicTypeaheadTriggerMatch` as `basic_typeahead_trigger_match`, its `RegExp` matched by hand over UTF-16 code units, with the trigger and punctuation read as character class bodies); `LexicalMenuOption.ts` (`MenuOption`); `shared/LexicalMenu.tsx` (`MenuTextMatch`, `MenuResolution` anchored at a model range, `getFullMatchOffset`, `$splitNodeContainingQuery`, `selectOptionAndCleanUp`, the highlighted index with `preselectFirstItem`); `LexicalTypeaheadMenuPlugin.tsx` (`getTextUpToAnchor`, `isSelectionOnEntityBoundary`, the update listener with `tryToPositionRange`'s model half, `closeTypeahead`/`openTypeahead` with an `onClose` that returns a promise as `on_close_async` and its `MenuCloseDone`, `closeUnlessComposing`, the editable listener, `commandPriority`); `LexicalNodeMenuPlugin.tsx`'s `positionOrCloseMenu`; `LexicalMenu`'s keyboard commands while a menu is open, at its `commandPriority` (`KEY_ARROW_DOWN_COMMAND` and `KEY_ARROW_UP_COMMAND` wrapping the highlight and dispatching `SCROLL_TYPEAHEAD_OPTION_INTO_VIEW_COMMAND`, `KEY_ESCAPE_COMMAND`, `KEY_TAB_COMMAND`, `KEY_ENTER_COMMAND` but Shift+Enter; an empty menu the default renderer draws nothing for lets them go on) | `menu` | `scripts/menu`; unit tests for the keys, the close while composing and `on_close_async` (a React hook, which no vector records; Swift's `LexicalMenuTests` check the same) |
 | Auto-embed (the `auto-embed` feature) | `packages/lexical-react/src/LexicalAutoEmbedPluginUtils.ts` (`EmbedMatchResult`, `EmbedConfig`, `URL_MATCHER` matched by hand as `url_matcher`, `INSERT_EMBED_COMMAND`, `AutoEmbedOption`); `LexicalAutoEmbedPlugin.tsx`'s logic as `register_auto_embed`: the `PASTE_COMMAND` handler at `COMMAND_PRIORITY_BEFORE_EDITOR` with `/^\S+$/` (`is_single_token`) and `$onUpdate`, the `LinkNode` and `AutoLinkNode` mutation listeners, `checkIfLinkNodeIsEmbeddable` (the last config wins, `latestCheck`, `$getCurrentLink`, `$disableMenuFor`), `embedLinkViaActiveEmbedConfig`, `getMenuOptions` and the `INSERT_EMBED_COMMAND` handler, driving a `NodeMenu` | `auto_embed` | `scripts/auto-embed` (`URL_MATCHER`, the single-token test, the command and the mutations a paste makes) |
+| Tables (the `table` feature) | `packages/lexical-table/src`: `LexicalTableNode.ts`, `LexicalTableRowNode.ts`, `LexicalTableCellNode.ts` (with `colSpan`/`rowSpan` and `backgroundColor`), `LexicalTableSelection.ts` (`TableSelection`, `$createTableSelection`, `$isTableSelection`), `LexicalTableUtils.ts` (insert, delete, merge, unmerge, `$computeTableMap`, `$getTableCellNodeRect`...), `LexicalTableCommands.ts` (`INSERT_TABLE_COMMAND`), `LexicalTablePluginHelpers.ts` (`registerTablePlugin`, `registerTableCellUnmergeTransform`), `LexicalTableExtension.ts` (`TableExtension`), `TableImportRules`, and the model half of `LexicalTableSelectionHelpers.ts`: Tab and Shift+Tab, the arrows and Shift+arrows on the table map, deletion and formatting over a `TableSelection` | `serialization/table`, `html/table`, `html/import-table`, `scripts/table` |
 | Markdown (the `markdown` feature) | `packages/lexical-markdown/src`: `MarkdownTransformers.ts` (the four transformer types; `HEADING`, `QUOTE`, `CODE`, `UNORDERED_LIST`, `ORDERED_LIST`, `CHECK_LIST`, the text formats, `LINK`, `TRANSFORMERS` and the groups by type; the list marker, code fence, code meta and hard line break NodeStates; `normalizeMarkdown`, `isTableRowDivider`), `MarkdownImport.ts` (`createMarkdownImport`, `$importMultiline`, `$importBlocks`), `importTextTransformers.ts`, `importTextFormatTransformer.ts`, `importTextMatchTransformer.ts`, `MarkdownExport.ts` (`createMarkdownExport`, with selection), `utils.ts`; `$convertFromMarkdownString`, `$generateNodesFromMarkdownString` (into an `ArtificialNode__DO_NOT_USE`), `$convertToMarkdownString` and `$convertSelectionToMarkdownString` (`index.ts`); `MarkdownShortcuts.ts` (`registerMarkdownShortcuts`) | `markdown` | `markdown/import-export` (its `importNodes`), `property/documents`, `scripts/markdown-shortcuts` |
 | UTF-16 offsets | `String#length`, `String#slice` | `utf16` | through the text methods; unit tests against Node |
 | Upstream version | `meta.json` | `UPSTREAM_VERSION` | `meta` |
@@ -131,8 +132,8 @@ touches:
   not need; and `validateOwnFields`. Containers compare by content, as in
   Swift, where a JS array or object without `isEqual` compares by
   identity; no vector tells them apart, since JS parses a fresh container
-  each time. The schemas of the packages not ported yet (`@lexical/table`,
-  the playground's nodes) come with them.
+  each time. The schemas of the packages not ported yet (the playground's
+  nodes) come with them.
 - `LexicalGenMap.ts` (`GenMap`, `cloneMap`), JS's generational node map,
   whose clone is O(1) with a copy on the first write. An editor state's
   node map here is a `HashMap` of `Rc` nodes (`editor_state::NodeMap`),
@@ -426,6 +427,18 @@ touches:
   the last state asked about, as one state is pending at a time. JS's
   `targetNode` class is a node type here, as `registerNodeTransform`
   takes one.
+- Of `@lexical/table` (the `table` feature): `TableObserver`'s DOM side.
+  The handlers are registered once per editor
+  (`register_table_selection_observer`) and find the table from the
+  selection, where JS keeps an observer per table element. Not ported:
+  pointer and touch selection of cells, the selection highlight
+  (`$updateDOMForSelection`), the sticky scrollbar listeners (the
+  `hasHorizontalScroll` flag is kept, and exported), the document's copy
+  and paste listeners, `$getTableEdgeCursorPosition`,
+  `$fixTableSelectionForSelectedTable`, the typeahead menu check and the
+  `FOCUS_COMMAND` handler. Up and Down leave a cell by the editor's line
+  movement (`SelectionMovement::Line`) where JS compares
+  `getBoundingClientRect`s, which no vector covers (jsdom has no layout).
 - Of `@lexical/file`: the DOM halves of `importFile` and `exportFile`
   (`readTextFileFromSystem`'s `<input type="file">` and `FileReader`,
   `exportBlob`'s `Blob`, object URL and download link), which an app
@@ -433,8 +446,8 @@ touches:
   years 1970 to 9999, which `Date.now()` stays within.
 - Of `@lexical/devtools-core`: `generateContent`'s `exportDOM` form is
   built with the `html` feature (without it, it fails with an error), and
-  its mark branch with `mark`; its table branch (`$isTableSelection`,
-  `printTableSelection`) waits for `@lexical/table`; and the React parts, `TreeView.tsx` and
+  its mark and table branches with `mark` and `table`; and the React parts,
+  `TreeView.tsx` and
   `useLexicalCommandsLog.ts` (a log of commands is the caller's, as
   `LexicalCommandLogEntry`s with the payload already printed).
   `obfuscateText`'s `*` and the `^` widths count UTF-16

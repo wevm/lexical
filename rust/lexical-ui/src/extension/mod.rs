@@ -124,8 +124,14 @@ pub use keyboard_shortcuts_extension::{
     format_keyboard_shortcut, keyboard_shortcuts_extension,
 };
 pub use lexical_builder::{LexicalBuilder, LexicalEditorWithDispose, build_editor_from_extensions};
-// For the package modules whose extensions use it (ListExtension, CodeIndentExtension).
-#[cfg(any(feature = "list", feature = "code", feature = "a11y", feature = "link"))]
+// For the package modules whose extensions use it (ListExtension, CodeIndentExtension, TableExtension).
+#[cfg(any(
+    feature = "list",
+    feature = "code",
+    feature = "a11y",
+    feature = "link",
+    feature = "table"
+))]
 pub(crate) use named_signals::named_signals_config;
 pub use named_signals::{NamedSignalsOutput, named_signals};
 pub use nested_editor_extension::{

@@ -33,6 +33,10 @@ impl SelectionRef {
     /// `NodeSelection.insertNodes`, which inserts them after the last
     /// selected node and removes the selected nodes.
     pub fn insert_nodes(&self, nodes: Vec<NodeRef>) -> Result<(), LexicalError> {
+        #[cfg(feature = "table")]
+        if self.is_table() {
+            return crate::table::table_selection::insert_nodes(self, nodes);
+        }
         if self.is_node() {
             node_selection_insert_nodes(self, &nodes)
         } else {
@@ -44,6 +48,10 @@ impl SelectionRef {
     /// text with its tabs and line breaks as nodes; on a node selection,
     /// nothing.
     pub fn insert_raw_text(&self, text: &str) -> Result<(), LexicalError> {
+        #[cfg(feature = "table")]
+        if self.is_table() {
+            return crate::table::table_selection::insert_raw_text(self, text);
+        }
         if self.is_node() {
             // `NodeSelection.insertRawText`: "Do nothing?"
             return Ok(());

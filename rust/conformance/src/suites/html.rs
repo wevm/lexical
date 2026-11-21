@@ -950,3 +950,91 @@ pub fn check_mark_state(case: &Value, _file: &Value) -> Result<Outcome, String> 
     result?;
     Ok(Outcome::Pass)
 }
+
+/// The editor of `html/table` and `html/import-table`: `RichTextExtension`,
+/// `CheckListExtension` when `check_list`, and `TableExtension` with the
+/// case's `hasHorizontalScroll` (default `true`), with `theme`.
+fn table_editor(
+    theme: Option<lexical::json::Object>,
+    horizontal_scroll: bool,
+    check_list: bool,
+) -> Result<lexical::extension::LexicalEditorWithDispose, String> {
+    use lexical::table::{TableConfigOverrides, table_extension};
+    use lexical::{LexicalExtension, config_extension, define_extension};
+    let mut dependencies = vec![lexical::rich_text::rich_text_extension().into()];
+    if check_list {
+        dependencies.push(lexical::list::check_list_extension().into());
+    }
+    dependencies.push(config_extension(
+        &table_extension(),
+        [TableConfigOverrides {
+            has_horizontal_scroll: Some(horizontal_scroll),
+            ..Default::default()
+        }],
+    ));
+    let host = define_extension(LexicalExtension::<(), (), ()> {
+        dependencies,
+        theme,
+        ..LexicalExtension::new("[conformance]", ())
+    });
+    lexical::extension::build_editor_from_extensions([host.into()]).map_err(|e| e.to_string())
+}
+
+/// `html/table`: the HTML `$generateHtmlFromNodes` writes for a table
+/// document, with and without `hasHorizontalScroll` and a table theme.
+pub fn check_table_export(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    let theme = match case.get("theme") {
+        Some(Value::Object(theme)) => Some(theme.clone()),
+        _ => None,
+    };
+    let horizontal_scroll = case.get("horizontalScroll").and_then(Value::as_bool) != Some(false);
+    let editor = table_editor(theme, horizontal_scroll, false)?;
+    let result = (|| {
+        let state = editor
+            .parse_editor_state(case.str("editorState")?)
+            .map_err(|e| format!("editorState: {e}"))?;
+        editor
+            .set_editor_state(&state, None)
+            .map_err(|e| e.to_string())?;
+        editor
+            .read(|| generate_html_from_nodes(&editor, None))
+            .and_then(|html| html)
+            .map_err(|e| e.to_string())
+    })();
+    editor.dispose();
+    same("html", result?.as_str(), case.str("html")?)?;
+    Ok(Outcome::Pass)
+}
+
+/// `html/import-table`: table HTML imported through `TableImportRules`
+/// (`nodes`) and through the legacy `importDOM` path (`legacy`).
+pub fn check_table_import(case: &Value, _file: &Value) -> Result<Outcome, String> {
+    use lexical::html::import::generate_nodes_from_dom_via_extension;
+    let editor = table_editor(None, true, true)?;
+    let html = case.str("html")?.to_owned();
+    let out = Rc::new(RefCell::new((String::new(), String::new())));
+    let (written, update_editor) = (out.clone(), editor.clone());
+    let result = editor.update(
+        move || {
+            let dom = parse_from_string(&html);
+            let nodes = generate_nodes_from_dom_via_extension(&dom, None)?;
+            let dom = parse_from_string(&html);
+            let legacy = generate_nodes_from_dom(&update_editor, &dom)?;
+            *written.borrow_mut() = (
+                Value::Array(nodes.iter().map(node_to_json).collect()).to_string(),
+                Value::Array(legacy.iter().map(node_to_json).collect()).to_string(),
+            );
+            Ok(())
+        },
+        UpdateOptions {
+            discrete: true,
+            ..UpdateOptions::default()
+        },
+    );
+    editor.dispose();
+    result.map_err(|e| e.to_string())?;
+    let (nodes, legacy) = &*out.borrow();
+    same("nodes", nodes.as_str(), case.str("nodes")?)?;
+    same("legacy", legacy.as_str(), case.str("legacy")?)?;
+    Ok(Outcome::Pass)
+}

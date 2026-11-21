@@ -80,6 +80,7 @@ fn real_extension(key: &str) -> Option<AnyLexicalExtensionArgument> {
         "MarkExtension" => mark::mark_extension().into(),
         "MarkBaseExtension" => mark::mark_base_extension().into(),
         "HeadlessExtension" => lexical::headless::headless_extension().into(),
+        "TableExtension" => lexical::table::table_extension().into(),
         _ => {
             return super::input::real_extension(key).or_else(|| mark_flavor(key).map(Into::into));
         }

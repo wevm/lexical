@@ -295,12 +295,14 @@ let package = Package(
       ]),
     // The platform-neutral half of the text views: the document they show
     // and the input controller that turns native input into commands.
-    .target(name: "LexicalTextKit", dependencies: ["Lexical", "LexicalCodeCore", "LexicalText"]),
+    .target(
+      name: "LexicalTextKit",
+      dependencies: ["Lexical", "LexicalCodeCore", "LexicalExtension", "LexicalText"]),
     .testTarget(
       name: "LexicalTextKitTests",
       dependencies: [
-        "Lexical", "LexicalExtension", "LexicalHashtag", "LexicalHistory", "LexicalList",
-        "LexicalOverflow", "LexicalPlainText", "LexicalRichText", "LexicalSelection",
+        "Lexical", "LexicalExtension", "LexicalHashtag", "LexicalHistory", "LexicalLink",
+        "LexicalList", "LexicalOverflow", "LexicalPlainText", "LexicalRichText", "LexicalSelection",
         "LexicalTesting", "LexicalTextKit", "LexicalCodeCore",
       ]),
     // The TextKit 2 editor views (Apple-only; empty modules elsewhere).

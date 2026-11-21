@@ -2,11 +2,11 @@ import Lexical
 import LexicalCodeCore
 import LexicalExtension
 import LexicalHTML
+import LexicalTable
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-code-core/src/__tests__/unit/CodeImportExtension.test.ts.
-// The test with TableExtension is skipped until @lexical/table is ported.
 
 /// CodeExtension registers its own import rules (and the shared
 /// CoreImportExtension baseline); no dedicated import extension is needed.
@@ -157,6 +157,37 @@ private func codeNodes() throws -> [CodeNode] {
       let text = try rootCode().getTextContent()
       #expect(text.contains("line 1"))
       #expect(text.contains("line 2"))
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-code-core/src/__tests__/unit/CodeImportExtension.test.ts::CodeImportExtension > GitHub raw-file-view table still wins when TableExtension is present"
+    ))
+  func githubTableWinsOverTableExtension() throws {
+    let editor = try buildEditorFromExtensions(
+      defineExtension(
+        // Table listed before Code, like a typical app config: rules merge in
+        // dependency order, so CodeExtension's class-restricted <table> rule
+        // out-prioritizes TableExtension's generic one.
+        name: "table-code-host", dependencies: [TableExtension, CodeExtension],
+        editorConfig: InitialEditorConfig(theme: ["tableScrollableWrapper": ""])))
+    defer { editor.dispose() }
+    try importInto(
+      editor,
+      [
+        #"<table class="js-file-line-container">"#,
+        #"<tr><td class="js-file-line">line 1</td></tr>"#,
+        "</table>",
+        "<table><tr><td>plain</td></tr></table>",
+      ].joined())
+    try editor.read { () throws -> Void in
+      let children = try getRoot().getChildren()
+      let code = try #require(children[0] as? CodeNode, "expected CodeNode for the GitHub table")
+      #expect(try code.getTextContent().contains("line 1"))
+      let table = try #require(
+        children[1] as? TableNode, "expected TableNode for the plain table")
+      #expect(try table.getTextContent().contains("plain"))
     }
   }
 

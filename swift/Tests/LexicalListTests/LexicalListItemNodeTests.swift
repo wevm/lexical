@@ -1,6 +1,7 @@
 import Lexical
 import LexicalHTML
 import LexicalList
+import LexicalTable
 import LexicalTesting
 import Testing
 
@@ -585,6 +586,35 @@ private func nested(_ type: ListType = "bullet", _ items: ListItemNode...) throw
       #expect(try wrapper.getListType() == "bullet")
     }
     #expect(try listHTML(editor) == #"<ul><li value="1"><span>orphan</span></li></ul>"#)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-list/src/__tests__/unit/LexicalListItemNode.test.ts::LexicalListItemNode tests > ListItemNode $transform wraps orphan ListItemNodes > wraps orphan ListItemNode inside a shadow-root table cell"
+    ))
+  func wrapsOrphanInTableCell() throws {
+    let editor = try createMountedTestEditor(
+      nodes: listTestNodes + [
+        .klass(TableNode.self), .klass(TableRowNode.self), .klass(TableCellNode.self),
+      ])
+    try editor.update(discrete: true) {
+      let cell = try createTableCellNode().append(li("orphan"))
+      try getRoot().clear().append(createTableNode().append(createTableRowNode().append(cell)))
+    }
+    try editor.read { () throws -> Void in
+      let table = try #require(
+        try getRoot().getFirstChild() as? ElementNode, "root first child is an element")
+      let row = try #require(
+        try table.getFirstChild() as? ElementNode, "table first child is an element")
+      let cell = try #require(
+        try row.getFirstChild() as? ElementNode, "row first child is an element")
+      #expect(try cell.getChildrenSize() == 1)
+      let wrapper = try #require(
+        try cell.getFirstChild() as? ListNode, "orphan <li> should be wrapped inside the table cell"
+      )
+      #expect(try wrapper.getChildrenSize() == 1)
+      #expect(try wrapper.getFirstChildOrThrow().getTextContent() == "orphan")
+    }
   }
 
   @Test(

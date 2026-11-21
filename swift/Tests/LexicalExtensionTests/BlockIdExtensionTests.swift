@@ -6,14 +6,11 @@ import LexicalList
 import LexicalMarkdown
 import LexicalRichText
 import LexicalSelection
+import LexicalTable
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts.
-// Upstream's `build` registers the list and table nodes in every editor; the
-// editors here register rich text, the list and the horizontal rule. The
-// tests that build tables, code or links are skipped until those
-// packages are ported.
 
 private struct BuildOptions {
   var generateId: (() throws -> String)?
@@ -28,7 +25,7 @@ private func build(_ options: BuildOptions = BuildOptions()) throws -> Editor {
   var clock = 0.0
   let generateId = options.generateId ?? counter()
   var dependencies: [any AnyLexicalExtensionArgument] = [
-    RichTextExtension, ListExtension, HorizontalRuleExtension,
+    RichTextExtension, ListExtension, TableExtension, HorizontalRuleExtension,
   ]
   if options.history {
     dependencies.append(
@@ -1767,5 +1764,334 @@ private func bulletList(_ texts: String...) throws -> ListNode {
       #expect(after == before)
     }
     try expectAllIndexed(editor)
+  }
+}
+
+// MARK: tables
+
+/// `$createTableNodeWithDimensions(rows, columns, false)`.
+private func plainTable(_ rows: Int, _ columns: Int) throws -> TableNode {
+  try createTableNodeWithDimensions(rows, columns, false)
+}
+
+/// Ids on the root's children only, as `isRootChildBlock` writes them.
+private func rootOnlyDocument() throws -> String {
+  let writer = try build(generateId: counter("r"), isIdentifiedBlock: isRootChildBlock)
+  defer { writer.dispose() }
+  try discrete(writer) {
+    try getRoot().append(paragraph("Title"), bulletList("one", "two"), plainTable(1, 2))
+  }
+  return JSONValue.object(try writer.getEditorState().toJSON()).stringify()
+}
+
+/// `nestTable(editor)`: a root table moved into a cell of another table is
+/// not identified. Returns its id.
+private func nestTable(_ editor: Editor) throws -> String {
+  try discrete(editor) {
+    try getRoot().append(plainTable(1, 1), paragraph("mid"), plainTable(1, 1))
+  }
+  let id = try #require(try editor.read { try getBlockId(nth(2)) })
+  try discrete(editor) {
+    let row = try #require(try nth(0).getFirstChildOrThrow() as? ElementNode)
+    let cell = try #require(try row.getFirstChildOrThrow() as? TableCellNode)
+    try cell.append(nth(2))
+  }
+  return id
+}
+
+/// `$nestedTable()`: the table nested in the first cell of the root table.
+private func nestedTable() throws -> ElementNode {
+  let row = try #require(try nth(0).getFirstChildOrThrow() as? ElementNode)
+  let cell = try #require(try row.getFirstChildOrThrow() as? TableCellNode)
+  return try #require(try cell.getLastChildOrThrow() as? ElementNode)
+}
+
+private final class InlineDecorator: DecoratorNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(InlineDecorator.self, type: "block-id-inline-decorator", extends: DecoratorNode.self)
+  }
+  override func isInline() throws -> Bool { true }
+  override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement {
+    getDocument().createElement("span")
+  }
+  override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws -> Bool { false }
+  override func decorate(_ editor: Editor) throws -> Any? { nil }
+}
+
+private final class BlockDecorator: DecoratorNode {
+  override class func config() -> NodeConfig? {
+    NodeConfig(BlockDecorator.self, type: "block-id-block-decorator", extends: DecoratorNode.self)
+  }
+  override func isInline() throws -> Bool { false }
+  override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement {
+    getDocument().createElement("div")
+  }
+  override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws -> Bool { false }
+  override func decorate(_ editor: Editor) throws -> Any? { nil }
+}
+
+/// `buildWith(isIdentifiedBlock)` of the `more predicates and nesting`
+/// suite.
+private func buildWithDecorators(
+  _ isIdentifiedBlock: ((LexicalNode) throws -> Bool)? = nil
+) throws -> Editor {
+  let generateId = counter()
+  return try asEdited(
+    buildEditorFromExtensions(
+      defineExtension(
+        name: "[block-id-predicates]",
+        dependencies: [
+          RichTextExtension, ListExtension, TableExtension,
+          configExtension(BlockIdExtension) {
+            $0.generateId = generateId
+            if let isIdentifiedBlock { $0.isIdentifiedBlock = isIdentifiedBlock }
+          },
+        ],
+        nodes: { [.klass(InlineDecorator.self), .klass(BlockDecorator.self)] },
+        editorConfig: InitialEditorConfig(initialEditorState: InitialEditorStateType.none))))
+}
+
+@Suite struct BlockIdExtensionTableTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: index > nested blocks in lists and tables, with table cells added"
+    ))
+  func nestedBlocksInListsAndTables() throws {
+    let editor = try build(isIdentifiedBlock: { node in
+      try defaultIsIdentifiedBlock(node) || node is TableCellNode
+    })
+    defer { editor.dispose() }
+    try discrete(editor) {
+      try getRoot().append(plainTable(2, 2), paragraph("a"), paragraph("b"))
+    }
+    try discrete(editor) {
+      try selectBlocks(1, 2)
+      _ = try editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND)
+    }
+    #expect(
+      try outline(editor) == [
+        "table:b1",
+        "  tablerow",
+        "    tablecell:b2",
+        "      paragraph:b3",
+        "    tablecell:b4",
+        "      paragraph:b5",
+        "  tablerow",
+        "    tablecell:b6",
+        "      paragraph:b7",
+        "    tablecell:b8",
+        "      paragraph:b9",
+        "list:b12",
+        "  listitem:b10",
+        "  listitem:b11",
+      ])
+    try editor.read { () throws -> Void in
+      #expect(try getBlockById("b4")?.getType() == "tablecell")
+      #expect(try getBlockById("b11")?.getTextContent() == "b")
+      #expect(try getBlockById("b12")?.getType() == "list")
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the default predicate > ids stored on the root children are kept; nested blocks get positional ids"
+    ))
+  func storedRootIdsKept() throws {
+    // Written with the previous default: ids on the root's children only.
+    let stored = try rootOnlyDocument()
+    func read() throws -> Editor {
+      let editor = try build(generateId: generateBlockId, fresh: true)
+      try editor.setEditorState(editor.parseEditorState(stored))
+      return editor
+    }
+    let first = try read()
+    defer { first.dispose() }
+    let second = try read()
+    defer { second.dispose() }
+    #expect(
+      try outline(first) == [
+        "paragraph:r1",
+        "list:r2",
+        "  listitem:@1.0",
+        "  listitem:@1.1",
+        "table:r3",
+        "  tablerow",
+        "    tablecell",
+        "      paragraph:@2.0",
+        "    tablecell",
+        "      paragraph:@2.1",
+      ])
+    #expect(
+      try first.getEditorState().toJSON().stringify()
+        == second.getEditorState().toJSON().stringify())
+    // Stored once, they are ordinary ids: loading again changes nothing.
+    let saved = JSONValue.object(try first.getEditorState().toJSON()).stringify()
+    let again = try build(generateId: generateBlockId, fresh: true)
+    defer { again.dispose() }
+    try again.setEditorState(again.parseEditorState(saved))
+    #expect(JSONValue.object(try again.getEditorState().toJSON()).stringify() == saved)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a document with ids on the root children only, via setEditorState"
+    ))
+  func rootOnlyViaSetEditorState() throws {
+    let editor = try build(fresh: true)
+    defer { editor.dispose() }
+    try editor.setEditorState(editor.parseEditorState(rootOnlyDocument()))
+    #expect(try ids(editor) == ["r1", "r2", "r3"])
+    try expectAllIndexed(editor)
+    // Typing in an item keeps it that way.
+    try discrete(editor) {
+      let item = try #require(try nth(1).getFirstChildOrThrow() as? ElementNode)
+      try #require(try item.getFirstChildOrThrow() as? TextNode).setTextContent("one!")
+    }
+    try expectAllIndexed(editor)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a document with ids on the root children only, as the initial state"
+    ))
+  func rootOnlyAsInitialState() throws {
+    let stored = try rootOnlyDocument()
+    let editor = try buildWith(
+      "[block-id-initial]",
+      [RichTextExtension, ListExtension, TableExtension, BlockIdExtension],
+      .json(stored))
+    defer { editor.dispose() }
+    #expect(try ids(editor) == ["r1", "r2", "r3"])
+    try expectAllIndexed(editor)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a table given an id with $setState before it is inserted"
+    ))
+  func tableGivenAnIdBeforeInsert() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    try seed(editor, ["p"])
+    try discrete(editor) {
+      let block = try plainTable(1, 1)
+      try setState(block, blockIdState, "my-block")
+      try getRoot().append(block)
+    }
+    #expect(try ids(editor) == ["b1", "my-block"])
+    try expectAllIndexed(editor)
+    try editor.read { () throws -> Void in
+      #expect(try getBlockById("my-block") === nth(1).getLatest())
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > the id stays in NodeState but is not indexed, and comes back with the block"
+    ))
+  func idStaysInNodeState() throws {
+    let editor = try build()
+    defer { editor.dispose() }
+    let id = try nestTable(editor)
+    try editor.read { () throws -> Void in
+      #expect(try getBlockId(nestedTable()) == id)
+      #expect(try getBlockById(id) == nil)
+    }
+    try discrete(editor) { try getRoot().append(nestedTable()) }
+    #expect(try ids(editor)[2] == id)
+    try expectAllIndexed(editor)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > a block that took the id meanwhile keeps it, wherever the original returns"
+    ))
+  func blockThatTookTheIdKeepsIt() throws {
+    for where_ in ["above", "below"] {
+      let editor = try build()
+      defer { editor.dispose() }
+      let id = try nestTable(editor)
+      // A copy of the nested table at the root: nothing identified holds
+      // the id, so the copy keeps it.
+      try discrete(editor) { try nth(1).insertAfter(deepCopy(nestedTable())) }
+      let copyKey = try editor.read { try nth(2).getKey() }
+      #expect(try ids(editor)[2] == id)
+      try discrete(editor) {
+        let original = try nestedTable()
+        if where_ == "above" {
+          try nth(0).insertBefore(original)
+        } else {
+          try getRoot().append(original)
+        }
+      }
+      try expectUnique(editor)
+      try expectAllIndexed(editor)
+      try editor.read { () throws -> Void in
+        #expect(try getBlockById(id)?.getKey() == copyKey, "\(where_)")
+      }
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > nested inline decorators get no id; a block decorator in a cell does"
+    ))
+  func decoratorsInCells() throws {
+    let editor = try buildWithDecorators()
+    defer { editor.dispose() }
+    try discrete(editor) {
+      try getRoot().append(
+        createParagraphNode().append(createTextNode("a"), create(InlineDecorator.self)),
+        createListNode("bullet").append(
+          createListItemNode().append(createTextNode("i"), create(InlineDecorator.self))),
+        createTableNode().append(
+          createTableRowNode().append(createTableCellNode().append(create(BlockDecorator.self)))))
+    }
+    #expect(
+      try outline(editor).map { $0.replacing(/:b\d+$/, with: ":id") } == [
+        "paragraph:id",
+        "  block-id-inline-decorator",
+        "list:id",
+        "  listitem:id",
+        "    block-id-inline-decorator",
+        "table:id",
+        "  tablerow",
+        "    tablecell",
+        "      block-id-block-decorator:id",
+      ])
+    try expectAllIndexed(editor)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > a custom predicate that is not composed from the default: headings at any depth"
+    ))
+  func headingsAtAnyDepth() throws {
+    let editor = try buildWithDecorators { $0 is HeadingNode }
+    defer { editor.dispose() }
+    try discrete(editor) {
+      try getRoot().append(
+        paragraph("p"), createHeadingNode("h1").append(createTextNode("h")),
+        createTableNode().append(
+          createTableRowNode().append(
+            createTableCellNode().append(
+              createHeadingNode("h2").append(createTextNode("nested"))))))
+    }
+    #expect(
+      try outline(editor) == [
+        "paragraph",
+        "heading:b1",
+        "table",
+        "  tablerow",
+        "    tablecell",
+        "      heading:b2",
+      ])
+    try editor.read { () throws -> Void in
+      #expect(try getBlockById("b2")?.getTextContent() == "nested")
+    }
   }
 }

@@ -1090,14 +1090,30 @@ Each is its own module with its own ledger entry in `parity/packages.json`,
   `$insertTableRowAtSelection`, `$deleteTableColumnAtSelection`, ...),
   `TableExtension` and `TableImportExtension` (HTML import and export), and
   the model half of `LexicalTableSelectionHelpers` (Tab, the arrow keys,
-  deletion, formatting and text insertion over a `TableSelection`). Cell
-  merging (`colSpan`/`rowSpan` editing, `$mergeCells`, `$unmergeCell`) and
-  cell background colors wait until an app needs them; documents that carry
-  spans or a `backgroundColor` still parse and export byte for byte. The
-  GitHub-style markdown `TABLE` transformer stays out of `LexicalMarkdown`,
-  as upstream keeps it in the playground. `TableObserver`'s pointer
-  listeners and `getBoundingClientRect` reads belong to the views (below);
-  the module itself builds and tests on Linux.
+  deletion, formatting and text insertion over a `TableSelection`), and
+  cell merging (`$mergeCells`, `$unmergeCell`), which the shared
+  `scripts/table` vectors replay. The GitHub-style markdown `TABLE`
+  transformer stays out of `LexicalMarkdown`, as upstream keeps it in the
+  playground. `TableObserver`'s pointer listeners and
+  `getBoundingClientRect` reads belong to the views (below); the module
+  itself builds and tests on Linux. Where JS measures the DOM,
+  `TableConfig.layout` takes a `TableLayout` (caret and block rects, and
+  whether a typeahead menu is open). Without a view it is `nil` and those
+  paths are inert: Up and Down move by cell grid, as JS does without rects,
+  and moving by line inside a cell is left to the view.
+  `getTableEdgeCursorPosition` always returns `nil`, since it reads the
+  DOM selection. `TableObserver` keeps its model state (the anchor and
+  focus cells, `$setAnchorCellForSelection`, `$clearHighlight`), and
+  `TableDOMCell` holds a cell's key where JS holds its element. JS keys
+  the rows that lost cells in an update by its pending state in a
+  `WeakMap`; Swift keys `rowsLost` by the state's identity, with a weak
+  reference to the state, and drops an entry once its state is gone.
+  `lexical-table` is `enforced`: 239 upstream tests, 205 ported, 34
+  skips (33 `dom-only`: pointer, touch, MutationObserver and
+  document-listener tests, and the observer lookup from a rendered
+  `<table>`; one `react-only`). Porting it also unblocked 51 cases in
+  other packages' tests, including the `BlockIdExtension` (20 seeds) and
+  `NodeStructureExtension` (200 seeds) property tests.
 
 - **`LexicalMenu`** ports the parts of `@lexical/react`'s
   `LexicalTypeaheadMenuPlugin`, `LexicalNodeMenuPlugin` and

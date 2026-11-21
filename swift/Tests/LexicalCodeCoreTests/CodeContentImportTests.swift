@@ -5,14 +5,11 @@ import LexicalHTML
 import LexicalLink
 import LexicalList
 import LexicalRichText
+import LexicalTable
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-code-core/src/__tests__/unit/CodeContentImport.test.ts.
-// Upstream's editor also has TableExtension; the editor here leaves it out
-// until @lexical/table is ported, and the case that imports a table inside a
-// <pre> is skipped. The GitHub code tables are CodeExtension's own rules,
-// which win over TableExtension's upstream.
 
 private class SemanticParagraphNode: ParagraphNode {
   override class func config() -> NodeConfig? {
@@ -53,7 +50,7 @@ private func buildEditor(
     defineExtension(
       name: "[code-content-import]",
       dependencies: [
-        RichTextExtension, ListExtension, LinkExtension, CodeExtension,
+        RichTextExtension, TableExtension, ListExtension, LinkExtension, CodeExtension,
         configExtension(DOMImportExtension) { $0.rules = rules.map(\.entry) },
       ],
       nodes: {
@@ -164,6 +161,10 @@ private let CASES: [CodeContentCase] = [
     name: "nested multiline CODE alongside paragraph and inline text",
     html: "<pre>a<code>alpha\nbeta</code><p>after</p>b</pre>", text: "a\nalpha\nbeta\nafter\nb"),
   CodeContentCase(
+    name: "table text preserves its own cell separators",
+    html: "<pre><table><tr><td>alpha</td><td>beta</td></tr></table><p>after</p></pre>",
+    text: "alpha\n\nbeta\nafter"),
+  CodeContentCase(
     name: "heading followed by a paragraph", html: "<pre><h2>heading</h2><p>body</p></pre>",
     text: "heading\nbody"),
   CodeContentCase(
@@ -245,6 +246,9 @@ private let CASES: [CodeContentCase] = [
     ),
     .upstream(
       "lexical-code-core/src/__tests__/unit/CodeContentImport.test.ts::code import normalizes content to supported code children > nested multiline CODE alongside paragra…"
+    ),
+    .upstream(
+      "lexical-code-core/src/__tests__/unit/CodeContentImport.test.ts::code import normalizes content to supported code children > table text preserves its own cell separ…"
     ),
     .upstream(
       "lexical-code-core/src/__tests__/unit/CodeContentImport.test.ts::code import normalizes content to supported code children > heading followed by a paragraph"

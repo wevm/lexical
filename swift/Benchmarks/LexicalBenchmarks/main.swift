@@ -19,6 +19,7 @@ import LexicalCodeTreeSitterJavaScript
 import LexicalExtension
 import LexicalHistory
 import LexicalRichText
+import LexicalTable
 import LexicalTextKit
 
 /// The storage a view applies the reconciler's edits to, without layout.
@@ -239,6 +240,42 @@ if selected("code") {
     try codeController.beforeInput("deleteContentBackward")
   }
   precondition(codeStorage.units.count == codeController.document.length)
+}
+
+// Typing in a cell of a 20 × 10 table after the 5,000 blocks. Reported, not
+// gating: the views will render a table as one attachment of nested cell
+// views (DESIGN.md, The table view), which the TextKit controller does not
+// do yet, so this measures the model's share and today's rendering of the
+// cells as nested blocks.
+if selected("table") {
+  let tableEditor = try buildEditorFromExtensions(
+    defineExtension(
+      name: "[benchmark-table]",
+      dependencies: [
+        RichTextExtension, configExtension(HistoryExtension) { $0.now = { 0 } },
+        configExtension(TableExtension) { $0.hasHorizontalScroll = false },
+      ]))
+  let (tableController, tableStorage) = mount(tableEditor)
+  try tableEditor.setEditorState(tableEditor.parseEditorState(json))
+  try tableEditor.update(discrete: true) {
+    try getRoot().append(createTableNodeWithDimensions(20, 10, true))
+  }
+  // The paragraph of the cell in row 10, column 5.
+  let cellParagraph = try tableEditor.read { () throws -> NodeKey in
+    let table = try getRoot().getLastChild() as! TableNode
+    let row = try table.getChildAtIndex(10) as! TableRowNode
+    let cell = try row.getChildAtIndex(5) as! TableCellNode
+    return try cell.getFirstChildOrThrow().getKey()
+  }
+  let span = tableController.document.span(cellParagraph)!
+  try tableController.setSelectedRange(location: span.end, length: 0)
+  try bench("table: insert a character in a cell of a 20 × 10 table", 200, target: 8, gating: false)
+  {
+    try tableController.insertText("a")
+  }
+  precondition(tableStorage.units.count == tableController.document.length)
+  let cellSize = try tableEditor.read { try getNodeByKey(cellParagraph)!.getTextContentSize() }
+  precondition(cellSize == 200)
 }
 
 if let index = CommandLine.arguments.firstIndex(of: "--markdown"),

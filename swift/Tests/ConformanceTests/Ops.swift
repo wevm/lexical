@@ -16,6 +16,7 @@ import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
 import LexicalSelection
+import LexicalTable
 import LexicalText
 import LexicalUtils
 
@@ -100,6 +101,9 @@ private enum CoreCommand {
   case listStart(LexicalCommand<UpdateListStartPayload>)
   /// `TOGGLE_LINK_COMMAND`: `null`, a URL, or `{url, target, rel, title}`.
   case toggleLink(LexicalCommand<ToggleLinkPayload?>)
+  /// `INSERT_TABLE_COMMAND`: `{columns, rows, includeHeaders}`, where
+  /// `includeHeaders` is a boolean or `{rows, columns}`.
+  case insertTable(LexicalCommand<InsertTableCommandPayload>)
 }
 
 private let coreCommands: [String: CoreCommand] = [
@@ -149,7 +153,8 @@ private let coreCommands: [String: CoreCommand] = [
   "SELECT_ALL_COMMAND": .keyboard(SELECT_ALL_COMMAND),
   "SET_TEXT_FORMAT_COMMAND": .formats(SET_TEXT_FORMAT_COMMAND),
   "UNDO_COMMAND": .void(UNDO_COMMAND),
-  // `PACKAGE_COMMANDS` in ops.ts: the list and link commands.
+  // `PACKAGE_COMMANDS` in ops.ts: the list, link, horizontal rule and table
+  // commands.
   "INSERT_CHECK_LIST_COMMAND": .void(INSERT_CHECK_LIST_COMMAND),
   "INSERT_ORDERED_LIST_COMMAND": .void(INSERT_ORDERED_LIST_COMMAND),
   "INSERT_UNORDERED_LIST_COMMAND": .void(INSERT_UNORDERED_LIST_COMMAND),
@@ -158,6 +163,7 @@ private let coreCommands: [String: CoreCommand] = [
   "TOGGLE_LINK_COMMAND": .toggleLink(TOGGLE_LINK_COMMAND),
   "INSERT_EMBED_COMMAND": .string(INSERT_EMBED_COMMAND),
   "INSERT_HORIZONTAL_RULE_COMMAND": .void(INSERT_HORIZONTAL_RULE_COMMAND),
+  "INSERT_TABLE_COMMAND": .insertTable(INSERT_TABLE_COMMAND),
   "DRAG_DROP_PASTE": .files(DRAG_DROP_PASTE),
 ]
 
@@ -759,6 +765,36 @@ private func toggleLinkJSON(_ payload: ToggleLinkPayload?) -> JSONValue {
 }
 
 /// `UPDATE_LIST_START_COMMAND`'s payload as the script writes it.
+/// `INSERT_TABLE_COMMAND`'s payload as the script writes it.
+private func insertTablePayload(_ payload: JSONValue) throws -> InsertTableCommandPayload {
+  let object = try payload.objectValue.orThrow()
+  var includeHeaders: InsertTableCommandPayloadHeaders? = nil
+  switch object["includeHeaders"] {
+  case nil, .null?: break
+  case .bool(let value)?: includeHeaders = .boolean(value)
+  case let value?:
+    includeHeaders = .rowsAndColumns(
+      rows: value["rows"]?.boolValue ?? false, columns: value["columns"]?.boolValue ?? false)
+  }
+  return InsertTableCommandPayload(
+    columns: try object["columns"]?.stringValue.orThrow() ?? "",
+    rows: try object["rows"]?.stringValue.orThrow() ?? "", includeHeaders: includeHeaders)
+}
+
+/// `INSERT_TABLE_COMMAND`'s payload as a handler logs it.
+private func insertTableJSON(_ payload: InsertTableCommandPayload) -> JSONValue {
+  var entries: [(String, JSONValue)] = [("columns", .string(payload.columns))]
+  switch payload.includeHeaders {
+  case nil: break
+  case .boolean(let value)?: entries.append(("includeHeaders", .bool(value)))
+  case .rowsAndColumns(let rows, let columns)?:
+    entries.append(
+      ("includeHeaders", .object(JSONObject([("columns", .bool(columns)), ("rows", .bool(rows))]))))
+  }
+  entries.append(("rows", .string(payload.rows)))
+  return .object(JSONObject(entries))
+}
+
 private func listStart(_ payload: JSONValue) throws -> UpdateListStartPayload {
   try UpdateListStartPayload(
     listNodeKey: payload["listNodeKey"]?.stringValue.orThrow() ?? "",
@@ -1006,6 +1042,8 @@ private final class ScriptContext {
       return try editor.dispatchCommand(command, try listStart(payload))
     case .toggleLink(let command):
       return try editor.dispatchCommand(command, try toggleLinkPayload(payload))
+    case .insertTable(let command):
+      return try editor.dispatchCommand(command, try insertTablePayload(payload))
     case nil:
       return try editor.dispatchCommand(self.command(name), payload)
     }
@@ -1083,6 +1121,9 @@ private final class ScriptContext {
     case .toggleLink(let command):
       return editor.registerCommand(
         command, { payload, _ in try listener(toggleLinkJSON(payload)) }, priority)
+    case .insertTable(let command):
+      return editor.registerCommand(
+        command, { payload, _ in try listener(insertTableJSON(payload)) }, priority)
     case nil:
       return editor.registerCommand(
         self.command(name), { payload, _ in try listener(payload) }, priority)
@@ -1121,6 +1162,106 @@ private func markNode(_ node: LexicalNode) throws -> MarkNode {
     throw ScriptError("\(node.getKey()) is not a mark node")
   }
   return mark
+}
+
+private func tableNode(_ node: LexicalNode) throws -> TableNode {
+  guard let table = node as? TableNode else {
+    throw ScriptError("\(node.getKey()) is not a table")
+  }
+  return table
+}
+
+private func tableCell(_ node: LexicalNode) throws -> TableCellNode {
+  guard let cell = node as? TableCellNode else {
+    throw ScriptError("\(node.getKey()) is not a table cell")
+  }
+  return cell
+}
+
+private func keyOf(_ node: LexicalNode?) -> JSONValue {
+  node.map { .string($0.getKey()) } ?? .null
+}
+
+/// `TABLE_FUNCTIONS` in ops.ts: @lexical/table's `$` functions, by name
+/// without the `$`, with node keys for their nodes. Each returns what is
+/// logged (`nil` for nothing): a node as its key, a table map as rows of
+/// `[cellKey, startRow, startColumn]`.
+private func runTableFunction(_ fn: String, _ args: [JSONValue]) throws -> JSONValue? {
+  func arg(_ i: Int) -> JSONValue { i < args.count ? args[i] : .null }
+  func keyArg(_ i: Int) throws -> LexicalNode { try node(arg(i).stringValue.orThrow()) }
+  func boolArg(_ i: Int) throws -> Bool { try arg(i).boolValue.orThrow() }
+  func intArg(_ i: Int) throws -> Int { try arg(i).int.orThrow() }
+  switch fn {
+  case "computeTableMap":
+    let (map, _, _) = try computeTableMapSkipCellCheck(tableNode(keyArg(0)), nil, nil)
+    return .array(
+      map.map { row in
+        .array(
+          row.map { value in
+            value.map {
+              .array([.string($0.cell.getKey()), .int($0.startRow), .int($0.startColumn)])
+            } ?? .null
+          })
+      })
+  case "deleteTableColumnAtSelection":
+    try deleteTableColumnAtSelection()
+    return nil
+  case "deleteTableRowAtSelection":
+    try deleteTableRowAtSelection()
+    return nil
+  case "findCellNode": return keyOf(try findCellNode(keyArg(0)))
+  case "findTableNode": return keyOf(try findTableNode(keyArg(0)))
+  case "getTableCellNodeRect":
+    guard let rect = try getTableCellNodeRect(tableCell(keyArg(0))) else { return .null }
+    return .object(
+      JSONObject([
+        ("colSpan", .int(rect.colSpan)), ("columnIndex", .int(rect.columnIndex)),
+        ("rowIndex", .int(rect.rowIndex)), ("rowSpan", .int(rect.rowSpan)),
+      ]))
+  case "getTableColumnIndexFromTableCellNode":
+    return .int(try getTableColumnIndexFromTableCellNode(tableCell(keyArg(0))))
+  case "getTableRowIndexFromTableCellNode":
+    return .int(try getTableRowIndexFromTableCellNode(tableCell(keyArg(0))))
+  case "insertTableColumnAtNode":
+    return keyOf(try insertTableColumnAtNode(tableCell(keyArg(0)), boolArg(1)))
+  case "insertTableColumnAtSelection":
+    return keyOf(try insertTableColumnAtSelection(boolArg(0)))
+  case "insertTableRowAtNode":
+    return keyOf(try insertTableRowAtNode(tableCell(keyArg(0)), boolArg(1)))
+  case "insertTableRowAtSelection":
+    return keyOf(try insertTableRowAtSelection(boolArg(0)))
+  case "isSimpleTable": return .bool(try isSimpleTable(tableNode(keyArg(0))))
+  case "mergeCells":
+    let cells = try (arg(0).arrayValue ?? []).map { try tableCell(node($0.stringValue.orThrow())) }
+    return keyOf(try mergeCells(cells))
+  case "moveTableColumn":
+    try moveTableColumn(tableNode(keyArg(0)), intArg(1), intArg(2))
+    return nil
+  case "moveTableRow":
+    try moveTableRow(tableNode(keyArg(0)), intArg(1), intArg(2))
+    return nil
+  case "padTableRows": return .bool(try padTableRows(tableNode(keyArg(0))))
+  case "selectionShape":
+    guard let selection = try getSelection() as? TableSelection else {
+      throw ScriptError("not a table selection")
+    }
+    let shape = try selection.getShape()
+    return .object(
+      JSONObject([
+        ("fromX", .int(shape.fromX)), ("fromY", .int(shape.fromY)), ("toX", .int(shape.toX)),
+        ("toY", .int(shape.toY)),
+      ]))
+  case "setTableColumnIsHeader":
+    try setTableColumnIsHeader(tableNode(keyArg(0)), intArg(1), boolArg(2))
+    return nil
+  case "setTableRowIsHeader":
+    try setTableRowIsHeader(tableNode(keyArg(0)), intArg(1), boolArg(2))
+    return nil
+  case "unmergeCell":
+    try unmergeCell()
+    return nil
+  default: throw ScriptError("unknown table function \(fn)")
+  }
 }
 
 private func strings(_ values: [String]) -> JSONValue { .array(values.map { .string($0) }) }
@@ -1162,6 +1303,12 @@ func selectionSnapshot() throws -> JSONValue {
   }
   if let nodes = selection as? NodeSelection {
     return .array([.string("node"), .array(Array(nodes._nodes))])
+  }
+  if let table = selection as? TableSelection {
+    let points = [table.anchor, table.focus].map { point in
+      JSONValue.array([.string(point.key), .int(point.offset), .string(point.type.rawValue)])
+    }
+    return .array([.string("table"), .string(table.tableKey)] + points)
   }
   return .array([.string("other")])
 }
@@ -1380,6 +1527,17 @@ private func runAction(_ action: JSONValue, _ ctx: ScriptContext) throws {
     }
     try setSelection(selection)
   case "clearSelection": try setSelection(nil)
+  case "selectTable":
+    try setSelection(
+      createTableSelectionFrom(
+        tableNode(node(action["table"]?.stringValue.orThrow() ?? "")),
+        tableCell(node(action["anchor"]?.stringValue.orThrow() ?? "")),
+        tableCell(node(action["focus"]?.stringValue.orThrow() ?? ""))))
+  case "table":
+    let fn = action["fn"]?.stringValue ?? ""
+    if let result = try runTableFunction(fn, action["args"]?.arrayValue ?? []) {
+      ctx.log.append(.array([.string("table"), .string(fn), result]))
+    }
   case "selectAll":
     if action["scoped"]?.boolValue == true {
       _ = try selectAll(rangeSelection())

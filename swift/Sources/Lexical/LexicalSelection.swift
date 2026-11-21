@@ -11,10 +11,14 @@ public enum PointType: String, Sendable {
 /// `Point`: a key, an offset (UTF-16 in text, a child index in an element)
 /// and a type.
 public final class Point {
-  public private(set) var key: NodeKey
+  /// Written directly, as JS does, by selection classes outside core
+  /// (`TableSelection.set`).
+  public package(set) var key: NodeKey
   public private(set) var offset: Int
   public private(set) var type: PointType
-  weak var _selection: (any BaseSelection)?
+  /// The selection that owns the point, which a selection class outside
+  /// core (`TableSelection`) claims as JS's constructors do.
+  package weak var _selection: (any BaseSelection)?
 
   public init(_ key: NodeKey, _ offset: Int, _ type: PointType) {
     self.key = key

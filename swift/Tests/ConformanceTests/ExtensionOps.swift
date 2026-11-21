@@ -12,6 +12,7 @@ import LexicalMark
 import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
+import LexicalTable
 
 // Scripts with `extensions` (ops.ts): the editor is built with
 // `buildEditorFromExtensions` from test extensions that ops.ts's
@@ -81,6 +82,7 @@ private func realExtension(_ key: String) -> (any AnyLexicalExtensionArgument)? 
   case "IMEExtension": IMEExtension
   case "AutoFocusExtension": AutoFocusExtension
   case "ClickableLinkExtension": ClickableLinkExtension
+  case "TableExtension": TableExtension
   default: markFlavor(key)
   }
 }

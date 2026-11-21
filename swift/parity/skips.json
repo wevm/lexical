@@ -68,211 +68,6 @@
     "reason": "deviation",
     "note": "An opt-in benchmark (BLOCK_ID_PERF=1, skipped upstream by default) comparing wall-clock medians on 10,000 blocks; its bounds are not meaningful in a debug Swift build."
   },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 1": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 10": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 11": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 12": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 13": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 14": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 15": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 16": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 17": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 18": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 19": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 2": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 20": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 3": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 4": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 5": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 6": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 7": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 8": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.property.test.ts::BlockIdExtension: property test over random edits > seed 9": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Random edits of a document with a list and a table (indent, toList, intoCell)."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > a block that took the id meanwhile keeps it, wherever the original returns": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Nests a table in a table cell."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: ids left on blocks that are not identified > the id stays in NodeState but is not indexed, and comes back with the block": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Nests a table in a table cell."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: index > nested blocks in lists and tables, with table cells added": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Builds a table and a list and identifies table cells."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > a custom predicate that is not composed from the default: headings at any depth": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Nests a heading in a table cell."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: more predicates and nesting > nested inline decorators get no id; a block decorator in a cell does": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Puts decorators in a list item and a table cell."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the default predicate > ids stored on the root children are kept; nested blocks get positional ids": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Stores a document with a list and a table."
-  },
   "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the default predicate > root children, nested blocks that hold text, nested block decorators": {
     "reason": "out-of-scope-package",
     "packages": [
@@ -282,29 +77,6 @@
       "lexical-link"
     ],
     "note": "Checks the default predicate on tables, lists, code blocks and links."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a document with ids on the root children only, as the initial state": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Stores a document with a list and a table."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a document with ids on the root children only, via setEditorState": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Stores a document with a list and a table."
-  },
-  "lexical-extension/src/__tests__/unit/BlockIdExtension.test.ts::BlockIdExtension: the index finds every identified block > a table given an id with $setState before it is inserted": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Inserts a table given an id with $setState."
   },
   "lexical-extension/src/__tests__/unit/DecoratorTextExtension.test.ts::$applyFormatToDom is a compatibility alias for applyFormatToDom": {
     "reason": "deviation",
@@ -566,100 +338,6 @@
     "reason": "dom-only",
     "note": "The extension only toggles an attribute on a node's host DOM element while it is in a NodeSelection, for CSS; the views have no such element and draw node selections themselves, so it is not ported (DESIGN.md, Extension conventions)."
   },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block in a paragraph is lifted out (paragraph split)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "The document holds a table."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a table in a list item is lifted out of the list": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Uses the list and table nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > inline content in a table cell is wrapped in a paragraph": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "The document holds a table."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > no table, row or text is lost when blocks are lifted out of a list": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-table"
-    ],
-    "note": "Uses the list and table nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > normalization is a pure function of the document": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "The document holds a table."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > off by default: a block in a paragraph stays": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "The document holds a table."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty mark before a quote in a table cell is removed before its holder is repaired, whatever the dirty order": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-mark",
-      "lexical-table"
-    ],
-    "note": "An empty MarkNode in a table cell."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::declarations > Lexical's own nodes": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link",
-      "lexical-table",
-      "lexical-code-core",
-      "lexical-mark",
-      "lexical-overflow"
-    ],
-    "note": "Reads the declarations of the list, link, table, code, mark and overflow nodes."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > a list, table or shadow root lifted out of a link or mark keeps them on all its text": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link",
-      "lexical-table",
-      "lexical-mark",
-      "lexical-overflow"
-    ],
-    "note": "Lists, tables and quotes in links and marks, with OverflowNode."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::registration > a table cell's declared children: inline content is wrapped in a paragraph": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "The document holds a table."
-  },
-  "lexical-extension/src/__tests__/unit/NodeStructureProperty.test.ts::NodeStructureExtension properties > random broken documents (200 seeds)": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-list",
-      "lexical-link",
-      "lexical-table",
-      "lexical-code-core",
-      "lexical-mark",
-      "lexical-overflow"
-    ],
-    "note": "Random documents built from the list, link, table, code, mark and overflow nodes."
-  },
   "lexical-extension/src/__tests__/unit/NormalizeTripleClickSelection.test.ts::NormalizeTripleClickSelectionExtension > a click or keydown outside the editor cancels it": {
     "reason": "dom-only",
     "note": "JS arms on a triple click's mousedown and trims the next selectionchange that matches the DOM selection, because the browser reports its selection asynchronously. A native view has synced its selection when it reports the click as CLICK_COMMAND, so the Swift extension trims on that command and has no arming to cancel or delay (DESIGN.md, Native surface conventions)."
@@ -731,13 +409,6 @@
   "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Showing blocks to a model: $setBlockText is the same in the docs and the tests": {
     "reason": "deviation",
     "note": "Compares the TypeScript source of $setBlockText in the docs page, the test utils and @lexical/y; the Swift setBlockText test helper is a port, so there is no shared text to compare."
-  },
-  "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Which blocks get ids": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Builds an editor with TableExtension and a predicate that identifies TableCellNode."
   },
   "lexical-html/src/__tests__/unit/BlockIdHTMLExtension.test.ts::BlockIdHTMLExtension > export into a document of another realm writes the attribute": {
     "reason": "dom-only",
@@ -818,27 +489,6 @@
   "lexical-rich-text/src/__tests__/unit/RichTextGeneratedJSON.test.ts::rich-text generated JSON > QuoteNode parses through its generated parser, flat state included": {
     "reason": "deviation",
     "note": "JS compiles per-class exporters and parsers from the schema as a speed-up; Swift has only the schema walk, which the serialization and script vectors check against JS. The shadowRoot flat-state behavior these tests also check is ported in QuoteNodeShadowRootTests."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Collapsed in element inside top-element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Builds a table ($createTableNodeWithDimensions); waits for @lexical/table."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Collapsed in text inside top-element": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Builds a table ($createTableNodeWithDimensions); waits for @lexical/table."
-  },
-  "lexical-selection/src/__tests__/unit/LexicalSelection.test.tsx::LexicalSelection tests > $setBlocksType > Full editor selection with a mix of top-elements": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Builds a table ($createTableNodeWithDimensions); waits for @lexical/table."
   },
   "lexical-selection/src/__tests__/unit/WrapNodesInlineContent.test.ts::$wrapNodes looks up parents linearly in the inline nesting depth (directly in a paragraph's slot shadow root)": {
     "reason": "deviation",
@@ -3370,27 +3020,6 @@
     "reason": "dom-only",
     "note": "Drives or asserts the browser DOM (events, DOM text, DOM selection or element helpers); the native views own input and rendering, and their behavior is tested in the TextKit layer."
   },
-  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported Table e2e tests > Can delete all with range selection anchored in table": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
-  },
-  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a table is replaced with an empty paragraph": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
-  },
-  "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > an inline insert after the table deletion does not land in a table": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "@lexical/table: depends on the table nodes being shadow roots. Port with @lexical/table."
-  },
   "lexical/src/caret/__tests__/unit/LexicalCaretTraversal.test.ts::child caret at 0.5 preserves clamping and direction": {
     "reason": "deviation",
     "note": "JS passes a non-integer index; the Swift API takes an Int, so 0.5, 1.5 and NaN have no Swift form."
@@ -3575,20 +3204,6 @@
     "reason": "dom-only",
     "note": "Moves DOM focus between HTML elements (a focus trap, roving tabindex or the Alt+F10 toolbar jump). Native views get focus movement, toolbars and modal focus from UIKit, AppKit and SwiftUI (UIFocusSystem, the key view loop, accessibilityViewIsModal), so these extensions are not ported (DESIGN.md, Accessibility)."
   },
-  "lexical-list/src/__tests__/unit/formatList.test.ts::insertList > inserting with empty shadow root selection": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Inserts a list into a @lexical/table cell; port with lexical-table."
-  },
-  "lexical-list/src/__tests__/unit/LexicalListItemNode.test.ts::LexicalListItemNode tests > ListItemNode $transform wraps orphan ListItemNodes > wraps orphan ListItemNode inside a shadow-root table cell": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Wraps an orphan list item inside a @lexical/table cell; port with lexical-table."
-  },
   "lexical-list/src/__tests__/unit/checkList.test.tsx::CheckListExtension mobile tap toggle > touch pointerup over the marker area toggles the item": {
     "reason": "dom-only",
     "note": "Dispatches pointer and click events at a check list <li> and hit-tests its ::before marker, with a touch dedup window; on the native views, toggling by the marker is the text view's work (see DESIGN.md, LexicalList)."
@@ -3628,20 +3243,6 @@
   "lexical-code-core/src/__tests__/unit/CodeGutter.test.ts::registerCodeGutter > follows an edit that changes the line count": {
     "reason": "dom-only",
     "note": "Reads the data-gutter attribute registerCodeGutter writes on the CodeNode's DOM element (editor.getElementByKey). CodeGutter.ts is not ported: Swift has no live DOM element per node key; the native views reconcile through TextKit."
-  },
-  "lexical-code-core/src/__tests__/unit/CodeContentImport.test.ts::code import normalizes content to supported code children > table text preserves its own cell separ…": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Imports a table through TableExtension, which is not ported; port with lexical-table."
-  },
-  "lexical-code-core/src/__tests__/unit/CodeImportExtension.test.ts::CodeImportExtension > GitHub raw-file-view table still wins when TableExtension is present": {
-    "reason": "out-of-scope-package",
-    "packages": [
-      "lexical-table"
-    ],
-    "note": "Imports a table through TableExtension, which is not ported; port with lexical-table."
   },
   "lexical-markdown/src/__tests__/unit/LexicalMarkdown.test.ts::Markdown > can import \"# Hello world\"": {
     "reason": "covered-by-vector",
@@ -6648,5 +6249,141 @@
   "lexical-mark/src/__tests__/unit/MarkFlavors.test.ts::mark flavors > types > the type rules reject what the runtime rejects": {
     "reason": "deviation",
     "note": "Only type checked upstream (@ts-expect-error on string literal stateKey rules and argument order). Swift has no string literal types, so these are runtime checks, covered by the \"errors\" tests of MarkFlavorsTests.swift; the argument-order cases do not compile in Swift."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableExtension.test.ts::TableExtension > drag selection > attaches the window pointerdown handler when setRootElement is called after register": {
+    "reason": "dom-only",
+    "note": "Checks the pointerdown listener on the root element's window; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection > mouse click should set anchor cell for selection (existing behavior)": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection > touch tap on single cell should not create table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection > touch tap between different cells should not create table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection > touch drag (with isSelecting=true) should still create table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection > mixed pointer types should be handled correctly": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection > mouse leaving browser window during selection should stop selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a tap with a micro pointermove does not create a table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > taps on different cells do not create a table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a tap near a cell border does not create a table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a drag across cells creates a table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a drag after a tap anchors at the cell the drag started on": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a drag within the starting cell does not create a table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a gesture ended by pointercancel does not leak into the next tap": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a gesture ended by lostpointercapture does not leak into the next tap": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a gesture ended by pointercancel does not wedge later gestures": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a second finger does not drive the first finger gesture": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a touch tap near a scroll edge does not start auto-scroll": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a touch drag near a scroll edge starts auto-scroll": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a drag inside one cell does not convert the caret into a table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableMobileSelection.test.tsx::LexicalTableMobileSelection touch gestures (#8538) > a drag that leaves its starting cell still converts the caret into a table selection": {
+    "reason": "dom-only",
+    "note": "Drives table selection with mouse and touch pointer events on the table DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableNode.test.tsx::LexicalTableNode tests > hasHorizontalScroll false -> true > table is re-rendered when scroll changes": {
+    "reason": "react-only",
+    "note": "Toggles hasHorizontalScroll through React state on <TablePlugin>; the repaint itself is covered by TableExtension > repaints existing tables when hasHorizontalScroll toggles."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableObserver.test.ts::TableObserver tracking MutationObserver teardown (#9073) > disconnects the tracking MutationObserver in removeListeners()": {
+    "reason": "dom-only",
+    "note": "Tests the MutationObserver TableObserver attaches to the table element; Swift's TableObserver keeps only the model state, and the views track their own rendering."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableObserver.test.ts::TableObserver tracking MutationObserver teardown (#9073) > does not fire the tracking MutationObserver for mutations of the detached table after editor teardown": {
+    "reason": "dom-only",
+    "note": "Tests the MutationObserver TableObserver attaches to the table element; Swift's TableObserver keeps only the model state, and the views track their own rendering."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableSelectionHelpers.test.ts::LexicalTableSelectionHelpers > regression #8832 > document-level copy dispatches COPY_COMMAND for table selection in read-only mode": {
+    "reason": "dom-only",
+    "note": "Tests the document-level copy listener TableObserver adds to the DOM document; the views route copy to COPY_COMMAND themselves."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableSelectionHelpers.test.ts::LexicalTableSelectionHelpers > regression #8832 > document-level copy is not dispatched without table selection": {
+    "reason": "dom-only",
+    "note": "Tests the document-level copy listener TableObserver adds to the DOM document; the views route copy to COPY_COMMAND themselves."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableSelectionHelpers.test.ts::LexicalTableSelectionHelpers > regression #8832 > document-level copy is skipped when event is already defaultPrevented": {
+    "reason": "dom-only",
+    "note": "Tests the document-level copy listener TableObserver adds to the DOM document; the views route copy to COPY_COMMAND themselves."
+  },
+  "lexical-table/src/__tests__/unit/LexicalTableSelectionHelpers.test.ts::LexicalTableSelectionHelpers > regression #8832 > document-level copy is skipped when focus is outside the editor": {
+    "reason": "dom-only",
+    "note": "Tests the document-level copy listener TableObserver adds to the DOM document; the views route copy to COPY_COMMAND themselves."
+  },
+  "lexical-table/src/__tests__/unit/NestedEditorTableClick.test.ts::a table in an editor nested in a decorator (#9355) > the parent leaves a pointerdown on a nested table cell to the nested editor": {
+    "reason": "dom-only",
+    "note": "Dispatches pointerdown on the DOM cells of a table in an editor nested in a decorator's DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/NestedEditorTableClick.test.ts::a table in an editor nested in a decorator (#9355) > the parent still clears its own table selection": {
+    "reason": "dom-only",
+    "note": "Dispatches pointerdown on the DOM cells of a table in an editor nested in a decorator's DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/NestedEditorTableClick.test.ts::a table in an editor nested in a decorator (#9355) > a nested editor in a parent table cell leaves that table to the parent": {
+    "reason": "dom-only",
+    "note": "Dispatches pointerdown on the DOM cells of a table in an editor nested in a decorator's DOM; the views handle pointer selection (DESIGN.md, The table view)."
+  },
+  "lexical-table/src/__tests__/unit/TableSelectionObserverBeforeDOM.test.ts::table selection observer for tables that exist before their DOM > observes the table once a root element renders it": {
+    "reason": "dom-only",
+    "note": "Finds the observer from the rendered <table> with getTableObserverFromTableElement, a DOM getter that belongs to the views."
+  },
+  "lexical-table/src/__tests__/unit/TableSelectionObserverBeforeDOM.test.ts::table selection observer for tables that exist before their DOM > observes the new table DOM when the root element is replaced": {
+    "reason": "dom-only",
+    "note": "Finds the observer from the rendered <table> with getTableObserverFromTableElement, a DOM getter that belongs to the views."
+  },
+  "lexical-table/src/__tests__/unit/TableSelectionObserverBeforeDOM.test.ts::table selection observer for tables that exist before their DOM > registerTableSelectionObserver accepts an unrendered table": {
+    "reason": "dom-only",
+    "note": "Finds the observer from the rendered <table> with getTableObserverFromTableElement, a DOM getter that belongs to the views."
   }
 }

@@ -6,14 +6,11 @@ import LexicalList
 import LexicalMark
 import LexicalOverflow
 import LexicalRichText
+import LexicalTable
 import LexicalTesting
 import Testing
 
 // Port of packages/lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts.
-// Upstream's `build` registers the list, link, table, code and overflow
-// nodes in every editor; the editors here register rich text, the list, the
-// link, the code block, the overflow and the horizontal rule. The tests that use the
-// other packages are skipped until they are ported.
 
 private func shape(_ node: LexicalNode) throws -> JSONValue {
   if let element = node as? ElementNode {
@@ -33,7 +30,9 @@ private func build(_ initial: @escaping () throws -> Void, _ withStructure: Bool
   try buildEditorFromExtensions(
     defineExtension(
       name: "node-structure-test",
-      dependencies: [RichTextExtension, ListExtension, LinkExtension, HorizontalRuleExtension]
+      dependencies: [
+        RichTextExtension, ListExtension, LinkExtension, TableExtension, HorizontalRuleExtension,
+      ]
         + (withStructure ? [NodeStructureExtension] : []),
       nodes: { [.klass(CodeNode.self), .klass(OverflowNode.self)] },
       editorConfig: InitialEditorConfig(
@@ -1121,7 +1120,11 @@ private func buildCaretEditor(_ withStructure: Bool = true) throws -> Editor {
   try buildEditorFromExtensions(
     defineExtension(
       name: "node-structure-carets",
-      dependencies: [RichTextExtension, ListExtension, LinkExtension, HorizontalRuleExtension]
+      dependencies: [
+        RichTextExtension, ListExtension, LinkExtension,
+        configExtension(TableExtension) { $0.hasHorizontalScroll = false },
+        HorizontalRuleExtension,
+      ]
         + (withStructure ? [NodeStructureExtension] : []),
       nodes: { [.klass(MarkNode.self), .klass(OverflowNode.self)] },
       editorConfig: InitialEditorConfig(onError: { error, _ in throw error })))
@@ -1710,9 +1713,14 @@ private final class SubListNode: ListNode {
 }
 
 @Suite struct NodeStructureListCaretTests {
-  /// The shape of the document, with each link's URL.
-  private func annotated(_ editor: Editor) throws -> String {
+  /// The shape of the document, with each link's URL and each mark's ids.
+  fileprivate func annotated(_ editor: Editor) throws -> String {
     func walk(_ node: LexicalNode) throws -> JSONValue {
+      if let mark = node as? MarkNode {
+        return .array(
+          [.string("mark:\(try mark.getIDs().joined(separator: ","))")]
+            + (try mark.getChildren().map(walk)))
+      }
       if let link = node as? LinkNode {
         return .array([.string("link:\(try link.getURL())")] + (try link.getChildren().map(walk)))
       }
@@ -1724,15 +1732,15 @@ private final class SubListNode: ListNode {
     return try editor.read { JSONValue.array(try getRoot().getChildren().map(walk)).stringify() }
   }
 
-  private func load(_ editor: Editor, _ build: @escaping () throws -> [LexicalNode]) throws {
+  fileprivate func load(_ editor: Editor, _ build: @escaping () throws -> [LexicalNode]) throws {
     try editor.update(discrete: true) { try put(getRoot().clear(), build()) }
   }
 
-  private func li(_ children: LexicalNode...) throws -> ListItemNode {
+  fileprivate func li(_ children: LexicalNode...) throws -> ListItemNode {
     try put(createListItemNode(), children)
   }
 
-  private func ul(_ children: LexicalNode...) throws -> ListNode {
+  fileprivate func ul(_ children: LexicalNode...) throws -> ListNode {
     try put(createListNode("bullet"), children)
   }
 
@@ -2039,5 +2047,352 @@ private final class SubListNode: ListNode {
     #expect(
       try typeAt({ try put(createParagraphNode(), [try createListItemNode()]) }, 1)
         == (#"[["list",["listitem"]],["paragraph","Z"]]"#, true))
+  }
+}
+
+// MARK: Tables
+
+/// `$paraWithTable`: a table inside a paragraph, between two texts.
+private func paraWithTable() throws {
+  let table = try createTableNode().append(
+    createTableRowNode().append(
+      createTableCellNode().append(createParagraphNode().append(createTextNode("cell")))))
+  try getRoot().append(
+    createParagraphNode().append(createTextNode("before"), table, createTextNode("after")))
+}
+
+/// A table of one cell holding a paragraph with `text`.
+private func tableHolding(_ text: String) throws -> TableNode {
+  try createTableNode().append(
+    createTableRowNode().append(
+      createTableCellNode().append(createParagraphNode().append(createTextNode(text)))))
+}
+
+/// A decorator that turns inline while its cell is not written.
+private final class InlineChipDecoratorNode: DecoratorNode {
+  var __inline = false
+  override class func config() throws -> NodeConfig? {
+    try NodeConfig(
+      InlineChipDecoratorNode.self, type: "test-chip-decorator", extends: DecoratorNode.self,
+      json: [SchemaField("inline", booleanValue(), field: \InlineChipDecoratorNode.__inline)])
+  }
+  override func createDOM(_ config: EditorConfig, _ editor: Editor? = nil) throws -> DOMElement {
+    getDocument().createElement("span")
+  }
+  override func updateDOM(
+    _ prevNode: LexicalNode, _ dom: DOMElement, _ config: EditorConfig
+  ) throws -> Bool { false }
+  override func decorate(_ editor: Editor) throws -> Any? { nil }
+  override func isInline() throws -> Bool { try getLatest().__inline }
+}
+
+@Suite struct NodeStructureTableTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::declarations > Lexical's own nodes"
+    ))
+  func lexicalsOwnNodes() {
+    #expect(getDeclaredNodeStructure(ParagraphNode.self).children == .inline)
+    #expect(getDeclaredNodeStructure(HeadingNode.self).children == .inline)
+    #expect(getDeclaredNodeStructure(QuoteNode.self).children == .inline)
+    #expect(getDeclaredNodeStructure(CodeNode.self).children == .inline)
+    #expect(getDeclaredNodeStructure(TableCellNode.self).children == .block)
+    #expect(getDeclaredNodeStructure(ListNode.self).children == .list([.klass(ListItemNode.self)]))
+    #expect(
+      getDeclaredNodeStructure(ListNode.self).mergeAdjacent
+        == MergeAdjacentConfig(by: [.field("listType")]))
+    #expect(
+      getDeclaredNodeStructure(ListItemNode.self).children
+        == .list([.inline, .klass(ListNode.self)]))
+    let link = getDeclaredNodeStructure(LinkNode.self)
+    #expect(link.inline == true)
+    #expect(
+      link.mergeAdjacent?.by == [.field("url"), .field("target"), .field("rel"), .field("title")])
+    // AutoLinkNode inherits inline/children but turns the merge off.
+    let auto = getDeclaredNodeStructure(AutoLinkNode.self)
+    #expect(auto.inline == true)
+    #expect(auto.children == .inline)
+    #expect(auto.mergeAdjacent == nil)
+    #expect(getDeclaredNodeStructure(MarkNode.self).inline == true)
+    // OverflowNode declares nothing (the normalization knows it, see below).
+    let overflow = getDeclaredNodeStructure(OverflowNode.self)
+    #expect(overflow.inline == nil)
+    #expect(overflow.children == nil)
+    #expect(overflow.mergeAdjacent == nil)
+    #expect(overflow.derived.isEmpty)
+    #expect(overflow.declaredBy.inline == nil)
+    #expect(overflow.declaredBy.children == nil)
+    #expect(overflow.declaredBy.mergeAdjacent == nil)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > off by default: a block in a paragraph stays"
+    ))
+  func blockInParagraphStaysByDefault() throws {
+    let editor = try build(paraWithTable, false)
+    defer { editor.dispose() }
+    #expect(
+      try rootShape(editor)
+        == #"[["paragraph","before",["table",["tablerow",["tablecell",["paragraph","cell"]]]],"after"]]"#
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a block in a paragraph is lifted out (paragraph split)"
+    ))
+  func blockInParagraphLiftedOut() throws {
+    let editor = try build(paraWithTable, true)
+    defer { editor.dispose() }
+    #expect(
+      try rootShape(editor)
+        == #"[["paragraph","before"],["table",["tablerow",["tablecell",["paragraph","cell"]]]],["paragraph","after"]]"#
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > inline content in a table cell is wrapped in a paragraph"
+    ))
+  func inlineContentInCellWrapped() throws {
+    let editor = try build(
+      {
+        try getRoot().append(
+          createTableNode().append(
+            createTableRowNode().append(
+              createTableCellNode().append(
+                createTextNode("a"), createParagraphNode().append(createTextNode("b")),
+                createTextNode("c")))))
+      }, true)
+    defer { editor.dispose() }
+    #expect(
+      try rootShape(editor)
+        == #"[["table",["tablerow",["tablecell",["paragraph","a"],["paragraph","b"],["paragraph","c"]]]]]"#
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > a table in a list item is lifted out of the list"
+    ))
+  func tableInListItemLiftedOut() throws {
+    let editor = try build(
+      {
+        try getRoot().append(
+          createListNode("bullet").append(
+            createListItemNode().append(createTextNode("x")),
+            createListItemNode().append(tableHolding("c")),
+            createListItemNode().append(createTextNode("y"))))
+      }, true)
+    defer { editor.dispose() }
+    let shapes = try rootShape(editor)
+    // No text lost or duplicated, and the table is no longer in the list.
+    #expect(shapes.matches(of: /"[xyc]"/).map { String($0.output) } == [#""x""#, #""c""#, #""y""#])
+    guard case .array(let roots) = try JSONValue.parse(shapes) else {
+      Issue.record("expected an array")
+      return
+    }
+    #expect(
+      roots.contains {
+        if case .array(let items) = $0, case .string("table")? = items.first { return true }
+        return false
+      })
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > no table, row or text is lost when blocks are lifted out of a list"
+    ))
+  func noTableLostLiftingOutOfList() throws {
+    let editor = try build(
+      {
+        try getRoot().append(
+          createListNode("bullet").append(
+            createListItemNode().append(createHorizontalRuleNode(), createTextNode("x")),
+            createListItemNode().append(
+              tableHolding("t1"), tableHolding("t2"), createTextNode("y"))))
+      }, true)
+    defer { editor.dispose() }
+    func table(_ text: String) -> String {
+      #"["table",["tablerow",["tablecell",["paragraph","\#(text)"]]]]"#
+    }
+    #expect(
+      try rootShape(editor)
+        == #"["horizontalrule",["list",["listitem","x"]],\#(table("t1")),\#(table("t2")),["list",["listitem","y"]]]"#
+    )
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::NodeStructureExtension > normalization is a pure function of the document"
+    ))
+  func normalizationIsPure() throws {
+    func run() throws -> String {
+      let editor = try build(paraWithTable, true)
+      defer { editor.dispose() }
+      return JSONValue.object(try editor.getEditorState().toJSON()).stringify()
+    }
+    #expect(try run() == run())
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::registration > a table cell's declared children: inline content is wrapped in a paragraph"
+    ))
+  func tableCellDeclaredChildren() throws {
+    func run(_ withStructure: Bool) throws -> String {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "cell",
+          // The table nodes alone: TableExtension's own transforms write the
+          // cell, so core's transform would see it too.
+          dependencies: [RichTextExtension] + (withStructure ? [NodeStructureExtension] : []),
+          nodes: {
+            [
+              .klass(InlineChipDecoratorNode.self), .klass(TableNode.self),
+              .klass(TableRowNode.self), .klass(TableCellNode.self),
+            ]
+          },
+          editorConfig: InitialEditorConfig(
+            initialEditorState: .update { _ in
+              try getRoot().append(
+                createTableNode().append(
+                  createTableRowNode().append(
+                    createTableCellNode().append(create(InlineChipDecoratorNode.self)))))
+            })))
+      defer { editor.dispose() }
+      // Commit the initial state, in which every node is dirty.
+      try editor.read {}
+      try editor.update(discrete: true) {
+        let table = try #require(try getRoot().getFirstChildOrThrow() as? ElementNode)
+        let row = try #require(try table.getFirstChildOrThrow() as? ElementNode)
+        let cell = try #require(try row.getFirstChildOrThrow() as? ElementNode)
+        let chip = try #require(try cell.getFirstChildOrThrow() as? InlineChipDecoratorNode)
+        try chip.getWritable().__inline = true
+      }
+      return try rootShape(editor)
+    }
+    func cell(_ children: String) -> String {
+      #"[["table",["tablerow",["tablecell",\#(children)]]]]"#
+    }
+    #expect(try run(false) == cell(#""test-chip-decorator""#))
+    #expect(try run(true) == cell(#"["paragraph","test-chip-decorator"]"#))
+  }
+
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::carets, empty inline elements and dirty order > an empty mark before a quote in a table cell is removed before its holder is repaired, whatever the dirty order"
+    ))
+  func emptyMarkBeforeQuoteInCell() throws {
+    for order in ["outer first", "inner first"] {
+      let editor = try buildCaretEditor()
+      defer { editor.dispose() }
+      try loadThenNormalize(
+        editor,
+        {
+          [
+            try createTableNode().append(
+              createTableRowNode().append(
+                put(
+                  createTableCellNode(),
+                  [
+                    try createMarkNode(["m"]),
+                    try put(createQuoteNode(), [try createTextNode("x")]),
+                  ])))
+          ]
+        }, order: order)
+      #expect(try rootShape(editor) == #"[["table",["tablerow",["tablecell",["quote","x"]]]]]"#)
+    }
+  }
+}
+
+extension NodeStructureListCaretTests {
+  @Test(
+    .upstream(
+      "lexical-extension/src/__tests__/unit/NodeStructureExtension.test.ts::formatting, list seams, orphan list items and the root > a list, table or shadow root lifted out of a link or mark keeps them on all its text"
+    ))
+  func liftedOutOfLinkOrMarkKeepsThem() throws {
+    func t(_ text: String) throws -> TextNode { try createTextNode(text) }
+    let cases: [(() throws -> [LexicalNode], String)] = [
+      (
+        {
+          [
+            try createParagraphNode().append(
+              put(createMarkNode(["c1"]), [try ul(li(t("x")))]))
+          ]
+        },
+        #"[["list",["listitem",["mark:c1","x"]]]]"#
+      ),
+      (
+        {
+          [
+            try createParagraphNode().append(
+              put(createMarkNode(["c1"]), [try ul(li(t("x"), ul(li(t("y")))))]))
+          ]
+        },
+        #"[["list",["listitem",["mark:c1","x"]],["listitem",["list",["listitem",["mark:c1","y"]]]]]]"#
+      ),
+      (
+        {
+          [
+            try createParagraphNode().append(
+              put(
+                createLinkNode("https://a"),
+                [try put(createMarkNode(["c1"]), [try ul(li(t("x")))])]))
+          ]
+        },
+        #"[["list",["listitem",["link:https://a",["mark:c1","x"]]]]]"#
+      ),
+      (
+        {
+          [
+            try createParagraphNode().append(
+              put(
+                createMarkNode(["c1"]),
+                [
+                  try t("l"),
+                  try createTableNode().append(
+                    createTableRowNode().append(
+                      createTableCellNode().append(createParagraphNode().append(t("cell"))))),
+                ]))
+          ]
+        },
+        #"[["paragraph",["mark:c1","l"]],["table",["tablerow",["tablecell",["paragraph",["mark:c1","cell"]]]]]]"#
+      ),
+      (
+        {
+          [
+            try createParagraphNode().append(
+              put(
+                createMarkNode(["c1"]),
+                [
+                  try put(
+                    createQuoteNode(shadowRoot: true), [try createParagraphNode().append(t("s"))])
+                ]))
+          ]
+        },
+        #"[["quote",["paragraph",["mark:c1","s"]]]]"#
+      ),
+      (
+        // An OverflowNode is wrapped inside, as LinkNode's own transform
+        // leaves it.
+        {
+          [
+            try createParagraphNode().append(
+              put(
+                createMarkNode(["c1"]),
+                [try ul(li(t("x"), put(createOverflowNode(), [try t("y")])))]))
+          ]
+        },
+        #"[["list",["listitem",["mark:c1","x"],["overflow",["mark:c1","y"]]]]]"#
+      ),
+    ]
+    for (build, expected) in cases {
+      let editor = try buildCaretEditor()
+      defer { editor.dispose() }
+      try load(editor, build)
+      #expect(try annotated(editor) == expected)
+    }
   }
 }

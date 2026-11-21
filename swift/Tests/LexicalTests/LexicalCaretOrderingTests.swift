@@ -1,5 +1,6 @@
 import Lexical
 import LexicalList
+import LexicalTable
 import LexicalTesting
 import Testing
 
@@ -508,7 +509,10 @@ private func helloWorld() throws -> (TextNode, TextNode, ParagraphNode, Paragrap
   ) throws
     -> Editor
   {
-    let editor = try createTestEditor(nodes: [.klass(ListNode.self), .klass(ListItemNode.self)])
+    let editor = try createTestEditor(nodes: [
+      .klass(ListNode.self), .klass(ListItemNode.self), .klass(TableNode.self),
+      .klass(TableRowNode.self), .klass(TableCellNode.self),
+    ])
     try editor.update(discrete: true) {
       try getRoot().clear().append(createTestDecoratorNode().setIsInline(false), last())
     }
@@ -580,6 +584,47 @@ private func helloWorld() throws -> (TextNode, TextNode, ParagraphNode, Paragrap
     }
     try editor.read { () throws in
       let paragraph = try #require(try getRoot().getFirstChild() as? ParagraphNode)
+      #expect(try paragraph.getFirstChild() is LineBreakNode)
+    }
+  }
+
+  private func oneCellTable() throws -> LexicalNode {
+    let cell = try createTableCellNode()
+    try cell.append(createParagraphNode().append(createTextNode("cell")))
+    return try createTableNode().append(createTableRowNode().append(cell))
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > a table is replaced with an empty paragraph"
+    ))
+  func selectAllDeleteReplacesTable() throws {
+    let editor = try selectAllDeleteAfterDecorator(oneCellTable)
+    try editor.read { () throws in
+      let root = try getRoot()
+      #expect(try root.getChildrenSize() == 1)
+      #expect(try root.getFirstChild() is ParagraphNode)
+      #expect(try root.getTextContent() == "")
+    }
+  }
+
+  // A leftover table does not throw on the next insert, because an element
+  // point on a shadow root takes an earlier branch of insertNodes. It
+  // silently takes the inline content as a child instead, which a table that
+  // holds only rows cannot render.
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalSelectionHelpers > the root's last child after select all delete > an inline insert after the table deletion does not land in a table"
+    ))
+  func insertAfterTableDeletion() throws {
+    let editor = try selectAllDeleteAfterDecorator(oneCellTable)
+    try editor.update(discrete: true) {
+      try #require(try getSelection() as? RangeSelection).insertNodes([try createLineBreakNode()])
+    }
+    try editor.read { () throws in
+      let root = try getRoot()
+      #expect(try root.getChildrenSize() == 1)
+      let paragraph = try #require(try root.getFirstChild() as? ParagraphNode)
       #expect(try paragraph.getFirstChild() is LineBreakNode)
     }
   }

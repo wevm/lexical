@@ -2,6 +2,7 @@ import Lexical
 import LexicalExtension
 import LexicalList
 import LexicalRichText
+import LexicalTable
 import LexicalTesting
 import Testing
 
@@ -55,6 +56,32 @@ private func texts(_ list: ListNode) throws -> [String] {
     try editor.read { () throws -> Void in
       #expect(try getRoot().getChildrenSize() == 1)
       #expect(try isListNode(getRoot().getFirstChildOrThrow()))
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical-list/src/__tests__/unit/formatList.test.ts::insertList > inserting with empty shadow root selection"
+    ))
+  func emptyShadowRootSelection() throws {
+    let editor = try createMountedTestEditor(
+      nodes: formatListNodes + [
+        .klass(TableNode.self), .klass(TableRowNode.self), .klass(TableCellNode.self),
+      ])
+    try update(editor) {
+      let table = try createTableNode()
+      let row = try createTableRowNode()
+      let cell = try createTableCellNode()
+      try getRoot().append(table.append(row.append(cell)))
+      try cell.select()
+    }
+    try update(editor) { try insertList("number") }
+    try editor.read { () throws -> Void in
+      let table = try #require(try getRoot().getFirstChild() as? TableNode)
+      let row = try #require(try table.getFirstChild() as? TableRowNode)
+      let cell = try #require(try row.getFirstChild() as? TableCellNode)
+      #expect(try cell.getChildrenSize() == 1)
+      #expect(try isListNode(cell.getFirstChildOrThrow()))
     }
   }
 

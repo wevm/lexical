@@ -1,5 +1,6 @@
 import Lexical
 import LexicalList
+import LexicalTable
 import LexicalTesting
 import Testing
 
@@ -964,6 +965,33 @@ private func expectRemainingNodes(
       try getRoot().clear().append(paragraphNode, listNode)
       #expect(try getRoot().getChildrenSize() == 2)
       let resultRange = try removeTextFromCaretRange(caretRangeFromSelection(selectAll()))
+      #expect(try getRoot().getAllTextNodes().isEmpty)
+      #expect(try sameNodes(getRoot().getChildren(), [paragraphNode]))
+      #expect(resultRange.anchor.direction == .next)
+      #expect(resultRange.anchor.origin === paragraphNode)
+      #expect(resultRange.anchor.isChild)
+    }
+  }
+
+  @Test(
+    .upstream(
+      "lexical/src/caret/__tests__/unit/LexicalCaret.test.ts::LexicalCaret > $removeTextFromCaretRange > ported Table e2e tests > Can delete all with range selection anchored in table"
+    ))
+  func deleteAllAnchoredInTable() throws {
+    let editor = try createTestEditor(nodes: [
+      .klass(TableNode.self), .klass(TableRowNode.self), .klass(TableCellNode.self),
+    ])
+    try editor.update(discrete: true) {
+      let tableNode = try createTableNode().append(
+        createTableRowNode().append(
+          createTableCellNode().append(createParagraphNode().append(createTextNode("cell 1"))),
+          createTableCellNode().append(createParagraphNode().append(createTextNode("cell 2")))))
+      let paragraphNode = try createParagraphNode().append(createTextNode("paragraph 2"))
+      try getRoot().clear().append(tableNode, paragraphNode)
+      let selection = try selectAll()
+      // The table plug-in would normally do this normalization
+      try selection.anchor.set("root", 0, .element)
+      let resultRange = try removeTextFromCaretRange(caretRangeFromSelection(selection))
       #expect(try getRoot().getAllTextNodes().isEmpty)
       #expect(try sameNodes(getRoot().getChildren(), [paragraphNode]))
       #expect(resultRange.anchor.direction == .next)

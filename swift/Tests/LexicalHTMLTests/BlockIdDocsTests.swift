@@ -5,12 +5,12 @@ import LexicalLink
 import LexicalList
 import LexicalMark
 import LexicalRichText
+import LexicalTable
 import Testing
 
 // Port of packages/lexical-html/src/__tests__/unit/BlockIdDocs.test.ts: the
 // code examples of the Block IDs documentation page
-// (packages/lexical-website/docs/extensions/block-ids.md). The examples that
-// need marks or tables are skipped until those packages are ported.
+// (packages/lexical-website/docs/extensions/block-ids.md).
 
 private struct Op {
   enum Kind { case replace, insertAfter, delete }
@@ -195,6 +195,32 @@ nonisolated(unsafe) private let EmptyInlineExtension = defineExtension(
     // Running it again changes nothing.
     try pipeline.setEditorState(pipeline.parseEditorState(withIds))
     #expect(try editorJSON(pipeline) == withIds)
+  }
+
+  @Test(
+    .upstream(
+      "lexical-html/src/__tests__/unit/BlockIdDocs.test.ts::Block IDs documentation examples > Which blocks get ids"
+    ))
+  func whichBlocksGetIds() throws {
+    for extension_ in [
+      // Top-level blocks only.
+      configExtension(BlockIdExtension) { $0.isIdentifiedBlock = isRootChildBlock },
+
+      // The default, plus table cells.
+      configExtension(BlockIdExtension) {
+        $0.isIdentifiedBlock = { node in
+          try defaultIsIdentifiedBlock(node) || node is TableCellNode
+        }
+      },
+    ] {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(
+          name: "predicates", dependencies: [RichTextExtension, TableExtension, extension_]))
+      defer { editor.dispose() }
+      try editor.read { () throws -> Void in
+        #expect(try getBlockId(getRoot().getFirstChildOrThrow()) != nil)
+      }
+    }
   }
 
   @Test(

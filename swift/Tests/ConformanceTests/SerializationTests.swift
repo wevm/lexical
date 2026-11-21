@@ -4,6 +4,7 @@ import LexicalLink
 import LexicalList
 import LexicalMark
 import LexicalOverflow
+import LexicalTable
 import Testing
 
 /// Replays `vectors/serialization/*.json`: each document parses from both
@@ -23,6 +24,7 @@ struct SerializationTests {
   static let codeCases: [Case] = (try? Vectors.load("serialization/code")) ?? []
   static let overflowCases: [Case] = (try? Vectors.load("serialization/overflow")) ?? []
   static let markCases: [Case] = (try? Vectors.load("serialization/mark")) ?? []
+  static let tableCases: [Case] = (try? Vectors.load("serialization/table")) ?? []
   static let decoratorBlockCases: [Case] =
     (try? Vectors.load("serialization/decorator-block")) ?? []
 
@@ -61,6 +63,16 @@ struct SerializationTests {
   @Test(arguments: markCases)
   func markRoundTrip(_ vector: Case) throws {
     try check(vector, createEditor(CreateEditorArgs(nodes: [.klass(MarkNode.self)])))
+  }
+
+  @Test(arguments: tableCases)
+  func tableRoundTrip(_ vector: Case) throws {
+    try check(
+      vector,
+      createEditor(
+        CreateEditorArgs(nodes: [
+          .klass(TableNode.self), .klass(TableRowNode.self), .klass(TableCellNode.self),
+        ])))
   }
 
   @Test(arguments: decoratorBlockCases)

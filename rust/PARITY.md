@@ -550,10 +550,13 @@ touches:
   - `INTERNAL_$withExportMemo`, a cache that changes no output.
   - `$sliceSelectedTextNodeContent`'s `'self'` mode, which writes a node's
     text without `getWritable`; every ported caller passes `'clone'`.
-- The DOM half of the reconciler (the elements, the text and direction
-  caches, the DOM `editor._keyToDOMMap` holds) and `RootNode.__cachedText`
-  itself (only its effect on
-  the dirty root is ported; `getTextContent` always walks the tree). With a root element an update
+- The DOM half of the reconciler (the elements, the direction caches, the
+  DOM `editor._keyToDOMMap` holds) and `RootNode.__cachedText` itself (only
+  its effect on the dirty root is ported; `getTextContent` walks the tree,
+  except that the commit computing the root's text reuses each clean
+  element's text, which its keyed DOM caches as `__lexicalTextContent`).
+  The children fast paths of `$reconcileChildren` aren't ported, so a dirty
+  element's children are all walked. With a root element an update
   starts with the last selection, as in a headless editor and in Swift:
   JS reads the DOM selection (`$internalCreateSelection`), which an app's
   view keeps in step (in Node JS has none, so the vectors select in each

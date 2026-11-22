@@ -76,7 +76,7 @@ pub(crate) fn create_text_node_with_key(text: &str, key: &str) -> NodeRef {
         .0
         .node_map
         .borrow_mut()
-        .insert(key.to_owned(), Rc::from(node));
+        .insert(key, Rc::from(node));
     if let Some(editor) = crate::updates::get_active_editor() {
         editor.mark_dirty(key, false);
     }

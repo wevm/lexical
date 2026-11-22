@@ -45,7 +45,7 @@ fn new_editor_state(node_map: NodeMap) -> EditorState {
 
 fn node_map_with_root(root: Rc<dyn LexicalNode>) -> NodeMap {
     let mut node_map = NodeMap::default();
-    node_map.insert("root".to_owned(), root);
+    node_map.insert("root", root);
     node_map
 }
 

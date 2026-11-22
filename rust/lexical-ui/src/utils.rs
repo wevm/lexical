@@ -400,13 +400,10 @@ pub fn register_nested_element_resolver(
 /// state's nodes copies of `editor_state`'s, schedules a full reconcile,
 /// and sets a copy of its selection.
 pub fn restore_editor_state(editor: &Editor, editor_state: &EditorState) {
-    let node_map: NodeMap = editor_state
-        .0
-        .node_map
-        .borrow()
-        .iter()
-        .map(|(key, node)| (key.clone(), Rc::from(node.clone_node())))
-        .collect();
+    let mut node_map = NodeMap::default();
+    for (key, node) in editor_state.0.node_map.borrow().iter() {
+        node_map.insert(key, Rc::from(node.clone_node()));
+    }
     if let Some(active_editor_state) = editor.pending() {
         *active_editor_state.0.node_map.borrow_mut() = node_map;
     }

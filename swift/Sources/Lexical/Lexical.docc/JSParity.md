@@ -90,8 +90,18 @@ Each is listed in the repository's `swift/parity/deviations.json` or
 - **Prism.** `LexicalCodeTreeSitter` highlights code with tree-sitter
   grammars, mapped to Prism's token types, so token boundaries can differ
   from `@lexical/code-prism`'s.
+- **Table pointer and touch handling.** `@lexical/table`'s
+  `TableObserver` listens for DOM pointer events and its CSS draws the
+  grid. In `LexicalTable` the model, commands and keys are the same, and
+  the views draw each table as a grid of cell text views. Where JS measures
+  `getBoundingClientRect` for up and down, the views answer through
+  `SelectionLayout`. On macOS a drag or Shift-click across cells makes a
+  `TableSelection`; on iOS there are no table-selection handles yet, so a
+  drag selects within one cell. The sticky horizontal scrollbar, column
+  resizing by drag and frozen rows and columns kept on screen are not
+  drawn.
 - **Packages not ported yet:** `@lexical/yjs` and `@lexical/y`
-  (collaboration), `@lexical/table`, `@lexical/code-shiki`,
+  (collaboration), `@lexical/code-shiki`,
   `@lexical/mdast`, and `@lexical/offset`, which upstream is removing.
 
 ### Tier 2 deviations

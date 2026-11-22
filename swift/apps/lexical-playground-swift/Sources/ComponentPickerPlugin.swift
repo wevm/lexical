@@ -7,14 +7,15 @@ import LexicalList
 import LexicalMenu
 import LexicalRichText
 import LexicalSelection
+import LexicalTable
 
 // Port of packages/lexical-playground/src/plugins/ComponentPickerPlugin: a
 // "/" at the start of a word opens a menu of the blocks the Swift
 // playground has, the page break, the embeds and the image, which open
-// their dialogs, and the dates. The table, Excalidraw,
-// GIF, collapsible, card, pull quote, review and columns options insert
-// nodes the port does not have yet, so they are left out, and so is the
-// dynamic "3x4 Table" option.
+// their dialogs, the table and its dynamic "3x4 Table" options, and the
+// dates. The Excalidraw, GIF, collapsible, card, pull quote, review and
+// columns options insert nodes the port does not have yet, so they are
+// left out.
 
 /// `ComponentPickerOption`.
 final class ComponentPickerOption: MenuOption {
@@ -44,6 +45,7 @@ final class ComponentPickerOption: MenuOption {
 func getBaseOptions(
   _ editor: Editor, showImageDialog: @escaping () -> Void = {},
   showPollDialog: @escaping () -> Void = {},
+  showTableDialog: @escaping () -> Void = {},
   showEquationDialog: @escaping () -> Void = {}
 ) -> [ComponentPickerOption] {
   func setBlocks(_ create: @escaping () throws -> ElementNode) -> (String) throws -> Void {
@@ -68,6 +70,9 @@ func getBaseOptions(
         onSelect: setBlocks { try createHeadingNode("h\(n)") }))
   }
   options += [
+    ComponentPickerOption(
+      "Table", symbol: "tablecells", keywords: ["table", "grid", "spreadsheet", "rows", "columns"]
+    ) { _ in showTableDialog() },
     ComponentPickerOption(
       "Numbered List", symbol: "list.number",
       keywords: ["numbered list", "ordered list", "ol"]
@@ -148,6 +153,24 @@ func getBaseOptions(
   return options
 }
 
+/// `getDynamicOptions`: for a query of a row count, and maybe "x" and a
+/// column count, a table of that many rows and each column count from 1 to
+/// 10, or the one given.
+func getDynamicOptions(_ editor: Editor, _ queryString: String?) -> [ComponentPickerOption] {
+  guard let queryString,
+    let match = queryString.wholeMatch(of: /([1-9]\d?)(?:x([1-9]\d?)?)?/)
+  else { return [] }
+  let rows = String(match.1)
+  let columnOptions = match.2.map { [String($0)] } ?? (1...10).map(String.init)
+  return columnOptions.map { columns in
+    ComponentPickerOption("\(rows)x\(columns) Table", symbol: "tablecells", keywords: ["table"]) {
+      _ in
+      _ = try editor.dispatchCommand(
+        INSERT_TABLE_COMMAND, InsertTableCommandPayload(columns: columns, rows: rows))
+    }
+  }
+}
+
 /// The options for `queryString`: those whose title or a keyword matches
 /// it as a case-insensitive regular expression (`new RegExp(queryString,
 /// 'i')`). A query that is not a valid pattern matches nothing, where JS
@@ -169,17 +192,21 @@ func filterComponentPickerOptions(
 func registerComponentPicker(
   _ editor: Editor, showImageDialog: @escaping () -> Void = {},
   showPollDialog: @escaping () -> Void = {},
+  showTableDialog: @escaping () -> Void = {},
   showEquationDialog: @escaping () -> Void = {}
 ) -> (
   host: TypeaheadMenuHost<ComponentPickerOption>, unregister: () -> Void
 ) {
   let baseOptions = getBaseOptions(
     editor, showImageDialog: showImageDialog, showPollDialog: showPollDialog,
-    showEquationDialog: showEquationDialog)
+    showTableDialog: showTableDialog, showEquationDialog: showEquationDialog)
   var setOptions: ([ComponentPickerOption]) -> Void = { _ in }
   let (menu, unregister) = registerTypeaheadMenu(
     editor, triggerFn: basicTypeaheadTriggerMatch("/", minLength: 0, allowWhitespace: true),
-    onQueryChange: { query in setOptions(filterComponentPickerOptions(baseOptions, query)) },
+    onQueryChange: { query in
+      setOptions(
+        getDynamicOptions(editor, query) + filterComponentPickerOptions(baseOptions, query))
+    },
     onSelectOption: { (option: ComponentPickerOption, nodeToRemove, closeMenu, matchingString) in
       try nodeToRemove?.remove()
       try option.onSelect(matchingString)

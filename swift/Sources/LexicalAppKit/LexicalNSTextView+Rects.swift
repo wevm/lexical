@@ -1,6 +1,7 @@
 #if os(macOS)
   import AppKit
   import Lexical
+  import LexicalSelection
 
   // The rects of model ranges, which floating UI (typeahead menus, toolbars)
   // positions itself at, as JS reads `range.getBoundingClientRect()`.
@@ -11,11 +12,17 @@
     /// the view has no layout. A collapsed range is the caret's line box.
     public func rect(from start: Point, to end: Point) -> CGRect? {
       let document = controller.document
-      guard let a = document.location(for: start), let b = document.location(for: end),
-        let layoutManager = textLayoutManager, let contentManager = layoutManager.textContentManager
-      else { return nil }
-      let range = NSRange(location: min(a, b), length: abs(b - a))
-      guard
+      guard let a = document.location(for: start), let b = document.location(for: end) else {
+        return nil
+      }
+      return rect(for: NSRange(location: min(a, b), length: abs(b - a)))
+    }
+
+    /// The bounding rect, in this view's coordinates, of the rendered text
+    /// in `range`, or the caret's rect for an empty one.
+    func rect(for range: NSRange) -> CGRect? {
+      guard let layoutManager = textLayoutManager,
+        let contentManager = layoutManager.textContentManager,
         let startLocation = contentManager.location(
           contentManager.documentRange.location, offsetBy: range.location),
         let endLocation = contentManager.location(startLocation, offsetBy: range.length),
@@ -61,6 +68,31 @@
     public func screenRect(from start: Point, to end: Point) -> CGRect? {
       guard let window, let rect = rect(from: start, to: end) else { return nil }
       return window.convertToScreen(convert(rect, to: nil))
+    }
+  }
+  /// The rects `@lexical/table`'s arrow keys measure (JS:
+  /// `getBoundingClientRect`), from whichever of the editor's views shows
+  /// the node, the root's or a table cell's, in this view's coordinates.
+  extension LexicalNSTextView: @MainActor SelectionLayout {
+    public func selectionRect(_ selection: RangeSelection) -> SelectionRect? {
+      guard let view = editorView(showing: selection.focus.key),
+        let rect = view.rect(from: selection.focus, to: selection.focus)
+      else { return nil }
+      return SelectionRect(convert(rect, from: view))
+    }
+
+    public func nodeRect(_ key: NodeKey) -> SelectionRect? {
+      guard let view = editorView(showing: key), let rect = view.blockRect(for: key) else {
+        return nil
+      }
+      return SelectionRect(convert(rect, from: view))
+    }
+  }
+
+  extension SelectionRect {
+    init(_ rect: CGRect) {
+      self.init(
+        left: rect.minX, top: rect.minY, width: rect.width, height: rect.height)
     }
   }
 #endif

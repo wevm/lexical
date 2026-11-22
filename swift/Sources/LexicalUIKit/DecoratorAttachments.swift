@@ -23,8 +23,26 @@
     var dragItems: ((NodeKey, UIView) -> [UIDragItem])?
     /// Called when a drag of a decorator ended, with how it was dropped.
     var onDragEnd: ((UIDropOperation) -> Void)?
+    /// The view of the editor's root, which hosts the tables' cell views.
+    weak var tableHost: LexicalUITextView?
+    /// The tables' attachments, by table key.
+    private(set) var tables: [NodeKey: TableAttachment] = [:]
+    /// Called when a table's grid changes height, which its line takes.
+    var onTableHeightChange: ((NodeKey) -> Void)?
 
     func attachment(for span: TextKitDecoratorSpan, editor: Editor) -> NSTextAttachment? {
+      if span.isTable {
+        guard let host = tableHost else { return nil }
+        if let table = tables[span.key] { return table }
+        let grid = TableGridView(key: span.key, host: host)
+        let table = TableAttachment(grid: grid)
+        grid.onHeightChange = { [weak self, weak table] height in
+          table?.height = height
+          self?.onTableHeightChange?(span.key)
+        }
+        tables[span.key] = table
+        return table
+      }
       let view = (editor.getDecorators()[span.key]).flatMap { $0 as? any View }
       guard view != nil || span.rule != nil else {
         attachments[span.key] = nil
@@ -66,6 +84,12 @@
       attachments = attachments.filter {
         keys.contains($0.key) || ($0.value.ruleView != nil && document.span($0.key) != nil)
       }
+      tables = tables.filter { document.span($0.key) != nil }
+    }
+
+    /// Brings each table's grid up to date with a commit.
+    func updateTables(_ update: TextKitUpdate) {
+      for table in tables.values { table.grid.refresh(update) }
     }
   }
 

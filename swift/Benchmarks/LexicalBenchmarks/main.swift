@@ -267,13 +267,33 @@ if selected("table") {
     let cell = try row.getChildAtIndex(5) as! TableCellNode
     return try cell.getFirstChildOrThrow().getKey()
   }
-  let span = tableController.document.span(cellParagraph)!
-  try tableController.setSelectedRange(location: span.end, length: 0)
+  // Each cell's text view has a controller of its own, as the views make
+  // one per cell (DESIGN.md, The table view); typing goes to the cell's.
+  let cellKeys = try tableEditor.read { () throws -> [NodeKey] in
+    let table = try getRoot().getLastChild() as! TableNode
+    return try table.getChildren().flatMap { try ($0 as! TableRowNode).getChildren() }.map {
+      $0.getKey()
+    }
+  }
+  let cellControllers = cellKeys.map {
+    TextKitInputController(editor: tableEditor, cell: $0, root: tableController)
+  }
+  let cellKey = try tableEditor.read { try getNodeByKey(cellParagraph)!.getParent()!.getKey() }
+  let cellController = cellControllers[cellKeys.firstIndex(of: cellKey)!]
+  let cellStorage = Storage()
+  let previousRender = cellController.onRender
+  cellController.onRender = { update in
+    cellStorage.apply(update.edits.map(\.edit))
+    previousRender?(update)
+  }
+  try cellController.renderAll(replacing: 0)
+  try cellController.setSelectedRange(location: cellController.document.length, length: 0)
   try bench("table: insert a character in a cell of a 20 × 10 table", 200, target: 8, gating: false)
   {
-    try tableController.insertText("a")
+    try cellController.insertText("a")
   }
   precondition(tableStorage.units.count == tableController.document.length)
+  precondition(cellStorage.units.count == cellController.document.length)
   let cellSize = try tableEditor.read { try getNodeByKey(cellParagraph)!.getTextContentSize() }
   precondition(cellSize == 200)
 }

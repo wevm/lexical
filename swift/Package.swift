@@ -303,10 +303,12 @@ let package = Package(
       dependencies: [
         "Lexical", "LexicalExtension", "LexicalHashtag", "LexicalHistory", "LexicalLink",
         "LexicalList", "LexicalOverflow", "LexicalPlainText", "LexicalRichText", "LexicalSelection",
-        "LexicalTesting", "LexicalTextKit", "LexicalCodeCore",
+        "LexicalTable", "LexicalTesting", "LexicalTextKit", "LexicalCodeCore",
       ]),
     // The TextKit 2 editor views (Apple-only; empty modules elsewhere).
-    .target(name: "LexicalAppKit", dependencies: ["Lexical", "LexicalA11y", "LexicalTextKit"]),
+    .target(
+      name: "LexicalAppKit",
+      dependencies: ["Lexical", "LexicalA11y", "LexicalSelection", "LexicalTextKit"]),
     .testTarget(
       name: "LexicalAppKitTests",
       dependencies: [
@@ -314,13 +316,15 @@ let package = Package(
         "Lexical", "LexicalAppKit", "LexicalCodeCore", "LexicalExtension", "LexicalHistory",
         "LexicalLink", "LexicalList", "LexicalRichText", "LexicalSwiftUI", "LexicalTextKit",
       ]),
-    .target(name: "LexicalUIKit", dependencies: ["Lexical", "LexicalA11y", "LexicalTextKit"]),
+    .target(
+      name: "LexicalUIKit",
+      dependencies: ["Lexical", "LexicalA11y", "LexicalSelection", "LexicalTextKit"]),
     .testTarget(
       name: "LexicalUIKitTests",
       dependencies: [
         "LexicalA11y",
         "Lexical", "LexicalCodeCore", "LexicalExtension", "LexicalHistory", "LexicalList",
-        "LexicalRichText", "LexicalSwiftUI", "LexicalTextKit", "LexicalUIKit",
+        "LexicalRichText", "LexicalSwiftUI", "LexicalTable", "LexicalTextKit", "LexicalUIKit",
       ]),
     .target(
       name: "LexicalSwiftUI",
@@ -331,7 +335,9 @@ let package = Package(
           name: "LexicalUIKit", condition: .when(platforms: [.iOS, .visionOS, .macCatalyst])),
       ]),
     // @lexical/devtools-core: the playground's tree view.
-    .target(name: "LexicalDevtoolsCore", dependencies: ["Lexical", "LexicalHTML", "LexicalMark"]),
+    .target(
+      name: "LexicalDevtoolsCore",
+      dependencies: ["Lexical", "LexicalHTML", "LexicalMark", "LexicalTable"]),
     // Test support: the `.upstream(...)` trait the parity ledger reads.
     .target(name: "LexicalTesting", dependencies: ["Lexical"]),
     // Gating in CI: `swift run -c release LexicalBenchmarks`.

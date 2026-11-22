@@ -976,12 +976,73 @@ public struct TextKitRule: Hashable, Sendable {
   public var height: Double { 2 * margin + 2 * padding + thickness }
 }
 
+/// How a table's grid is drawn, after the playground's `table`,
+/// `tableCell`, `tableCellHeader`, `tableCellSelected`, `tableSelected`,
+/// `tableRowStriping` and `tableScrollableWrapper` classes. Lengths are in
+/// points (CSS px).
+public struct TextKitTable: Hashable, Sendable {
+  /// A column's width when the table has no `colWidths` entry for it
+  /// (`tableCell { width: 75px }` and its padding and border).
+  public var columnWidth: Double
+  /// Inside each cell, around its text (`tableCell { padding }`).
+  public var cellPaddingHorizontal: Double
+  public var cellPaddingVertical: Double
+  /// The lines between and around the cells (`tableCell { border }`).
+  public var borderWidth: Double
+  public var borderColor: TextKitColor
+  /// The background of a header cell (`tableCellHeader`).
+  public var headerBackground: TextKitColor
+  /// The background of every other row's first cell (`tableRowStriping`).
+  public var stripeBackground: TextKitColor
+  /// The fill over the cells of a table selection (`tableCellSelected`).
+  public var selectedCellFill: TextKitColor
+  /// The outline of a table in a node selection (`tableSelected`).
+  public var selectedOutlineWidth: Double
+  public var selectedOutlineColor: TextKitColor
+  /// Above and below the grid (`tableScrollableWrapper { margin }`).
+  public var marginTop: Double
+  public var marginBottom: Double
+
+  public init(
+    columnWidth: Double = 92, cellPaddingHorizontal: Double = 8, cellPaddingVertical: Double = 6,
+    borderWidth: Double = 1, borderColor: TextKitColor, headerBackground: TextKitColor,
+    stripeBackground: TextKitColor, selectedCellFill: TextKitColor,
+    selectedOutlineWidth: Double = 2, selectedOutlineColor: TextKitColor,
+    marginTop: Double = 0, marginBottom: Double = 5
+  ) {
+    self.columnWidth = columnWidth
+    self.cellPaddingHorizontal = cellPaddingHorizontal
+    self.cellPaddingVertical = cellPaddingVertical
+    self.borderWidth = borderWidth
+    self.borderColor = borderColor
+    self.headerBackground = headerBackground
+    self.stripeBackground = stripeBackground
+    self.selectedCellFill = selectedCellFill
+    self.selectedOutlineWidth = selectedOutlineWidth
+    self.selectedOutlineColor = selectedOutlineColor
+    self.marginTop = marginTop
+    self.marginBottom = marginBottom
+  }
+
+  /// The playground's look: `#bbb` borders, `#f2f3f5` headers, `#f2f5fb`
+  /// stripes, the highlight over selected cells and a `rgb(60, 132, 244)`
+  /// outline. The dark values are the port's own, as for the other styles.
+  public static let playground = TextKitTable(
+    borderColor: TextKitColor(187, 187, 187).withDark(TextKitColor(85, 85, 90)),
+    headerBackground: TextKitColor(242, 243, 245).withDark(TextKitColor(44, 44, 48)),
+    stripeBackground: TextKitColor(242, 245, 251).withDark(TextKitColor(38, 40, 46)),
+    selectedCellFill: TextKitColor(60, 132, 244, alpha: 0.25),
+    selectedOutlineColor: TextKitColor(60, 132, 244))
+}
+
 public struct TextKitTheme: Hashable, Sendable {
   public var styles: [String: TextKitStyle]
   /// Points per indent level, `--lexical-indent-base-value` in JS.
   public var indentWidth: Double
   /// How horizontal rules are drawn; `nil` draws none.
   public var horizontalRule: TextKitRule?
+  /// How tables are drawn; `nil` draws their grid with the default look.
+  public var table: TextKitTable?
 
   public init(styles: [String: TextKitStyle] = [:], indentWidth: Double = 40) {
     self.styles = styles
@@ -1006,6 +1067,7 @@ public struct TextKitTheme: Hashable, Sendable {
     theme.horizontalRule = TextKitRule(
       color: TextKitColor(204, 204, 204).withDark(TextKitColor(85, 85, 90)),
       selectedOutlineColor: TextKitColor(60, 132, 244))
+    theme.table = .playground
     return theme
   }()
 

@@ -1265,6 +1265,40 @@ scrolls sideways on its own. The views do the same.
   `tableCellResizer`), frozen rows and columns kept on screen while
   scrolling (they render as normal rows and columns), the
   sticky horizontal scrollbar, and the iOS row and column grab handles.
+- **As built.** The view PR added what the design above left open:
+  - `TableGridModel` and `TableGridLayout` (`LexicalTextKit`) read the table
+    and place its cells, so both views share them and only measure text.
+  - A cell view is `init(cell:root:)`, a `TextKitInputController` built with
+    the cell key and the root's controller. It renders the cell's subtree,
+    skips commits that leave the cell clean and the selection outside it,
+    and never becomes the root element.
+  - The editor's focus is one flag on the root controller
+    (`editorHasFocus`). Moving the first responder between its views sends
+    no `BLUR_COMMAND`/`FOCUS_COMMAND`, as moving between table cells
+    doesn't on the web. On iOS a tap in another cell resigns this view
+    before the other one becomes first responder, so a blur waits one turn.
+    A cell that takes the focus while the selection is elsewhere takes its
+    own caret into the model.
+  - The arrow keys measure through `SelectionLayout` (`LexicalSelection`):
+    `selectionRect(_:)` and `nodeRect(_:)` from whichever view shows the
+    node, in the root's coordinates. `TableExtension` falls back to it when
+    `TableConfig.layout` is not set.
+  - A grid's new height reaches its line through an attribute edit of the
+    table's character. TextKit 2 keeps an attachment's bounds with its layout
+    fragment, and `invalidateLayout(for:)` reuses the fragment. AppKit drops
+    the first responder when TextKit moves the attachment's view to a new
+    provider, so the container gives it back.
+  - On macOS a drag across cells follows the pointer from a timer in the
+    event-tracking run loop, because `NSTextView` reports the drag only while
+    its own range changes. The cell that started it hides its caret.
+  - The caret is kept in view by scrolling the grid sideways and the root
+    down, not the cell view, which does not scroll.
+  - VoiceOver: on macOS the root view adds the grids to its accessibility
+    children, so each cell's text view is reachable. On iOS a `UITextView`
+    is one element, so the table's character reads the table's size and its
+    cells' text row by row.
+  - Still to do: the iOS table-selection handles (a drag on iOS selects
+    text inside one cell), and the iOS cell elements for VoiceOver.
 
 ## Follow-ups: chat composer gaps
 

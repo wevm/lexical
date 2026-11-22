@@ -100,6 +100,69 @@ final class LexicalPlaygroundMacUITests: XCTestCase {
       menu.frame.minX, window.frame.minX, "menu \(menu.frame), window \(window.frame)")
   }
 
+  /// "/2x3" inserts a table whose cells take the typing: Tab moves to the
+  /// next cell and on to the next row, and the up arrow from a cell's first
+  /// line goes to the cell above, as on the web.
+  @MainActor
+  func testTableCellsTakeTypingTabAndArrows() {
+    app = XCUIApplication()
+    app.launch()
+    let editor = app.descendants(matching: .any)["editor"].textViews.firstMatch
+    XCTAssertTrue(editor.waitForExistence(timeout: 10), app.debugDescription)
+    app.buttons["Clear"].click()
+    editor.click()
+    editor.typeText("/2x3")
+    let menu = app.descendants(matching: .any)["typeahead-menu"].firstMatch
+    XCTAssertTrue(menu.waitForExistence(timeout: 5), app.debugDescription)
+    app.typeText("\r")
+    app.typeText("one\ttwo\tthree\tfour")
+    app.typeKey(.upArrow, modifierFlags: [])
+    app.typeText("!")
+    attachScreenshot("Table with typed cells")
+    let tree = app.descendants(matching: .any)["tree-view"].firstMatch
+    for text in [#""one!""#, #""two""#, #""three""#, #""four""#] {
+      expectation(
+        for: NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", text, text),
+        evaluatedWith: tree)
+    }
+    waitForExpectations(timeout: 5)
+  }
+
+  /// A drag from one cell to another selects the cells between them, as
+  /// `TableObserver` does on `pointermove`.
+  @MainActor
+  func testDragAcrossCellsSelectsThem() {
+    app = XCUIApplication()
+    app.launch()
+    let editor = app.descendants(matching: .any)["editor"].textViews.firstMatch
+    XCTAssertTrue(editor.waitForExistence(timeout: 10), app.debugDescription)
+    app.buttons["Clear"].click()
+    editor.click()
+    editor.typeText("/2x3")
+    let menu = app.descendants(matching: .any)["typeahead-menu"].firstMatch
+    XCTAssertTrue(menu.waitForExistence(timeout: 5), app.debugDescription)
+    app.typeText("\rone\ttwo\tthree\tfour")
+    func cell(_ text: String) -> XCUIElement {
+      app.textViews.matching(NSPredicate(format: "value == %@", text)).firstMatch
+    }
+    XCTAssertTrue(cell("four").waitForExistence(timeout: 5), app.debugDescription)
+    cell("one").click(forDuration: 0.2, thenDragTo: cell("two"))
+    attachScreenshot("Cells selected by a drag")
+    let tree = app.descendants(matching: .any)["tree-view"].firstMatch
+    let selected = NSPredicate(
+      format: "label CONTAINS %@ OR value CONTAINS %@", "selection: table", "selection: table")
+    expectation(for: selected, evaluatedWith: tree)
+    waitForExpectations(timeout: 5)
+  }
+
+  @MainActor
+  private func attachScreenshot(_ name: String) {
+    let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+    attachment.name = name
+    attachment.lifetime = .keepAlways
+    add(attachment)
+  }
+
   /// Types "Hello", selects it, runs `insertLink`, then types a URL with no
   /// click and checks that it became the link's.
   @MainActor

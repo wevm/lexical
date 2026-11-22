@@ -28,6 +28,14 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   The embed draws in a web view, aligns with the toolbar and selects with a
   click beside it, as `BlockWithAlignableContents` does. Their JSON and
   HTML are the web's, byte for byte.
+- **Tables** (`TableExtension`, `TablePlugin`'s `InsertTableDialog`): the
+  Insert menu and "/" open the rows and columns dialog (5 by 5 to start),
+  and "/3x4" inserts a table of that size. Each cell is a text view of its
+  own over the same editor, in a grid that scrolls sideways when it is
+  wider than the page, with the playground's cell padding, borders and
+  header background. Tab and Shift+Tab move between cells, the arrows move
+  out of a cell's edges into the next one, and a drag or Shift+click across
+  cells selects them, as on the web.
 - **Polls** (`PollNode`, `PollExtension`): Insert → Poll, or "/" and Poll,
   asks for the question and inserts a poll with two options. Each option
   is edited in place, a vote toggles with the checkbox (as one of the web's
@@ -50,10 +58,10 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   views draw it in a web view, and `exportDOM` runs it in JavaScriptCore.
 - **Typeahead menus:** "/" opens the component picker
   (`ComponentPickerPlugin`): paragraph, headings 1–3, the lists, quote,
-  code, divider, page break, poll, embeds, equation, dates, image and the
-  alignments, filtered by what follows the slash, chosen with the arrows and
-  Enter or Tab, a click or a tap. The table and other options insert
-  nodes the port does not have yet. "@" and a name
+  code, table, divider, page break, poll, embeds, equation, dates, image
+  and the alignments, filtered by what follows the slash, chosen with the
+  arrows and Enter or Tab, a click or a tap; "/3x4" offers a table of that
+  size. The other options insert nodes the port does not have yet. "@" and a name
   (`MentionsPlugin`) list up to five people from the web's dummy lookup,
   which answers after 500 ms, and insert a `MentionNode`. ":" and a
   keyword (`EmojiPickerPlugin`) list up to ten emoji;

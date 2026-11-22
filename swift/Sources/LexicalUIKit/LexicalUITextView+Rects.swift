@@ -1,5 +1,6 @@
 #if canImport(UIKit)
   import Lexical
+  import LexicalSelection
   import UIKit
 
   // The rects of model ranges, which floating UI (typeahead menus, toolbars)
@@ -54,6 +55,31 @@
     public func screenRect(from start: Point, to end: Point) -> CGRect? {
       guard let window, let rect = rect(from: start, to: end) else { return nil }
       return window.convert(convert(rect, to: window), to: window.screen.coordinateSpace)
+    }
+  }
+
+  /// The rects `@lexical/table`'s arrow keys measure (JS:
+  /// `getBoundingClientRect`), from whichever of the editor's views shows
+  /// the node, the root's or a table cell's, in this view's coordinates.
+  extension LexicalUITextView: @MainActor SelectionLayout {
+    public func selectionRect(_ selection: RangeSelection) -> SelectionRect? {
+      guard let view = editorView(showing: selection.focus.key),
+        let rect = view.rect(from: selection.focus, to: selection.focus)
+      else { return nil }
+      return SelectionRect(convert(rect, from: view))
+    }
+
+    public func nodeRect(_ key: NodeKey) -> SelectionRect? {
+      guard let view = editorView(showing: key), let rect = view.blockRect(for: key) else {
+        return nil
+      }
+      return SelectionRect(convert(rect, from: view))
+    }
+  }
+
+  extension SelectionRect {
+    init(_ rect: CGRect) {
+      self.init(left: rect.minX, top: rect.minY, width: rect.width, height: rect.height)
     }
   }
 #endif

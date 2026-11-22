@@ -5,6 +5,15 @@ from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <version>`, the version in
 `lexical-ui/Cargo.toml`.
 
+## 0.1.4
+
+Conforms to upstream Lexical **0.53.0** (`lexical_ui::UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Ported the children fast paths of `$reconcileChildren`. With a root element, an edit confined to the last children of a block of four or more (typing at the end, appending, Enter or merging at the end) now reconciles only those children and updates the root's cached text from them, instead of visiting every child. Other same-size edits skip the clean children. Typing at the end of 2,000 paragraphs went from 630 ms to 252 ms for 500 updates.
+- Fixed typing slowing down as documents grow. An update no longer allocates a copy of every node key in the editor state: 500 typing updates in a 100×20 table went from 123 ms to 27 ms. With a root element, a commit now reuses the cached text of every element the update didn't dirty, instead of walking the whole document for the root's text (655 ms to 63 ms for the same table). `get_children` and the reconciler's walk also allocate less per child.
+
 ## 0.1.3
 
 Conforms to upstream Lexical **0.53.0** (`lexical_ui::UPSTREAM_VERSION`).

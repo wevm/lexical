@@ -38,6 +38,9 @@ public struct TextKitDecoratorSpan: Equatable, Sendable {
   /// For a horizontal rule, which has no view of its own (its `decorate`
   /// is `nil`, as in JS, where its `<hr>` is all there is), how to draw it.
   public var rule: TextKitRule?
+  /// Whether it is a table's character, which the view shows as the grid
+  /// of its cells' text views (DESIGN.md, The table view).
+  public var isTable = false
 }
 
 /// One commit's changes to what the view shows.
@@ -61,6 +64,12 @@ public struct TextKitUpdate: Sendable {
   /// The nodes of a node selection, which a view marks (a selected
   /// horizontal rule is outlined).
   public var selectedNodes: Set<NodeKey> = []
+  /// Whether the editor has a selection this view doesn't show: in another
+  /// view of the editor (a table cell's or the root's), or a table
+  /// selection. The view then shows no caret or highlight of its own.
+  public var selectionIsElsewhere = false
+  /// The cells of a table selection, which a table's grid fills.
+  public var selectedTableCells: Set<NodeKey> = []
   /// The commit's update tags.
   public var tags: Set<String> = []
   /// Whether the edits replace the whole text.
@@ -168,15 +177,17 @@ extension TextKitTheme {
     // something new.
     var restyle: Set<NodeKey> = []
     func collectLeafBlocks(_ element: ElementNode, deep: Bool) throws {
-      if element is RootNode && !deep { return }
+      let isDocumentRoot = element is RootNode || element.getKey() == document.rootKey
+      if isDocumentRoot && !deep { return }
       let children = try element.getChildren()
       let hasBlockChild = try children.contains { try TextKitDocument.isBlock($0) }
-      if !(element is RootNode), try !TextKitDocument.isInline(element), !hasBlockChild {
+      if !isDocumentRoot, try !TextKitDocument.isInline(element), !hasBlockChild {
         if seen.insert(element.getKey()).inserted { blocks.append(element) }
         if deep { restyle.insert(element.getKey()) }
         return
       }
-      guard deep else { return }
+      // A table's cells are other documents', which style them.
+      guard deep, !TextKitDocument.isTable(element) || isDocumentRoot else { return }
       for case let child as ElementNode in children {
         try collectLeafBlocks(child, deep: true)
       }
@@ -196,8 +207,10 @@ extension TextKitTheme {
           try collectLeafBlocks(element, deep: intentionallyMarkedAsDirty && !(element is RootNode))
         }
       }
-    } else {
-      try collectLeafBlocks(getRoot(), deep: true)
+    } else if let element = try getNodeByKey(document.rootKey) as? ElementNode {
+      // The document's own node: the root, or a table cell, whose view
+      // shows only its subtree.
+      try collectLeafBlocks(element, deep: true)
     }
     // Whether a "\n" follows each block: a full render looks at every block,
     // so it reads the units from an array rather than walking the string.
@@ -272,6 +285,22 @@ extension TextKitTheme {
       update.decorators.append(
         TextKitDecoratorSpan(
           key: key, location: span.location, isInline: try decorator.isInline(), rule: rule))
+    }
+    // A table's character comes with an edit, as a rule's does.
+    if update.isFull || edits.contains(where: { $0.string.utf16.contains(0xFFFC) }) {
+      for (key, entry) in document.entries where entry.kind == .decorator {
+        guard let node = try getNodeByKey(key.key), TextKitDocument.isTable(node),
+          let span = document.span(key.key),
+          update.isFull
+            || finalRanges.contains(where: {
+              $0.location <= span.location && span.location < $0.end
+            })
+        else { continue }
+        update.decorators.append(
+          TextKitDecoratorSpan(
+            key: key.key, location: span.location, isInline: false, isTable: true)
+        )
+      }
     }
     return update
   }

@@ -1,6 +1,7 @@
 import Lexical
 import LexicalClipboard
 import LexicalExtension
+import LexicalSelection
 import LexicalUtils
 import Synchronization
 
@@ -294,6 +295,9 @@ public func registerTableSelectionObserver(
 ) throws -> () -> Void {
   let tableObservers = TableObservers()
   var selectionNeedsSync = false
+  // Without a layout of its own, the root element answers, as JS measures
+  // whatever DOM the editor renders into.
+  let layout = layout ?? RootElementTableLayout(editor)
 
   let initializeTableNode: (TableNode, NodeKey) throws -> Void = { tableNode, nodeKey in
     let tableSelection = try applyTableHandlers(
@@ -477,4 +481,24 @@ private func isMultiCellTableSelection(_ selection: any BaseSelection) throws ->
     return true
   }
   return false
+}
+
+/// The `TableLayout` of the editor's root element, when it measures its
+/// layout (`SelectionLayout`, which the native text views adopt); without
+/// one, every query is `nil`, which leaves up and down inside a cell to the
+/// view.
+final class RootElementTableLayout: TableLayout {
+  private weak var editor: Editor?
+
+  init(_ editor: Editor) { self.editor = editor }
+
+  private var rootLayout: (any SelectionLayout)? {
+    editor?.getRootElement() as? any SelectionLayout
+  }
+
+  func selectionRect(_ selection: RangeSelection) -> SelectionRect? {
+    rootLayout?.selectionRect(selection)
+  }
+
+  func nodeRect(_ key: NodeKey) -> SelectionRect? { rootLayout?.nodeRect(key) }
 }

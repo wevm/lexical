@@ -59,19 +59,49 @@ public final class TextKitReconciler {
   public private(set) var editorState: EditorState?
   /// How many incremental passes failed and rendered in full instead.
   package private(set) var fallbacks = 0
+  /// The node the document renders: the root, or a table cell.
+  public let rootKey: NodeKey
 
-  public init() {}
+  public init() { rootKey = "root" }
+
+  /// A reconciler of the subtree at `rootKey`, a table cell, for the text
+  /// view of that cell.
+  public init(rootKey: NodeKey) {
+    self.rootKey = rootKey
+    document = TextKitDocument(emptySubtree: rootKey)
+  }
 
   /// Renders `editorState` in full: one edit replacing the whole text.
   @discardableResult
   public func render(_ editorState: EditorState) throws -> [TextKitEdit] {
     let oldLength = document.length
     let suffix = document.suffix
-    document = try editorState.read { try TextKitDocument(root: getRoot(), suffix: suffix) }
+    let rootKey = rootKey
+    document = try editorState.read {
+      if rootKey == "root" { return try TextKitDocument(root: getRoot(), suffix: suffix) }
+      // A cell that left the document shows nothing until its view goes.
+      guard let cell = try getNodeByKey(rootKey) as? ElementNode else {
+        return TextKitDocument(emptySubtree: rootKey)
+      }
+      return try TextKitDocument(subtree: cell)
+    }
     self.editorState = editorState
     return [
       TextKitEdit(location: 0, length: oldLength, string: document.string, runs: document.runs)
     ]
+  }
+
+  /// Takes a commit that leaves a subtree's node clean, which keeps its
+  /// rendering, without reconciling: no node under a clean element
+  /// changed. Returns whether it did; the root's reconciler never does.
+  func skipUnchanged(_ payload: UpdateListenerPayload) -> Bool {
+    guard rootKey != "root", let editorState, editorState === payload.prevEditorState,
+      payload.dirtyType != FULL_RECONCILE, !payload.dirtyElements.has(rootKey),
+      let node = payload.editorState._nodeMap.get(rootKey),
+      node === editorState._nodeMap.get(rootKey)
+    else { return false }
+    self.editorState = payload.editorState
+    return true
   }
 
   /// `$reconcileRoot`: the edits from the previous commit's rendering to
@@ -80,20 +110,20 @@ public final class TextKitReconciler {
   /// renders in full.
   public func reconcile(_ payload: UpdateListenerPayload) throws -> [TextKitEdit] {
     guard let editorState, editorState === payload.prevEditorState,
-      payload.dirtyType != FULL_RECONCILE
+      payload.dirtyType != FULL_RECONCILE, payload.editorState._nodeMap.get(rootKey) != nil
     else { return try render(payload.editorState) }
     let oldLength = document.length
     var context = ReconcileContext(payload)
     do {
       try payload.editorState.read {
-        _ = try self.document.reconcileNode("root", at: 0, &context)
+        _ = try self.document.reconcileNode(self.rootKey, at: 0, &context)
       }
       document.applyPendingEdits(&context)
     } catch {
       // The rendering no longer matches the previous state; start over.
       fallbacks += 1
       let suffix = document.suffix
-      document = TextKitDocument()
+      document = rootKey == "root" ? TextKitDocument() : TextKitDocument(emptySubtree: rootKey)
       document.suffix = suffix
       var edits = try render(payload.editorState)
       edits[0] = TextKitEdit(

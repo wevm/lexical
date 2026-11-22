@@ -152,9 +152,41 @@
     /// which have had their `keydown` already.
     private var isPassingPresses = false
 
+    /// For the text view of a table cell, the view of the editor's root,
+    /// which hosts the table; `nil` for that one (DESIGN.md, The table
+    /// view).
+    private(set) weak var rootView: LexicalUITextView?
+    /// The grid this cell view is in.
+    weak var tableGrid: TableGridView?
+    /// Set while the view moves the focus to another of the editor's views,
+    /// which keeps it inside the editor.
+    private var isMovingFocusWithinEditor = false
+
     public init(editor: Editor, frame: CGRect = .zero) {
       controller = TextKitInputController(editor: editor)
       super.init(frame: frame, textContainer: nil)
+      setUp()
+    }
+
+    /// The text view of table cell `cell` in `root`'s editor: it renders
+    /// the cell's subtree and sends its input to the same editor, whose root
+    /// element stays `root`. It does not scroll: the grid and the root do.
+    init(cell: NodeKey, root: LexicalUITextView) {
+      controller = TextKitInputController(editor: root.editor, cell: cell, root: root.controller)
+      rootView = root
+      super.init(frame: .zero, textContainer: nil)
+      controller.theme = root.theme
+      // A cell's padding is the grid's, around the cell view.
+      isScrollEnabled = false
+      contentInsetAdjustmentBehavior = .never
+      textContainerInset = .zero
+      textContainer.lineFragmentPadding = 0
+      backgroundColor = .clear
+      setUp()
+    }
+
+    private func setUp() {
+      let editor = editor
       delegate = self
       textLayoutManager?.delegate = layoutDelegate
       allowsEditingTextAttributes = false
@@ -226,9 +258,12 @@
         DispatchQueue.main.async { self?.click(count: count, at: location) }
       }
       addGestureRecognizer(tapCount)
+      decorators.tableHost = rootView ?? self
+      decorators.onTableHeightChange = { [weak self] key in self?.invalidateTableLine(key) }
       // Attaching commits what is pending; the view starts from the full
-      // render below, so it renders nothing before then.
-      controller.report { try editor.setRootElement(self) }
+      // render below, so it renders nothing before then. A cell's view
+      // leaves the root element to the root's.
+      if rootView == nil { controller.report { try editor.setRootElement(self) } }
       controller.onHighlightsChange = { [weak self] in
         MainActor.assumeIsolated { self?.showHighlights() }
       }
@@ -369,6 +404,7 @@
         decorators.retain(Set(editor.getDecorators().keys), document: controller.document)
       }
       decorators.select(update.selectedNodes)
+      decorators.updateTables(update)
       canShowPlaceholder = update.canShowPlaceholder
       setNeedsLayout()
       // The model ended the composition: the keyboard starts afresh, as
@@ -379,23 +415,88 @@
       }
       showMarkedText()
       showHighlights()
+      if update.selectionIsElsewhere, selectedRange.length > 0 {
+        // The selection is in another of the editor's views, or a table
+        // selection: this one shows none of its own.
+        selectedRange = NSRange(location: selectedRange.location, length: 0)
+      }
       if let range = update.selectedRange {
         let selected = NSRange(location: range.location, length: range.length)
         if selectedRange != selected { selectedRange = selected }
+        // The focus follows the selection into the view that shows it, as
+        // the DOM focus follows it into a table cell.
+        if controller.root.editorHasFocus, !isFirstResponder, window != nil {
+          moveFocusWithinEditor(to: self)
+        }
         // `updateDOMSelection`'s `scrollIntoViewIfNeeded`: a collapsed
         // caret in the focused editor is kept in view, as when typing at the
         // end of a scrolled composer.
-        if selected.length == 0, hasFocus, !update.tags.contains(SKIP_SCROLL_INTO_VIEW_TAG) {
-          scrollRangeToVisible(selected)
+        if selected.length == 0, isFirstResponder,
+          !update.tags.contains(SKIP_SCROLL_INTO_VIEW_TAG)
+        {
+          scrollCaretToVisible(selected)
         }
       }
-      showsTextSelection = update.selectedNodes.isEmpty
+      showsTextSelection = update.selectedNodes.isEmpty && !update.selectionIsElsewhere
       showLastBlockAtCaret()
-      if update.tags.contains(FOCUS_TAG), !hasFocus {
+      if update.tags.contains(FOCUS_TAG), rootView == nil, !hasFocus {
         focus()
       }
       setNeedsLayout()
       if heightRange != nil { invalidateIntrinsicContentSize() }
+      tableGrid?.cellDidRender(self)
+    }
+
+    /// Keeps the caret at `range` in view. A cell's view does not scroll:
+    /// the grid scrolls sideways to it, and the root's view down to it.
+    private func scrollCaretToVisible(_ range: NSRange) {
+      guard let rootView, let grid = tableGrid else {
+        scrollRangeToVisible(range)
+        return
+      }
+      guard let position = position(from: beginningOfDocument, offset: range.location) else {
+        return
+      }
+      let caret = caretRect(for: position).insetBy(dx: -4, dy: -4)
+      guard !caret.isNull, !caret.isInfinite else { return }
+      grid.scrollToVisible(caret, in: self)
+      rootView.layoutIfNeeded()
+      rootView.scrollRectToVisible(rootView.convert(caret, from: self), animated: false)
+    }
+
+    /// Lays a table's line out again for its grid's new height. TextKit 2
+    /// keeps an attachment's bounds with its layout fragment, which
+    /// `invalidateLayout(for:)` reuses; an attribute edit of the table's
+    /// character makes a new fragment, which asks for them again.
+    private func invalidateTableLine(_ key: NodeKey) {
+      guard let span = controller.document.span(key), span.location < textStorage.length else {
+        return
+      }
+      isRendering = true
+      defer { isRendering = false }
+      textStorage.beginEditing()
+      textStorage.edited(
+        .editedAttributes, range: NSRange(location: span.location, length: 1), changeInLength: 0)
+      textStorage.endEditing()
+      setNeedsLayout()
+      if heightRange != nil { invalidateIntrinsicContentSize() }
+    }
+
+    /// The editor's view that renders the node at `key`: this one, or the
+    /// view of the table cell it is in.
+    func editorView(showing key: NodeKey) -> LexicalUITextView? {
+      if controller.document.span(key) != nil { return self }
+      for table in decorators.tables.values {
+        for view in table.grid.cellViews.values where view.controller.document.span(key) != nil {
+          return view
+        }
+      }
+      return nil
+    }
+
+    /// The editor's views of table cells.
+    private var cellViews: some Sequence<LexicalUITextView> {
+      decorators.tables.values.lazy.flatMap { $0.grid.cellViews.values }
     }
 
     /// An empty last block's line is TextKit's extra line fragment, which
@@ -1034,12 +1135,24 @@
       guard super.becomeFirstResponder() else { return false }
       showSelectionDisplay()
       if selectionMarks > 0 { setNeedsLayout() }
+      let root = controller.root
+      let isWithinEditor = root.editorHasFocus
+      root.editorHasFocus = true
       perform {
-        if try editor.read(.latest, { try getSelection() }) == nil {
+        // A view that takes the focus without the selection takes it. A
+        // tap in another of the editor's views (a table cell) makes it first
+        // responder without a selection change when the caret it places is
+        // where the view's own was.
+        let selection = try editor.read(.latest) { try getSelection() }
+        let range = try controller.selectedRange()
+        let isElsewhere = selection is RangeSelection && isWithinEditor && range == nil
+        if selection == nil || isElsewhere {
           let range = selectedRange
           try controller.setSelectedRange(location: range.location, length: range.length)
         }
-        try controller.focusChanged(true)
+        // From one of the editor's views to another, the focus stays in the
+        // editor, as it does between a page's table cells.
+        if !isWithinEditor { try controller.focusChanged(true) }
       }
       return true
     }
@@ -1047,11 +1160,34 @@
     public override func resignFirstResponder() -> Bool {
       guard super.resignFirstResponder() else { return false }
       if selectionMarks > 0 { setNeedsLayout() }
+      let root = rootView ?? self
       perform {
         if controller.markedRange != nil { try controller.unmarkText() }
-        try controller.focusChanged(false)
+      }
+      if root.isMovingFocusWithinEditor { return true }
+      // A tap in another of the editor's views makes that one the first
+      // responder only after this one resigns, so with tables the editor
+      // loses the focus once none of its views has it a turn later.
+      let blur = { [weak self] in
+        guard let self, controller.root.editorHasFocus, !root.hasFocus else { return }
+        controller.root.editorHasFocus = false
+        perform { try controller.focusChanged(false) }
+      }
+      if root.decorators.tables.isEmpty {
+        blur()
+      } else {
+        DispatchQueue.main.async { MainActor.assumeIsolated { blur() } }
       }
       return true
+    }
+
+    /// Makes `view`, another of the editor's views, the first responder
+    /// without the editor losing the focus.
+    func moveFocusWithinEditor(to view: LexicalUITextView) {
+      let root = rootView ?? self
+      root.isMovingFocusWithinEditor = true
+      defer { root.isMovingFocusWithinEditor = false }
+      _ = view.becomeFirstResponder()
     }
 
     // MARK: Clipboard
@@ -1087,7 +1223,8 @@
   extension LexicalUITextView: @MainActor LexicalRootElement {
     public var isConnected: Bool { window != nil }
 
-    public var hasFocus: Bool { isFirstResponder }
+    /// Whether this view or one of its table cells' views has the focus.
+    public var hasFocus: Bool { isFirstResponder || cellViews.contains { $0.isFirstResponder } }
 
     public func focus() {
       guard window != nil else {

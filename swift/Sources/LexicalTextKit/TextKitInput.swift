@@ -34,7 +34,22 @@ public final class TextKitInputController {
   public let editor: Editor
   public let movement = TextKitMovement()
   /// Keeps `document` in step with the editor's commits.
-  public let reconciler = TextKitReconciler()
+  public let reconciler: TextKitReconciler
+  /// For the text view of a table cell, the controller of the editor's
+  /// root view, whose `movement` the editor uses; `nil` for that one.
+  public private(set) weak var rootController: TextKitInputController?
+  /// The controller of the editor's root view: this one, or the one a
+  /// cell's controller was made for.
+  public var root: TextKitInputController { rootController ?? self }
+  /// Whether one of the editor's views (the root's or a cell's) has the
+  /// focus, kept on the root's controller. The focus moving from one to
+  /// another stays inside the editor, as it does between a page's table
+  /// cells, so the views dispatch `FOCUS_COMMAND` and `BLUR_COMMAND` only
+  /// when it changes.
+  public var editorHasFocus = false
+  /// The controllers of the table cells' views, by cell key.
+  private var cells: [NodeKey: WeakController] = [:]
+  private struct WeakController { weak var controller: TextKitInputController? }
   /// The look of the rendered text. Text already drawn keeps the look it
   /// was drawn with, so set this before the view first renders; on a live
   /// view, set the view's `theme`, which draws the text again.
@@ -67,12 +82,15 @@ public final class TextKitInputController {
 
   public init(editor: Editor) {
     self.editor = editor
+    reconciler = TextKitReconciler()
     editor.selectionMovement = movement
-    movement.committedDocument = { [weak self, weak editor] in
-      guard let self, let editor, reconciler.editorState === editor.getEditorState() else {
+    movement.committedDocument = { [weak self, weak editor] key in
+      guard let self, let editor else { return nil }
+      let controller = key == "root" ? self : cells[key]?.controller
+      guard let controller, controller.reconciler.editorState === editor.getEditorState() else {
         return nil
       }
-      return reconciler.document
+      return controller.reconciler.document
     }
     removeListener = editor.registerUpdateListener { [weak self] payload in
       try self?.render(payload)
@@ -84,6 +102,24 @@ public final class TextKitInputController {
           try root.append(createParagraphNode())
         }
       }
+      if reconciler.editorState !== editor.getEditorState() {
+        try reconciler.render(editor.getEditorState())
+      }
+    }
+  }
+
+  /// The controller of the text view of table cell `cell`, which renders
+  /// that cell's subtree and sends its input to the same editor. It leaves
+  /// the editor's root element and movement to `root`'s view.
+  public init(editor: Editor, cell: NodeKey, root: TextKitInputController) {
+    self.editor = editor
+    reconciler = TextKitReconciler(rootKey: cell)
+    rootController = root.root
+    rootController?.cells[cell] = WeakController(controller: self)
+    removeListener = editor.registerUpdateListener { [weak self] payload in
+      try self?.render(payload)
+    }
+    report {
       if reconciler.editorState !== editor.getEditorState() {
         try reconciler.render(editor.getEditorState())
       }
@@ -104,6 +140,15 @@ public final class TextKitInputController {
   }
 
   private func render(_ payload: UpdateListenerPayload) throws {
+    // A cell's view hears every commit of the editor; one that changed
+    // nothing in the cell, with the selection outside it before and after,
+    // changes nothing it shows. Typing in one cell of a large table so
+    // costs the other cells next to nothing.
+    if reconciler.skipUnchanged(payload),
+      !shows(payload.prevEditorState._selection), !shows(payload.editorState._selection)
+    {
+      return
+    }
     let edits = try reconciler.reconcile(payload)
     let isFull =
       edits.count == 1 && edits[0].location == 0
@@ -164,13 +209,21 @@ public final class TextKitInputController {
         edits, document, editor: editor, dirtyElements: dirtyElements, dirtyLeaves: dirtyLeaves)
       let selection = try getSelection()
       update.selectedRange = try Self.range(of: selection, in: document)
+      update.selectionIsElsewhere = selection != nil && update.selectedRange == nil
+      if selection != nil, !(selection is RangeSelection), !(selection is NodeSelection) {
+        // A table selection: the cells it covers are filled, and no text
+        // in them shows as selected.
+        update.selectedTableCells = Set(
+          try selection!.getNodes().compactMap { $0.getType() == "tablecell" ? $0.getKey() : nil })
+      }
       if let selection = selection as? NodeSelection {
         update.selectedNodes = Set(try selection.getNodes().map { $0.getKey() })
       }
       // A document of more than one block never shows it, which settles
       // most commits without reading the whole text.
       update.canShowPlaceholder =
-        try getRoot().getChildrenSize() <= 1 && canShowPlaceholder(editor.isComposing())
+        try document.rootKey == "root" && getRoot().getChildrenSize() <= 1
+        && canShowPlaceholder(editor.isComposing())
       return update
     }
     update.tags = tags
@@ -214,16 +267,46 @@ public final class TextKitInputController {
     of selection: BaseSelection?, in document: TextKitDocument
   ) throws -> TextKitRange? {
     if let selection = selection as? RangeSelection {
-      guard let a = document.location(for: selection.anchor),
-        let f = document.location(for: selection.focus)
+      let anchor = document.location(for: selection.anchor)
+      let focus = document.location(for: selection.focus)
+      if let a = anchor, let f = focus {
+        return TextKitRange(location: min(a, f), length: abs(a - f))
+      }
+      // A range from outside a table into one of its cells (or across a
+      // nested table) takes in the whole table's attachment character.
+      guard let inside = anchor ?? focus,
+        let outside = try span(around: anchor == nil ? selection.anchor : selection.focus, document)
       else { return nil }
-      return TextKitRange(location: min(a, f), length: abs(a - f))
+      let start = min(inside, outside.location)
+      return TextKitRange(location: start, length: max(inside, outside.end) - start)
     }
     // A selected decorator shows as its attachment character selected.
     if let selection = selection as? NodeSelection, let node = try selection.getNodes().first,
       let span = document.span(node.getKey())
     {
       return TextKitRange(location: span.location, length: span.length)
+    }
+    return nil
+  }
+
+  /// Whether `selection` has a point in the document, which then shows it.
+  private func shows(_ selection: BaseSelection?) -> Bool {
+    guard let selection = selection as? RangeSelection else { return false }
+    let document = reconciler.document
+    return document.span(selection.anchor.key) != nil || document.span(selection.focus.key) != nil
+  }
+
+  /// The span of the nearest ancestor of `point`'s node that `document`
+  /// shows, a table's attachment character.
+  private static func span(
+    around point: Point, _ document: TextKitDocument
+  ) throws
+    -> TextKitSpan?
+  {
+    var node = try getNodeByKey(point.key)?.getParent()
+    while let current = node {
+      if let span = document.span(current.getKey()) { return span }
+      node = try current.getParent()
     }
     return nil
   }
@@ -264,6 +347,27 @@ public final class TextKitInputController {
     let anchor = document.point(at: isBackward ? end : location)
     let focus = document.point(at: isBackward ? location : end)
     try run { [editor] in try applySelectionChange(editor, anchor, focus) }
+  }
+
+  /// Moves the focus of the model's selection to `location` of this
+  /// view's text and keeps its anchor wherever it is, which may be in
+  /// another view of the editor: a shift-click or a pointer drag from one
+  /// table cell into another. The table extension makes a range between
+  /// two cells of one table a table selection.
+  public func extendSelection(to location: Int) throws {
+    let focus = document.point(at: location)
+    try run { [editor] in
+      guard let selection = try getSelection() else { return }
+      let anchor: (NodeKey, Int, PointType)
+      if let range = selection as? RangeSelection {
+        anchor = (range.anchor.key, range.anchor.offset, range.anchor.type)
+      } else if let points = selection.getStartEndPoints() {
+        anchor = (points.0.key, points.0.offset, points.0.type)
+      } else {
+        return
+      }
+      try applySelectionChange(editor, anchor, focus)
+    }
   }
 
   // MARK: Keys and input

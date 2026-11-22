@@ -35,6 +35,7 @@ import LexicalOverflow
 import LexicalPlainText
 import LexicalRichText
 import LexicalSelection
+import LexicalTable
 import LexicalTextKit
 import LexicalUtils
 import Observation
@@ -302,6 +303,9 @@ final class PlaygroundModel {
             CheckListExtension, CodeExtension, HorizontalRuleExtension, PageBreakExtension,
             ImagesExtension, DecoratorDragExtension, EmbedsExtension, PollExtension,
             EquationsExtension,
+            // The web playground's `hasStickyScrollbar` has no counterpart:
+            // the grid's own scroller is always in view.
+            TableExtension,
             DragDropPasteExtension, PlaygroundDOMRenderExtension,
             // The web playground's `CodeHighlightExtension` brings both:
             // Tab and Shift+Tab indent and outdent code lines.
@@ -396,6 +400,7 @@ final class PlaygroundModel {
     let picker = registerComponentPicker(
       editor, showImageDialog: { [weak self] in self?.isInsertingImage = true },
       showPollDialog: { [weak self] in self?.isInsertingPoll = true },
+      showTableDialog: { [weak self] in self?.isInsertingTable = true },
       showEquationDialog: { [weak self] in self?.isInsertingEquation = true })
     let emoji = registerEmojiPicker(editor)
     let mentions = registerMentions(editor)
@@ -772,6 +777,9 @@ final class PlaygroundModel {
   func insertPageBreak() {
     _ = try? editor.dispatchCommand(INSERT_PAGE_BREAK)
   }
+
+  /// The Insert Table dialog is open (`showModal('Insert Table', ...)`).
+  var isInsertingTable = false
 
   /// The Insert Poll dialog is open (`showModal('Insert Poll', ...)`).
   var isInsertingPoll = false

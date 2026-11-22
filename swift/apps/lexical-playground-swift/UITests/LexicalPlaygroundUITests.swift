@@ -140,6 +140,35 @@ final class LexicalPlaygroundUITests: XCTestCase {
     XCTAssertTrue(tree.contains("\"hello\""), tree)
   }
 
+  /// "/2x3" inserts a table whose cells take the typing: a hardware
+  /// keyboard's Tab moves to the next cell and on to the next row, and the
+  /// up arrow from a cell's first line goes to the cell above, as on the
+  /// web.
+  @MainActor
+  func testTableCellsTakeTypingTabAndArrows() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/2x3")
+    let first = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(first.waitForExistence(timeout: 5))
+    XCTAssertTrue(first.label.contains("2x3 Table"), first.label)
+    first.tap()
+    waitForTree(") table")
+    app.typeText("one")
+    for text in ["two", "three", "four"] {
+      app.typeKey(.tab, modifierFlags: [])
+      app.typeText(text)
+    }
+    app.typeKey(.upArrow, modifierFlags: [])
+    app.typeText("!")
+    waitForTree("\"one!\"")
+    for text in ["two", "three", "four"] { XCTAssertTrue(tree.contains("\"\(text)\""), tree) }
+    let screenshot = XCTAttachment(screenshot: app.screenshot())
+    screenshot.name = "Table with typed cells"
+    screenshot.lifetime = .keepAlways
+    add(screenshot)
+  }
+
   /// A hardware keyboard's Tab indents a code line and Shift+Tab outdents
   /// it, as in the web playground.
   @MainActor

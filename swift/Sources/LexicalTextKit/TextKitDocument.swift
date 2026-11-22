@@ -82,6 +82,9 @@ public struct TextKitDocument: Sendable {
 
   /// The rendered text.
   public internal(set) var string = ""
+  /// The node the document renders: the root, or a table cell for the
+  /// text view of one cell (DESIGN.md, The table view).
+  public internal(set) var rootKey: NodeKey = "root"
   /// The suffix shown after a text node, if any.
   public internal(set) var suffix: TextKitSuffix?
   /// Every rendered node, by key.
@@ -104,8 +107,44 @@ public struct TextKitDocument: Sendable {
     string = text
   }
 
+  /// The document of the subtree of `element`, a table cell (call it in a
+  /// read or update): what a cell's text view shows.
+  public init(subtree element: ElementNode) throws {
+    rootKey = element.getKey()
+    var text = ""
+    var runs: [TextKitRun] = []
+    try build(element, parent: nil, index: 0, at: 0, into: &text, runs: &runs)
+    string = text
+  }
+
+  /// An empty document of the subtree at `rootKey`, whose node is gone.
+  init(emptySubtree rootKey: NodeKey) {
+    self.rootKey = rootKey
+    entries[rootKey] = Entry(kind: .element, parent: nil, index: 0, length: 0)
+  }
+
   /// The rendered text's length in UTF-16 code units.
-  public var length: Int { entries["root"]?.length ?? 0 }
+  public var length: Int { entries[rootKey]?.length ?? 0 }
+
+  /// Whether `node` is a table, which a document shows as one attachment
+  /// character and whose cells have documents of their own. TextKit knows
+  /// it by its type, as it reads list items, so it need not depend on
+  /// `LexicalTable`.
+  public static func isTable(_ node: LexicalNode) -> Bool {
+    node is ElementNode && node.getType() == "table"
+  }
+
+  /// The table cell nearest above `node`, or `node` itself when it is one:
+  /// the root of the document that renders it, or `nil` for the root's
+  /// (call it in a read or update).
+  public static func cell(containing node: LexicalNode) throws -> ElementNode? {
+    var current: LexicalNode? = node
+    while let node = current {
+      if let element = node as? ElementNode, element.getType() == "tablecell" { return element }
+      current = try node.getParent()
+    }
+    return nil
+  }
 
   /// The text nodes, in document order.
   public var runs: [TextKitRun] {
@@ -160,7 +199,7 @@ public struct TextKitDocument: Sendable {
   }
 
   private func walk(
-    from key: NodeKey = "root", at location: Int = 0, _ visit: (NodeKey, Entry, Int) -> Void
+    from key: NodeKey? = nil, at location: Int = 0, _ visit: (NodeKey, Entry, Int) -> Void
   ) {
     func visitNode(_ key: NodeKey, _ location: Int) {
       guard let entry = entries[key] else { return }
@@ -169,7 +208,7 @@ public struct TextKitDocument: Sendable {
         visitNode(kid.key, location + kid.start)
       }
     }
-    visitNode(key, location)
+    visitNode(key ?? rootKey, location)
   }
 
   /// Where the node at `key` starts.
@@ -185,7 +224,7 @@ public struct TextKitDocument: Sendable {
       key = parentKey
       entry = parent
     }
-    return key == "root" ? location : nil
+    return key == rootKey ? location : nil
   }
 
   static func isBlock(_ node: LexicalNode) throws -> Bool {
@@ -237,6 +276,11 @@ public struct TextKitDocument: Sendable {
     } else if node is LineBreakNode {
       text += "\u{2028}"
       entry = Entry(kind: .lineBreak, parent: parent, index: index, length: 1)
+    } else if parent != nil, Self.isTable(node) {
+      // A table is one attachment character, as a block decorator; its
+      // cells render in the documents of their own text views.
+      text += "\u{FFFC}"
+      entry = Entry(kind: .decorator, parent: parent, index: index, length: 1)
     } else if let node = node as? ElementNode {
       var kids: [Kid] = []
       var offset = 0
@@ -294,7 +338,7 @@ public struct TextKitDocument: Sendable {
   /// (the earlier one at a boundary), otherwise an element point.
   public func point(at location: Int) -> (NodeKey, Int, PointType) {
     let location = max(0, min(location, length))
-    var element: NodeKey = "root"
+    var element: NodeKey = rootKey
     var base = 0
     while let entry = entries[element] {
       let kids = entry.kids
@@ -506,8 +550,9 @@ public struct TextKitDocument: Sendable {
 /// step with visual lines when they lay text out.
 public final class TextKitMovement: SelectionMovement {
   /// A rendering of the editor's committed state, kept up to date by the
-  /// controller's reconciler; `nil` when there is none.
-  var committedDocument: (() -> TextKitDocument?)?
+  /// controller's reconciler, for the document rooted at a key (the root,
+  /// or a table cell); `nil` when there is none.
+  var committedDocument: ((NodeKey) -> TextKitDocument?)?
 
   public init() {}
 
@@ -520,8 +565,12 @@ public final class TextKitMovement: SelectionMovement {
     let isClean =
       editor._dirtyType == NO_DIRTY_NODES && editor._dirtyLeaves.size == 0
       && editor._dirtyElements.size == 0
+    // A point in a table cell moves within the cell's document, as its
+    // text view shows it.
+    let cell = try getNodeByKey(point.key).flatMap { try TextKitDocument.cell(containing: $0) }
     let document =
-      try (isClean ? committedDocument?() : nil) ?? TextKitDocument(root: getRoot())
+      try (isClean ? committedDocument?(cell?.getKey() ?? "root") : nil)
+      ?? (cell.map { try TextKitDocument(subtree: $0) } ?? TextKitDocument(root: getRoot()))
     guard let location = document.location(for: point) else { return nil }
     let target = document.move(location, isBackward: isBackward, granularity: granularity)
     return target == location ? nil : document.point(at: target)

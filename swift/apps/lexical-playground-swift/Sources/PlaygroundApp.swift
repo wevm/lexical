@@ -137,6 +137,7 @@ struct PlaygroundView: View {
         .presentationDetents([.height(commentSheetHeight)])
     }
     .sheet(isPresented: $model.isInsertingPoll) { InsertPollDialog(editor: model.editor) }
+    .sheet(isPresented: $model.isInsertingTable) { InsertTableDialog(editor: model.editor) }
     .sheet(isPresented: $model.isInsertingEquation) { InsertEquationDialog(editor: model.editor) }
     .sheet(
       isPresented: Binding(

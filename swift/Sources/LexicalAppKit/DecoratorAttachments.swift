@@ -21,8 +21,26 @@
     /// Called with the key, the mouse-dragged event and the view of a
     /// selected decorator the user drags.
     var onDrag: ((NodeKey, NSEvent, NSView) -> Void)?
+    /// The view of the editor's root, which hosts the tables' cell views.
+    weak var tableHost: LexicalNSTextView?
+    /// The tables' attachments, by table key.
+    private(set) var tables: [NodeKey: TableAttachment] = [:]
+    /// Called when a table's grid changes height, which its line takes.
+    var onTableHeightChange: ((NodeKey) -> Void)?
 
     func attachment(for span: TextKitDecoratorSpan, editor: Editor) -> NSTextAttachment? {
+      if span.isTable {
+        guard let host = tableHost else { return nil }
+        if let table = tables[span.key] { return table }
+        let grid = TableGridView(key: span.key, host: host)
+        let table = TableAttachment(grid: grid)
+        grid.onHeightChange = { [weak self, weak table] height in
+          table?.height = height
+          self?.onTableHeightChange?(span.key)
+        }
+        tables[span.key] = table
+        return table
+      }
       let view = (editor.getDecorators()[span.key]).flatMap { $0 as? any View }
       guard view != nil || span.rule != nil else {
         attachments[span.key] = nil
@@ -64,6 +82,12 @@
       attachments = attachments.filter {
         keys.contains($0.key) || ($0.value.ruleView != nil && document.span($0.key) != nil)
       }
+      tables = tables.filter { document.span($0.key) != nil }
+    }
+
+    /// Brings each table's grid up to date with a commit.
+    func updateTables(_ update: TextKitUpdate) {
+      for table in tables.values { table.grid.refresh(update) }
     }
   }
 
@@ -271,7 +295,17 @@
 
     override func viewDidMoveToWindow() {
       super.viewDidMoveToWindow()
-      if window != nil { hold() }
+      guard let window else { return }
+      hold()
+      // The responder the old container's view dropped takes the focus
+      // again, as a table cell's text view must while its grid's line
+      // grows.
+      if let responder = Self.droppedResponder, responder.isDescendant(of: content),
+        window.firstResponder !== responder
+      {
+        Self.droppedResponder = nil
+        window.makeFirstResponder(responder)
+      }
     }
 
     private func hold() {
@@ -279,6 +313,22 @@
       content.frame = bounds
       content.autoresizingMask = [.width, .height]
       addSubview(content)
+    }
+
+    /// The first responder in a container's view as TextKit takes the
+    /// container out of the window, before the next one holds the view:
+    /// AppKit drops it then without asking it to resign.
+    private static weak var droppedResponder: NSView?
+
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+      super.viewWillMove(toWindow: newWindow)
+      guard newWindow == nil, content.superview === self,
+        let responder = window?.firstResponder as? NSView,
+        responder === content || responder.isDescendant(of: content)
+      else { return }
+      Self.droppedResponder = responder
+      // Only within this turn, when TextKit shows the next container.
+      Task { @MainActor in Self.droppedResponder = nil }
     }
   }
 

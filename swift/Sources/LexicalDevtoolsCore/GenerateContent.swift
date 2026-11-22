@@ -1,9 +1,10 @@
 import Lexical
 import LexicalHTML
 import LexicalMark
+import LexicalTable
 
 // Port of packages/lexical-devtools-core/src/generateContent.ts: the text of
-// the playground's tree view. The link and table branches are left out.
+// the playground's tree view. The link branch is left out.
 
 /// A command the tree view lists (`LexicalCommandLog`'s entries).
 public struct LexicalCommandLogEntry: Sendable {
@@ -71,6 +72,7 @@ public func generateContent(
     case let range as RangeSelection: return try printRangeSelection(range)
     case let nodes as NodeSelection:
       return ": node\n  └ [\(Array(nodes._nodes).joined(separator: ", "))]"
+    case let table as TableSelection: return printTableSelection(table)
     default: return ""
     }
   }
@@ -314,4 +316,9 @@ private func prettify(_ node: DOMElement, _ level: Int, _ document: DOMDocument)
       _ = node.appendChild(document.createTextNode("\n" + indentAfter))
     }
   }
+}
+
+/// `printTableSelection`.
+private func printTableSelection(_ selection: TableSelection) -> String {
+  ": table\n  └ { table: \(selection.tableKey), anchorCell: \(selection.anchor.key), focusCell: \(selection.focus.key) }"
 }

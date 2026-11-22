@@ -322,7 +322,7 @@ pub fn get_cached_type_to_node_map(editor_state: &EditorState) -> Rc<TypeToNodeM
                 type_to_node_map
                     .entry(node.get_type())
                     .or_default()
-                    .insert(key.clone(), node.clone());
+                    .insert(key.to_owned(), node.clone());
             }
             Rc::new(type_to_node_map)
         })
@@ -525,7 +525,7 @@ pub(crate) fn set_node_key(mut node: Box<dyn LexicalNode>) -> NodeRef {
         .0
         .node_map
         .borrow_mut()
-        .insert(key.clone(), Rc::from(node));
+        .insert(&key, Rc::from(node));
     if let Some(editor) = get_active_editor() {
         editor.mark_dirty(&key, is_element);
     }

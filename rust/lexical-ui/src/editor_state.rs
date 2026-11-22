@@ -3,7 +3,7 @@
 use crate::json::{Object, Value};
 use crate::lexical_selection::SelectionRef;
 use crate::lexical_utils::get_root;
-use crate::node::{LexicalNode, NodeKey, NodeRef};
+use crate::node::{LexicalNode, NodeRef};
 use crate::nodes::root::RootNode;
 use crate::ordered::KeyMap;
 use crate::serialized_export::{export_node_json, with_compact_export};
@@ -11,7 +11,55 @@ use crate::updates::read_editor_state;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-pub(crate) type NodeMap = KeyMap<NodeKey, Rc<dyn LexicalNode>>;
+/// `editorState._nodeMap`: each node by its key.
+///
+/// Keys are shared (`Rc<str>`), so the copy every update starts with
+/// ([`clone_editor_state`]) costs a reference count per node, as copying a
+/// JS `Map` does, rather than allocating every key again.
+#[derive(Clone, Debug, Default)]
+pub(crate) struct NodeMap(KeyMap<Rc<str>, Rc<dyn LexicalNode>>);
+
+impl NodeMap {
+    pub(crate) fn get(&self, key: &str) -> Option<&Rc<dyn LexicalNode>> {
+        self.0.get(key)
+    }
+
+    pub(crate) fn get_mut(&mut self, key: &str) -> Option<&mut Rc<dyn LexicalNode>> {
+        self.0.get_mut(key)
+    }
+
+    pub(crate) fn contains_key(&self, key: &str) -> bool {
+        self.0.contains_key(key)
+    }
+
+    pub(crate) fn insert(&mut self, key: &str, node: Rc<dyn LexicalNode>) {
+        self.0.insert(Rc::from(key), node);
+    }
+
+    pub(crate) fn remove(&mut self, key: &str) -> Option<Rc<dyn LexicalNode>> {
+        self.0.remove(key)
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub(crate) fn keys(&self) -> impl Iterator<Item = &str> {
+        self.0.keys().map(|k| &**k)
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, &Rc<dyn LexicalNode>)> {
+        self.0.iter().map(|(k, v)| (&**k, v))
+    }
+}
+
+impl std::ops::Index<&str> for NodeMap {
+    type Output = Rc<dyn LexicalNode>;
+
+    fn index(&self, key: &str) -> &Self::Output {
+        &self.0[key]
+    }
+}
 
 /// An editor state: the node map and the selection. A handle; cloning it
 /// shares the same state. Once read-only (committed or parsed), nothing
@@ -62,7 +110,7 @@ fn new_editor_state(node_map: NodeMap) -> EditorState {
 /// `createEmptyEditorState()`.
 pub(crate) fn create_empty_editor_state() -> EditorState {
     let mut node_map = NodeMap::default();
-    node_map.insert("root".to_owned(), Rc::new(RootNode::new()));
+    node_map.insert("root", Rc::new(RootNode::new()));
     new_editor_state(node_map)
 }
 
@@ -116,7 +164,7 @@ impl EditorState {
     /// The node keys in the order JS's node map holds them, the order nodes
     /// were created in: the root, then by key, as keys come from a counter.
     pub(crate) fn keys_in_creation_order(&self) -> Vec<String> {
-        let mut keys: Vec<String> = self.0.node_map.borrow().keys().cloned().collect();
+        let mut keys: Vec<String> = self.0.node_map.borrow().keys().map(str::to_owned).collect();
         keys.sort_by_key(|k| (k != "root", k.parse::<u64>().unwrap_or(u64::MAX), k.clone()));
         keys
     }

@@ -1245,15 +1245,15 @@ fn compute_update_listener_payload(editor: &Editor, prev_editor_state: &EditorSt
         mutated_nodes
             .entry(node.get_type().to_owned())
             .or_default()
-            .insert(key.clone(), NodeMutation::Destroyed);
+            .insert(key.to_owned(), NodeMutation::Destroyed);
     }
     let editor_state = editor.get_editor_state();
     for (key, node) in editor_state.0.node_map.borrow().iter() {
         if node.element().is_some() {
             element_types.insert(node.get_type().to_owned());
-            dirty_elements.insert(key.clone(), true);
+            dirty_elements.insert(key.to_owned(), true);
         } else {
-            dirty_leaves.insert(key.clone());
+            dirty_leaves.insert(key.to_owned());
         }
         let mutation = if prev_map.contains_key(key) {
             NodeMutation::Updated
@@ -1263,7 +1263,7 @@ fn compute_update_listener_payload(editor: &Editor, prev_editor_state: &EditorSt
         mutated_nodes
             .entry(node.get_type().to_owned())
             .or_default()
-            .insert(key.clone(), mutation);
+            .insert(key.to_owned(), mutation);
     }
     // A corner case of element tracking: dirtyElements has the keys of
     // destroyed elements.

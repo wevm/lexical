@@ -860,11 +860,19 @@ impl NodeRef {
 
     /// `getChildren()`; empty for a node that isn't an element.
     pub fn get_children(&self) -> Vec<NodeRef> {
-        let mut children = Vec::with_capacity(self.get_children_size());
-        let mut child = self.get_first_child();
-        while let Some(c) = child {
-            child = c.get_next_sibling();
-            children.push(c);
+        // One borrow of the node map for the whole walk: the root of a long
+        // document is walked on every update (`$normalizeShadowRootChildren`).
+        let node = self.get_latest();
+        let Some(element) = node.element() else {
+            return Vec::new();
+        };
+        let editor_state = get_active_editor_state();
+        let node_map = editor_state.0.node_map.borrow();
+        let mut children = Vec::with_capacity(element.size);
+        let mut child = element.first.as_deref();
+        while let Some(key) = child {
+            children.push(NodeRef::new(key));
+            child = sibling(&node_map, key, true);
         }
         children
     }

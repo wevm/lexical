@@ -961,7 +961,7 @@ pub fn create_editor(args: CreateEditorArgs) -> Editor {
         input_state: RefCell::new(crate::events::InputState::default()),
         key_down_shortcuts: RefCell::new(None),
         root_text_cache: RefCell::new(None),
-        key_to_dom_map: RefCell::new(HashMap::new()),
+        key_to_dom_map: RefCell::default(),
         decorators: RefCell::new(Decorators::default()),
         pending_decorators: RefCell::new(None),
         decorator_listeners: RefCell::new(Vec::new()),

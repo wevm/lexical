@@ -1172,10 +1172,10 @@ mod extension {
                     .iter()
                     .filter(|(key, node)| {
                         prev_nodes
-                            .get(key.as_str())
+                            .get(key)
                             .is_none_or(|prev| !Rc::ptr_eq(prev, node))
                     })
-                    .map(|(key, _)| key.clone())
+                    .map(|(key, _)| key.to_owned())
                     .collect()
             };
             read_editor_state(Some(editor), next_state, || {

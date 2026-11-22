@@ -10,10 +10,12 @@
 //! `reconcileTextStyle`). Each node's keyed DOM is a [`ReconciledNode`],
 //! which keeps what JS caches on that DOM between commits for the model: an
 //! element's first text descendant (`__lexicalFirstTextKey`) and the slot
-//! container a slot value is mounted in. Nothing is rendered, so the text
-//! and direction caches aren't kept, except for what the root's text cache
-//! (`__cachedText`) does to the commit: a stale one marks the root dirty
-//! (`commit_pending_updates`).
+//! container a slot value is mounted in, and an element's text
+//! (`__lexicalTextContent`), so the root's text (`__cachedText`), which a
+//! commit compares (a stale one marks the root dirty, in
+//! `commit_pending_updates`), is computed again only for the elements the
+//! update dirtied ([`root_text_content`]). Nothing is rendered, so the
+//! direction caches aren't kept.
 //!
 //! The children fast paths of `$reconcileChildren` (a dirty suffix of four
 //! or more children) only save DOM work: they reach the same nodes in the
@@ -27,7 +29,7 @@ use crate::editor_state::{EditorState, NodeMap};
 use crate::json::array_index;
 use crate::node::{LexicalNode, NodeKey, NodeRef};
 use crate::nodes::element::is_root_or_shadow_root;
-use crate::ordered::{OrderedMap, OrderedSet};
+use crate::ordered::{KeyMap, OrderedMap, OrderedSet};
 use crate::slot::{SlotMap, slot_host_key_field, slots_field};
 use std::any::Any;
 use std::cell::{Cell, RefCell};
@@ -118,7 +120,7 @@ pub(crate) fn garbage_collect_detached_decorators(
             .as_ref()
             .unwrap_or(&current)
             .keys()
-            .filter(|key| !node_map.contains_key(*key))
+            .filter(|key| !node_map.contains_key(key))
             .map(str::to_owned)
             .collect()
     };
@@ -143,6 +145,9 @@ pub(crate) struct ReconciledNode {
     /// The slot container the DOM is mounted in (a slot value's
     /// `parentElement`), by its id; `None` in a parent's children.
     container: Cell<Option<u64>>,
+    /// `__lexicalTextContent` (elements only): the element's text as of the
+    /// last commit that computed it, `None` once an update dirties it.
+    text_content: RefCell<Option<String>>,
 }
 
 #[cfg(all(test, feature = "extension", feature = "rich-text", feature = "link"))]
@@ -154,7 +159,7 @@ impl ReconciledNode {
 }
 
 /// `editor._keyToDOMMap`.
-pub(crate) type KeyToDomMap = HashMap<NodeKey, Rc<ReconciledNode>>;
+pub(crate) type KeyToDomMap = KeyMap<NodeKey, Rc<ReconciledNode>>;
 
 /// The `DOMSlot` `$createNode` inserts a node into: a slot container, by
 /// id, or (`None`) its parent's children.
@@ -334,12 +339,14 @@ impl Reconciler<'_> {
     }
 
     /// `$createChildrenArray(element, nodeMap)`.
-    fn children(node: &dyn LexicalNode, node_map: &NodeMap) -> Vec<NodeKey> {
+    fn children<'m>(node: &dyn LexicalNode, node_map: &'m NodeMap) -> Vec<&'m str> {
         let mut children = Vec::new();
-        let mut key = node.element().and_then(|e| e.first.clone());
+        let mut key = node_map
+            .get(node.get_key())
+            .and_then(|n| n.element()?.first.as_deref());
         while let Some(k) = key {
-            key = node_map.get(&k).and_then(|n| n.base().next.clone());
             children.push(k);
+            key = node_map.get(k).and_then(|n| n.base().next.as_deref());
         }
         children
     }
@@ -375,7 +382,7 @@ impl Reconciler<'_> {
     }
 
     /// `$destroyChildren(children, startIndex, endIndex, dom)`.
-    fn destroy_children(&mut self, children: &[NodeKey]) {
+    fn destroy_children(&mut self, children: &[&str]) {
         for child in children {
             self.destroy_node(child);
         }
@@ -436,7 +443,7 @@ impl Reconciler<'_> {
 
     /// `$createChildren(children, element, startIndex, endIndex, slot)`,
     /// for the keys of `element_key`'s children in `children`.
-    fn create_children(&mut self, children: &[NodeKey], element_key: &str) {
+    fn create_children(&mut self, children: &[&str], element_key: &str) {
         let outer_saved = self.begin_capture_guard();
         self.sub_tree_text_format = None;
         self.sub_tree_text_style = None;
@@ -629,8 +636,8 @@ impl Reconciler<'_> {
     fn reconcile_node_children(
         &mut self,
         next_element_key: &str,
-        prev_children: &[NodeKey],
-        next_children: &[NodeKey],
+        prev_children: &[&str],
+        next_children: &[&str],
     ) {
         let mut prev_children_set: Option<HashSet<&str>> = None;
         let mut next_children_set: Option<HashSet<&str>> = None;
@@ -644,21 +651,13 @@ impl Reconciler<'_> {
                 prev_index += 1;
                 next_index += 1;
             } else {
-                let next_set = next_children_set.get_or_insert_with(|| {
-                    next_children[next_index..]
-                        .iter()
-                        .map(String::as_str)
-                        .collect()
-                });
+                let next_set = next_children_set
+                    .get_or_insert_with(|| next_children[next_index..].iter().copied().collect());
                 let prev_set = match &mut prev_children_set {
-                    None => prev_children_set.insert(
-                        prev_children[prev_index..]
-                            .iter()
-                            .map(String::as_str)
-                            .collect(),
-                    ),
+                    None => prev_children_set
+                        .insert(prev_children[prev_index..].iter().copied().collect()),
                     Some(set) => {
-                        if !set.contains(prev_key.as_str()) {
+                        if !set.contains(*prev_key) {
                             // Already moved.
                             prev_index += 1;
                             self.end_capture_guard(saved);
@@ -667,16 +666,16 @@ impl Reconciler<'_> {
                         set
                     }
                 };
-                if !next_set.contains(prev_key.as_str()) {
+                if !next_set.contains(*prev_key) {
                     // Remove prev.
-                    prev_set.remove(prev_key.as_str());
+                    prev_set.remove(*prev_key);
                     prev_index += 1;
                     self.get_prev_element_by_key_or_throw(prev_key);
                     self.destroy_node(prev_key);
                     self.end_capture_guard(saved);
                     continue;
                 }
-                if !prev_set.contains(next_key.as_str()) {
+                if !prev_set.contains(*next_key) {
                     // Create next.
                     next_index += 1;
                     self.create_node(next_key, Some(Slot { container: None }));
@@ -814,6 +813,62 @@ pub(crate) fn reconcile_root(
         }
     }
     mutated_nodes
+}
+
+thread_local! {
+    /// The editor whose root text [`root_text_content`] is computing.
+    static TEXT_CONTENT_EDITOR: RefCell<Option<Editor>> = const { RefCell::new(None) };
+}
+
+/// The root's text in the pending state, after [`reconcile_root`]: what
+/// `$reconcileRoot` leaves in `subTreeTextContent`, from the text each
+/// element cached on its keyed DOM (`__lexicalTextContent`) when the update
+/// didn't dirty it, so a commit doesn't walk the whole document. The
+/// elements' own [`get_text_content`](LexicalNode::get_text_content) still
+/// make the text, so it is `$getRoot().getTextContent()`.
+pub(crate) fn root_text_content(editor: &Editor) -> String {
+    {
+        let dirty = editor.0.dirty.borrow();
+        let map = editor.0.key_to_dom_map.borrow();
+        if dirty.dirty_type == DirtyType::FullReconcile {
+            for dom in map.values() {
+                dom.text_content.take();
+            }
+        } else {
+            // A change marks every ancestor of the changed node dirty.
+            for (key, _) in dirty.elements.iter() {
+                if let Some(dom) = map.get(key) {
+                    dom.text_content.take();
+                }
+            }
+        }
+    }
+    struct Restore(Option<Editor>);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            TEXT_CONTENT_EDITOR.with(|e| *e.borrow_mut() = self.0.take());
+        }
+    }
+    let _restore = Restore(TEXT_CONTENT_EDITOR.with(|e| e.replace(Some(editor.clone()))));
+    crate::lexical_utils::get_root().get_text_content()
+}
+
+/// `ElementNode.getTextContent()` of the element `key`, made by `compute`,
+/// or its keyed DOM's cached text while [`root_text_content`] runs.
+pub(crate) fn cached_element_text(key: &str, compute: impl FnOnce() -> String) -> String {
+    let Some(editor) = TEXT_CONTENT_EDITOR.with(|e| e.borrow().clone()) else {
+        return compute();
+    };
+    let dom = editor.0.key_to_dom_map.borrow().get(key).cloned();
+    let Some(dom) = dom else {
+        return compute();
+    };
+    if let Some(text) = dom.text_content.borrow().as_ref() {
+        return text.clone();
+    }
+    let text = compute();
+    *dom.text_content.borrow_mut() = Some(text.clone());
+    text
 }
 
 /// `resetEditor`'s `keyNodeMap.clear()` and, with a root element,

@@ -98,17 +98,19 @@ pub(crate) fn is_root_or_shadow_root(node: &dyn LexicalNode) -> bool {
 /// `ElementNode.getTextContent()`: the slots' text first, then the
 /// children's.
 pub fn get_text_content(node: &dyn LexicalNode) -> String {
-    let children = NodeRef::new(node.get_key()).get_children();
-    let length = children.len();
-    let mut text_content = crate::slot::get_slots_text_content(node);
-    for (i, child) in children.iter().enumerate() {
-        let child = child.get_latest();
-        text_content.push_str(&child.get_text_content());
-        if child.element().is_some() && i != length - 1 && !child.is_inline() {
-            text_content.push_str(DOUBLE_LINE_BREAK);
+    crate::reconciler::cached_element_text(node.get_key(), || {
+        let children = NodeRef::new(node.get_key()).get_children();
+        let length = children.len();
+        let mut text_content = crate::slot::get_slots_text_content(node);
+        for (i, child) in children.iter().enumerate() {
+            let child = child.get_latest();
+            text_content.push_str(&child.get_text_content());
+            if child.element().is_some() && i != length - 1 && !child.is_inline() {
+                text_content.push_str(DOUBLE_LINE_BREAK);
+            }
         }
-    }
-    text_content
+        text_content
+    })
 }
 
 /// `ElementNode.getTextContentSize()`: the slots' size first, then the

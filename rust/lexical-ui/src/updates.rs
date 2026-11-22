@@ -682,8 +682,12 @@ fn commit_pending_updates_impl(editor: &Editor) -> Result<(), LexicalError> {
                 },
                 || {
                     with_updating(editor, || {
-                        let mutated = crate::reconciler::reconcile_root(&current, &pending, editor);
-                        (mutated, crate::reconciler::root_text_content(editor))
+                        let (mutated, text_splices) =
+                            crate::reconciler::reconcile_root(&current, &pending, editor);
+                        (
+                            mutated,
+                            crate::reconciler::root_text_content(editor, text_splices),
+                        )
                     })
                 },
             );

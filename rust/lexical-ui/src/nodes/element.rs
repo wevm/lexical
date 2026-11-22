@@ -98,7 +98,21 @@ pub(crate) fn is_root_or_shadow_root(node: &dyn LexicalNode) -> bool {
 /// `ElementNode.getTextContent()`: the slots' text first, then the
 /// children's.
 pub fn get_text_content(node: &dyn LexicalNode) -> String {
-    crate::reconciler::cached_element_text(node.get_key(), || {
+    crate::reconciler::cached_element_text(node.get_key(), |splice| {
+        if let Some((mut text_content, suffix_start)) = splice {
+            // The text before the suffix is the cached one, which ends in
+            // the separator after the last child before it.
+            let mut child = Some(NodeRef::new(suffix_start));
+            while let Some(c) = child {
+                let latest = c.get_latest();
+                text_content.push_str(&latest.get_text_content());
+                child = c.get_next_sibling();
+                if latest.element().is_some() && child.is_some() && !latest.is_inline() {
+                    text_content.push_str(DOUBLE_LINE_BREAK);
+                }
+            }
+            return text_content;
+        }
         let children = NodeRef::new(node.get_key()).get_children();
         let length = children.len();
         let mut text_content = crate::slot::get_slots_text_content(node);

@@ -17,11 +17,14 @@
 //! update dirtied ([`root_text_content`]). Nothing is rendered, so the
 //! direction caches aren't kept.
 //!
-//! The children fast paths of `$reconcileChildren` (a dirty suffix of four
-//! or more children) only save DOM work: they reach the same nodes in the
-//! same order as the general walk and recover the same first text
-//! (`$resolveSuffixPathFormat`), so this ports the general walk, as Swift
-//! does.
+//! `$reconcileChildren`'s children fast paths are ported: for an element of
+//! four or more children whose size changed by at most one, a dirty suffix
+//! of children is reconciled alone (`$tryReconcileSuffixWithSizeDelta` and
+//! the same-size suffix), recovering the first text with
+//! `$resolveSuffixPathFormat`, and other same-size edits walk the children
+//! without reconciling the clean ones. Where JS splices the suffix's text
+//! into the parent's cached text, a suffix path records the parent's text
+//! before the suffix ([`TextSplice`]), which [`root_text_content`] completes.
 
 use crate::Editor;
 use crate::editor::{DirtyType, NodeMutation};
@@ -175,6 +178,21 @@ struct CaptureGuard {
     style: Option<String>,
 }
 
+/// `MIN_FAST_PATH_CHILDREN`: the fewest children the children fast paths
+/// of `$reconcileChildren` engage for.
+const MIN_FAST_PATH_CHILDREN: usize = 4;
+
+/// A suffix fast path's half of JS's text splice: the element's cached text
+/// without its old dirty suffix, and the first key of the new suffix, whose
+/// text [`root_text_content`] appends.
+pub(crate) struct TextSplice {
+    prefix: String,
+    suffix_start: NodeKey,
+}
+
+/// The splices of a commit, by element key.
+pub(crate) type TextSplices = KeyMap<NodeKey, TextSplice>;
+
 /// What `reconcileTextFormat` and `reconcileTextStyle` set on an element.
 struct TextFieldsWrite {
     key: NodeKey,
@@ -192,6 +210,12 @@ struct Reconciler<'a> {
     dirty_leaves: &'a OrderedSet,
     prev_node_map: &'a NodeMap,
     next_node_map: &'a NodeMap,
+    /// `activePrevEditorState`, which `$prevSuffixTextSize` reads in.
+    prev_editor_state: &'a EditorState,
+    /// `activeDirtyChildrenByParent`, made when a fast path first asks.
+    dirty_children_by_parent: Option<HashMap<&'a str, HashSet<&'a str>>>,
+    /// The text splices the suffix fast paths recorded.
+    text_splices: TextSplices,
     /// Whether any mutation listener is registered (`mutationListeners.size`).
     listening: bool,
     mutated_nodes: MutatedNodes,
@@ -213,7 +237,7 @@ struct Reconciler<'a> {
     text_fields_writes: Vec<TextFieldsWrite>,
 }
 
-impl Reconciler<'_> {
+impl<'a> Reconciler<'a> {
     /// `setMutatedNode(mutatedNodes, registeredNodes, mutationListeners,
     /// node, mutation)`.
     fn set_mutated_node(&mut self, node: &dyn LexicalNode, mutation: NodeMutation) {
@@ -607,6 +631,9 @@ impl Reconciler<'_> {
             .unwrap_or_else(|| {
                 panic!("$reconcileChildren: Element with key {next_key} missing from keyToDOMMap")
             });
+        if self.reconcile_children_fast_path(prev, next, &cache_dom) {
+            return;
+        }
         let prev_children = Self::children(prev, self.prev_node_map);
         let next_children = Self::children(next, self.next_node_map);
         if prev_children.len() == 1 && next_children.len() == 1 {
@@ -629,6 +656,327 @@ impl Reconciler<'_> {
             self.reconcile_node_children(next_key, &prev_children, &next_children);
         }
         *cache_dom.first_text_key.borrow_mut() = Some(self.sub_tree_first_text_key.clone());
+    }
+
+    /// The children fast paths of `$reconcileChildren`: true when one
+    /// reconciled the children, false to take the general walk.
+    fn reconcile_children_fast_path(
+        &mut self,
+        prev: &dyn LexicalNode,
+        next: &dyn LexicalNode,
+        cache_dom: &ReconciledNode,
+    ) -> bool {
+        let (Some(prev_element), Some(next_element)) = (prev.element(), next.element()) else {
+            return false;
+        };
+        let prev_size = prev_element.size;
+        let size_delta = next_element.size as isize - prev_size as isize;
+        // A full reconcile swaps node maps without dirtying what changed. A
+        // same-size parent cloned this update may have a stale `__last`
+        // (`_cloneNotNeeded`); a ±1 parent is always cloned.
+        let cloned = !self
+            .prev_node_map
+            .get(prev.get_key())
+            .zip(self.next_node_map.get(next.get_key()))
+            .is_some_and(|(p, n)| Rc::ptr_eq(p, n));
+        if self.treat_all_nodes_as_dirty
+            || size_delta.abs() > 1
+            || prev_size < MIN_FAST_PATH_CHILDREN
+            || prev_element.first != next_element.first
+            || (size_delta == 0 && cloned)
+        {
+            return false;
+        }
+        // The cached text is the element's own concatenation of its
+        // children: it is never filled for an element whose text is custom
+        // (`$hasCustomTextContent`).
+        let has_cached_text = cache_dom.text_content.borrow().is_some();
+        let next_key = next.get_key();
+        let dirty_children = self.dirty_children(next_key);
+        if has_cached_text
+            && let Some(dirty_children) = &dirty_children
+            && let Some(suffix_start) = self.suffix_start_if_contiguous(next, dirty_children)
+        {
+            let k = dirty_children.len();
+            let prev_suffix = if size_delta == 0 {
+                // Same keys in the same order: the prev suffix is this one.
+                let suffix = self.suffix_keys(self.next_node_map, suffix_start, k);
+                for &key in &suffix {
+                    let saved = self.begin_capture_guard();
+                    self.reconcile_node(key);
+                    self.capture_first_text(key);
+                    self.end_capture_guard(saved);
+                }
+                Some(suffix)
+            } else {
+                self.try_reconcile_suffix_with_size_delta(prev, suffix_start, k, size_delta)
+            };
+            if let Some(prev_suffix) = prev_suffix {
+                self.record_text_splice(next, cache_dom, &prev_suffix, suffix_start);
+                self.resolve_suffix_path_format(next_key, cache_dom, dirty_children);
+                return true;
+            }
+        }
+        if size_delta != 0 {
+            return false;
+        }
+        // The structurally clean walk: only dirty children are reconciled;
+        // a clean element gives its cached first text.
+        let mut key = next_element.first.as_deref();
+        while let Some(child) = key {
+            let Some(node) = self.next_node_map.get(child) else {
+                break;
+            };
+            let is_dirty = self.dirty_leaves.contains(child) || self.dirty_elements.contains(child);
+            let saved = self.begin_capture_guard();
+            if is_dirty {
+                self.reconcile_node(child);
+            } else if node.element().is_some() {
+                let dom = self.prev_element_by_key(child).unwrap_or_else(|| {
+                    panic!("reconcileChildren structurally-clean walk: missing DOM for {child}")
+                });
+                self.bubble_child_first_text(&dom);
+            }
+            self.capture_first_text(child);
+            self.end_capture_guard(saved);
+            key = node.base().next.as_deref();
+        }
+        *cache_dom.first_text_key.borrow_mut() = Some(self.sub_tree_first_text_key.clone());
+        true
+    }
+
+    /// `activeDirtyChildrenByParent.get(key)` (`$buildDirtyChildrenByParent`):
+    /// the dirty elements and leaves whose parent is `key`.
+    fn dirty_children(&mut self, key: &str) -> Option<HashSet<&'a str>> {
+        let next_node_map = self.next_node_map;
+        let (elements, leaves) = (self.dirty_elements, self.dirty_leaves);
+        let map = self.dirty_children_by_parent.get_or_insert_with(|| {
+            let mut map: HashMap<&'a str, HashSet<&'a str>> = HashMap::new();
+            for key in elements.iter().map(|(k, _)| k).chain(leaves.iter()) {
+                if let Some(node) = next_node_map.get(key)
+                    && let Some(parent) = node.base().parent.as_deref()
+                {
+                    map.entry(parent).or_default().insert(key);
+                }
+            }
+            map
+        });
+        map.get(key).cloned()
+    }
+
+    /// The `count` keys from `start` on, by `__next` in `node_map`.
+    fn suffix_keys(&self, node_map: &'a NodeMap, start: &'a str, count: usize) -> Vec<&'a str> {
+        let mut keys = Vec::with_capacity(count);
+        let mut key = Some(start);
+        while let Some(k) = key.filter(|_| keys.len() < count) {
+            keys.push(k);
+            key = node_map.get(k).and_then(|n| n.base().next.as_deref());
+        }
+        keys
+    }
+
+    /// `$suffixStartIfContiguous(parent, dirty)`: the first of the dirty
+    /// children when they are the last of `parent`'s, and not all of them.
+    fn suffix_start_if_contiguous(
+        &self,
+        parent: &dyn LexicalNode,
+        dirty: &HashSet<&'a str>,
+    ) -> Option<&'a str> {
+        let k = dirty.len();
+        let element = self.next_node_map.get(parent.get_key())?.element()?;
+        if k == 0 || k >= element.size {
+            return None;
+        }
+        let mut cur = element.last.as_deref();
+        let mut suffix_start = None;
+        let mut i = 0;
+        while let Some(key) = cur.filter(|_| i < k) {
+            if !dirty.contains(key) {
+                return None;
+            }
+            suffix_start = Some(key);
+            cur = self.next_node_map.get(key)?.base().prev.as_deref();
+            i += 1;
+        }
+        if i != k || cur.is_some_and(|key| dirty.contains(key)) {
+            return None;
+        }
+        suffix_start
+    }
+
+    /// `$tryReconcileSuffixWithSizeDelta(...)`: a ±1 change of the children
+    /// confined to the dirty suffix (an append or a split at the end, K = 2;
+    /// a merge at the end, K = 1) reconciles only the suffix. Gives the
+    /// previous suffix's keys, or `None` to take the general walk.
+    fn try_reconcile_suffix_with_size_delta(
+        &mut self,
+        prev: &dyn LexicalNode,
+        suffix_start: &'a str,
+        k: usize,
+        size_delta: isize,
+    ) -> Option<Vec<&'a str>> {
+        if k != if size_delta == 1 { 2 } else { 1 } {
+            return None;
+        }
+        let k_prime = (k as isize - size_delta) as usize;
+        let prev_node_map = self.prev_node_map;
+        let mut prev_suffix_start = prev_node_map
+            .get(prev.get_key())?
+            .element()?
+            .last
+            .as_deref();
+        for _ in 0..k_prime - 1 {
+            prev_suffix_start = prev_node_map
+                .get(prev_suffix_start?)?
+                .base()
+                .prev
+                .as_deref();
+        }
+        let prev_suffix_start = prev_suffix_start?;
+        let next_start = self.next_node_map.get(suffix_start)?;
+        let prev_start = prev_node_map.get(prev_suffix_start)?;
+        if next_start.base().prev != prev_start.base().prev {
+            return None;
+        }
+        let next_suffix = self.suffix_keys(self.next_node_map, suffix_start, k);
+        let prev_suffix = self.suffix_keys(prev_node_map, prev_suffix_start, k_prime);
+        if next_suffix.len() != k || prev_suffix.len() != k_prime {
+            return None;
+        }
+        enum Op<'k> {
+            Reconcile(&'k str),
+            Create(&'k str),
+            Destroy(&'k str),
+        }
+        let mut ops = Vec::new();
+        let (mut pi, mut ni) = (0, 0);
+        while pi < k_prime && ni < k {
+            if next_suffix[ni] == prev_suffix[pi] {
+                ops.push(Op::Reconcile(next_suffix[ni]));
+                pi += 1;
+                ni += 1;
+            } else if !next_suffix.contains(&prev_suffix[pi]) {
+                ops.push(Op::Destroy(prev_suffix[pi]));
+                pi += 1;
+            } else if !prev_suffix.contains(&next_suffix[ni]) {
+                ops.push(Op::Create(next_suffix[ni]));
+                ni += 1;
+            } else {
+                return None;
+            }
+        }
+        ops.extend(prev_suffix[pi..].iter().map(|&key| Op::Destroy(key)));
+        ops.extend(next_suffix[ni..].iter().map(|&key| Op::Create(key)));
+        for op in ops {
+            let saved = self.begin_capture_guard();
+            match op {
+                Op::Reconcile(key) => {
+                    self.reconcile_node(key);
+                    self.capture_first_text(key);
+                }
+                Op::Destroy(key) => self.destroy_node(key),
+                Op::Create(key) => {
+                    self.create_node(key, Some(Slot { container: None }));
+                    self.capture_first_text(key);
+                }
+            }
+            self.end_capture_guard(saved);
+        }
+        Some(prev_suffix)
+    }
+
+    /// `$resolveSuffixPathFormat(nextElement, dom, dirtyChildren)`: the
+    /// first text's format and style come from the clean prefix when it has
+    /// the element's cached first text; otherwise the suffix's stand, and
+    /// become the cache.
+    fn resolve_suffix_path_format(
+        &mut self,
+        parent_key: &str,
+        dom: &ReconciledNode,
+        dirty_children: &HashSet<&str>,
+    ) {
+        let cached_first_text_key = dom.first_text_key.borrow().clone().flatten();
+        if let Some(cached_first_text_key) = cached_first_text_key {
+            let mut ancestor = Some(cached_first_text_key.as_str());
+            while let Some(key) = ancestor {
+                let Some(node) = self.next_node_map.get(key) else {
+                    ancestor = None;
+                    break;
+                };
+                if node.base().parent.as_deref() == Some(parent_key) {
+                    break;
+                }
+                ancestor = node.base().parent.as_deref();
+            }
+            if ancestor.is_some_and(|key| !dirty_children.contains(key))
+                && let Some(text) = self
+                    .next_node_map
+                    .get(&cached_first_text_key)
+                    .and_then(|n| n.text())
+            {
+                self.sub_tree_text_format = Some(text.get_format());
+                self.sub_tree_text_style = Some(text.get_style().to_owned());
+                return;
+            }
+        }
+        *dom.first_text_key.borrow_mut() = Some(self.sub_tree_first_text_key.clone());
+    }
+
+    /// The text half of a suffix path (`$prevSuffixTextSize` and the
+    /// splice): the element's cached text without its previous suffix's,
+    /// read in the previous state. Nothing is recorded, so the text is made
+    /// again in full, for an element with slots, a previous suffix child
+    /// whose text isn't known from its cache or itself, or a cached text
+    /// that doesn't end in the previous suffix's.
+    fn record_text_splice(
+        &mut self,
+        next: &dyn LexicalNode,
+        cache_dom: &ReconciledNode,
+        prev_suffix: &[&str],
+        suffix_start: &str,
+    ) {
+        if Self::read_slots(next).len() > 0 {
+            return;
+        }
+        let Some(cached) = cache_dom.text_content.borrow().clone() else {
+            return;
+        };
+        let prev_node_map = self.prev_node_map;
+        let suffix_text =
+            crate::updates::read_editor_state(Some(self.editor), self.prev_editor_state, || {
+                let mut text = String::new();
+                for (i, &key) in prev_suffix.iter().enumerate() {
+                    let node = prev_node_map.get(key)?;
+                    if node.element().is_some() {
+                        text.push_str(
+                            self.prev_element_by_key(key)?
+                                .text_content
+                                .borrow()
+                                .as_ref()?,
+                        );
+                        if i + 1 < prev_suffix.len() && !node.is_inline() {
+                            text.push_str(crate::constants::DOUBLE_LINE_BREAK);
+                        }
+                    } else if Self::read_slots(&**node).len() > 0 {
+                        return None;
+                    } else {
+                        text.push_str(&node.get_text_content());
+                    }
+                }
+                Some(text)
+            });
+        let Some(prefix) =
+            suffix_text.and_then(|suffix| cached.strip_suffix(&suffix[..]).map(str::to_owned))
+        else {
+            return;
+        };
+        self.text_splices.insert(
+            next.get_key().to_owned(),
+            TextSplice {
+                prefix,
+                suffix_start: suffix_start.to_owned(),
+            },
+        );
     }
 
     /// `$reconcileNodeChildren(nextElement, prevChildren, nextChildren,
@@ -770,9 +1118,9 @@ pub(crate) fn reconcile_root(
     prev_editor_state: &EditorState,
     next_editor_state: &EditorState,
     editor: &Editor,
-) -> MutatedNodes {
+) -> (MutatedNodes, TextSplices) {
     let key_to_dom_map = std::mem::take(&mut *editor.0.key_to_dom_map.borrow_mut());
-    let (mutated_nodes, key_to_dom_map, writes) = {
+    let (mutated_nodes, key_to_dom_map, writes, text_splices) = {
         let dirty = editor.0.dirty.borrow();
         let prev_node_map = prev_editor_state.0.node_map.borrow();
         let next_node_map = next_editor_state.0.node_map.borrow();
@@ -784,6 +1132,9 @@ pub(crate) fn reconcile_root(
             dirty_leaves: &dirty.leaves,
             prev_node_map: &prev_node_map,
             next_node_map: &next_node_map,
+            prev_editor_state,
+            dirty_children_by_parent: None,
+            text_splices: TextSplices::default(),
             listening: editor.has_mutation_listeners(),
             mutated_nodes: Vec::new(),
             key_to_dom_map,
@@ -798,6 +1149,7 @@ pub(crate) fn reconcile_root(
             reconciler.mutated_nodes,
             reconciler.key_to_dom_map,
             reconciler.text_fields_writes,
+            reconciler.text_splices,
         )
     };
     *editor.0.key_to_dom_map.borrow_mut() = key_to_dom_map;
@@ -812,12 +1164,13 @@ pub(crate) fn reconcile_root(
             element.set_text_style(&style);
         }
     }
-    mutated_nodes
+    (mutated_nodes, text_splices)
 }
 
 thread_local! {
-    /// The editor whose root text [`root_text_content`] is computing.
-    static TEXT_CONTENT_EDITOR: RefCell<Option<Editor>> = const { RefCell::new(None) };
+    /// The editor whose root text [`root_text_content`] is computing, with
+    /// the commit's text splices.
+    static TEXT_CONTENT_EDITOR: RefCell<Option<(Editor, TextSplices)>> = const { RefCell::new(None) };
 }
 
 /// The root's text in the pending state, after [`reconcile_root`]: what
@@ -826,7 +1179,7 @@ thread_local! {
 /// didn't dirty it, so a commit doesn't walk the whole document. The
 /// elements' own [`get_text_content`](LexicalNode::get_text_content) still
 /// make the text, so it is `$getRoot().getTextContent()`.
-pub(crate) fn root_text_content(editor: &Editor) -> String {
+pub(crate) fn root_text_content(editor: &Editor, text_splices: TextSplices) -> String {
     {
         let dirty = editor.0.dirty.borrow();
         let map = editor.0.key_to_dom_map.borrow();
@@ -843,30 +1196,43 @@ pub(crate) fn root_text_content(editor: &Editor) -> String {
             }
         }
     }
-    struct Restore(Option<Editor>);
+    struct Restore(Option<(Editor, TextSplices)>);
     impl Drop for Restore {
         fn drop(&mut self) {
             TEXT_CONTENT_EDITOR.with(|e| *e.borrow_mut() = self.0.take());
         }
     }
-    let _restore = Restore(TEXT_CONTENT_EDITOR.with(|e| e.replace(Some(editor.clone()))));
+    let _restore =
+        Restore(TEXT_CONTENT_EDITOR.with(|e| e.replace(Some((editor.clone(), text_splices)))));
     crate::lexical_utils::get_root().get_text_content()
 }
 
 /// `ElementNode.getTextContent()` of the element `key`, made by `compute`,
-/// or its keyed DOM's cached text while [`root_text_content`] runs.
-pub(crate) fn cached_element_text(key: &str, compute: impl FnOnce() -> String) -> String {
-    let Some(editor) = TEXT_CONTENT_EDITOR.with(|e| e.borrow().clone()) else {
-        return compute();
-    };
-    let dom = editor.0.key_to_dom_map.borrow().get(key).cloned();
-    let Some(dom) = dom else {
-        return compute();
+/// or, while [`root_text_content`] runs, its keyed DOM's cached text. A
+/// suffix fast path's splice gives `compute` the text before the suffix and
+/// the suffix's first key, to append the suffix's text to.
+pub(crate) fn cached_element_text(
+    key: &str,
+    compute: impl FnOnce(Option<(String, &str)>) -> String,
+) -> String {
+    let Some(dom) = TEXT_CONTENT_EDITOR.with(|e| {
+        let e = e.borrow();
+        let (editor, _) = e.as_ref()?;
+        editor.0.key_to_dom_map.borrow().get(key).cloned()
+    }) else {
+        return compute(None);
     };
     if let Some(text) = dom.text_content.borrow().as_ref() {
         return text.clone();
     }
-    let text = compute();
+    let splice = TEXT_CONTENT_EDITOR.with(|e| {
+        let mut e = e.borrow_mut();
+        e.as_mut().and_then(|(_, splices)| splices.remove(key))
+    });
+    let text = match splice {
+        Some(splice) => compute(Some((splice.prefix, &splice.suffix_start))),
+        None => compute(None),
+    };
     *dom.text_content.borrow_mut() = Some(text.clone());
     text
 }

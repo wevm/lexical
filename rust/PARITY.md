@@ -554,9 +554,12 @@ touches:
   DOM `editor._keyToDOMMap` holds) and `RootNode.__cachedText` itself (only
   its effect on the dirty root is ported; `getTextContent` walks the tree,
   except that the commit computing the root's text reuses each clean
-  element's text, which its keyed DOM caches as `__lexicalTextContent`).
-  The children fast paths of `$reconcileChildren` aren't ported, so a dirty
-  element's children are all walked. With a root element an update
+  element's text, which its keyed DOM caches as `__lexicalTextContent`, and
+  splices a dirty suffix's text in where a children fast path of
+  `$reconcileChildren` reconciled only that suffix). Those fast paths are
+  ported for the model; the cached text they splice is checked to end in
+  the previous suffix's text, and is made again in full otherwise or for
+  an element with slots. With a root element an update
   starts with the last selection, as in a headless editor and in Swift:
   JS reads the DOM selection (`$internalCreateSelection`), which an app's
   view keeps in step (in Node JS has none, so the vectors select in each

@@ -23,7 +23,12 @@ package struct TableGridCell: Equatable {
   package var headerState: Int
   package var background: TextKitColor?
 
-  package var isHeader: Bool { headerState != 0 }
+  /// Whether the cell is a header cell. Setting it to `true` on a cell that
+  /// heads nothing makes it head its column (`ROW`).
+  package var isHeader: Bool {
+    get { headerState != 0 }
+    set { headerState = newValue ? (headerState == 0 ? 1 : headerState) : 0 }
+  }
   /// Whether the cell heads its column (it is in a header row).
   package var headsColumn: Bool { headerState & 1 != 0 }
   /// Whether the cell heads its row (it is in a header column).

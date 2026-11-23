@@ -4,6 +4,15 @@ Each release names the upstream Lexical version it conforms to. Entries come
 from the changesets in `.changeset/` (see its README), and the release
 workflow publishes the section headed `## <swift/VERSION>`.
 
+## 0.2.9
+
+Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).
+
+### Patch Changes
+
+- Added table selection by touch to `LexicalUITextView`: a drag of a cell's selection handle past the cell's edge selected the cells between as a `TableSelection`, as a drag across cells does on macOS and the web. A table selection showed its own handles at its corners, which grew or shrank it, and an edit menu with Cut, Copy and Paste for the selected cells. A cell's text view also took touches in the cell's padding, so a tap there put the caret in the cell and UIKit's handle under a cell's last line could be dragged.
+- Made VoiceOver read an iOS table cell by cell: the grid in `LexicalUITextView` became a `UIAccessibilityContainerDataTable` whose elements are the cells' text views at their rows and columns (each `LexicalUITextView` a `UIAccessibilityContainerDataTableCell`), with a header row's or column's cells as the headers of the cells in their column or row. The table's character read only the table's size, where it had read every cell's text in one label.
+
 ## 0.2.8
 
 Conforms to upstream Lexical **0.53.0** (`UPSTREAM_VERSION`).

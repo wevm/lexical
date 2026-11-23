@@ -96,10 +96,11 @@ Each is listed in the repository's `swift/parity/deviations.json` or
   the views draw each table as a grid of cell text views. Where JS measures
   `getBoundingClientRect` for up and down, the views answer through
   `SelectionLayout`. On macOS a drag or Shift-click across cells makes a
-  `TableSelection`; on iOS there are no table-selection handles yet, so a
-  drag selects within one cell. The sticky horizontal scrollbar, column
-  resizing by drag and frozen rows and columns kept on screen are not
-  drawn.
+  `TableSelection`. On iOS a drag of a selection handle past its cell's
+  edge makes one, which then has its own handles at its corners and an
+  edit menu (Cut, Copy, Paste), as in Notes. The sticky horizontal
+  scrollbar, column resizing by drag and frozen rows and columns kept on
+  screen are not drawn.
 - **Packages not ported yet:** `@lexical/yjs` and `@lexical/y`
   (collaboration), `@lexical/code-shiki`,
   `@lexical/mdast`, and `@lexical/offset`, which upstream is removing.

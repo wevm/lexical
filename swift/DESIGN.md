@@ -1303,8 +1303,23 @@ scrolls sideways on its own. The views do the same.
     header row's cells head their columns, a header column's their rows
     (`headerState`). The table's character reads only the table's size, so
     the cells' text is not read twice.
-  - Still to do: the iOS table-selection handles (a drag on iOS selects
-    text inside one cell).
+  - iOS table selection: UIKit's selection handles stay inside one text
+    view, so a drag of one past the cell's edge is followed through
+    UIKit's own recognizer that moves it (`addTarget`, found among the
+    recognizers that track the touch as the grid's pan is asked to
+    begin), as AppKit's drag is followed from a timer. Over another cell
+    the selection runs from the far end of the cell's range to the cell
+    under the touch, in one commit (`select(from:of:to:)`), which the
+    table extension makes a `TableSelection`; back in the cell it is the
+    cell's range again. A `TableSelection` then shows the grid's own
+    handles at its top left and bottom right corners, as Notes does: a
+    UIKit-style knob in a 44-point target; a drag of one keeps the far
+    corner's cell as the anchor. Once a drag ends, the grid's edit menu
+    offers Cut, Copy and Paste over the selected cells, which the
+    first responder's cell takes from the model; the cell's own text menu
+    stays closed. A cell's view takes the touches in its padding, so
+    UIKit's knob under its last line, which hangs below the view, is
+    reachable.
 
 ## Follow-ups: chat composer gaps
 

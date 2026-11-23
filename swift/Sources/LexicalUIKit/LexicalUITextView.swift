@@ -1089,7 +1089,8 @@
 
     public func textViewDidChangeSelection(_ textView: UITextView) {
       showLastBlockAtCaret()
-      guard !isRendering else { return }
+      // A drag of this cell's handle has left it for another cell.
+      guard !isRendering, tableGrid?.dragSource !== self else { return }
       let range = selectedRange
       if let current = try? controller.selectedRange(),
         current == TextKitRange(location: range.location, length: range.length)
@@ -1181,6 +1182,28 @@
       return true
     }
 
+    /// A cell's view takes the touches in its cell's padding too, as a
+    /// click there puts the caret in the cell on the web, and so UIKit's
+    /// handle under its last line, which hangs below the view, reaches
+    /// its knob.
+    public override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+      if super.point(inside: point, with: event) { return true }
+      return tableGrid?.cellFrame(of: self)?.contains(point) ?? false
+    }
+
+    /// Selects from `anchorLocation` of `anchorView`'s text, another of the
+    /// editor's views, to `location` of this one's.
+    func select(from anchorLocation: Int, of anchorView: LexicalUITextView, to location: Int) {
+      perform {
+        try controller.select(from: anchorLocation, of: anchorView.controller, to: location)
+      }
+    }
+
+    /// The location in the text nearest `point`.
+    func location(at point: CGPoint) -> Int {
+      closestPosition(to: point).map { offset(from: beginningOfDocument, to: $0) } ?? 0
+    }
+
     /// Makes `view`, another of the editor's views, the first responder
     /// without the editor losing the focus.
     func moveFocusWithinEditor(to view: LexicalUITextView) {
@@ -1215,6 +1238,11 @@
     public override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
       switch action {
       case #selector(paste(_:)), #selector(pasteAndMatchStyle(_:)): pasteboard.numberOfItems > 0
+      // A table selection's cells, which `copy` and `cut` take from the
+      // model, while this view's own range is empty.
+      case #selector(copy(_:)),
+        #selector(cut(_:)) where tableGrid?.hasTableSelection == true:
+        action == #selector(copy(_:)) || editor.isEditable()
       default: super.canPerformAction(action, withSender: sender)
       }
     }

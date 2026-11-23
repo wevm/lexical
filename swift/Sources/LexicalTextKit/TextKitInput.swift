@@ -370,6 +370,18 @@ public final class TextKitInputController {
     }
   }
 
+  /// Selects from `anchorLocation` of `anchorView`'s text, another view of
+  /// the editor, to `location` of this view's text, in one commit: a drag
+  /// of a table selection's handle, which keeps the far corner's cell as
+  /// the anchor.
+  package func select(
+    from anchorLocation: Int, of anchorView: TextKitInputController, to location: Int
+  ) throws {
+    let anchor = anchorView.document.point(at: anchorLocation)
+    let focus = document.point(at: location)
+    try run { [editor] in try applySelectionChange(editor, anchor, focus) }
+  }
+
   // MARK: Keys and input
 
   // A read-only editor (`editor.setEditable(false)`) dispatches nothing for

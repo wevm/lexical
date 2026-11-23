@@ -1294,11 +1294,17 @@ scrolls sideways on its own. The views do the same.
   - The caret is kept in view by scrolling the grid sideways and the root
     down, not the cell view, which does not scroll.
   - VoiceOver: on macOS the root view adds the grids to its accessibility
-    children, so each cell's text view is reachable. On iOS a `UITextView`
-    is one element, so the table's character reads the table's size and its
-    cells' text row by row.
+    children, so each cell's text view is reachable. On iOS UIKit lists the
+    elements of a text view's attachment views among its children (the
+    accessibility tree has each cell's text view under the root's), and the
+    grid is a `UIAccessibilityContainerDataTable`: its elements are the
+    cells' text views in row order, each a
+    `UIAccessibilityContainerDataTableCell` at its rows and columns, and a
+    header row's cells head their columns, a header column's their rows
+    (`headerState`). The table's character reads only the table's size, so
+    the cells' text is not read twice.
   - Still to do: the iOS table-selection handles (a drag on iOS selects
-    text inside one cell), and the iOS cell elements for VoiceOver.
+    text inside one cell).
 
 ## Follow-ups: chat composer gaps
 

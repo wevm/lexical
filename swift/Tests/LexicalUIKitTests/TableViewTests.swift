@@ -71,6 +71,75 @@
       #expect(view.hasFocus)
     }
 
+    /// A view showing a table of `rows` by `columns` whose cells read "r,c"
+    /// (from 0), with `headers` as `createTableNodeWithDimensions` takes them.
+    private func tableView(
+      _ rows: Int, _ columns: Int, headers: InsertTableCommandPayloadHeaders = false
+    ) throws -> (Editor, UIWindow, LexicalUITextView) {
+      let editor = try buildEditorFromExtensions(
+        defineExtension(name: "test", dependencies: [RichTextExtension, TableExtension]))
+      let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 390, height: 520))
+      let view = LexicalUITextView(editor: editor, frame: window.bounds)
+      window.addSubview(view)
+      window.makeKeyAndVisible()
+      try editor.update(discrete: true) {
+        let table = try createTableNodeWithDimensions(rows, columns, headers)
+        for (r, row) in try table.getChildren().enumerated() {
+          for (c, cell) in try (row as! ElementNode).getChildren().enumerated() {
+            try ((cell as! ElementNode).getFirstChild() as! ElementNode).append(
+              createTextNode("\(r),\(c)"))
+          }
+        }
+        try getRoot().clear().append(table, createParagraphNode())
+        try getRoot().getLastChild()!.selectStart()
+      }
+      settle(window)
+      return (editor, window, view)
+    }
+
+    private func dataTable(in view: UIView) -> (any UIAccessibilityContainerDataTable)? {
+      if let table = view as? any UIAccessibilityContainerDataTable,
+        view.accessibilityContainerType == .dataTable
+      {
+        return table
+      }
+      for subview in view.subviews {
+        if let table = dataTable(in: subview) { return table }
+      }
+      return nil
+    }
+
+    /// VoiceOver reads a table cell by cell: the grid is a data table whose
+    /// elements are the cells' text views, at their rows and columns, and a
+    /// header row's cells head their columns, a header column's their rows.
+    @Test func voiceOverReadsTheGridAsADataTable() throws {
+      let (_, window, view) = try tableView(
+        3, 2, headers: .rowsAndColumns(rows: true, columns: false))
+      _ = window
+      let table = try #require(dataTable(in: view))
+      #expect(table.accessibilityRowCount() == 3)
+      #expect(table.accessibilityColumnCount() == 2)
+      let cell = try #require(table.accessibilityDataTableCellElement(forRow: 2, column: 1))
+      #expect((cell as? UITextView)?.text == "2,1")
+      #expect(cell.accessibilityRowRange() == NSRange(location: 2, length: 1))
+      #expect(cell.accessibilityColumnRange() == NSRange(location: 1, length: 1))
+      let columnHeaders = table.accessibilityHeaderElements?(forColumn: 1) ?? []
+      #expect(columnHeaders.compactMap { ($0 as? UITextView)?.text } == ["0,1"])
+      #expect((table.accessibilityHeaderElements?(forRow: 2) ?? []).isEmpty)
+      let elements = ((table as? UIView)?.accessibilityElements ?? []).compactMap {
+        ($0 as? UITextView)?.text
+      }
+      #expect(elements == ["0,0", "0,1", "1,0", "1,1", "2,0", "2,1"])
+
+      let (_, rowWindow, rowView) = try tableView(
+        2, 3, headers: .rowsAndColumns(rows: false, columns: true))
+      _ = rowWindow
+      let rowTable = try #require(dataTable(in: rowView))
+      let rowHeaders = rowTable.accessibilityHeaderElements?(forRow: 1) ?? []
+      #expect(rowHeaders.compactMap { ($0 as? UITextView)?.text } == ["1,0"])
+      #expect((rowTable.accessibilityHeaderElements?(forColumn: 2) ?? []).isEmpty)
+    }
+
     private func node(_ key: NodeKey) throws -> TextNode {
       try getNodeByKey(key) as! TextNode
     }

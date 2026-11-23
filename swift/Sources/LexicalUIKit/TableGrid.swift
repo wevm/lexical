@@ -26,9 +26,8 @@
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
 
-    /// What VoiceOver says for the table's character: a `UITextView` is one
-    /// accessibility element, so it does not reach the cells' views, and
-    /// reads the table's size and text instead.
+    /// What VoiceOver says for the table's character, as it reads the
+    /// root's text: the table's size. The cells are the grid's elements.
     override var accessibilityLabel: String? {
       get { MainActor.assumeIsolated { grid.accessibilitySummary } }
       set {}
@@ -142,12 +141,14 @@
       accessibilityElements = model.cells.compactMap { cellViews[$0.key] }
     }
 
-    /// The table's size and its cells' text, row by row.
+    /// The table's size.
     var accessibilitySummary: String {
-      var rows: [[String]] = Array(repeating: [], count: model.rowCount)
-      for cell in model.cells { rows[cell.row].append(cellViews[cell.key]?.text ?? "") }
-      let size = "Table, \(model.rowCount) rows, \(model.columnCount) columns"
-      return ([size] + rows.map { $0.joined(separator: ", ") }).joined(separator: ". ")
+      "Table, \(model.rowCount) rows, \(model.columnCount) columns"
+    }
+
+    /// The place of the cell that `view` shows.
+    func gridCell(of view: LexicalUITextView) -> TableGridCell? {
+      model.cells.first { cellViews[$0.key] === view }
     }
 
     /// A cell's text changed: it is measured again.
@@ -203,6 +204,57 @@
     /// Scrolls the grid sideways so `rect`, in `view`'s coordinates, shows.
     func scrollToVisible(_ rect: CGRect, in view: UIView) {
       scrollView.scrollRectToVisible(scrollView.convert(rect, from: view), animated: false)
+    }
+  }
+
+  /// VoiceOver reads the grid as a data table, `<table>`'s role on the web:
+  /// each cell's text view is its element at its row and column, and a
+  /// header row's or column's cells head the cells of their column or row.
+  extension TableGridView: @MainActor UIAccessibilityContainerDataTable {
+    func accessibilityRowCount() -> Int { model.rowCount }
+
+    func accessibilityColumnCount() -> Int { model.columnCount }
+
+    func accessibilityDataTableCellElement(
+      forRow row: Int, column: Int
+    )
+      -> (any UIAccessibilityContainerDataTableCell)?
+    {
+      model.cell(row: row, column: column).flatMap { cellViews[$0.key] }
+    }
+
+    func accessibilityHeaderElements(
+      forRow row: Int
+    ) -> [any UIAccessibilityContainerDataTableCell]? {
+      model.cells.filter { $0.headsRow && $0.covers(row: row, column: $0.column) }
+        .compactMap { cellViews[$0.key] }
+    }
+
+    func accessibilityHeaderElements(
+      forColumn column: Int
+    )
+      -> [any UIAccessibilityContainerDataTableCell]?
+    {
+      model.cells.filter { $0.headsColumn && $0.covers(row: $0.row, column: column) }
+        .compactMap { cellViews[$0.key] }
+    }
+  }
+
+  /// A table cell's text view is its grid's element at the cell's rows and
+  /// columns; another view of the editor is in no table.
+  extension LexicalUITextView: @MainActor UIAccessibilityContainerDataTableCell {
+    public func accessibilityRowRange() -> NSRange {
+      guard let cell = tableGrid?.gridCell(of: self) else {
+        return NSRange(location: NSNotFound, length: 0)
+      }
+      return NSRange(location: cell.row, length: cell.rowSpan)
+    }
+
+    public func accessibilityColumnRange() -> NSRange {
+      guard let cell = tableGrid?.gridCell(of: self) else {
+        return NSRange(location: NSNotFound, length: 0)
+      }
+      return NSRange(location: cell.column, length: cell.columnSpan)
     }
   }
 

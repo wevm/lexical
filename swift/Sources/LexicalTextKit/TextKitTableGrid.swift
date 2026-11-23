@@ -18,8 +18,27 @@ package struct TableGridCell: Equatable {
   package var column: Int
   package var rowSpan: Int
   package var columnSpan: Int
-  package var isHeader: Bool
+  /// `TableCellHeaderStates`: 1 (`ROW`) in a header row, so it heads its
+  /// column; 2 (`COLUMN`) in a header column, so it heads its row.
+  package var headerState: Int
   package var background: TextKitColor?
+
+  /// Whether the cell is a header cell. Setting it to `true` on a cell that
+  /// heads nothing makes it head its column (`ROW`).
+  package var isHeader: Bool {
+    get { headerState != 0 }
+    set { headerState = newValue ? (headerState == 0 ? 1 : headerState) : 0 }
+  }
+  /// Whether the cell heads its column (it is in a header row).
+  package var headsColumn: Bool { headerState & 1 != 0 }
+  /// Whether the cell heads its row (it is in a header column).
+  package var headsRow: Bool { headerState & 2 != 0 }
+
+  /// Whether the cell covers `row` and `column`.
+  package func covers(row: Int, column: Int) -> Bool {
+    (self.row..<self.row + rowSpan).contains(row)
+      && (self.column..<self.column + columnSpan).contains(column)
+  }
 }
 
 /// The shape of a table, as its nodes' JSON describes it.
@@ -61,7 +80,7 @@ package struct TableGridModel: Equatable {
           TableGridCell(
             key: cell.getKey(), row: r, column: column, rowSpan: rowSpan,
             columnSpan: columnSpan,
-            isHeader: Int(cellJSON["headerState"]?.numberValue ?? 0) != 0,
+            headerState: Int(cellJSON["headerState"]?.numberValue ?? 0),
             background: cellJSON["backgroundColor"]?.stringValue.flatMap {
               TextKitColor(css: $0)
             }))
@@ -91,6 +110,11 @@ package struct TableGridModel: Equatable {
       row = rowNode.__next
     }
     return nodes
+  }
+
+  /// The cell that covers `row` and `column`, if any.
+  package func cell(row: Int, column: Int) -> TableGridCell? {
+    cells.first { $0.covers(row: row, column: column) }
   }
 
   /// A cell's background: its own color, else a header's, else a stripe on

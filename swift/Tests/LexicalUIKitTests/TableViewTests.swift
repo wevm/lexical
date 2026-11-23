@@ -140,6 +140,25 @@
       #expect((rowTable.accessibilityHeaderElements?(forColumn: 2) ?? []).isEmpty)
     }
 
+    /// A drag of a handle selects from one cell to another in one commit:
+    /// the far cell keeps the anchor, and the table extension makes the
+    /// range a table selection of the cells between.
+    @Test func selectingFromOneCellToAnotherMakesATableSelection() throws {
+      let (editor, window, view) = try tableView(3, 3)
+      let cells = cellViews(in: view)
+      let anchor = try #require(cells["2,2"])
+      let focus = try #require(cells["1,0"])
+      try focus.controller.select(from: 3, of: anchor.controller, to: 0)
+      settle(window)
+      let selected = try editor.read(.latest) {
+        let selection = try #require(getSelection() as? TableSelection)
+        return try selection.getNodes().compactMap { node -> String? in
+          node is TableCellNode ? try node.getTextContent() : nil
+        }.sorted()
+      }
+      #expect(selected == ["1,0", "1,1", "1,2", "2,0", "2,1", "2,2"])
+    }
+
     private func node(_ key: NodeKey) throws -> TextNode {
       try getNodeByKey(key) as! TextNode
     }

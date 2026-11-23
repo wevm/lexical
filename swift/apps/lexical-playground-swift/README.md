@@ -35,7 +35,10 @@ for iOS 26 and macOS 26. It builds the package from `../..`.
   wider than the page, with the playground's cell padding, borders and
   header background. Tab and Shift+Tab move between cells, the arrows move
   out of a cell's edges into the next one, and a drag or Shift+click across
-  cells selects them, as on the web.
+  cells selects them, as on the web. On iOS a drag of a selection handle
+  into another cell selects the cells between, which then have handles at
+  their corners to grow or shrink the selection and an edit menu to cut or
+  copy them. VoiceOver reads a table cell by cell, with its headers.
 - **Polls** (`PollNode`, `PollExtension`): Insert → Poll, or "/" and Poll,
   asks for the question and inserts a poll with two options. Each option
   is edited in place, a vote toggles with the checkbox (as one of the web's

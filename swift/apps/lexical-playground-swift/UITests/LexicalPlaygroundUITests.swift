@@ -169,6 +169,88 @@ final class LexicalPlaygroundUITests: XCTestCase {
     add(screenshot)
   }
 
+  /// A drag of a cell's selection handle into another cell selects the
+  /// cells between, as a drag across cells does on the web, and the table
+  /// selection's own handle then grows it.
+  @MainActor
+  func testDraggingASelectionHandleAcrossCellsSelectsThem() {
+    launch()
+    let editor = clearedEditor()
+    editor.typeText("/3x3")
+    let first = app.descendants(matching: .any)["typeahead-item-0"]
+    XCTAssertTrue(first.waitForExistence(timeout: 5))
+    first.tap()
+    waitForTree(") table")
+    app.typeText("one")
+    for text in ["two", "three"] {
+      app.typeKey(.tab, modifierFlags: [])
+      app.typeText(text)
+    }
+    // The cells' views are the editor's elements. Their own taps land
+    // off the cell, so the touches go to their places on the screen.
+    let cells = editor.textViews
+    func point(_ frame: CGRect, _ dx: CGFloat = 0.5, _ dy: CGFloat = 0.5) -> XCUICoordinate {
+      app.windows.firstMatch.coordinate(withNormalizedOffset: .zero).withOffset(
+        CGVector(dx: frame.minX + frame.width * dx, dy: frame.minY + frame.height * dy))
+    }
+    let one = cells.matching(NSPredicate(format: "value == 'one'")).firstMatch
+    XCTAssertTrue(one.waitForExistence(timeout: 5))
+    // The cells' frames, row by row: each view is listed twice.
+    var grid: [[CGRect]] = []
+    for frame in cells.allElementsBoundByIndex.map(\.frame).sorted(by: {
+      ($0.minY, $0.minX) < ($1.minY, $1.minX)
+    }) {
+      if let last = grid.last?.first, abs(last.minY - frame.minY) < 1 {
+        if !grid[grid.count - 1].contains(where: { abs($0.minX - frame.minX) < 1 }) {
+          grid[grid.count - 1].append(frame)
+        }
+      } else {
+        grid.append([frame])
+      }
+    }
+    XCTAssertEqual(grid.map(\.count), [3, 3, 3])
+    let oneFrame = grid[0][0]
+    // The cell takes the focus, then the double tap selects its word,
+    // which is in the cell's left part.
+    point(oneFrame, 0.2).tap()
+    // Apart from the tap, so the two are not taken for a triple tap.
+    Thread.sleep(forTimeInterval: 1)
+    point(oneFrame, 0.2).doubleTap()
+    let word = NSPredicate(
+      format: "label MATCHES %@",
+      "(?s).*anchor \\{ key: \\d+, offset: 0.*focus \\{ key: \\d+, offset: 3.*")
+    expectation(for: word, evaluatedWith: app.staticTexts["tree-view"])
+    waitForExpectations(timeout: 5)
+    // UIKit's handle at the word's start: its knob is over the word's
+    // first letter (the knobs' elements report no place), where the edit
+    // menu under the word never covers it.
+    let knob = CGRect(x: oneFrame.minX + 1, y: oneFrame.minY - 2, width: 0, height: 0)
+    let middle = grid[1][1]
+    // A short press: a long one on selected text lifts it for a drop.
+    point(knob).press(
+      forDuration: 0.05, thenDragTo: point(middle), withVelocity: .slow, thenHoldForDuration: 0.3)
+    waitForTree("selection: table")
+    // The edit menu over the cells has the commands that take them, not
+    // the text's.
+    XCTAssertTrue(app.menuItems["Copy"].waitForExistence(timeout: 5))
+    XCTAssertFalse(app.menuItems["Select All"].exists)
+    XCTAssertFalse(app.menuItems["Replace…"].exists)
+    attachScreenshot("playground-table-selection")
+    // The handle at the selection's bottom right corner, dragged to the
+    // last cell, takes in the third column: Cut then clears "three".
+    // The corner is the cell's border's, past its text's padding.
+    point(middle.insetBy(dx: -8, dy: -8), 1, 1).press(
+      forDuration: 0.05, thenDragTo: point(grid[2][2]),
+      withVelocity: .slow, thenHoldForDuration: 0.3)
+    attachScreenshot("playground-table-selection-grown")
+    let cut = app.menuItems["Cut"]
+    XCTAssertTrue(cut.waitForExistence(timeout: 5))
+    cut.tap()
+    let cleared = NSPredicate(format: "NOT (label CONTAINS %@)", "\"three\"")
+    expectation(for: cleared, evaluatedWith: app.staticTexts["tree-view"])
+    waitForExpectations(timeout: 5)
+  }
+
   /// A hardware keyboard's Tab indents a code line and Shift+Tab outdents
   /// it, as in the web playground.
   @MainActor

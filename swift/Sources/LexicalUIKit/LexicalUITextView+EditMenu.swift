@@ -10,6 +10,8 @@
       _ textView: UITextView, editMenuForTextIn range: NSRange,
       suggestedActions: [UIMenuElement]
     ) -> UIMenu? {
+      // A table selection's menu is its grid's, over the selected cells.
+      if tableGrid?.hasTableSelection == true { return UIMenu(children: []) }
       guard let elements = editMenuElements?(range), !elements.isEmpty else { return nil }
       return UIMenu(children: elements + suggestedActions)
     }
